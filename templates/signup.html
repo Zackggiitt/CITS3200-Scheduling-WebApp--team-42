@@ -1,17 +1,60 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Sign Up</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
 </head>
+
 <body>
-    <h2>Sign Up</h2>
-    <form method="POST" action="/signup">
-        <label>Username:</label>
-        <input type="text" name="username" required><br>
-        <label>Password:</label>
-        <input type="password" name="password" required><br>
-        <button type="submit">Sign Up</button>
-    </form>
-    <p>Already have an account? <a href="/login">Login here</a></p>
+    <div class="wrapper">
+        <form action="{{ url_for('signup') }}" method="POST">
+            <h1>Register</h1>
+
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="flash-messages">
+                  {% for message in messages %}
+                    <p>{{ message }}</p>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <div class="input-box">
+                <i class='bx bx-user'></i>
+                <input type="text" name="first_name" placeholder="First Name" required>
+            </div>
+
+            <div class="input-box">
+                <i class='bx bx-user'></i>
+                <input type="text" name="last_name" placeholder="Last Name" required>
+            </div>
+
+            <div class="input-box">
+                <i class='bx bx-envelope'></i>
+                <input type="email" name="email" placeholder="Email" required>
+            </div>
+
+            <div class="input-box">
+                <i class='bx bxs-lock-alt'></i>
+                <input type="password" name="password" placeholder="Password" required>
+            </div>
+
+            <button type="submit" class="btn">Sign Up</button>
+
+            <div class="register-link">
+                <p>Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
+            </div>
+        </form>
+    </div>
 </body>
+
 </html>
