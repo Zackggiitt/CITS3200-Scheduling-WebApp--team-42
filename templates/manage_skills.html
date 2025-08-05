@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Skills</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .skill-entry {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        .skill-entry input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+        }
+        .skill-entry select {
+            min-width: 120px;
+        }
+        .add-skill-btn, .remove-skill-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .add-skill-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        .remove-skill-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        #skills-container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .skill-level-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .level-proficient { background-color: #28a745; color: white; }
+        .level-leader { background-color: #007bff; color: white; }
+        .level-interested { background-color: #ffc107; color: black; }
+        .level-uninterested { background-color: #6c757d; color: white; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Manage Skills & Preferences</h1>
+            <p>Update your skills with proficiency levels and teaching preferences</p>
+        </div>
+
+        <div class="form-container">
+            <form action="{{ url_for('facilitator.manage_skills') }}" method="POST">
+                <div class="form-group">
+                    <label>Skills with Levels:</label>
+                    <div id="skills-container">
+                        {% if user.facilitator_skills %}
+                            {% for skill in user.facilitator_skills %}
+                                <div class="skill-entry">
+                                    <input type="text" name="skill_names[]" value="{{ skill.skill_name }}" placeholder="Skill name">
+                                    <select name="skill_levels[]">
+                                        <option value="interested" {{ 'selected' if skill.skill_level.value == 'interested' else '' }}>Interested</option>
+                                        <option value="proficient" {{ 'selected' if skill.skill_level.value == 'proficient' else '' }}>Proficient</option>
+                                        <option value="leader" {{ 'selected' if skill.skill_level.value == 'leader' else '' }}>Leader</option>
+                                        <option value="uninterested" {{ 'selected' if skill.skill_level.value == 'uninterested' else '' }}>Uninterested</option>
+                                    </select>
+                                    <button type="button" class="remove-skill-btn" onclick="removeSkillEntry(this)">-</button>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="skill-entry">
+                                <input type="text" name="skill_names[]" placeholder="Skill name (e.g., Python, JavaScript)">
+                                <select name="skill_levels[]">
+                                    <option value="interested">Interested</option>
+                                    <option value="proficient">Proficient</option>
+                                    <option value="leader">Leader</option>
+                                    <option value="uninterested">Uninterested</option>
+                                </select>
+                                <button type="button" class="add-skill-btn" onclick="addSkillEntry()">+</button>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <button type="button" class="add-skill-btn" onclick="addSkillEntry()" style="margin-top: 10px;">Add Another Skill</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="preferences">Teaching Preferences:</label>
+                    <textarea id="preferences" name="preferences" class="form-control" rows="4" placeholder="e.g., Prefer morning sessions, Comfortable with large groups, Enjoy hands-on workshops">{{ user.preferences or '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn-primary">Update Skills & Preferences</button>
+                    <a href="{{ url_for('facilitator.dashboard') }}" class="btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <script>
+        function addSkillEntry() {
+            const container = document.getElementById('skills-container');
+            const newEntry = document.createElement('div');
+            newEntry.className = 'skill-entry';
+            newEntry.innerHTML = `
+                <input type="text" name="skill_names[]" placeholder="Skill name (e.g., Python, JavaScript)">
+                <select name="skill_levels[]">
+                    <option value="interested">Interested</option>
+                    <option value="proficient">Proficient</option>
+                    <option value="leader">Leader</option>
+                    <option value="uninterested">Uninterested</option>
+                </select>
+                <button type="button" class="remove-skill-btn" onclick="removeSkillEntry(this)">-</button>
+            `;
+            container.appendChild(newEntry);
+        }
+
+        function removeSkillEntry(button) {
+            const container = document.getElementById('skills-container');
+            if (container.children.length > 1) {
+                button.parentElement.remove();
+            }
+        }
+    </script>
+</body>
+</html>

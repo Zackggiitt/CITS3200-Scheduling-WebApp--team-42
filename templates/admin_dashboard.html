@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Admin Dashboard</h1>
+            <div class="user-info">
+                {% if user.avatar_url %}
+                    <img src="{{ user.avatar_url }}" alt="Avatar" class="avatar">
+                {% endif %}
+                <span>Welcome, {{ user.first_name }} {{ user.last_name }}!</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <div class="dashboard-grid">
+                <!-- Facilitator Management -->
+                <div class="dashboard-card">
+                    <h3>Facilitator Management</h3>
+                    <p>Create and manage facilitator accounts</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('admin.create_facilitator') }}" class="btn btn-primary">Create Facilitator</a>
+                        <a href="{{ url_for('admin.manage_facilitators') }}" class="btn btn-secondary">Manage Facilitators</a>
+                    </div>
+                </div>
+
+                <!-- Session Management -->
+                <div class="dashboard-card">
+                    <h3>Session Management</h3>
+                    <p>Create and manage teaching sessions</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('admin.create_session') }}" class="btn btn-primary">Create Session</a>
+                        <a href="{{ url_for('admin.manage_sessions') }}" class="btn btn-secondary">Manage Sessions</a>
+                    </div>
+                </div>
+
+                <!-- Schedule Management -->
+                <div class="dashboard-card">
+                    <h3>Schedule Management</h3>
+                    <p>Generate and manage schedules</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('admin.view_schedule') }}" class="btn btn-primary">View Schedule</a>
+                        <a href="{{ url_for('admin.generate_schedule') }}" class="btn btn-secondary">Generate Schedule</a>
+                    </div>
+                </div>
+
+                <!-- Swap Requests -->
+                <div class="dashboard-card">
+                    <h3>Swap Requests</h3>
+                    <p>Review and manage shift swap requests</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('admin.manage_swaps') }}" class="btn btn-primary">Manage Swaps</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

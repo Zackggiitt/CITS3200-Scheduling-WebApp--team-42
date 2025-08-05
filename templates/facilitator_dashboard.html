@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facilitator Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Facilitator Dashboard</h1>
+            <div class="user-info">
+                {% if user.avatar_url %}
+                    <img src="{{ user.avatar_url }}" alt="Avatar" class="avatar">
+                {% endif %}
+                <span>Welcome, {{ user.first_name }} {{ user.last_name }}!</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <div class="dashboard-grid">
+                <!-- My Schedule -->
+                <div class="dashboard-card">
+                    <h3>My Schedule</h3>
+                    <p>View your assigned teaching sessions</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('facilitator.view_schedule') }}" class="btn btn-primary">View Schedule</a>
+                    </div>
+                </div>
+
+                <!-- Availability -->
+                <div class="dashboard-card">
+                    <h3>Availability</h3>
+                    <p>Update your availability preferences</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('facilitator.manage_availability') }}" class="btn btn-primary">Update Availability</a>
+                    </div>
+                </div>
+
+                <!-- Skills & Preferences -->
+                <div class="dashboard-card">
+                    <h3>Skills & Preferences</h3>
+                    <p>Manage your skills and teaching preferences</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('facilitator.manage_skills') }}" class="btn btn-primary">Update Skills</a>
+                    </div>
+                </div>
+
+                <!-- Shift Swaps -->
+                <div class="dashboard-card">
+                    <h3>Shift Swaps</h3>
+                    <p>Request and manage shift exchanges</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('facilitator.view_swaps') }}" class="btn btn-primary">View Swaps</a>
+                        <a href="{{ url_for('facilitator.request_swap') }}" class="btn btn-secondary">Request Swap</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

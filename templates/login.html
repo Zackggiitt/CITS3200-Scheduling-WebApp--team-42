@@ -14,8 +14,23 @@
 
 <body>
     <div class="wrapper">
-        <form action="{{ url_for('login') }}" method="POST">
-            <h1>Login</h1>
+        <!-- Role Toggle Section -->
+        <div class="role-toggle">
+            <div class="toggle-container">
+                <span class="toggle-label" id="facilitator-label">Facilitator</span>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="role-toggle" class="toggle-input">
+                    <label for="role-toggle" class="toggle-slider"></label>
+                </div>
+                <span class="toggle-label" id="admin-label">Admin</span>
+            </div>
+        </div>
+
+        <form action="{{ url_for('login') }}" method="POST" id="login-form">
+            <h1 id="login-title">Facilitator Login</h1>
+
+            <!-- Hidden field to track user role -->
+            <input type="hidden" name="user_role" id="user-role" value="facilitator">
 
             <!-- Flash messages -->
             {% with messages = get_flashed_messages() %}
@@ -43,7 +58,7 @@
                 <a href="#">Forgot password?</a>
             </div>
 
-            <button type="submit" class="btn">Login</button>
+            <button type="submit" class="btn" id="login-btn">Login as Facilitator</button>
 
             <!-- OAuth login buttons -->
             <div class="oauth-section">
@@ -56,14 +71,6 @@
                         <i class='bx bxl-google'></i>
                         Sign in with Google
                     </a>
-                    
-              
-                    <!-- 
-                    <a href="{{ url_for('microsoft_login') }}" class="oauth-btn microsoft-btn">
-                        <i class='bx bxl-microsoft'></i>
-                        Sign in with Microsoft
-                    </a>
-                    -->
                 </div>
             </div>
 
@@ -72,6 +79,36 @@
             </div>
         </form>
     </div>
+
+    <script>
+        const roleToggle = document.getElementById('role-toggle');
+        const loginTitle = document.getElementById('login-title');
+        const loginBtn = document.getElementById('login-btn');
+        const userRoleInput = document.getElementById('user-role');
+        const facilitatorLabel = document.getElementById('facilitator-label');
+        const adminLabel = document.getElementById('admin-label');
+
+        roleToggle.addEventListener('change', function() {
+            if (this.checked) {
+                // Admin mode
+                loginTitle.textContent = 'Admin Login';
+                loginBtn.textContent = 'Login as Admin';
+                userRoleInput.value = 'admin';
+                facilitatorLabel.classList.remove('active');
+                adminLabel.classList.add('active');
+            } else {
+                // Facilitator mode
+                loginTitle.textContent = 'Facilitator Login';
+                loginBtn.textContent = 'Login as Facilitator';
+                userRoleInput.value = 'facilitator';
+                facilitatorLabel.classList.add('active');
+                adminLabel.classList.remove('active');
+            }
+        });
+
+        // Initialize facilitator as active
+        facilitatorLabel.classList.add('active');
+    </script>
 </body>
 
 </html>

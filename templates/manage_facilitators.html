@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Facilitators</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .skill-level-badge {
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin: 2px;
+            display: inline-block;
+        }
+        .level-proficient { background-color: #28a745; color: white; }
+        .level-leader { background-color: #007bff; color: white; }
+        .level-interested { background-color: #ffc107; color: black; }
+        .level-uninterested { background-color: #6c757d; color: white; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Manage Facilitators</h1>
+            <p>View and manage all facilitator accounts</p>
+        </div>
+
+        <div class="actions mb-4">
+            <div class="action-card">
+                <h3>Add New Facilitator</h3>
+                <p>Create a new facilitator account</p>
+                <a href="{{ url_for('admin.create_facilitator') }}" class="btn-primary">Create Facilitator</a>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <h2>All Facilitators</h2>
+            {% if facilitators %}
+                <table class="w-100" style="border-collapse: collapse; margin-top: 1rem;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Name</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Email</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Skills & Levels</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for facilitator in facilitators %}
+                            <tr>
+                                <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ facilitator.first_name }} {{ facilitator.last_name }}</td>
+                                <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ facilitator.email }}</td>
+                                <td style="padding: 1rem; border: 1px solid #dee2e6;">
+                                    {% if facilitator.facilitator_skills %}
+                                        {% for skill in facilitator.facilitator_skills %}
+                                            <span class="skill-level-badge level-{{ skill.skill_level.value }}">
+                                                {{ skill.skill_name }} ({{ skill.skill_level.value.title() }})
+                                            </span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <em>No skills defined</em>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; border: 1px solid #dee2e6;">
+                                    <a href="#" class="btn btn-sm btn-secondary">Edit</a>
+                                    <a href="#" class="btn btn-sm btn-danger">Delete</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No facilitators found.</p>
+            {% endif %}
+        </div>
+
+        <div class="actions">
+            <a href="{{ url_for('admin.dashboard') }}" class="btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

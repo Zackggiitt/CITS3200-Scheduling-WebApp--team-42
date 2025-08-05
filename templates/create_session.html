@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Session</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="form-container">
+        <h1>Create New Teaching Session</h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <div class="flash-message">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="form">
+            <div class="form-group">
+                <label for="module_code">Module Code:</label>
+                <input type="text" id="module_code" name="module_code" required placeholder="e.g., CITS3200">
+            </div>
+
+            <div class="form-group">
+                <label for="session_type">Session Type:</label>
+                <select id="session_type" name="session_type" required>
+                    <option value="">Select session type</option>
+                    <option value="lecture">Lecture</option>
+                    <option value="tutorial">Tutorial</option>
+                    <option value="lab">Lab</option>
+                    <option value="workshop">Workshop</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="start_time">Start Time:</label>
+                <input type="datetime-local" id="start_time" name="start_time" required>
+            </div>
+
+            <div class="form-group">
+                <label for="end_time">End Time:</label>
+                <input type="datetime-local" id="end_time" name="end_time" required>
+            </div>
+
+            <div class="form-group">
+                <label for="location">Location:</label>
+                <input type="text" id="location" name="location" required placeholder="e.g., Room 101, Building A">
+            </div>
+
+            <div class="form-group">
+                <label for="required_skills">Required Skills (comma-separated):</label>
+                <input type="text" id="required_skills" name="required_skills" placeholder="e.g., Python, Database">
+            </div>
+
+            <div class="form-group">
+                <label for="max_facilitators">Max Facilitators:</label>
+                <input type="number" id="max_facilitators" name="max_facilitators" min="1" value="1" required>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Create Session</button>
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

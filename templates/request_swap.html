@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Swap</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Request Swap</h1>
+            <p>Request to swap one of your assignments with another facilitator</p>
+        </div>
+
+        <div class="form-container">
+            <form action="{{ url_for('facilitator.request_swap') }}" method="POST">
+                <div class="form-group">
+                    <label for="my_assignment_id">My Assignment to Swap:</label>
+                    <select id="my_assignment_id" name="my_assignment_id" class="form-control" required>
+                        <option value="">Select your assignment</option>
+                        {% for assignment in my_assignments %}
+                            <option value="{{ assignment.id }}">
+                                {{ assignment.session.module_code }} - {{ assignment.session.session_type }} 
+                                ({{ assignment.session.start_time.strftime('%Y-%m-%d %H:%M') }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="target_assignment_id">Target Assignment to Swap With:</label>
+                    <select id="target_assignment_id" name="target_assignment_id" class="form-control" required>
+                        <option value="">Select target assignment</option>
+                        {% for assignment in other_assignments %}
+                            <option value="{{ assignment.id }}">
+                                {{ assignment.session.module_code }} - {{ assignment.session.session_type }} 
+                                ({{ assignment.session.start_time.strftime('%Y-%m-%d %H:%M') }}) 
+                                - {{ assignment.facilitator.first_name }} {{ assignment.facilitator.last_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="reason">Reason for Swap (optional):</label>
+                    <textarea id="reason" name="reason" class="form-control" rows="3" placeholder="Please explain why you want to swap these assignments..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn-primary">Submit Swap Request</button>
+                    <a href="{{ url_for('facilitator.view_swaps') }}" class="btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+</body>
+</html>

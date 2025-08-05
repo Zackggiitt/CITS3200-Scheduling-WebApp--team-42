@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Availability</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="form-container">
+        <h1>Manage Your Availability</h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <div class="flash-message">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="form">
+            <div class="availability-grid">
+                {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                {% set times = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'] %}
+                
+                <div class="time-header"></div>
+                {% for day in days %}
+                    <div class="day-header">{{ day }}</div>
+                {% endfor %}
+                
+                {% for time in times %}
+                    <div class="time-slot">{{ time }}</div>
+                    {% for day in days %}
+                        <div class="availability-slot">
+                            <input type="checkbox" 
+                                   name="availability" 
+                                   value="{{ day.lower() }}_{{ time.replace(':', '') }}"
+                                   id="{{ day.lower() }}_{{ time.replace(':', '') }}">
+                            <label for="{{ day.lower() }}_{{ time.replace(':', '') }}"></label>
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Availability</button>
+                <a href="{{ url_for('facilitator.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

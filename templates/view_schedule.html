@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Schedule</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Schedule Overview</h1>
+            <p>View all assignments and schedule</p>
+        </div>
+
+        {% if user.role.name == 'ADMIN' %}
+        <div class="actions mb-4">
+            <div class="action-card">
+                <h3>Generate Schedule</h3>
+                <p>Automatically assign facilitators to sessions</p>
+                <form action="{{ url_for('admin.generate_schedule') }}" method="POST" style="display: inline;">
+                    <button type="submit" class="btn-primary">Generate Schedule</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="form-container">
+            <h2>Current Assignments</h2>
+            {% if assignments %}
+                <table class="w-100" style="border-collapse: collapse; margin-top: 1rem;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Facilitator</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Module</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Session Type</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Time</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Location</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assignment in assignments %}
+                        <tr>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.facilitator.first_name }} {{ assignment.facilitator.last_name }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.session.module_code }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.session.session_type }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.session.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.session.location }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No assignments found.</p>
+            {% endif %}
+        </div>
+
+        <div class="actions mt-4">
+            {% if user.role.name == 'ADMIN' %}
+                <a href="{{ url_for('admin.dashboard') }}" class="btn-secondary">Back to Dashboard</a>
+            {% else %}
+                <a href="{{ url_for('facilitator.dashboard') }}" class="btn-secondary">Back to Dashboard</a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

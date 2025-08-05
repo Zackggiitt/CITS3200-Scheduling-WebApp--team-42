@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Sessions</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Manage Sessions</h1>
+            <p>View and manage all teaching sessions</p>
+        </div>
+
+        <div class="actions mb-4">
+            <div class="action-card">
+                <h3>Add New Session</h3>
+                <p>Create a new teaching session</p>
+                <a href="{{ url_for('admin.create_session') }}" class="btn-primary">Create Session</a>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <h2>All Sessions</h2>
+            {% if sessions %}
+                <table class="w-100" style="border-collapse: collapse; margin-top: 1rem;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Module</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Type</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Time</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Location</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                        <tr>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ session.module_code }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ session.session_type }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ session.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ session.location }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">
+                                <button class="btn-secondary" style="margin-right: 0.5rem;">Edit</button>
+                                <button class="btn-danger">Delete</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No sessions found.</p>
+            {% endif %}
+        </div>
+
+        <div class="actions mt-4">
+            <a href="{{ url_for('admin.dashboard') }}" class="btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>
