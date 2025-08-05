@@ -2,14 +2,21 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, User
-from functools import wraps
-from urllib.parse import urlparse, urljoin
+from models import db, User, UserRole
+from auth import login_required, is_safe_url, get_current_user
 from authlib.integrations.flask_client import OAuth
+
+# Import blueprints
+from admin_routes import admin_bp
+from facilitator_routes import facilitator_bp
 
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+
+# Register blueprints
+app.register_blueprint(admin_bp)
+app.register_blueprint(facilitator_bp)
 
 # OAuth configuration
 oauth = OAuth(app)
@@ -25,44 +32,27 @@ google = oauth.register(
     }
 )
 
-# Microsoft OAuth configuration
-microsoft = oauth.register(
-    name='microsoft',
-    client_id=os.getenv('MICROSOFT_CLIENT_ID'),
-    client_secret=os.getenv('MICROSOFT_CLIENT_SECRET'),
-    authorize_url='https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    access_token_url='https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    client_kwargs={
-        'scope': 'openid email profile'
-    }
-)
-
-def login_required(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if "user_id" not in session:
-            # Capture where the user wanted to go
-            return redirect(url_for("login", next=request.path))
-        return f(*args, **kwargs)
-    return wrapper
-
-def is_safe_url(target):
-    ref = urlparse(request.host_url)
-    test = urlparse(urljoin(request.host_url, target))
-    return test.scheme in ("http", "https") and ref.netloc == test.netloc
-
-@app.get("/dashboard")
-@login_required
-def dashboard():
-    user = User.query.get(session['user_id'])
-    return render_template("dashboard.html", user=user)
-
-# Database configuration: use SQLite locally; swap to RDS later via env
+# Database configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///dev.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
+
 with app.app_context():
     db.create_all()
+    
+    # Create default admin user if it doesn't exist
+    admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
+    if not User.query.filter_by(email=admin_email).first():
+        admin_user = User(
+            email=admin_email,
+            first_name='Admin',
+            last_name='User',
+            role=UserRole.ADMIN,
+            password_hash=generate_password_hash(os.getenv('ADMIN_PASSWORD', 'admin123'))
+        )
+        db.session.add(admin_user)
+        db.session.commit()
+        print(f"Default admin user created: {admin_email}")
 
 @app.get("/healthz")
 def healthz():
@@ -70,9 +60,12 @@ def healthz():
 
 @app.route("/")
 def index():
-    # Redirect to login or dashboard if logged in
     if "user_id" in session:
-        return render_template("dashboard.html") if os.path.exists("templates/dashboard.html") else render_template("login.html")
+        user = get_current_user()
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for('admin.dashboard'))
+        else:
+            return redirect(url_for('facilitator.dashboard'))
     return render_template("login.html")
 
 @app.route("/login", methods=["GET", "POST"])
@@ -80,25 +73,44 @@ def login():
     if request.method == "POST":
         email = request.form["email"].strip().lower()
         password = request.form["password"]
+        user_role = request.form.get("user_role", "facilitator")
+        
         user = User.query.filter_by(email=email).first()
         if user and user.password_hash and check_password_hash(user.password_hash, password):
+            # Check if selected role matches user's actual role
+            if (user_role == "admin" and user.role != UserRole.ADMIN) or \
+               (user_role == "facilitator" and user.role != UserRole.FACILITATOR):
+                flash("Invalid role selected for this account.")
+                return render_template("login.html")
+            
             session["user_id"] = user.id
-            # Send them where they were intended, else to dashboard
+            
+            # Redirect based on user role
             target = request.args.get("next")
             if target and is_safe_url(target):
                 return redirect(target)
-            return redirect(url_for("dashboard"))
+            
+            if user.role == UserRole.ADMIN:
+                return redirect(url_for("admin.dashboard"))
+            else:
+                return redirect(url_for("facilitator.dashboard"))
+        
         flash("Invalid credentials")
     return render_template("login.html")
+
+@app.get("/dashboard")
+@login_required
+def dashboard():
+    user = get_current_user()
+    if user.role == UserRole.ADMIN:
+        return redirect(url_for('admin.dashboard'))
+    else:
+        return redirect(url_for('facilitator.dashboard'))
 
 # Google OAuth routes
 @app.route('/auth/google')
 def google_login():
     redirect_uri = url_for('google_callback', _external=True)
-    print(f"=== Google OAuth Debug ===")
-    print(f"Redirect URI: {redirect_uri}")
-    print(f"Client ID: {os.getenv('GOOGLE_CLIENT_ID')}")
-    print(f"=========================")
     return google.authorize_redirect(redirect_uri)
 
 @app.route('/auth/google/callback')
@@ -122,12 +134,12 @@ def google_callback():
                 last_name=last_name,
                 oauth_provider='google',
                 oauth_id=oauth_id,
-                avatar_url=avatar_url
+                avatar_url=avatar_url,
+                role=UserRole.FACILITATOR  # Default role for OAuth users
             )
             db.session.add(user)
             db.session.commit()
         else:
-            # Update OAuth information
             user.oauth_provider = 'google'
             user.oauth_id = oauth_id
             user.avatar_url = avatar_url
@@ -135,57 +147,13 @@ def google_callback():
         
         session['user_id'] = user.id
         flash('Successfully logged in with Google!')
-        return redirect(url_for('dashboard'))
+        
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for('admin.dashboard'))
+        else:
+            return redirect(url_for('facilitator.dashboard'))
     
     flash('Google login failed')
-    return redirect(url_for('login'))
-
-# Microsoft OAuth routes
-@app.route('/auth/microsoft')
-def microsoft_login():
-    redirect_uri = url_for('microsoft_callback', _external=True)
-    return microsoft.authorize_redirect(redirect_uri)
-
-@app.route('/auth/microsoft/callback')
-def microsoft_callback():
-    token = microsoft.authorize_access_token()
-    
-    # Get user information
-    resp = requests.get(
-        'https://graph.microsoft.com/v1.0/me',
-        headers={'Authorization': f'Bearer {token["access_token"]}'}
-    )
-    
-    if resp.status_code == 200:
-        user_info = resp.json()
-        email = user_info['mail'] or user_info['userPrincipalName']
-        first_name = user_info.get('givenName', '')
-        last_name = user_info.get('surname', '')
-        oauth_id = user_info['id']
-        
-        # Find or create user
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            user = User(
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
-                oauth_provider='microsoft',
-                oauth_id=oauth_id
-            )
-            db.session.add(user)
-            db.session.commit()
-        else:
-            # Update OAuth information
-            user.oauth_provider = 'microsoft'
-            user.oauth_id = oauth_id
-            db.session.commit()
-        
-        session['user_id'] = user.id
-        flash('Successfully logged in with Microsoft!')
-        return redirect(url_for('dashboard'))
-    
-    flash('Microsoft login failed')
     return redirect(url_for('login'))
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -195,6 +163,7 @@ def signup():
         last = request.form["last_name"].strip()
         email = request.form["email"].strip().lower()
         password = request.form["password"]
+        
         if User.query.filter_by(email=email).first():
             flash("Email already exists!")
         else:
@@ -202,7 +171,8 @@ def signup():
                 first_name=first,
                 last_name=last,
                 email=email,
-                password_hash=generate_password_hash(password)
+                password_hash=generate_password_hash(password),
+                role=UserRole.FACILITATOR  # Default role for new signups
             )
             db.session.add(user)
             db.session.commit()
