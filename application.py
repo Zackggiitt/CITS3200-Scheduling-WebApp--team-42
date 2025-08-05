@@ -62,6 +62,12 @@ def healthz():
 def index():
     if "user_id" in session:
         user = get_current_user()
+        if user is None:
+            # 用户不存在，清除session并重定向到登录页
+            session.pop("user_id", None)
+            flash("Session expired. Please log in again.")
+            return render_template("login.html")
+        
         if user.role == UserRole.ADMIN:
             return redirect(url_for('admin.dashboard'))
         else:

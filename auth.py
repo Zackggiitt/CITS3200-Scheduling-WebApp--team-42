@@ -44,5 +44,8 @@ def is_safe_url(target):
 
 def get_current_user():
     if "user_id" in session:
-        return User.query.get(session['user_id'])
+        user = User.query.get(session['user_id'])
+        if user is None:
+            session.pop("user_id", None)
+        return user
     return None
