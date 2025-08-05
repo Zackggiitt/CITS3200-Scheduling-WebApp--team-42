@@ -6,8 +6,6 @@ from models import db, User
 from functools import wraps
 from urllib.parse import urlparse, urljoin
 from authlib.integrations.flask_client import OAuth
-import requests
-
 
 load_dotenv()
 app = Flask(__name__)
@@ -21,7 +19,7 @@ google = oauth.register(
     name='google',
     client_id=os.getenv('GOOGLE_CLIENT_ID'),
     client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
-    server_metadata_url='https://accounts.google.com/.well-known/openid_configuration',
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
     client_kwargs={
         'scope': 'openid email profile'
     }
@@ -97,6 +95,10 @@ def login():
 @app.route('/auth/google')
 def google_login():
     redirect_uri = url_for('google_callback', _external=True)
+    print(f"=== Google OAuth Debug ===")
+    print(f"Redirect URI: {redirect_uri}")
+    print(f"Client ID: {os.getenv('GOOGLE_CLIENT_ID')}")
+    print(f"=========================")
     return google.authorize_redirect(redirect_uri)
 
 @app.route('/auth/google/callback')
