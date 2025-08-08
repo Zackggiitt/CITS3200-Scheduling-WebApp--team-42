@@ -3,13 +3,49 @@ from flask import session, redirect, url_for, request, flash
 from urllib.parse import urlparse, urljoin
 from models import User, UserRole
 
+def set_user_session(user):
+    """Set user session data with authentication flag"""
+    if user:
+        session['user_id'] = user.id
+        session['role'] = user.role.value
+        session['authenticated'] = True  
+        return True
+    return False
+
+def test_session_creation(self):
+    """Test session creation"""
+    with self.app.test_request_context():
+        # Set session
+        set_user_session(self.test_user)
+        
+        # Verify all session data
+        expected_session = {
+            'user_id': self.test_user.id,
+            'role': self.test_user.role.value,
+            'authenticated': True
+        }
+        
+        for key, value in expected_session.items():
+            self.assertIn(key, session)
+            self.assertEqual(session[key], value)
+
+def clear_user_session():
+    """Clear user session data"""
+    session.clear()
+
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if "user_id" not in session:
             return redirect(url_for("login", next=request.path))
+        # Verify user exists in database
+        user = User.query.get(session['user_id'])
+        if not user:
+            session.clear()  # Clear invalid session
+            return redirect(url_for("login"))
         return f(*args, **kwargs)
     return wrapper
+
 
 def admin_required(f):
     @wraps(f)
