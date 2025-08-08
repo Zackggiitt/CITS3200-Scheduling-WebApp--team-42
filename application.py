@@ -199,7 +199,7 @@ def logout():
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
-    flash("Too many login attempts. Please try again in a minute.")
+    flash("Too many login attempts. Please try again in few minutes.")
     return render_template("login.html"), 429
 
 
