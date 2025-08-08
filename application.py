@@ -197,6 +197,12 @@ def logout():
     flash("Logged out!")
     return redirect(url_for("login"))
 
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    flash("Too many login attempts. Please try again in a minute.")
+    return render_template("login.html"), 429
+
+
 if __name__ == "__main__":
     app.run(debug=True)
 
