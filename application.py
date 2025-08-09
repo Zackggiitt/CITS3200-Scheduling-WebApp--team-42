@@ -5,6 +5,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, UserRole
 from auth import login_required, is_safe_url, get_current_user
 from authlib.integrations.flask_client import OAuth
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 
 # Import blueprints
 from admin_routes import admin_bp
@@ -12,6 +15,7 @@ from facilitator_routes import facilitator_bp
 
 load_dotenv()
 app = Flask(__name__)
+limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
 
 # Register blueprints
@@ -75,6 +79,7 @@ def index():
     return render_template("login.html")
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")  # RATE LIMIT HERE
 def login():
     if request.method == "POST":
         email = request.form["email"].strip().lower()
@@ -191,6 +196,12 @@ def logout():
     session.pop("user_id", None)
     flash("Logged out!")
     return redirect(url_for("login"))
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    flash("Too many login attempts. Please try again in few minutes.")
+    return render_template("login.html"), 429
+
 
 if __name__ == "__main__":
     app.run(debug=True)
