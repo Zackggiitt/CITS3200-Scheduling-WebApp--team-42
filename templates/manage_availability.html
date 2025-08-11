@@ -5,50 +5,166 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Availability</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .availability-grid {
+            display: grid;
+            /* 8 columns: 1 for time labels, 7 for days */
+            grid-template-columns: 100px repeat(7, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .time-header, .day-header, .time-slot, .availability-slot {
+            text-align: center;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f8f9fa;
+            color: black; /* Make text black for better readability */
+        }
+        .time-header, .day-header {
+            font-weight: bold;
+            background-color: #e9ecef;
+        }
+        .availability-slot input[type="checkbox"] {
+            display: none; /* Hide the default checkbox */
+        }
+        .availability-slot label {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        .availability-slot label:hover {
+            background-color: #dee2e6;
+        }
+        /* Checked state */
+        .availability-slot input[type="checkbox"]:checked + label {
+            background-color: #28a745; /* Bootstrap success green */
+            color: white;
+        }
+        .form-actions {
+            margin-top: 20px;
+        }
+        /* Make main section text white */
+        .container {
+            color: white;
+        }
+    </style>
 </head>
 <body>
-    <div class="form-container">
-        <h1>Manage Your Availability</h1>
-        
+    <div class="container mt-5">
+        <h1 class="mb-4">Set Your Weekly Availability</h1>
+        <p>Select the time slots when you are available to facilitate sessions.</p>
+
         {% with messages = get_flashed_messages() %}
             {% if messages %}
-                <div class="flash-messages">
+                <div class="alert alert-info">
                     {% for message in messages %}
-                        <div class="flash-message">{{ message }}</div>
+                        <div>{{ message }}</div>
                     {% endfor %}
                 </div>
             {% endif %}
         {% endwith %}
 
-        <form method="POST" class="form">
+        <form method="POST">
             <div class="availability-grid">
                 {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
                 {% set times = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'] %}
                 
                 <div class="time-header"></div>
                 {% for day in days %}
-                    <div class="day-header">{{ day }}</div>
+                    <div class="day-header">{{ day[:3] }}</div>
                 {% endfor %}
                 
                 {% for time in times %}
                     <div class="time-slot">{{ time }}</div>
                     {% for day in days %}
+                        {% set day_name = day.lower() %}
+                        {% set time_value = time.replace(':', '') %}
+                        {% set day_index = loop.index0 %}
                         <div class="availability-slot">
                             <input type="checkbox" 
-                                   name="availability" 
-                                   value="{{ day.lower() }}_{{ time.replace(':', '') }}"
-                                   id="{{ day.lower() }}_{{ time.replace(':', '') }}">
-                            <label for="{{ day.lower() }}_{{ time.replace(':', '') }}"></label>
+                                name="availability" 
+                                value="{{ day_name }}_{{ time_value }}"
+                                id="{{ day_name }}_{{ time_value }}"
+                                {% if availability.get(day_index) and time_value in availability.get(day_index) %}checked{% endif %}>
+                            <label for="{{ day_name }}_{{ time_value }}"></label>
                         </div>
                     {% endfor %}
                 {% endfor %}
             </div>
 
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Update Availability</button>
+            <div class="form-actions mt-4">
+                <button type="submit" class="btn btn-primary" id="update-btn">Update Availability</button>
                 <a href="{{ url_for('facilitator.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
             </div>
+            <div id="feedback-message" class="mt-3" style="display: none;"></div>
         </form>
+
+        <!-- Availability Summary -->
+        <div class="availability-summary mt-5">
+            <h2>Your Current Availability</h2>
+            <div id="availability-display"></div>
+        </div>
+
+        <script>
+            // Display current availability after page load
+            document.addEventListener('DOMContentLoaded', function() {
+                displayCurrentAvailability();
+                
+                // Add feedback when form is submitted
+                const form = document.querySelector('form');
+                const updateBtn = document.getElementById('update-btn');
+                const feedbackMessage = document.getElementById('feedback-message');
+                
+                form.addEventListener('submit', function(e) {
+                    // Show loading message
+                    updateBtn.disabled = true;
+                    updateBtn.textContent = 'Updating...';
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.innerHTML = '<div class="alert alert-info">Saving your availability...</div>';
+                    
+                    // Update summary after a short delay
+                    setTimeout(displayCurrentAvailability, 1000);
+                });
+            });
+
+            function displayCurrentAvailability() {
+                const availabilityDisplay = document.getElementById('availability-display');
+                const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                
+                // Get all checked checkboxes
+                const checkedBoxes = document.querySelectorAll('input[name="availability"]:checked');
+                
+                if (checkedBoxes.length === 0) {
+                    availabilityDisplay.innerHTML = '<p>You have not set any availability times.</p>';
+                    return;
+                }
+                
+                // Create a map to store availability by day
+                const availabilityMap = {};
+                days.forEach(day => availabilityMap[day] = []);
+                
+                // Populate the map with checked times
+                checkedBoxes.forEach(box => {
+                    const [day, time] = box.value.split('_');
+                    const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+                    availabilityMap[dayName].push(time.slice(0, 2) + ':' + time.slice(2));
+                });
+                
+                // Generate HTML for display
+                let html = '<ul>';
+                days.forEach(day => {
+                    if (availabilityMap[day].length > 0) {
+                        html += `<li><strong>${day}:</strong> ${availabilityMap[day].sort().join(', ')}</li>`;
+                    }
+                });
+                html += '</ul>';
+                
+                availabilityDisplay.innerHTML = html;
+            }
+        </script>
     </div>
 </body>
 </html>
