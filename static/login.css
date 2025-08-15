@@ -33,10 +33,12 @@ body::before {
   color: #333; border-radius: 10px;
   padding: 30px 40px; position: relative;
 
-  /* Lock vertical space so role changes don’t move the card */
+  /* Lock vertical space and prevent content overflow */
   min-height: 640px;
+  max-height: 640px; /* Added to cap height */
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* Prevent content from spilling out and affecting border */
 }
 
 /* =========================
@@ -79,14 +81,21 @@ body::before {
    Form Styles
    ========================= */
 .wrapper h1 {
-  font-size: 36px; text-align: center; margin-bottom: 30px; color: #162938;
+  font-size: 36px; text-align: center; margin-bottom: 10px; color: #162938;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; /* Prevent title overflow */
 }
 
-/* Reserve enough space for the longest title (e.g., 2 lines) */
+/* Reserve enough space for the title and subtitle */
 #login-title {
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center;
-  min-height: 88px; /* ~2 lines at 36px */
+  min-height: 100px; /* Adjusted to accommodate title and subtitle */
+  max-height: 100px; /* Cap height to prevent expansion */
+}
+
+.role-subtitle {
+  font-size: 16px; color: #666; text-align: center; margin-top: 5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; /* Prevent subtitle overflow */
 }
 
 .input-box {
@@ -127,6 +136,7 @@ body::before {
   cursor: pointer; font-size: 16px; color: #fff; font-weight: 600;
   transition: background-color 0.3s ease;
   white-space: nowrap;  /* prevent “Login as Unit Coordinator” from wrapping */
+  overflow: hidden; text-overflow: ellipsis; /* Prevent button text overflow */
 }
 
 .btn:hover { background: #0f1f2b; }
@@ -180,8 +190,9 @@ body::before {
 }
 
 @media (max-width: 480px) {
-  .wrapper { padding: 15px 20px; min-height: 580px; }
+  .wrapper { padding: 15px 20px; min-height: 580px; max-height: 580px; }
   .wrapper h1 { font-size: 28px; }
-  #login-title { min-height: 68px; }
+  #login-title { min-height: 80px; max-height: 80px; }
+  .role-subtitle { font-size: 14px; }
   .toggle-label { font-size: 12px; padding: 8px 10px; }
 }
