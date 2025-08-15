@@ -4,7 +4,6 @@ from flask import redirect, url_for, flash
 from auth import get_current_user
 
 def role_required(required_role):
-    @wraps(required_role)
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):

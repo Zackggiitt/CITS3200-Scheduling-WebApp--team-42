@@ -1,5 +1,5 @@
 # unitcoordinator_routes.py
-from flask import Blueprint, render_template, redirect, url_for, flash  # Changed import
+from flask import Blueprint, render_template, redirect, url_for, flash
 import logging
 from auth import login_required, get_current_user
 from models import UserRole
@@ -19,12 +19,4 @@ unitcoordinator_bp = Blueprint(
 def dashboard():
     user = get_current_user()
     logger.debug(f"Accessing dashboard for user: {user.email if user else 'None'}")
-    try:
-        if not user:
-            flash("User not authenticated.")
-            return redirect(url_for("login"))
-        return render_template("unitcoordinator_dashboard.html")
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        flash("An error occurred. Please try again later.")
-        return redirect(url_for("index"))
+    return render_template("unitcoordinator_dashboard.html", user=user)  # Pass user here
