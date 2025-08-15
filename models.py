@@ -6,7 +6,9 @@ db = SQLAlchemy()
 
 class UserRole(Enum):
     ADMIN = "admin"
+    UNIT_COORDINATOR = "Unit_Coordinator"
     FACILITATOR = "facilitator"
+    
 
 class SwapStatus(Enum):
     PENDING = "pending"
