@@ -66,12 +66,19 @@ body::before {
 }
 
 .toggle-label {
-  flex: 1; display: flex; justify-content: center; align-items: center;
+  flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;
   cursor: pointer; user-select: none;
-  padding: 10px 12px; border-radius: 999px;
-  font-size: 14px; color: #666; white-space: nowrap; line-height: 1;
+  padding: 5px 12px; /* Reduced vertical padding to fit icon and text */
+  border-radius: 999px;
+  font-size: 12px; /* Reduced font size to fit within height */
+  color: #666; white-space: nowrap; line-height: 1;
   text-align: center;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.toggle-label i {
+  margin-bottom: 2px; /* Space between icon and text */
+  font-size: 18px; /* Adjust icon size */
 }
 
 .toggle-label.active {
@@ -208,5 +215,6 @@ body::before {
   .wrapper h1 { font-size: 28px; }
   #login-title { min-height: 100px; max-height: 120px; }
   .role-subtitle { font-size: 14px; }
-  .toggle-label { font-size: 12px; padding: 8px 10px; }
+  .toggle-label { font-size: 10px; padding: 5px 10px; } /* Further reduced for small screens */
+  .toggle-label i { font-size: 16px; }
 }
