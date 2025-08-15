@@ -1,5 +1,5 @@
 # unitcoordinator_routes.py
-from flask import Blueprint, render_template, redirect, url_for, flash, TemplateNotFound  # Added TemplateNotFound
+from flask import Blueprint, render_template, redirect, url_for, flash  # Changed import
 import logging
 from auth import login_required, get_current_user
 from models import UserRole
@@ -24,10 +24,6 @@ def dashboard():
             flash("User not authenticated.")
             return redirect(url_for("login"))
         return render_template("unitcoordinator_dashboard.html")
-    except TemplateNotFound as e:
-        logger.error(f"Template error: {str(e)}")
-        flash("Dashboard template not found. Contact support.")
-        return render_template("index.html")
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         flash("An error occurred. Please try again later.")
