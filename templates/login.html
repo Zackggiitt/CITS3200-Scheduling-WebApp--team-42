@@ -15,20 +15,23 @@
       <div class="toggle-container">
         <label class="toggle-label" id="facilitator-label">
           <input type="radio" name="role" value="facilitator" checked>
-          Facilitator
+          <i class='bx bxs-user'></i> Facilitator
         </label>
         <label class="toggle-label" id="unitcoordinator-label">
           <input type="radio" name="role" value="unit_coordinator">
-          Unit Coordinator
+          <i class='bx bxs-book'></i> Unit Coordinator
         </label>
         <label class="toggle-label" id="admin-label">
           <input type="radio" name="role" value="admin">
-          Admin
+          <i class='bx bxs-shield'></i> Admin
         </label>
       </div>
     </div>
     <form action="{{ url_for('login') }}" method="POST" id="login-form">
-      <h1 id="login-title">Login</h1>
+      <div id="login-title">
+        <h1><span class="title-line"></span></h1>
+        <p class="role-subtitle"></p>
+      </div>
       <input type="hidden" name="user_role" id="user-role" value="facilitator">
       {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -45,13 +48,13 @@
       </div>
       <div class="input-box">
         <i class='bx bxs-lock-alt'></i>
-        <input type="password" name="password" placeholder="Password" required>
+        <input type="password" name="password" placeholder="password" required>
       </div>
       <div class="remember-forgot">
         <label><input type="checkbox"> Remember me</label>
         <a href="#">Forgot password?</a>
       </div>
-      <button type="submit" class="btn" id="login-btn">Login</button>
+      <button type="submit" class="btn" id="login-btn">Login as Facilitator</button>
       <div class="oauth-section">
         <div class="divider"><span>Or sign in with</span></div>
         <div class="oauth-buttons">
@@ -70,6 +73,8 @@
     const loginTitle = document.getElementById('login-title');
     const loginBtn = document.getElementById('login-btn');
     const userRoleInput = document.getElementById('user-role');
+    const roleSubtitle = document.querySelector('.role-subtitle');
+    const titleLine = document.querySelector('.title-line');
 
     const facilitatorLabel = document.getElementById('facilitator-label');
     const unitCoordLabel = document.getElementById('unitcoordinator-label');
@@ -80,14 +85,17 @@
     function setActive(role) {
       userRoleInput.value = role;
       if (role === 'facilitator') {
-        loginTitle.textContent = 'Facilitator Login';
+        titleLine.innerHTML = 'Facilitator<br>Login';
         loginBtn.textContent = 'Login as Facilitator';
+        roleSubtitle.textContent = 'Lab Facilitator Access';
       } else if (role === 'unit_coordinator') {
-        loginTitle.textContent = 'Unit Coordinator Login';
+        titleLine.innerHTML = 'Unit Coordinator<br>Login';
         loginBtn.textContent = 'Login as Unit Coordinator';
+        roleSubtitle.textContent = 'Unit Management Access';
       } else {
-        loginTitle.textContent = 'Admin Login';
+        titleLine.innerHTML = 'Admin<br>Login';
         loginBtn.textContent = 'Login as Admin';
+        roleSubtitle.textContent = 'Full System Access';
       }
       facilitatorLabel.classList.toggle('active', role === 'facilitator');
       unitCoordLabel.classList.toggle('active', role === 'unit_coordinator');
