@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, UserRole
@@ -40,6 +40,11 @@ google = oauth.register(
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///dev.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
+
+# Set g.user for all requests
+@app.before_request
+def before_request():
+    g.user = get_current_user()
 
 with app.app_context():
     db.create_all()

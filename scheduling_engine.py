@@ -29,7 +29,7 @@ def generate_optimal_schedule():
                 db.session.add(assignment)
                 assignments_made += 1
             else:
-                conflicts.append(f"No suitable facilitator found for {session.course_name} at {session.start_time}")
+                conflicts.append(f"No suitable facilitator found for {session.module.unit.unit_code} - {session.module.module_name} at {session.start_time}")
         
         db.session.commit()
         
@@ -80,15 +80,27 @@ def calculate_facilitator_score(facilitator, session):
     if not is_facilitator_available(facilitator, session):
         return 0
     
-    # Check skills match
-    required_skills = json.loads(session.required_skills) if session.required_skills else []
-    facilitator_skills = json.loads(facilitator.skills) if facilitator.skills else []
+    # Check skills match (using module-based skills)
+    # For now, we'll check if the facilitator has any skill with the session's module
+    facilitator_skills = facilitator.facilitator_skills
     
-    skills_match = len(set(required_skills) & set(facilitator_skills))
-    if required_skills and skills_match == 0:
-        return 0  # Must have at least one required skill
+    # Find if facilitator has skills for this session's module
+    module_skill = None
+    for skill in facilitator_skills:
+        if skill.module_id == session.module_id:
+            module_skill = skill
+            break
     
-    score += skills_match * 10  # 10 points per matching skill
+    if not module_skill:
+        return 0  # Must have skills for this module
+    
+    # Score based on skill level
+    if module_skill.skill_level == SkillLevel.LEADER:
+        score += 30
+    elif module_skill.skill_level == SkillLevel.PROFICIENT:
+        score += 20
+    elif module_skill.skill_level == SkillLevel.INTERESTED:
+        score += 10
     
     # Check preferences
     preferences = json.loads(facilitator.preferences) if facilitator.preferences else {}

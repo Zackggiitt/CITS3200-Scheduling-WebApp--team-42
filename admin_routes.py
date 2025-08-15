@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import db, User, Session, Assignment, SwapRequest, UserRole, SwapStatus, FacilitatorSkill, SkillLevel
+from models import db, User, Session, Assignment, SwapRequest, UserRole, SwapStatus, FacilitatorSkill, SkillLevel, Unit, Module
 from auth import admin_required, get_current_user
-from datetime import datetime
+from datetime import datetime, time
 import json
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -189,18 +189,244 @@ def approve_swap(swap_id):
 @admin_bp.route('/swaps/<int:swap_id>/reject', methods=['POST'])
 @admin_required
 def reject_swap(swap_id):
-    swap = SwapRequest.query.get_or_404(swap_id)
+    user = get_current_user()
+    swap_request = SwapRequest.query.get_or_404(swap_id)
     
-    if swap.status != SwapStatus.PENDING:
-        flash('Swap request is no longer pending!')
-        return redirect(url_for('admin.manage_swaps'))
-    
-    reason = request.form.get('reason', 'No reason provided')
-    
-    swap.status = SwapStatus.REJECTED
-    swap.admin_response = f"Rejected: {reason}"
+    swap_request.status = SwapStatus.REJECTED
+    swap_request.reviewed_at = datetime.utcnow()
+    swap_request.reviewed_by = user.id
     
     db.session.commit()
     flash('Swap request rejected.')
     
     return redirect(url_for('admin.manage_swaps'))
+
+@admin_bp.route('/modules')
+@admin_required
+def manage_modules():
+    user = get_current_user()
+    # Get all modules with their associated sessions
+    modules = Module.query.all()
+    return render_template('manage_modules.html', user=user, modules=modules)
+
+@admin_bp.route('/modules/create', methods=['GET', 'POST'])
+@admin_required
+def create_module():
+    user = get_current_user()
+    units = Unit.query.all()
+    
+    if request.method == 'POST':
+        unit_id = int(request.form['unit_id'])
+        module_name = request.form['module_name'].strip()
+        module_type = request.form['module_type']
+        day_of_week = request.form.get('day_of_week', '')
+        start_time = request.form.get('start_time', '')
+        end_time = request.form.get('end_time', '')
+        
+        # Validate input
+        if not module_name:
+            flash('Module name is required!', 'error')
+            return render_template('create_module.html', user=user, units=units)
+        
+        if not unit_id:
+            flash('Unit must be selected!', 'error')
+            return render_template('create_module.html', user=user, units=units)
+        
+        # Check if module already exists in this unit
+        existing_module = Module.query.filter_by(unit_id=unit_id, module_name=module_name).first()
+        if existing_module:
+            flash('A module with this name already exists in the selected unit!', 'error')
+            return render_template('create_module.html', user=user, units=units)
+        
+        module = Module(
+            unit_id=unit_id,
+            module_name=module_name,
+            module_type=module_type
+        )
+        
+        db.session.add(module)
+        db.session.flush()  # Get the module ID without committing
+        
+        # Handle timing information if provided
+        if day_of_week != '' and start_time and end_time:
+            from datetime import datetime, time
+            
+            # Create datetime objects with today's date and specified times
+            today = datetime.today()
+            start_hour, start_minute = map(int, start_time.split(':'))
+            end_hour, end_minute = map(int, end_time.split(':'))
+            
+            start_datetime = datetime.combine(today.date(), time(start_hour, start_minute))
+            end_datetime = datetime.combine(today.date(), time(end_hour, end_minute))
+            
+            session = Session(
+                module_id=module.id,
+                day_of_week=int(day_of_week),
+                start_time=start_datetime,
+                end_time=end_datetime,
+                session_type=module_type
+            )
+            db.session.add(session)
+        
+        db.session.commit()
+        flash('Module created successfully!', 'success')
+        return redirect(url_for('admin.manage_modules'))
+    
+    return render_template('create_module.html', user=user, units=units)
+
+@admin_bp.route('/modules/<int:module_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_module(module_id):
+    user = get_current_user()
+    module = Module.query.get_or_404(module_id)
+    units = Unit.query.all()
+    
+    if request.method == 'POST':
+        unit_id = int(request.form['unit_id'])
+        module_name = request.form['module_name'].strip()
+        module_type = request.form['module_type']
+        day_of_week = request.form.get('day_of_week', '')
+        start_time = request.form.get('start_time', '')
+        end_time = request.form.get('end_time', '')
+        
+        # Validate input
+        if not module_name:
+            flash('Module name is required!', 'error')
+            return render_template('create_module.html', user=user, units=units, module=module)
+        
+        if not unit_id:
+            flash('Unit must be selected!', 'error')
+            return render_template('create_module.html', user=user, units=units, module=module)
+        
+        # Check if another module already exists with this name for this unit
+        existing_module = Module.query.filter_by(unit_id=unit_id, module_name=module_name).first()
+        if existing_module and existing_module.id != module_id:
+            flash('A module with this name already exists in the selected unit!', 'error')
+            return render_template('create_module.html', user=user, units=units, module=module)
+        
+        # Update module information
+        module.unit_id = unit_id
+        module.module_name = module_name
+        module.module_type = module_type
+        
+        # Handle timing information
+        # Get the first session for this module (assuming one-to-one relationship for simplicity)
+        session = module.sessions[0] if module.sessions else None
+        
+        if day_of_week != '' and start_time and end_time:
+            # If session exists, update it
+            if session:
+                # Update day of week
+                session.day_of_week = int(day_of_week)
+                
+                # Update start and end times (keeping today's date but changing time)
+                start_hour, start_minute = map(int, start_time.split(':'))
+                end_hour, end_minute = map(int, end_time.split(':'))
+                
+                if session.start_time:
+                    start_datetime = session.start_time.replace(hour=start_hour, minute=start_minute, second=0, microsecond=0)
+                    session.start_time = start_datetime
+                
+                if session.end_time:
+                    end_datetime = session.end_time.replace(hour=end_hour, minute=end_minute, second=0, microsecond=0)
+                    session.end_time = end_datetime
+            else:
+                # Create a new session if none exists
+                from datetime import datetime, time
+                
+                # Create datetime objects with today's date and specified times
+                today = datetime.today()
+                start_hour, start_minute = map(int, start_time.split(':'))
+                end_hour, end_minute = map(int, end_time.split(':'))
+                
+                start_datetime = datetime.combine(today.date(), time(start_hour, start_minute))
+                end_datetime = datetime.combine(today.date(), time(end_hour, end_minute))
+                
+                session = Session(
+                    module_id=module.id,
+                    day_of_week=int(day_of_week),
+                    start_time=start_datetime,
+                    end_time=end_datetime,
+                    session_type=module_type
+                )
+                db.session.add(session)
+        elif session:
+            # If timing information is removed, delete the session
+            db.session.delete(session)
+        
+        db.session.commit()
+        flash('Module updated successfully!', 'success')
+        return redirect(url_for('admin.manage_modules'))
+    
+    return render_template('create_module.html', user=user, units=units, module=module)
+
+@admin_bp.route('/modules/<int:module_id>/delete', methods=['POST'])
+@admin_required
+def delete_module(module_id):
+    user = get_current_user()
+    module = Module.query.get_or_404(module_id)
+    
+    # Delete associated sessions and facilitator skills
+    Session.query.filter_by(module_id=module_id).delete()
+    FacilitatorSkill.query.filter_by(module_id=module_id).delete()
+    
+    db.session.delete(module)
+    db.session.commit()
+    flash('Module deleted successfully!', 'success')
+    
+    return redirect(url_for('admin.manage_modules'))
+
+@admin_bp.route('/modules/<int:module_id>/details')
+@admin_required
+def module_details(module_id):
+    user = get_current_user()
+    module = Module.query.get_or_404(module_id)
+    
+    # Get facilitators grouped by skill level
+    facilitator_skills = FacilitatorSkill.query.filter_by(module_id=module_id).all()
+    
+    # Group facilitators by skill level
+    skill_groups = {
+        'proficient': [],
+        'leader': [],
+        'interested': [],
+        'uninterested': []
+    }
+    
+    for fs in facilitator_skills:
+        skill_groups[fs.skill_level.value].append(fs.facilitator)
+    
+    return render_template('module_details.html', user=user, module=module, skill_groups=skill_groups)
+
+@admin_bp.route('/module_details/create', methods=['GET', 'POST'])
+@admin_required
+def create_module_details():
+    user = get_current_user()
+    
+    if request.method == 'POST':
+        # Handle form submission for creating module details
+        module_code = request.form['module_code']
+        session_type = request.form['session_type']
+        start_time = request.form['start_time']
+        end_time = request.form['end_time']
+        location = request.form['location']
+        required_skills = request.form.get('required_skills', '')
+        max_facilitators = int(request.form.get('max_facilitators', 1))
+        
+        # Create session (which represents module details)
+        session = Session(
+            module_code=module_code,
+            session_type=session_type,
+            start_time=datetime.fromisoformat(start_time),
+            end_time=datetime.fromisoformat(end_time),
+            location=location,
+            required_skills=required_skills,
+            max_facilitators=max_facilitators
+        )
+        
+        db.session.add(session)
+        db.session.commit()
+        flash('Module details created successfully!', 'success')
+        return redirect(url_for('admin.manage_module_details'))
+    
+    return render_template('create_module_details.html', user=user)

@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import db, User, Session, Assignment, SwapRequest, Availability, SwapStatus, FacilitatorSkill, SkillLevel
+from models import db, User, Session, Assignment, SwapRequest, Availability, SwapStatus, FacilitatorSkill, SkillLevel, Unit, Module
 from auth import facilitator_required, get_current_user
 from datetime import datetime, time
 import json
@@ -103,10 +103,11 @@ def manage_availability():
 def manage_skills():
     user = get_current_user()
     
+    # Get all modules
+    modules = Module.query.all()
+    
     if request.method == 'POST':
         preferences = request.form.get('preferences', '')
-        skill_names = request.form.getlist('skill_names[]')
-        skill_levels = request.form.getlist('skill_levels[]')
         
         # Update preferences
         user.preferences = preferences
@@ -114,12 +115,13 @@ def manage_skills():
         # Clear existing skills
         FacilitatorSkill.query.filter_by(facilitator_id=user.id).delete()
         
-        # Add new skills with levels
-        for skill_name, skill_level in zip(skill_names, skill_levels):
-            if skill_name.strip():  # Only add non-empty skills
+        # Add new skills with levels based on module IDs
+        for module in modules:
+            skill_level = request.form.get(f'skill_level_{module.id}')
+            if skill_level and skill_level != 'uninterested':
                 facilitator_skill = FacilitatorSkill(
                     facilitator_id=user.id,
-                    skill_name=skill_name.strip(),
+                    module_id=module.id,
                     skill_level=SkillLevel(skill_level)
                 )
                 db.session.add(facilitator_skill)
@@ -128,7 +130,17 @@ def manage_skills():
         flash('Skills and preferences updated successfully!')
         return redirect(url_for('facilitator.manage_skills'))
     
-    return render_template('manage_skills.html', user=user)
+    # Get current skills for this facilitator
+    current_skills = {}
+    facilitator_skills = FacilitatorSkill.query.filter_by(facilitator_id=user.id).all()
+    for skill in facilitator_skills:
+        current_skills[skill.module_id] = skill.skill_level.value
+    
+    return render_template('manage_skills.html', 
+                         user=user,
+                         modules=modules,
+                         current_skills=current_skills,
+                         current_preferences=user.preferences)
 
 @facilitator_bp.route('/swaps')
 @facilitator_required

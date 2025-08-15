@@ -10,7 +10,7 @@
     <div class="dashboard-container">
         <div class="dashboard-header">
             <h1>Swap Requests</h1>
-            <p>View your swap requests and requests for your sessions</p>
+            <p>View your swap requests and requests for your modules</p>
         </div>
 
         <div class="actions mb-4">
@@ -27,8 +27,8 @@
                 <table class="w-100" style="border-collapse: collapse; margin-top: 1rem;">
                     <thead>
                         <tr style="background: #f8f9fa;">
-                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">My Session</th>
-                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Target Session</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">My Module</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Target Module</th>
                             <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Reason</th>
                             <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Status</th>
                         </tr>
@@ -36,8 +36,8 @@
                     <tbody>
                         {% for request in my_requests %}
                         <tr>
-                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.my_assignment.session.module_code }} - {{ request.my_assignment.session.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
-                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.target_assignment.session.module_code }} - {{ request.target_assignment.session.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.my_assignment.module_code }} - {{ request.my_assignment.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.target_assignment.module_code }} - {{ request.target_assignment.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.reason or 'No reason provided' }}</td>
                             <td style="padding: 1rem; border: 1px solid #dee2e6;">
                                 <span class="{% if request.status.name == 'PENDING' %}text-warning{% elif request.status.name == 'APPROVED' %}text-success{% else %}text-danger{% endif %}">
@@ -54,14 +54,14 @@
         </div>
 
         <div class="form-container mt-4">
-            <h2>Requests for My Sessions</h2>
+            <h2>Requests for My Modules</h2>
             {% if requests_for_me %}
                 <table class="w-100" style="border-collapse: collapse; margin-top: 1rem;">
                     <thead>
                         <tr style="background: #f8f9fa;">
                             <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Requester</th>
-                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Their Session</th>
-                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">My Session</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Their Module</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">My Module</th>
                             <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Status</th>
                         </tr>
                     </thead>
@@ -81,7 +81,7 @@
                     </tbody>
                 </table>
             {% else %}
-                <p>No requests for your sessions.</p>
+                <p>No requests for your modules.</p>
             {% endif %}
         </div>
 
