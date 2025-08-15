@@ -26,9 +26,10 @@ body::before {
    ========================= */
 .wrapper {
   width: 420px;
-  background: rgba(255,255,255,0.95);
+  background: rgb(255, 255, 255); /* Reduced opacity for transparency */
   border: 2px solid rgba(255,255,255,0.2);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(10px); /* Added blur effect */
+  -webkit-backdrop-filter: blur(10px); /* Safari support */
   box-shadow: 0 0 30px rgba(0,0,0,0.5);
   color: #333; border-radius: 10px;
   padding: 30px 40px; position: relative;
@@ -57,7 +58,7 @@ body::before {
   border: 1px solid rgba(0,0,0,0.06);
   background: rgba(255,255,255,0.8);
   width: 100%;
-  min-height: 44px;           /* stable height */
+  min-height: 60px;           /* Increased height to accommodate stacked icon and text */
 }
 
 /* Hide native radios; make labels the interactive target */
@@ -192,7 +193,7 @@ body::before {
 /* =========================
    Register & Flash Messages
    ========================= */
-.register-link { font-size: 14.5px; text-align: center; margin: 20px 0 15px; }
+.register-link { font-size: 14.5px; text-align: center; margin: 10px 0 15px; } /* Changed margin-top from 20px to 10px */
 .register-link p a { color: #162938; text-decoration: none; font-weight: 600; }
 .register-link p a:hover { text-decoration: underline; }
 
