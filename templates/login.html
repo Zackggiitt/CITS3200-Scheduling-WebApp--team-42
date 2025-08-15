@@ -87,15 +87,15 @@
       if (role === 'facilitator') {
         titleLine.innerHTML = 'Facilitator<br>Login';
         loginBtn.textContent = 'Login as Facilitator';
-        roleSubtitle.textContent = 'Lab facilitator access';
+        roleSubtitle.textContent = 'Lab Facilitator Access';
       } else if (role === 'unit_coordinator') {
         titleLine.innerHTML = 'Unit Coordinator<br>Login';
         loginBtn.textContent = 'Login as Unit Coordinator';
-        roleSubtitle.textContent = 'Unit management access';
+        roleSubtitle.textContent = 'Unit Management Access';
       } else {
         titleLine.innerHTML = 'Admin<br>Login';
         loginBtn.textContent = 'Login as Admin';
-        roleSubtitle.textContent = 'Full system access';
+        roleSubtitle.textContent = 'Full System Access';
       }
       facilitatorLabel.classList.toggle('active', role === 'facilitator');
       unitCoordLabel.classList.toggle('active', role === 'unit_coordinator');
