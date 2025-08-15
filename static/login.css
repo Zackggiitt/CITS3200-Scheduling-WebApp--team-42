@@ -71,6 +71,7 @@ body::before {
   padding: 10px 12px; border-radius: 999px;
   font-size: 14px; color: #666; white-space: nowrap; line-height: 1;
   text-align: center;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .toggle-label.active {
@@ -81,21 +82,34 @@ body::before {
    Form Styles
    ========================= */
 .wrapper h1 {
-  font-size: 36px; text-align: center; margin-bottom: 10px; color: #162938;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; /* Prevent title overflow */
+  font-size: 36px;
+  text-align: center;
+  margin-bottom: 5px;
+  color: #162938;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal; /* Allow wrapping */
 }
 
-/* Reserve enough space for the title and subtitle */
-#login-title {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+.wrapper h1 .title-line {
+  display: block;
   text-align: center;
-  min-height: 100px; /* Adjusted to accommodate title and subtitle */
-  max-height: 100px; /* Cap height to prevent expansion */
+  line-height: 1.2; /* Adjust line spacing */
+}
+
+#login-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 120px; /* Increased to accommodate two lines and subtitle */
+  max-height: 140px; /* Increased to prevent cutoff */
 }
 
 .role-subtitle {
   font-size: 16px; color: #666; text-align: center; margin-top: 5px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; /* Prevent subtitle overflow */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .input-box {
@@ -135,8 +149,8 @@ body::before {
   border-radius: 40px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
   cursor: pointer; font-size: 16px; color: #fff; font-weight: 600;
   transition: background-color 0.3s ease;
-  white-space: nowrap;  /* prevent “Login as Unit Coordinator” from wrapping */
-  overflow: hidden; text-overflow: ellipsis; /* Prevent button text overflow */
+  white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
 }
 
 .btn:hover { background: #0f1f2b; }
@@ -192,7 +206,7 @@ body::before {
 @media (max-width: 480px) {
   .wrapper { padding: 15px 20px; min-height: 580px; max-height: 580px; }
   .wrapper h1 { font-size: 28px; }
-  #login-title { min-height: 80px; max-height: 80px; }
+  #login-title { min-height: 100px; max-height: 120px; }
   .role-subtitle { font-size: 14px; }
   .toggle-label { font-size: 12px; padding: 8px 10px; }
 }
