@@ -1,57 +1,349 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unit Coordinator Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}" />
+  <title>Unit Coordinator Portal</title>
 </head>
 <body>
-    <div class="dashboard-container">
-        <header class="dashboard-header">
-            <h1>Unit Coordinator Dashboard</h1>
-            <div class="user-info">
-                {% if user.avatar_url %}
-                    <img src="{{ user.avatar_url }}" alt="Avatar" class="avatar">
-                {% endif %}
-                <span>Welcome, {{ user.first_name }} {{ user.last_name }}!</span>
-                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+
+  <!-- Top bar with centered inner container -->
+  <header class="topbar">
+    <div class="page-container" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+      <div class="brand">
+        <span class="logo"></span>
+        <span>Unit Coordinator Portal</span>
+      </div>
+
+      <div class="top-actions">
+        <button class="btn btn-primary">
+          <span class="icon icon-plus"></span>
+          Create Unit
+        </button>
+
+        <button class="notif" aria-label="Notifications">
+          <span class="icon icon-bell"></span>
+          <span class="badge">2</span>
+        </button>
+
+        <div class="user-block">
+          <span class="user-name">
+            <span class="icon icon-user"></span>
+            Dr. Mark Thompson
+          </span>
+          <span class="role-chip">Unit Coordinator</span>
+        </div>
+
+        <button class="btn">
+          <span class="icon icon-exit"></span>
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content centered with same gutters -->
+  <main class="page-container">
+
+    <!-- Unit summary -->
+    <div class="unit-box">
+      <div class="unit-info">
+        <div>GENG2000 <span>Semester 1, 2025</span></div>
+        <div>Engineering Design</div>
+        <div class="pending">2 pending approvals</div>
+        <div>2/24/2025 - 6/27/2025 • 2 sessions</div>
+      </div>
+      <div class="unit-actions">
+        <select>
+          <option value="">Switch Unit</option>
+        </select>
+        <button>Approvals <span class="notification">2</span></button>
+      </div>
+    </div>
+
+    <!-- Pill tabs -->
+    <div class="tabs-rail" role="tablist" aria-label="Main sections">
+      <button class="tab-btn is-active" role="tab" aria-selected="true" aria-controls="panel-dashboard" id="tab-dashboard" data-tab="dashboard">
+        <span class="icon icon-chart"></span>
+        Dashboard &amp; Schedule
+      </button>
+
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-team" id="tab-team" data-tab="team">
+        <span class="icon icon-team"></span>
+        Team &amp; Approvals
+        <span class="tab-badge">2</span>
+      </button>
+
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-notifications" id="tab-notifications" data-tab="notifications">
+        <span class="icon icon-bell"></span>
+        Notifications
+        <span class="tab-badge">2</span>
+      </button>
+    </div>
+
+    <!-- Tab panels -->
+    <div class="tab-panels">
+      <!-- Dashboard panel (visible by default) -->
+    <section id="panel-dashboard" class="tab-panel" role="tabpanel" aria-labelledby="tab-dashboard">
+    <div class="dashboard">
+        <h2>
+        Good evening, Dr.! <span class="tag-chip">GENG2000</span>
+        <span class="subhead">Engineering Design • Semester 1, 2025</span>
+        </h2>
+
+        <!-- segmented sub-nav + CTAs -->
+        <div class="subnav">
+        <div class="seg">
+            <button class="seg-btn is-active" type="button" data-view="overview">
+            <span class="icon icon-list"></span> Overview
+            </button>
+            <button class="seg-btn" type="button" data-view="calendar">
+            <span class="icon icon-grid"></span> Calendar
+            </button>
+        </div>
+
+        <div class="cta-group">
+            <button class="btn btn-dark">
+            <span class="icon icon-bolt"></span> Run Auto Scheduler
+            </button>
+            <button class="btn">
+            <span class="icon icon-target"></span> Optimize
+            </button>
+        </div>
+        </div>
+
+        <!-- ===== Overview view ===== -->
+        <div class="dash-overview">
+        <div class="dashboard-content cards-3">
+            <!-- Card 1 -->
+            <article class="card">
+            <header class="card-h">
+                <h3>Registration Progress</h3>
+                <span class="corner-icon">👥</span>
+            </header>
+
+            <div class="kpi">2/5</div>
+            <div class="progressbar slim" style="--value:40%;"><span style="width:var(--value)"></span></div>
+
+            <ul class="mini">
+                <li class="muted">40% complete
+                <a class="inline-link" href="#"><span class="icon icon-send"></span>Send Reminders</a>
+                </li>
+                <li class="muted">2 pending invitations</li>
+                <li>Fully registered: <b class="ok">2</b></li>
+                <li>Profile incomplete: <b class="warn">1</b></li>
+                <li>Pending invitations: <b class="warn">2</b></li>
+            </ul>
+            </article>
+
+            <!-- Card 2 -->
+            <article class="card">
+            <header class="card-h">
+                <h3>Labs Assigned</h3>
+                <span class="corner-icon">🧪</span>
+            </header>
+            <div class="kpi">2/3</div>
+            <p class="muted">1 need assignment</p>
+            </article>
+
+            <!-- Card 3 -->
+            <article class="card">
+            <header class="card-h">
+                <h3>Pending Approvals</h3>
+                <span class="corner-icon">☑️</span>
+            </header>
+            <div class="kpi">1</div>
+            <p class="muted">Awaiting your review</p>
+            </article>
+        </div>
+        </div>
+
+        <!-- ===== Calendar view ===== -->
+        <div class="dash-calendar hidden">
+        <!-- chip header -->
+        <div class="cal-chipbar">
+            <span class="chip">Schedule Calendar</span>
+            <span class="sep">•</span>
+            <span class="chip chip-ghost">GENG2000</span>
+            <span class="chip chip-muted">Last optimized: 1/20/2024</span>
+        </div>
+
+        <!-- week bar -->
+        <div class="cal-weekbar">
+            <div class="left">
+            <button class="btn-icon-lite" aria-label="Previous week">‹</button>
+            <div class="range">Aug 18 – Aug 24, 2025</div>
+            <button class="btn-icon-lite" aria-label="Next week">›</button>
+            <div class="crumb muted">GENG2000 – Engineering Design</div>
             </div>
-        </header>
 
-        <div class="dashboard-content">
-            <div class="dashboard-grid">
-                <!-- Session Oversight -->
-                <div class="dashboard-card">
-                    <h3>Session Oversight</h3>
-                    <p>View and manage sessions for your unit</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('admin.manage_sessions') }}" class="btn btn-primary">View Sessions</a>
-                        <!-- Add more specific routes if defined later -->
-                    </div>
-                </div>
-
-                <!-- Schedule Oversight -->
-                <div class="dashboard-card">
-                    <h3>Schedule Oversight</h3>
-                    <p>Review and manage schedules for your unit</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('admin.view_schedule') }}" class="btn btn-primary">View Schedule</a>
-                        <!-- Add generate schedule if unit coordinator has this privilege -->
-                    </div>
-                </div>
-
-                <!-- Facilitator Coordination -->
-                <div class="dashboard-card">
-                    <h3>Facilitator Coordination</h3>
-                    <p>Monitor facilitator assignments and availability</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('admin.manage_facilitators') }}" class="btn btn-primary">View Facilitators</a>
-                        <!-- Add availability management if defined later -->
-                    </div>
-                </div>
+            <div class="right">
+            <div class="chipset">
+                <span class="chip chip-muted">View Mode:</span>
+                <span class="chip chip-ghost"><span class="kdot"></span> Draft <span class="count">1</span></span>
+                <span class="chip chip-dark"><span class="kdot"></span> Published <span class="count">2</span></span>
+                <span class="chip chip-success">0 Published Sessions</span>
+            </div>
+            <button class="btn">
+                <span class="icon icon-plus"></span> Add Session
+            </button>
             </div>
         </div>
+
+        <!-- legend -->
+        <div class="cal-legend">
+            <span><i class="ldot ok"></i> Fully Staffed</span>
+            <span><i class="ldot warn"></i> Needs Assignment</span>
+            <span><i class="ldot clash"></i> Clash/Issue</span>
+        </div>
+
+        <!-- calendar grid -->
+        <div class="cal-grid">
+            <!-- header row -->
+            <div class="cell head time">Time</div>
+            <div class="cell head">Monday</div>
+            <div class="cell head">Tuesday</div>
+            <div class="cell head">Wednesday</div>
+            <div class="cell head">Thursday</div>
+            <div class="cell head">Friday</div>
+            <div class="cell head">Saturday</div>
+            <div class="cell head">Sunday</div>
+
+            <!-- times -->
+            <div class="cell time">08:00</div>
+            <div class="cell time">09:00</div>
+            <div class="cell time">10:00</div>
+            <div class="cell time">11:00</div>
+            <div class="cell time">12:00</div>
+            <div class="cell time">13:00</div>
+            <div class="cell time">14:00</div>
+            <div class="cell time">15:00</div>
+            <div class="cell time">16:00</div>
+
+            <!-- empty slots (auto via background grid) -->
+
+            <!-- mock event: Monday 10–12 -->
+            <div class="event needs" style="grid-column: 2; grid-row: 5 / span 2;">
+            <div class="ev-title">Design Fundamentals</div>
+            <div class="ev-sub muted">10:00–12:00</div>
+            <div class="ev-sub muted">Engineering Lab A</div>
+            <div class="ev-badge warn">Unassigned</div>
+            </div>
+        </div>
+        </div>
     </div>
+    </section>
+
+
+      <!-- Team & Approvals panel -->
+      <section id="panel-team" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-team">
+        <h2>Team &amp; Approvals</h2>
+        <p>Put your team/approvals UI here.</p>
+      </section>
+
+      <!-- Notifications panel -->
+      <section id="panel-notifications" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-notifications">
+        <h2>Notifications</h2>
+        <p>Put your notifications list here.</p>
+      </section>
+    </div>
+
+    <!-- (Optional) keep the Data Management section below; it’s independent of the tab switcher -->
+    <div class="data-management">
+      <h3>Data Management</h3>
+      <div class="tabs">
+        <button>Import Facilitators</button>
+        <button>Manage Venues</button>
+      </div>
+      <div class="import-section">
+        <h4>Bulk Import - Facilitators and Venues</h4>
+        <p>Upload a CSV file containing facilitator details and lab venues. This will auto-populate the unit setup and send invitations to facilitators.</p>
+        <div class="upload-area">
+          <div class="drop-zone">
+            <span>Upload CSV file</span><br />
+            <span>Drag and drop your CSV file here, or click to browse</span>
+            <input type="file" accept=".csv" />
+          </div>
+        </div>
+        <p>Expected CSV Format: Facilitator Name, Email, Venue, Module (optional), Role (optional)</p>
+        <button>Download Template</button>
+        <div class="import-notes">
+          <ul>
+            <li>New facilitators will receive invitation emails automatically</li>
+            <li>Existing facilitators will have their information updated</li>
+            <li>Invalid email addresses will be flagged for review</li>
+            <li>You can review all data before final import</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script>
+    // Tab switching
+    const rail = document.querySelector('.tabs-rail');
+    const buttons = document.querySelectorAll('.tab-btn');
+    const panels = {
+      dashboard: document.getElementById('panel-dashboard'),
+      team: document.getElementById('panel-team'),
+      notifications: document.getElementById('panel-notifications'),
+    };
+
+    function setActive(tab) {
+      // buttons
+      buttons.forEach(b => {
+        const isActive = b.dataset.tab === tab;
+        b.classList.toggle('is-active', isActive);
+        b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        if (isActive) b.focus({ preventScroll: true });
+      });
+      // panels
+      Object.keys(panels).forEach(key => {
+        panels[key].classList.toggle('hidden', key !== tab);
+      });
+    }
+
+    rail.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tab-btn');
+      if (!btn) return;
+      setActive(btn.dataset.tab);
+    });
+
+    // Optional: deep link via ?tab=team / ?tab=notifications
+    const params = new URLSearchParams(location.search);
+    const initial = ['dashboard','team','notifications'].includes(params.get('tab')) ? params.get('tab') : 'dashboard';
+    setActive(initial);
+
+    // Example: Set the user name dynamically (replace with your auth logic)
+    const el = document.getElementById("userName");
+    if (el) el.textContent = "Dr. Mark Thompson";
+  </script>
+    <script>
+    // Overview/Calendar segmented toggle
+    const segBtns = document.querySelectorAll('.seg-btn');
+    const viewOverview = document.querySelector('.dash-overview');
+    const viewCalendar = document.querySelector('.dash-calendar');
+
+    function setSubView(which){
+        segBtns.forEach(b => b.classList.toggle('is-active', b.dataset.view === which));
+        viewOverview.classList.toggle('hidden', which !== 'overview');
+        viewCalendar.classList.toggle('hidden', which !== 'calendar');
+    }
+
+    document.querySelector('.seg').addEventListener('click', (e)=>{
+        const btn = e.target.closest('.seg-btn');
+        if (!btn) return;
+        setSubView(btn.dataset.view);
+    });
+
+    // default is Overview; if you want deep link support:
+    if (new URLSearchParams(location.search).get('view') === 'calendar') {
+        setSubView('calendar');
+    }
+    </script>
+
 </body>
 </html>
