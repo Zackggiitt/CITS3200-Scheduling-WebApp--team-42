@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import db, User, Session, Assignment, SwapRequest, Availability, SwapStatus, FacilitatorSkill, SkillLevel
+from models import db, User, Session, Assignment, SwapRequest, Availability, SwapStatus, FacilitatorSkill, SkillLevel, Unit, Module
 from auth import facilitator_required, get_current_user
 from datetime import datetime, time
 import json
@@ -34,23 +34,49 @@ def manage_availability():
         # Clear existing availability
         Availability.query.filter_by(user_id=user.id).delete()
         
-        # Add new availability
-        for day in range(7):  # 0=Monday, 6=Sunday
-            start_time_str = request.form.get(f'day_{day}_start')
-            end_time_str = request.form.get(f'day_{day}_end')
-            is_available = request.form.get(f'day_{day}_available') == 'on'
-            
-            if is_available and start_time_str and end_time_str:
-                start_time = datetime.strptime(start_time_str, '%H:%M').time()
-                end_time = datetime.strptime(end_time_str, '%H:%M').time()
-                
-                availability = Availability(
-                    user_id=user.id,
-                    day_of_week=day,
-                    start_time=start_time,
-                    end_time=end_time
-                )
-                db.session.add(availability)
+        # Process individual time slots
+        # Get all availability values from the form
+        availability_values = request.form.getlist('availability')
+        
+        # Convert to a more structured format
+        availability_slots = {}
+        for value in availability_values:
+            day_time = value.split('_')
+            if len(day_time) == 2:
+                day = day_time[0]
+                time_str = day_time[1]
+                if day not in availability_slots:
+                    availability_slots[day] = []
+                availability_slots[day].append(time_str)
+        
+        # Create availability records for each selected slot
+        days_map = {
+            'monday': 0,
+            'tuesday': 1,
+            'wednesday': 2,
+            'thursday': 3,
+            'friday': 4,
+            'saturday': 5,
+            'sunday': 6
+        }
+        
+        for day, times in availability_slots.items():
+            day_index = days_map.get(day)
+            if day_index is not None:
+                for time_str in times:
+                    # Convert time string to time object
+                    hour = int(time_str[:2])
+                    minute = int(time_str[2:])
+                    slot_time = time(hour, minute)
+                    
+                    # Create availability record for this specific time slot
+                    availability = Availability(
+                        user_id=user.id,
+                        day_of_week=day_index,
+                        start_time=slot_time,
+                        end_time=slot_time
+                    )
+                    db.session.add(availability)
         
         db.session.commit()
         flash('Availability updated successfully!')
@@ -58,12 +84,15 @@ def manage_availability():
     
     # Get current availability
     current_availability = Availability.query.filter_by(user_id=user.id).all()
+    
+    # Convert to a format that the frontend can use
     availability_dict = {}
     for avail in current_availability:
-        availability_dict[avail.day_of_week] = {
-            'start_time': avail.start_time.strftime('%H:%M'),
-            'end_time': avail.end_time.strftime('%H:%M')
-        }
+        day_key = avail.day_of_week
+        time_key = f"{avail.start_time.hour:02d}{avail.start_time.minute:02d}"
+        if day_key not in availability_dict:
+            availability_dict[day_key] = []
+        availability_dict[day_key].append(time_key)
     
     return render_template('manage_availability.html', 
                          user=user,
@@ -74,10 +103,11 @@ def manage_availability():
 def manage_skills():
     user = get_current_user()
     
+    # Get all modules
+    modules = Module.query.all()
+    
     if request.method == 'POST':
         preferences = request.form.get('preferences', '')
-        skill_names = request.form.getlist('skill_names[]')
-        skill_levels = request.form.getlist('skill_levels[]')
         
         # Update preferences
         user.preferences = preferences
@@ -85,12 +115,13 @@ def manage_skills():
         # Clear existing skills
         FacilitatorSkill.query.filter_by(facilitator_id=user.id).delete()
         
-        # Add new skills with levels
-        for skill_name, skill_level in zip(skill_names, skill_levels):
-            if skill_name.strip():  # Only add non-empty skills
+        # Add new skills with levels based on module IDs
+        for module in modules:
+            skill_level = request.form.get(f'skill_level_{module.id}')
+            if skill_level and skill_level != 'uninterested':
                 facilitator_skill = FacilitatorSkill(
                     facilitator_id=user.id,
-                    skill_name=skill_name.strip(),
+                    module_id=module.id,
                     skill_level=SkillLevel(skill_level)
                 )
                 db.session.add(facilitator_skill)
@@ -99,7 +130,17 @@ def manage_skills():
         flash('Skills and preferences updated successfully!')
         return redirect(url_for('facilitator.manage_skills'))
     
-    return render_template('manage_skills.html', user=user)
+    # Get current skills for this facilitator
+    current_skills = {}
+    facilitator_skills = FacilitatorSkill.query.filter_by(facilitator_id=user.id).all()
+    for skill in facilitator_skills:
+        current_skills[skill.module_id] = skill.skill_level.value
+    
+    return render_template('manage_skills.html', 
+                         user=user,
+                         modules=modules,
+                         current_skills=current_skills,
+                         current_preferences=user.preferences)
 
 @facilitator_bp.route('/swaps')
 @facilitator_required

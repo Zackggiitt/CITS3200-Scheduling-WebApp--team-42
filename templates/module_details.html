@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Module Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-white">Module Details: {{ module.unit.unit_code }} - {{ module.module_name }}</h2>
+    
+    {% if module.sessions %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Timing Information</h5>
+                {% for session in module.sessions %}
+                    <p class="card-text">
+                        {% if session.day_of_week is not none %}
+                            {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                            {{ days[session.day_of_week] }}
+                        {% else %}
+                            {{ session.start_time.strftime('%A') }}
+                        {% endif %}
+                        {{ session.start_time.strftime('%H:%M') }} - {{ session.end_time.strftime('%H:%M') }}
+                    </p>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    <div class="row">
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100 border-success">
+                <div class="card-header bg-success text-white">
+                    <h5>Proficient</h5>
+                </div>
+                <div class="card-body">
+                    {% if skill_groups.proficient %}
+                        <ul class="list-unstyled">
+                            {% for facilitator in skill_groups.proficient %}
+                                <li>{{ facilitator.first_name }} {{ facilitator.last_name }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No facilitators</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5>Leader</h5>
+                </div>
+                <div class="card-body">
+                    {% if skill_groups.leader %}
+                        <ul class="list-unstyled">
+                            {% for facilitator in skill_groups.leader %}
+                                <li>{{ facilitator.first_name }} {{ facilitator.last_name }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No facilitators</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100 border-warning">
+                <div class="card-header bg-warning text-white">
+                    <h5>Interested</h5>
+                </div>
+                <div class="card-body">
+                    {% if skill_groups.interested %}
+                        <ul class="list-unstyled">
+                            {% for facilitator in skill_groups.interested %}
+                                <li>{{ facilitator.first_name }} {{ facilitator.last_name }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No facilitators</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100 border-secondary">
+                <div class="card-header bg-secondary text-white">
+                    <h5>Not Interested</h5>
+                </div>
+                <div class="card-body">
+                    {% if skill_groups.uninterested %}
+                        <ul class="list-unstyled">
+                            {% for facilitator in skill_groups.uninterested %}
+                                <li>{{ facilitator.first_name }} {{ facilitator.last_name }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No facilitators</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="actions">
+        <a href="{{ url_for('admin.manage_modules') }}" class="btn btn-secondary">Back to Modules</a>
+    </div>
+</div>
+{% endblock %}

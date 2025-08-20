@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unit Coordinator Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Unit Coordinator Dashboard</h1>
+            <div class="user-info">
+                {% if user.avatar_url %}
+                    <img src="{{ user.avatar_url }}" alt="Avatar" class="avatar">
+                {% endif %}
+                <span>Welcome, {{ user.first_name }} {{ user.last_name }}!</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <div class="dashboard-grid">
+                <!-- Session Oversight -->
+                <div class="dashboard-card">
+                    <h3>Session Oversight</h3>
+                    <p>View and manage sessions for your unit</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('admin.manage_sessions') }}" class="btn btn-primary">View Sessions</a>
+                        <!-- Add more specific routes if defined later -->
+                    </div>
+                </div>
+
+                <!-- Schedule Oversight -->
+                <div class="dashboard-card">
+                    <h3>Schedule Oversight</h3>
+                    <p>Review and manage schedules for your unit</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('admin.view_schedule') }}" class="btn btn-primary">View Schedule</a>
+                        <!-- Add generate schedule if unit coordinator has this privilege -->
+                    </div>
+                </div>
+
+                <!-- Facilitator Coordination -->
+                <div class="dashboard-card">
+                    <h3>Facilitator Coordination</h3>
+                    <p>Monitor facilitator assignments and availability</p>
+                    <div class="card-actions">
+                        <a href="{{ url_for('admin.manage_facilitators') }}" class="btn btn-primary">View Facilitators</a>
+                        <!-- Add availability management if defined later -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

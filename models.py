@@ -6,7 +6,9 @@ db = SQLAlchemy()
 
 class UserRole(Enum):
     ADMIN = "admin"
+    UNIT_COORDINATOR = "Unit_Coordinator"
     FACILITATOR = "facilitator"
+    
 
 class SwapStatus(Enum):
     PENDING = "pending"
@@ -19,6 +21,30 @@ class SkillLevel(Enum):
     LEADER = "leader"
     INTERESTED = "interested"
     UNINTERESTED = "uninterested"
+
+# Add new models for units and modules
+class Unit(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    unit_code = db.Column(db.String(20), unique=True, nullable=False)  # e.g., GENG2000
+    unit_name = db.Column(db.String(200), nullable=False)  # e.g., "Engineering Computing"
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Unit {self.unit_code} - {self.unit_name}>'
+
+
+class Module(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=False)
+    module_name = db.Column(db.String(100), nullable=False)  # e.g., "Lab 1", "Workshop A"
+    module_type = db.Column(db.String(50))  # lab, tutorial, lecture, workshop
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    unit = db.relationship('Unit', backref='modules')
+    
+    def __repr__(self):
+        return f'<Module {self.unit.unit_code} - {self.module_name} ({self.module_type})>'
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -40,6 +66,10 @@ class User(db.Model):
     # Keep old skills field for backward compatibility
     skills = db.Column(db.Text)  # JSON string of skills
     
+    # Hours constraints for optimization
+    min_hours = db.Column(db.Integer, default=0)
+    max_hours = db.Column(db.Integer, default=20)
+    
     # Relationships
     availability = db.relationship('Availability', backref='user', lazy=True, cascade='all, delete-orphan')
     assignments = db.relationship('Assignment', backref='facilitator', lazy=True)
@@ -51,20 +81,22 @@ class User(db.Model):
 
 class Session(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    course_name = db.Column(db.String(200), nullable=False)
+    module_id = db.Column(db.Integer, db.ForeignKey('module.id'), nullable=False)
     session_type = db.Column(db.String(100))  # lab, tutorial, etc.
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
+    day_of_week = db.Column(db.Integer)  # 0=Monday, 6=Sunday for recurring sessions
     location = db.Column(db.String(200))
     required_skills = db.Column(db.Text)  # JSON string of required skills
     max_facilitators = db.Column(db.Integer, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
+    module = db.relationship('Module', backref='sessions')
     assignments = db.relationship('Assignment', backref='session', lazy=True, cascade='all, delete-orphan')
     
     def __repr__(self):
-        return f'<Session {self.course_name} - {self.start_time}>'
+        return f'<Session {self.module.module_name} - {self.start_time}>'
 
 class Availability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -86,7 +118,7 @@ class Assignment(db.Model):
     is_confirmed = db.Column(db.Boolean, default=False)
     
     def __repr__(self):
-        return f'<Assignment {self.facilitator.email} -> {self.session.course_name}>'
+        return f'<Assignment {self.facilitator.email} -> {self.session.module.module_name}>'
 
 class SwapRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -113,16 +145,18 @@ class SwapRequest(db.Model):
 class FacilitatorSkill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     facilitator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    skill_name = db.Column(db.String(100), nullable=False)
+    module_id = db.Column(db.Integer, db.ForeignKey('module.id'), nullable=False)
     skill_level = db.Column(db.Enum(SkillLevel), nullable=False, default=SkillLevel.INTERESTED)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     facilitator = db.relationship('User', backref=db.backref('facilitator_skills', lazy=True, cascade='all, delete-orphan'))
+    module = db.relationship('Module', backref='facilitator_skills')
     
-    # Unique constraint to prevent duplicate skill entries for same user
-    __table_args__ = (db.UniqueConstraint('facilitator_id', 'skill_name', name='unique_facilitator_skill'),)
+    __table_args__ = (
+        db.UniqueConstraint('facilitator_id', 'module_id', name='unique_facilitator_module_skill'),
+    )
     
     def __repr__(self):
-        return f'<FacilitatorSkill {self.facilitator.email} - {self.skill_name}: {self.skill_level.value}>'
+        return f'<FacilitatorSkill {self.facilitator.email} - {self.module.module_name} ({self.skill_level.value})>'
