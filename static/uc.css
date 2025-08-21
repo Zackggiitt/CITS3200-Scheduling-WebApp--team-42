@@ -133,3 +133,9 @@
 }
 .logout-btn:hover { background: #f9fafb; color: #111827; }
 .icon-logout { font-size: 16px; }
+
+/* Ensure logout form stays inline with other items */
+.logout-form {
+  margin: 0;               /* remove default margins */
+  display: inline-flex;    /* inline-flex keeps it in the flex row */
+}
