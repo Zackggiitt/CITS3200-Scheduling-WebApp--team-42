@@ -123,6 +123,7 @@
 
       <!-- Step 1 form -->
       <form method="POST" action="{{ url_for('unitcoordinator.create_unit') }}" class="modal-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <h2>Unit Information</h2>
         <p class="subtext">Enter the basic details for your teaching unit</p>
 

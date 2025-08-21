@@ -32,6 +32,9 @@ class Unit(db.Model):
     description = db.Column(db.Text, nullable=True)   # ← add this
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    description = db.Column(db.Text)
+    start_date  = db.Column(db.Date)   # first day unit runs
+    end_date    = db.Column(db.Date)   # last day unit runs
 
     creator = db.relationship("User", backref="units")
     __table_args__ = (
