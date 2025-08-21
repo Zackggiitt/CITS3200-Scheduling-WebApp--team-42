@@ -70,6 +70,10 @@ class User(db.Model):
     min_hours = db.Column(db.Integer, default=0)
     max_hours = db.Column(db.Integer, default=20)
     
+    @property
+    def full_name(self):
+        return f"{self.first_name or ''} {self.last_name or ''}".strip() or self.email
+    
     # Relationships
     availability = db.relationship('Availability', backref='user', lazy=True, cascade='all, delete-orphan')
     assignments = db.relationship('Assignment', backref='facilitator', lazy=True)

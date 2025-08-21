@@ -32,10 +32,13 @@
 
         <div class="user">
           <span class="material-icons icon-account">account_circle</span>
-          <span class="user-name">Dr. Mark Thompson</span>
+          <span class="user-name">{{ user.full_name }}</span>
         </div>
 
-        <span class="role-badge">Unit Coordinator</span>
+        <span class="role-badge">
+          {{ user.role.value.replace('_', ' ') | title }}
+        </span>
+
 
         <button class="logout-btn">
           <span class="material-icons icon-logout">logout</span>
