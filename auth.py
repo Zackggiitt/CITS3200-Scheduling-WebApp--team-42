@@ -2,6 +2,9 @@ from functools import wraps
 from flask import session, redirect, url_for, request, flash
 from urllib.parse import urlparse, urljoin
 from models import User, UserRole
+from flask import Blueprint
+
+auth_bp = Blueprint("auth", __name__)
 
 def login_required(f):
     @wraps(f)
