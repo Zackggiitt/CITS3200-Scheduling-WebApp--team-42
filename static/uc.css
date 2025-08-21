@@ -571,17 +571,33 @@
 /* Date step calendar grid */
 .date-grid {
   display: flex;
-  justify-content: center;   /* center horizontally */
-  gap: 32px;                 /* space between start & end calendars */
-  margin-top: 1rem;
+  justify-content: center;
+  gap: 48px;              /* wider gap between calendars (was 32px) */
+  margin-top: 2rem;       /* more space above calendars */
+  margin-bottom: 2rem;    /* more space below calendars */
+  flex-wrap: wrap;        /* allow stacking on smaller screens */
 }
 
 .date-card {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 14px;
-  width: auto;               /* shrink to fit calendar */
+  padding: 20px;          /* more padding inside each calendar */
+  min-width: 300px;       /* stop them from shrinking too small */
+}
+
+/* Date range summary chip */
+.summary-card {
+  max-width: 700px;
+  margin: 2rem auto 0;    /* more spacing before summary */
+  padding: 14px 18px;     /* more padding inside summary */
+  background: #f9fafb;    /* subtle grey background to separate */
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
 }
 /* Hide the “real” inputs but keep them accessible for form posting */
 .sr-only {
