@@ -1,48 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Unit Coordinator Portal</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+
+  <!-- Tailwind (utility only) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
   <!-- Material Icons (filled) -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-  <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <!-- App CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}" />
 </head>
 <body class="bg-gray-50">
   <header class="header">
     <div class="container">
-      <div class="left">
-        <span class="material-icons icon-school">apartment</span>
+      <!-- Left: Brand -->
+      <div class="left" aria-label="Application">
+        <span class="material-icons icon-school" aria-hidden="true">school</span>
         <h1 class="title">Unit Coordinator Portal</h1>
       </div>
 
+      <!-- Right: Actions -->
       <div class="right">
-        <button class="create-unit-btn">
-          <span class="material-icons icon-add">add</span>
-          Create Unit
+        <!-- Create Unit -->
+        <button class="create-unit-btn" type="button" aria-label="Create Unit">
+          <span class="material-icons icon-add" aria-hidden="true">add</span>
+          <span>Create Unit</span>
         </button>
 
+        <!-- Notifications -->
         <div class="notification-container">
-          <button class="icon-btn notification-btn" aria-label="Notifications">
-            <span class="material-icons">notifications</span>
+          <button class="icon-btn notification-btn" type="button" aria-label="Notifications">
+            <span class="material-icons" aria-hidden="true">notifications</span>
           </button>
-          <span class="notification-badge">2</span>
+          {% if notifications and notifications > 0 %}
+            <span class="notification-badge" aria-label="{{ notifications }} unread notifications">
+              {{ notifications }}
+            </span>
+          {% endif %}
         </div>
 
-        <div class="user">
-          <span class="material-icons icon-account">account_circle</span>
+        <!-- User -->
+        <div class="user" aria-label="Current user">
+          <span class="material-icons icon-account" aria-hidden="true">account_circle</span>
           <span class="user-name">{{ user.full_name }}</span>
         </div>
 
+        <!-- Role -->
         <span class="role-badge">
           {{ user.role.value.replace('_', ' ') | title }}
         </span>
 
-
-        <button class="logout-btn">
-          <span class="material-icons icon-logout">logout</span>
-          Logout
+        <!-- Logout (button placeholder; swap to POST form when wiring auth) -->
+        <button class="logout-btn" type="button" aria-label="Logout">
+          <span class="material-icons icon-logout" aria-hidden="true">logout</span>
+          <span>Logout</span>
         </button>
       </div>
     </div>
