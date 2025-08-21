@@ -328,3 +328,206 @@
 }
 .btn-primary:hover { background: #1f2937; }
 
+/* ===== Modal skeleton ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.5); /* dim background */
+  display: none;           /* toggled with .flex via JS */
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-overlay.flex { display: flex; }
+
+.modal-box {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 1100px;       /* wide like screenshot */
+  height: 88vh;            /* tall dialog */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;        /* header/footer stickiness */
+}
+
+/* Close “X” */
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  color: #9ca3af;
+  font-size: 16px;
+  line-height: 1;
+}
+.modal-close:hover { color: #111827; }
+
+/* ===== Top title bar ===== */
+.modal-top {
+  padding: 20px 28px 8px 28px;
+}
+.modal-title h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+.modal-title p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* ===== Stepper ===== */
+.modal-steps {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 12px 28px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.modal-steps .step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+/* number bubble */
+.modal-steps .step span {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* active step */
+.modal-steps .step.active { color: #111827; }
+.modal-steps .step.active span {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+/* faint divider after steps 1–3 */
+.modal-steps .step:not(:last-child)::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 2px;
+  background: #e5e7eb;
+  margin-left: 14px;
+  border-radius: 999px;
+}
+
+/* ===== Form body ===== */
+.modal-form {
+  padding: 28px 28px 16px 28px;
+  overflow: auto;                  /* scroll main body */
+  flex: 1;                         /* fill space between header & footer */
+}
+
+.modal-form h2 {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  color: #111827;
+  margin: 8px 0 6px 0;
+}
+
+.modal-form .subtext {
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+/* two-column grid like screenshot */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+/* input look: soft grey bg, subtle border, rounded */
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  background: #f3f4f6;             /* light grey fill */
+  border: 1px solid #e5e7eb;       /* very subtle outline */
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #111827;
+}
+
+.form-group textarea { resize: vertical; }
+
+/* focus ring (clean, not neon) */
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+/* ===== Sticky footer with buttons ===== */
+.modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+  padding: 12px 20px;
+  margin-top: 6px;
+
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-cancel {
+  padding: 8px 14px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.btn-cancel:hover { background: #f9fafb; }
+
+.btn-primary {
+  padding: 8px 18px;
+  background: #0b0b12;  /* near-black like header card button */
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-primary:hover { background: #1f2937; }
