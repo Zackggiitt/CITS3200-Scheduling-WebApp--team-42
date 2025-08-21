@@ -1,4 +1,5 @@
 # application.py
+
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from dotenv import load_dotenv
@@ -10,10 +11,12 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from utils import role_required
 
+
 # Import blueprints
 from admin_routes import admin_bp
 from facilitator_routes import facilitator_bp
 from unitcoordinator_routes import unitcoordinator_bp
+from auth import auth_bp
 
 load_dotenv()
 app = Flask(__name__)
@@ -24,6 +27,7 @@ app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
 app.register_blueprint(admin_bp)
 app.register_blueprint(facilitator_bp)
 app.register_blueprint(unitcoordinator_bp)
+app.register_blueprint(auth_bp)
 
 # OAuth configuration
 oauth = OAuth(app)
