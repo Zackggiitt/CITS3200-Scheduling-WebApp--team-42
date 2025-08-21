@@ -25,12 +25,22 @@ class SkillLevel(Enum):
 # Add new models for units and modules
 class Unit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    unit_code = db.Column(db.String(20), unique=True, nullable=False)  # e.g., GENG2000
-    unit_name = db.Column(db.String(200), nullable=False)  # e.g., "Engineering Computing"
+    unit_code = db.Column(db.String(20), nullable=False)   # e.g., GENG2000
+    unit_name = db.Column(db.String(200), nullable=False)  # e.g., Engineering Computing
+    year = db.Column(db.Integer, nullable=False)           # e.g., 2025
+    semester = db.Column(db.String(20), nullable=False)    # e.g., "Semester 1" or "Semester 2"
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
+    # Relationships
+    creator = db.relationship("User", backref="units")
+
+    __table_args__ = (
+        db.UniqueConstraint("unit_code", "year", "semester", "created_by", name="uq_unit_per_uc"),
+    )
+
     def __repr__(self):
-        return f'<Unit {self.unit_code} - {self.unit_name}>'
+        return f"<Unit {self.unit_code} - {self.unit_name} ({self.year} {self.semester})>"
 
 
 class Module(db.Model):
