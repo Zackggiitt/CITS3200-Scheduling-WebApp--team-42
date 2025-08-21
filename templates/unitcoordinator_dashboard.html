@@ -181,6 +181,12 @@
               <div id="start_calendar" aria-label="Start date calendar"></div>
             </div>
 
+            <!-- Summary (appears after both dates picked) -->
+            <div id="date-summary" class="summary-card hidden" aria-live="polite">
+              <span class="material-icons summary-icon" aria-hidden="true">event</span>
+              <span id="date-summary-text"></span>
+            </div>
+
             <!-- End Date -->
             <div class="date-card">
               <label for="end_date_input">End Date *</label>
@@ -342,6 +348,75 @@
     // Initialize hidden inputs so the first submit works even before user changes anything
     startInput.value = startPicker.formatDate(startPicker.selectedDates[0] || today, DATE_FMT);
     endInput.value   = endPicker.formatDate(endPicker.selectedDates[0]   || today, DATE_FMT);
+  </script>
+
+  <script>
+    function formatUS(d) { // M/D/YYYY
+      return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    }
+
+    function updateDateSummary() {
+      const startEl  = document.querySelector('[name="start_date"]');
+      const endEl    = document.querySelector('[name="end_date"]');
+      const box      = document.getElementById('date-summary');
+      const textEl   = document.getElementById('date-summary-text');
+
+      if (!startEl || !endEl) return;
+
+      const sv = startEl.value?.trim();
+      const ev = endEl.value?.trim();
+
+      if (!sv || !ev) {
+        box.classList.add('hidden');
+        return;
+      }
+
+      // Try to parse both native date (YYYY-MM-DD) and flatpickr strings
+      const parse = (v) => {
+        // if it looks like YYYY-MM-DD use that, else let Date try
+        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return new Date(v + 'T00:00:00');
+        return new Date(v);
+      };
+
+      const start = parse(sv);
+      const end   = parse(ev);
+
+      if (isNaN(start) || isNaN(end)) {
+        box.classList.add('hidden');
+        return;
+      }
+
+      if (end < start) {
+        textEl.textContent = '⚠️ End date must be after start date.';
+        box.classList.remove('hidden');
+        return;
+      }
+
+      // Difference in days (exclusive of end date like your screenshot)
+      const diffMs   = end - start;
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const weeks    = Math.ceil(diffDays / 7); // show “3 weeks” for 15 days
+
+      textEl.textContent =
+        `Unit will run from ${formatUS(start)} to ${formatUS(end)} (${diffDays} day${diffDays!==1?'s':''}, ${weeks} week${weeks!==1?'s':''})`;
+
+      box.classList.remove('hidden');
+    }
+
+    // If you're using native <input type="date">
+    document.addEventListener('DOMContentLoaded', () => {
+      const startEl  = document.querySelector('[name="start_date"]');
+      const endEl    = document.querySelector('[name="end_date"]');
+      if (startEl && endEl) {
+        startEl.addEventListener('change', updateDateSummary);
+        endEl.addEventListener('change', updateDateSummary);
+        updateDateSummary(); // initial
+      }
+    });
+
+    // If using flatpickr inline, also hook here (optional):
+    // flatpickr('#start-date', { inline: true, onChange: updateDateSummary, ... });
+    // flatpickr('#end-date',   { inline: true, onChange: updateDateSummary, ... });
   </script>
 
 </body>

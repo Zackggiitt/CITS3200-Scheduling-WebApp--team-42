@@ -629,3 +629,31 @@
   width:100%; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; font-size:14px;
 }
 .date-card input[type="date"]:focus { outline:none; border-color:#111827; box-shadow:0 0 0 3px rgba(17,24,39,.08); }
+
+
+/* Date range summary chip */
+.summary-card {
+  max-width: 640px;
+  margin: 14px auto 0;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #374151;
+  font-size: 14px;
+}
+
+.summary-icon {
+  font-size: 18px;
+  color: #111827;
+  background: #f3f4f6;
+  border-radius: 9999px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
