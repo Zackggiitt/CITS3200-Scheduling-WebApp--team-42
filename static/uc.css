@@ -568,11 +568,12 @@
 /* Step panes */
 .wizard-step.hidden { display: none; }
 
-/* Date range layout (two cards side-by-side) */
+/* Date step calendar grid */
 .date-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  display: flex;
+  justify-content: center;   /* center horizontally */
+  gap: 32px;                 /* space between start & end calendars */
+  margin-top: 1rem;
 }
 
 .date-card {
@@ -580,8 +581,8 @@
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 14px;
+  width: auto;               /* shrink to fit calendar */
 }
-
 /* Hide the “real” inputs but keep them accessible for form posting */
 .sr-only {
   position: absolute !important;
