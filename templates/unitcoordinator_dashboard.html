@@ -165,41 +165,52 @@
         </section>
 
         <!-- STEP 2: Date Range (INLINE CALENDARS) -->
-        <section class="wizard-step hidden" data-step="2">
-          <h2>When does this unit run?</h2>
+        <section class="wizard-step hidden" data-step="2" aria-labelledby="date-range-title">
+          <h2 id="date-range-title">When does this unit run?</h2>
           <p class="subtext">Select the start and end dates for your unit</p>
 
           <div class="date-grid">
             <!-- Start Date -->
             <div class="date-card">
               <label for="start_date_input">Start Date *</label>
-
-              <!-- This hidden input holds the actual value for Flask -->
-              <input type="text" id="start_date_input" name="start_date" required class="sr-only"/>
-
-              <!-- Flatpickr will render its always-visible calendar here -->
-              <div id="start_calendar" aria-label="Start date calendar"></div>
-            </div>
-
-            <!-- Summary (appears after both dates picked) -->
-            <div id="date-summary" class="summary-card hidden" aria-live="polite">
-              <span class="material-icons summary-icon" aria-hidden="true">event</span>
-              <span id="date-summary-text"></span>
+              <!-- Screen-reader-only form value for Flask -->
+              <input
+                type="text"
+                id="start_date_input"
+                name="start_date"
+                required
+                class="sr-only"
+                aria-describedby="start-calendar-desc"
+              />
+              <!-- Inline calendar -->
+              <div id="start_calendar" aria-label="Start date calendar" aria-describedby="start-calendar-desc"></div>
+              <span id="start-calendar-desc" class="sr-only">Use the calendar to pick a start date.</span>
             </div>
 
             <!-- End Date -->
             <div class="date-card">
               <label for="end_date_input">End Date *</label>
-
-              <!-- This hidden input holds the actual value for Flask -->
-              <input type="text" id="end_date_input" name="end_date" required class="sr-only"/>
-
-              <!-- Flatpickr will render its always-visible calendar here -->
-              <div id="end_calendar" aria-label="End date calendar"></div>
+              <!-- Screen-reader-only form value for Flask -->
+              <input
+                type="text"
+                id="end_date_input"
+                name="end_date"
+                required
+                class="sr-only"
+                aria-describedby="end-calendar-desc"
+              />
+              <!-- Inline calendar -->
+              <div id="end_calendar" aria-label="End date calendar" aria-describedby="end-calendar-desc"></div>
+              <span id="end-calendar-desc" class="sr-only">Use the calendar to pick an end date.</span>
             </div>
           </div>
-        </section>
 
+          <!-- Summary (appears after both dates picked) -->
+          <div id="date-summary" class="summary-card hidden mt-4" aria-live="polite">
+            <span class="material-icons summary-icon" aria-hidden="true">event</span>
+            <span id="date-summary-text"></span>
+          </div>
+        </section>
 
         <!-- Footer buttons -->
         <div class="modal-footer">
@@ -295,42 +306,69 @@
     function prevStep() { setStep(Math.max(1, currentStep - 1)); }
   </script>
 
-  <!-- Flatpickr init -->
   <script>
-    flatpickr("#start_date", {
-      dateFormat: "d/m/Y",
-      allowInput: true
-    });
-    flatpickr("#end_date", {
-      dateFormat: "d/m/Y",
-      allowInput: true
-    });
-  </script>
+    // ---- helpers ----
+    const DATE_FMT = "d/m/Y"; // what we show/store in hidden inputs
 
-  <script>
-    // Format used in inputs sent to Flask (dd/mm/yyyy)
-    const DATE_FMT = "d/m/Y";
+    function parseDMY(str) {
+      // Accept dd/mm/yyyy
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(str);
+      if (!m) return null;
+      const [_, dd, mm, yyyy] = m;
+      const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+      return isNaN(d) ? null : d;
+    }
 
-    // Create inline calendars inside the containers and sync with hidden inputs
+    function formatUS(d) { // M/D/YYYY
+      return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    }
+
+    function updateDateSummary() {
+      const startEl = document.querySelector('[name="start_date"]');
+      const endEl   = document.querySelector('[name="end_date"]');
+      const box     = document.getElementById('date-summary');
+      const textEl  = document.getElementById('date-summary-text');
+
+      if (!startEl || !endEl) return;
+
+      const sv = (startEl.value || '').trim();
+      const ev = (endEl.value   || '').trim();
+
+      const start = parseDMY(sv);
+      const end   = parseDMY(ev);
+
+      if (!start || !end) { box.classList.add('hidden'); return; }
+      if (end < start) {
+        textEl.textContent = '⚠️ End date must be after start date.';
+        box.classList.remove('hidden');
+        return;
+      }
+
+      const diffMs   = end - start;                    // exclusive-like display (your mock)
+      const diffDays = Math.ceil(diffMs / 86400000);   // 1000*60*60*24
+      const weeks    = Math.ceil(diffDays / 7);
+
+      textEl.textContent =
+        `Unit will run from ${formatUS(start)} to ${formatUS(end)} (${diffDays} day${diffDays!==1?'s':''}, ${weeks} week${weeks!==1?'s':''})`;
+      box.classList.remove('hidden');
+    }
+
+    // ---- inline calendars ----
     const startInput = document.getElementById("start_date_input");
     const endInput   = document.getElementById("end_date_input");
-
-    // Defaults (optional): today for both
-    const today = new Date();
+    const today      = new Date();
 
     const startPicker = flatpickr("#start_calendar", {
       inline: true,
       dateFormat: DATE_FMT,
       defaultDate: today,
-      // We keep the input value in sync for the form post
       onChange: (selectedDates, dateStr) => {
         startInput.value = dateStr;
-        // set min on end calendar
         endPicker.set("minDate", selectedDates[0] || null);
-        // if end is before start, push it to start
         if (endPicker.selectedDates[0] && selectedDates[0] && endPicker.selectedDates[0] < selectedDates[0]) {
           endPicker.setDate(selectedDates[0], true);
         }
+        updateDateSummary();
       }
     });
 
@@ -340,83 +378,15 @@
       defaultDate: today,
       onChange: (selectedDates, dateStr) => {
         endInput.value = dateStr;
-        // set max on start calendar
         startPicker.set("maxDate", selectedDates[0] || null);
+        updateDateSummary();
       }
     });
 
-    // Initialize hidden inputs so the first submit works even before user changes anything
+    // Initialize hidden inputs and summary once
     startInput.value = startPicker.formatDate(startPicker.selectedDates[0] || today, DATE_FMT);
     endInput.value   = endPicker.formatDate(endPicker.selectedDates[0]   || today, DATE_FMT);
-  </script>
-
-  <script>
-    function formatUS(d) { // M/D/YYYY
-      return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
-    }
-
-    function updateDateSummary() {
-      const startEl  = document.querySelector('[name="start_date"]');
-      const endEl    = document.querySelector('[name="end_date"]');
-      const box      = document.getElementById('date-summary');
-      const textEl   = document.getElementById('date-summary-text');
-
-      if (!startEl || !endEl) return;
-
-      const sv = startEl.value?.trim();
-      const ev = endEl.value?.trim();
-
-      if (!sv || !ev) {
-        box.classList.add('hidden');
-        return;
-      }
-
-      // Try to parse both native date (YYYY-MM-DD) and flatpickr strings
-      const parse = (v) => {
-        // if it looks like YYYY-MM-DD use that, else let Date try
-        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return new Date(v + 'T00:00:00');
-        return new Date(v);
-      };
-
-      const start = parse(sv);
-      const end   = parse(ev);
-
-      if (isNaN(start) || isNaN(end)) {
-        box.classList.add('hidden');
-        return;
-      }
-
-      if (end < start) {
-        textEl.textContent = '⚠️ End date must be after start date.';
-        box.classList.remove('hidden');
-        return;
-      }
-
-      // Difference in days (exclusive of end date like your screenshot)
-      const diffMs   = end - start;
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-      const weeks    = Math.ceil(diffDays / 7); // show “3 weeks” for 15 days
-
-      textEl.textContent =
-        `Unit will run from ${formatUS(start)} to ${formatUS(end)} (${diffDays} day${diffDays!==1?'s':''}, ${weeks} week${weeks!==1?'s':''})`;
-
-      box.classList.remove('hidden');
-    }
-
-    // If you're using native <input type="date">
-    document.addEventListener('DOMContentLoaded', () => {
-      const startEl  = document.querySelector('[name="start_date"]');
-      const endEl    = document.querySelector('[name="end_date"]');
-      if (startEl && endEl) {
-        startEl.addEventListener('change', updateDateSummary);
-        endEl.addEventListener('change', updateDateSummary);
-        updateDateSummary(); // initial
-      }
-    });
-
-    // If using flatpickr inline, also hook here (optional):
-    // flatpickr('#start-date', { inline: true, onChange: updateDateSummary, ... });
-    // flatpickr('#end-date',   { inline: true, onChange: updateDateSummary, ... });
+    updateDateSummary();
   </script>
 
 </body>
