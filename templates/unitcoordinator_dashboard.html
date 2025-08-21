@@ -122,74 +122,82 @@
       </div>
 
       <!-- Step 1 form -->
-      <form method="POST" action="{{ url_for('unitcoordinator.create_unit') }}" class="modal-form">
+      <form method="POST" action="{{ url_for('unitcoordinator.create_unit') }}" class="modal-form" id="create-unit-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <h2>Unit Information</h2>
-        <p class="subtext">Enter the basic details for your teaching unit</p>
 
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Unit Name *</label>
-            <input type="text" name="unit_name" required placeholder="e.g. Engineering Design"/>
-          </div>
-          <div class="form-group">
-            <label>Unit Code *</label>
-            <input type="text" name="unit_code" required placeholder="e.g. GENG2000"/>
-          </div>
-        </div>
+        <!-- STEP 1: Unit Info -->
+        <section class="wizard-step" data-step="1">
+          <h2>Unit Information</h2>
+          <p class="subtext">Enter the basic details for your teaching unit</p>
 
-        <div class="form-grid">
-          <!-- Semester (custom select) -->
-          <div class="form-group">
-            <label>Semester *</label>
-
-            <div class="select" data-name="semester">
-              <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="select-value">Semester 1</span>
-                <span class="material-icons select-caret" aria-hidden="true">expand_more</span>
-              </button>
-
-              <ul class="select-list" role="listbox">
-                <li class="option selected" role="option" aria-selected="true" data-value="Semester 1">
-                  <span>Semester 1</span>
-                  <span class="material-icons check" aria-hidden="true">check</span>
-                </li>
-                <li class="option" role="option" data-value="Semester 2">
-                  <span>Semester 2</span><span class="material-icons check">check</span>
-                </li>
-                <li class="option" role="option" data-value="Summer">
-                  <span>Summer</span><span class="material-icons check">check</span>
-                </li>
-                <li class="option" role="option" data-value="Winter">
-                  <span>Winter</span><span class="material-icons check">check</span>
-                </li>
-              </ul>
-
-              <input type="hidden" name="semester" value="Semester 1">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Unit Name *</label>
+              <input type="text" name="unit_name" required placeholder="e.g. Engineering Design"/>
+            </div>
+            <div class="form-group">
+              <label>Unit Code *</label>
+              <input type="text" name="unit_code" required placeholder="e.g. GENG2000"/>
             </div>
           </div>
 
-          <!-- Year (unchanged) -->
-          <div class="form-group">
-            <label>Year *</label>
-            <input type="number" name="year" required value="2025"/>
+          <div class="form-grid">
+            <!-- your custom Semester select remains -->
+            <div class="form-group">
+              <label>Semester *</label>
+              <div class="select" data-name="semester">
+                <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="select-value">Semester 1</span>
+                  <span class="material-icons select-caret" aria-hidden="true">expand_more</span>
+                </button>
+                <ul class="select-list" role="listbox">
+                  <li class="option selected" role="option" aria-selected="true" data-value="Semester 1"><span>Semester 1</span><span class="material-icons check">check</span></li>
+                  <li class="option" role="option" data-value="Semester 2"><span>Semester 2</span><span class="material-icons check">check</span></li>
+                  <li class="option" role="option" data-value="Summer"><span>Summer</span><span class="material-icons check">check</span></li>
+                  <li class="option" role="option" data-value="Winter"><span>Winter</span><span class="material-icons check">check</span></li>
+                </ul>
+                <input type="hidden" name="semester" value="Semester 1">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Year *</label>
+              <input type="number" name="year" required value="2025"/>
+            </div>
           </div>
-        </div>
 
+          <div class="form-group">
+            <label>Description (optional)</label>
+            <textarea name="description" rows="3" placeholder="Brief description..."></textarea>
+          </div>
+        </section>
 
-        <div class="form-group">
-          <label>Description (optional)</label>
-          <textarea name="description" rows="3" placeholder="Brief description..."></textarea>
-        </div>
+        <!-- STEP 2: Date Range -->
+        <section class="wizard-step hidden" data-step="2">
+          <h2>When does this unit run?</h2>
+          <p class="subtext">Select the start and end dates for your unit</p>
+
+          <div class="date-grid">
+            <div class="date-card">
+              <label>Start Date *</label>
+              <input type="date" name="start_date" required />
+            </div>
+            <div class="date-card">
+              <label>End Date *</label>
+              <input type="date" name="end_date" required />
+            </div>
+          </div>
+        </section>
+
+        <!-- (Step 3 & 4 panes can be added later) -->
 
         <!-- Footer buttons -->
         <div class="modal-footer">
-          <button type="button" onclick="closeCreateUnitModal()" class="btn-cancel">Cancel</button>
-          <button type="submit" class="btn-primary">Next →</button>
+          <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
+          <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
+          <button type="submit" class="btn-primary hidden" id="submit-btn">Create Unit</button>
         </div>
       </form>
-    </div>
-  </div>
 
 
   <!-- JS -->
@@ -254,6 +262,55 @@
           trigger.setAttribute('aria-expanded', 'false');
         }
       });
+    }
+  </script>
+
+  <script>
+    let currentStep = 1; // 1..4 (we're using 1 & 2 for now)
+
+    function setStep(n) {
+      currentStep = n;
+      // panes
+      document.querySelectorAll('.wizard-step').forEach(s => {
+        s.classList.toggle('hidden', parseInt(s.dataset.step) !== currentStep);
+      });
+      // stepper bubbles active
+      document.querySelectorAll('.modal-steps .step').forEach((el, idx) => {
+        el.classList.toggle('active', idx + 1 === currentStep);
+      });
+      // footer buttons
+      document.getElementById('next-btn').classList.toggle('hidden', currentStep >= 2); // when you add step 3/4 adjust logic
+      document.getElementById('submit-btn').classList.toggle('hidden', currentStep < 2);
+    }
+
+    function nextStep() {
+      if (currentStep === 1) {
+        // quick validation of step1 required fields
+        const f = document.getElementById('create-unit-form');
+        const required = ['unit_name','unit_code','year','semester'];
+        for (const name of required) {
+          const el = f.querySelector(`[name="${name}"]`);
+          if (!el || !el.value.trim()) { el?.focus(); return; }
+        }
+      }
+      setStep(Math.min(2, currentStep + 1));
+    }
+
+    function prevStep() {
+      setStep(Math.max(1, currentStep - 1));
+    }
+
+    // Modal open/close keep starting at step 1
+    function openCreateUnitModal() {
+      setStep(1);
+      const modal = document.getElementById("createUnitModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+    function closeCreateUnitModal() {
+      const modal = document.getElementById("createUnitModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
     }
   </script>
 

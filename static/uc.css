@@ -560,3 +560,19 @@
   gap: 6px;
 }
 .btn-primary:hover { background: #1f2937; }
+
+/* this is for step 2 of the unit creawt thing idk*/
+/* evenly spaced steps you already have; add: */
+.modal-steps { display: grid; grid-template-columns: repeat(4,1fr); align-items:center; }
+
+/* Step panes */
+.wizard-step.hidden { display: none; }
+
+/* Date range layout (two cards side-by-side) */
+.date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 8px; }
+.date-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:18px; }
+.date-card label { display:block; font-size:14px; font-weight:600; color:#374151; margin-bottom:8px; }
+.date-card input[type="date"] {
+  width:100%; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; font-size:14px;
+}
+.date-card input[type="date"]:focus { outline:none; border-color:#111827; box-shadow:0 0 0 3px rgba(17,24,39,.08); }
