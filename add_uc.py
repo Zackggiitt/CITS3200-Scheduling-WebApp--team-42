@@ -1,26 +1,74 @@
 # add_uc.py
+import sys
+import argparse
+from getpass import getpass
 from werkzeug.security import generate_password_hash
-from application import db, app
+
+# --- Imports: adjust to your project structure if needed ---
+# If your app exposes `app` and `db` from `application`, this works as-is.
+# Otherwise, change to: from app import app, db   (or use your factory)
+from application import app, db
 from models import User, UserRole
 
-with app.app_context():
-    email = "uc_demo@example.com"
-    first_name = "unitcoord"
-    last_name = "Test"
-    password = "password123"  # you can change this
 
-    # Check if already exists
-    existing = User.query.filter_by(email=email).first()
-    if existing:
-        print(f"User {email} already exists.")
-    else:
+def main():
+    parser = argparse.ArgumentParser(description="Create or update a Unit Coordinator user.")
+    parser.add_argument("--email", default="uc_demo@example.com", help="User email")
+    parser.add_argument("--first", default="unitcoord", help="First name")
+    parser.add_argument("--last", default="Test", help="Last name")
+    parser.add_argument(
+        "--password",
+        default=None,
+        help="Password (omit to be prompted)",
+    )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="If the user exists, update their name/role; also update password if provided.",
+    )
+    args = parser.parse_args()
+
+    # Prompt for password if not provided via flag
+    password = args.password or getpass("Password (leave blank to cancel): ").strip()
+    if not password:
+        print("No password provided. Aborting.")
+        sys.exit(1)
+
+    with app.app_context():
+        # Make sure tables exist
+        db.create_all()
+
+        user = User.query.filter_by(email=args.email).first()
+        if user:
+            if not args.update:
+                print(f"User {args.email} already exists. Use --update to modify.")
+                return
+            # Update existing
+            user.first_name = args.first
+            user.last_name = args.last
+            user.role = UserRole.UNIT_COORDINATOR
+            if args.password:
+                user.password_hash = generate_password_hash(password)
+            db.session.commit()
+            print(f"Updated Unit Coordinator: {args.email}")
+            if args.password:
+                print("• Password was updated.")
+            return
+
+        # Create new
         user = User(
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            password_hash=generate_password_hash(password),
+            email=args.email,
+            first_name=args.first,
+            last_name=args.last,
             role=UserRole.UNIT_COORDINATOR,
+            password_hash=generate_password_hash(password),
         )
         db.session.add(user)
         db.session.commit()
-        print(f"Created Unit Coordinator: {email} / {password}")
+        print(f"Created Unit Coordinator:")
+        print(f"• Email:    {args.email}")
+        print(f"• Password: {password}")
+
+
+if __name__ == "__main__":
+    main()
