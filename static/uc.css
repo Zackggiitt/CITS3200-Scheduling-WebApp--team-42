@@ -139,3 +139,192 @@
   margin: 0;               /* remove default margins */
   display: inline-flex;    /* inline-flex keeps it in the flex row */
 }
+
+/* bottom half if there is no units */
+/* Empty State Card */
+.empty-state-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.empty-state-card .material-icons {
+  font-size: 48px;
+  color: #111827; /* dark gray */
+  margin-bottom: 12px;
+}
+
+.empty-state-card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #111827;
+}
+
+.empty-state-card p {
+  font-size: 14px;
+  color: #6b7280; /* muted gray */
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* Large "Create Unit" button */
+.empty-state-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 14px;
+  background: #111827;   /* black background */
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.empty-state-btn:hover {
+  background: #1f2937; /* slightly lighter black on hover */
+}
+
+.empty-state-btn .material-icons {
+  font-size: 16px;
+}
+
+
+/* This is the create unit css */
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.modal-overlay.flex { display: flex; }
+
+/* Modal Box */
+.modal-box {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 900px;
+  position: relative;
+  padding-bottom: 1rem;
+}
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  color: #6b7280;
+  font-size: 18px;
+}
+.modal-close:hover { color: #111827; }
+
+/* Steps Header */
+.modal-steps {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 2rem;
+  font-size: 14px;
+  color: #6b7280;
+}
+.modal-steps .step {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.modal-steps .step span {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid #d1d5db;
+  font-size: 12px;
+}
+.modal-steps .step.active span {
+  background: #111827;
+  color: #fff;
+  border: none;
+}
+.modal-steps .step.active { color: #111827; }
+
+/* Form Styling */
+.modal-form {
+  padding: 2rem;
+}
+.modal-form h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.modal-form .subtext {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  color: #374151;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 14px;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #111827;
+  outline: none;
+}
+
+/* Footer buttons */
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 1rem;
+}
+.btn-cancel {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+}
+.btn-cancel:hover { background: #f9fafb; }
+.btn-primary {
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  background: #111827;
+  color: #fff;
+  font-weight: 600;
+}
+.btn-primary:hover { background: #1f2937; }
+

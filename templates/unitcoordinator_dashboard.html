@@ -99,10 +99,77 @@
     {% endif %}
   </main>
 
-  <!-- Placeholder for modal -->
+  <!-- MODAL -->
+  <div id="createUnitModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <!-- Close button -->
+      <button onclick="closeCreateUnitModal()" class="modal-close">✕</button>
+
+      <!-- Progress steps header -->
+      <div class="modal-steps">
+        <div class="step active"><span>1</span> Unit Information</div>
+        <div class="step"><span>2</span> Date Range</div>
+        <div class="step"><span>3</span> Sessions</div>
+        <div class="step"><span>4</span> Review</div>
+      </div>
+
+      <!-- Step 1 form -->
+      <form method="POST" action="{{ url_for('unitcoordinator.create_unit') }}" class="modal-form">
+        <h2>Unit Information</h2>
+        <p class="subtext">Enter the basic details for your teaching unit</p>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Unit Name *</label>
+            <input type="text" name="unit_name" required placeholder="e.g. Engineering Design"/>
+          </div>
+          <div class="form-group">
+            <label>Unit Code *</label>
+            <input type="text" name="unit_code" required placeholder="e.g. GENG2000"/>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Semester *</label>
+            <select name="semester" required>
+              <option value="">Select...</option>
+              <option>Semester 1</option>
+              <option>Semester 2</option>
+              <option>Summer</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Year *</label>
+            <input type="number" name="year" required value="2025"/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <textarea name="description" rows="3" placeholder="Brief description..."></textarea>
+        </div>
+
+        <!-- Footer buttons -->
+        <div class="modal-footer">
+          <button type="button" onclick="closeCreateUnitModal()" class="btn-cancel">Cancel</button>
+          <button type="submit" class="btn-primary">Next →</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JS -->
   <script>
     function openCreateUnitModal() {
-      alert("TODO: Open Create Unit modal or redirect to create unit form.");
+      const modal = document.getElementById("createUnitModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+    function closeCreateUnitModal() {
+      const modal = document.getElementById("createUnitModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
     }
   </script>
 </body>
