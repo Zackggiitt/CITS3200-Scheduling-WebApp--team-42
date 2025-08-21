@@ -383,8 +383,7 @@
 /* ===== Stepper ===== */
 .modal-steps {
   display: flex;
-  align-items: center;
-  gap: 28px;
+  justify-content: space-between;   /* spread evenly */
   padding: 12px 28px;
   border-bottom: 1px solid #e5e7eb;
   font-size: 14px;
@@ -392,11 +391,14 @@
 }
 
 .modal-steps .step {
+  flex: 1;                          /* each takes equal space */
   display: flex;
   align-items: center;
   gap: 10px;
   position: relative;
+  justify-content: center;          /* center content in each slot */
 }
+
 
 /* number bubble */
 .modal-steps .step span {
@@ -431,6 +433,33 @@
   margin-left: 14px;
   border-radius: 999px;
 }
+/* ===== Custom Select (Semester) ===== */
+.select { position: relative; width: 100%; }
+.select-trigger{
+  width:100%; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:8px;
+  padding:10px 40px 10px 12px; font-size:14px; color:#111827; text-align:left;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.select-trigger:hover{ background:#eef0f3; }
+.select-trigger:focus{ outline:none; border-color:#111827; box-shadow:0 0 0 3px rgba(17,24,39,.08); }
+.select-caret{ font-size:20px; color:#6b7280; }
+
+.select-list{
+  position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:60;
+  background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+  box-shadow:0 12px 24px rgba(0,0,0,.08), 0 4px 8px rgba(0,0,0,.05);
+  padding:6px 0; list-style:none; margin:0; display:none;
+}
+.select.open .select-list{ display:block; }
+
+.option{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:10px 12px; font-size:14px; color:#111827; cursor:pointer;
+}
+.option:hover{ background:#f3f4f6; }
+.option .check{ font-size:18px; color:#111827; opacity:0; }
+.option.selected .check{ opacity:1; }
+
 
 /* ===== Form body ===== */
 .modal-form {
