@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}" />
 </head>
 <body class="bg-gray-50">
+  <!-- HEADER -->
   <header class="header">
     <div class="container">
       <!-- Left: Brand -->
@@ -23,8 +24,8 @@
 
       <!-- Right: Actions -->
       <div class="right">
-        <!-- Create Unit -->
-        <button class="create-unit-btn" type="button" aria-label="Create Unit">
+        <!-- Create Unit (top button) -->
+        <button class="create-unit-btn" type="button" aria-label="Create Unit" onclick="openCreateUnitModal()">
           <span class="material-icons icon-add" aria-hidden="true">add</span>
           <span>Create Unit</span>
         </button>
@@ -60,9 +61,49 @@
             <span>Logout</span>
           </button>
         </form>
-
       </div>
     </div>
   </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex justify-center mt-10">
+    {% if not units %}
+      <!-- Empty State Card -->
+      <div class="bg-white shadow rounded-xl p-6 w-full max-w-md text-center">
+        <span class="material-icons text-gray-700 text-5xl mb-3">apartment</span>
+        <h2 class="text-lg font-semibold mb-2">Create Your First Unit</h2>
+        <p class="text-gray-600 text-sm mb-4">
+          Get started by creating your first unit. You’ll be able to manage facilitators, schedules, and approvals for each unit you create.
+        </p>
+        <button onclick="openCreateUnitModal()" class="w-full py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 flex items-center justify-center gap-2">
+          <span class="material-icons text-sm">add</span>
+          Create Unit
+        </button>
+      </div>
+    {% else %}
+      <!-- TODO: show a unit list here -->
+      <div class="w-full max-w-4xl">
+        <h2 class="text-lg font-bold mb-4">Your Units</h2>
+        <ul class="space-y-2">
+          {% for unit in units %}
+            <li class="p-3 bg-white shadow rounded-md flex justify-between">
+              <div>
+                <span class="font-medium">{{ unit.unit_code }}</span> - {{ unit.unit_name }}
+                ({{ unit.semester }} {{ unit.year }})
+              </div>
+              <a href="#" class="text-blue-600 hover:underline">Manage</a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </main>
+
+  <!-- Placeholder for modal -->
+  <script>
+    function openCreateUnitModal() {
+      alert("TODO: Open Create Unit modal or redirect to create unit form.");
+    }
+  </script>
 </body>
 </html>
