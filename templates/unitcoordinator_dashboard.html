@@ -52,11 +52,15 @@
           {{ user.role.value.replace('_', ' ') | title }}
         </span>
 
-        <!-- Logout (button placeholder; swap to POST form when wiring auth) -->
-        <button class="logout-btn" type="button" aria-label="Logout">
-          <span class="material-icons icon-logout" aria-hidden="true">logout</span>
-          <span>Logout</span>
-        </button>
+        <!-- Logout (secure POST form with CSRF) -->
+        <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="logout-btn" type="submit" aria-label="Logout">
+            <span class="material-icons icon-logout" aria-hidden="true">logout</span>
+            <span>Logout</span>
+          </button>
+        </form>
+
       </div>
     </div>
   </header>
