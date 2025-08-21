@@ -303,14 +303,19 @@
   outline: none;
 }
 
-/* Footer buttons */
 .modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  /* border-top: 1px solid #e5e7eb; */ /* remove this */
+  padding: 12px 20px;
+  margin-top: 6px;
+
   display: flex;
-  justify-content: space-between;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
-  margin-top: 1rem;
+  justify-content: flex-end;
+  gap: 10px;
 }
+
 .btn-cancel {
   padding: 0.5rem 1rem;
   border: 1px solid #d1d5db;
@@ -528,7 +533,6 @@
   position: sticky;
   bottom: 0;
   background: #fff;
-  border-top: 1px solid #e5e7eb;
   padding: 12px 20px;
   margin-top: 6px;
 
