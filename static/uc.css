@@ -1,0 +1,135 @@
+/* uc.css */
+.header {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb; /* subtle divider */
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 6px 16px;              /* slim height like screenshot */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Left cluster (icon + title) */
+.left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-school {
+  color: #111827;                 /* near-black */
+  font-size: 18px;                /* small icon */
+  line-height: 1;
+}
+
+.title {
+  font-size: 16px;                /* compact title */
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+}
+
+/* Right cluster */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;                      /* tight spacing like the image */
+}
+
+/* Generic small icon button */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 9999px;
+  color: #4b5563;
+}
+.icon-btn:hover { background: #f3f4f6; }
+
+/* Create button (outlined, small) */
+.create-unit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1;
+}
+.create-unit-btn:hover { background: #f9fafb; }
+.icon-add { font-size: 16px; }
+
+/* Notifications with badge */
+.notification-container {
+  position: relative;
+}
+.notification-btn .material-icons {
+  font-size: 20px;
+}
+.notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  height: 16px;
+  width: 16px;
+  background: #ef4444;           /* red */
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* User name & avatar */
+.user {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #374151;
+  white-space: nowrap;
+}
+.icon-account { font-size: 18px; color: #6b7280; }
+.user-name { font-size: 14px; }
+
+/* Role pill */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  background: #dbeafe;           /* light blue */
+  color: #3b82f6;                /* blue text */
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Logout (ghost) */
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1;
+}
+.logout-btn:hover { background: #f9fafb; color: #111827; }
+.icon-logout { font-size: 16px; }
