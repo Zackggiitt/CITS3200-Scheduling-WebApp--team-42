@@ -9,6 +9,12 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
   <!-- Material Icons (filled) -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+
+  <!-- Flatpickr (date picker) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+
   <!-- App CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}" />
 </head>
@@ -16,21 +22,17 @@
   <!-- HEADER -->
   <header class="header">
     <div class="container">
-      <!-- Left: Brand -->
       <div class="left" aria-label="Application">
         <span class="material-icons icon-school" aria-hidden="true">school</span>
         <h1 class="title">Unit Coordinator Portal</h1>
       </div>
 
-      <!-- Right: Actions -->
       <div class="right">
-        <!-- Create Unit (top button) -->
         <button class="create-unit-btn" type="button" aria-label="Create Unit" onclick="openCreateUnitModal()">
           <span class="material-icons icon-add" aria-hidden="true">add</span>
           <span>Create Unit</span>
         </button>
 
-        <!-- Notifications -->
         <div class="notification-container">
           <button class="icon-btn notification-btn" type="button" aria-label="Notifications">
             <span class="material-icons" aria-hidden="true">notifications</span>
@@ -42,18 +44,15 @@
           {% endif %}
         </div>
 
-        <!-- User -->
         <div class="user" aria-label="Current user">
           <span class="material-icons icon-account" aria-hidden="true">account_circle</span>
           <span class="user-name">{{ user.full_name }}</span>
         </div>
 
-        <!-- Role -->
         <span class="role-badge">
           {{ user.role.value.replace('_', ' ') | title }}
         </span>
 
-        <!-- Logout (secure POST form with CSRF) -->
         <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="logout-btn" type="submit" aria-label="Logout">
@@ -68,7 +67,6 @@
   <!-- MAIN CONTENT -->
   <main class="flex justify-center mt-10">
     {% if not units %}
-      <!-- Empty State Card -->
       <div class="bg-white shadow rounded-xl p-6 w-full max-w-md text-center">
         <span class="material-icons text-gray-700 text-5xl mb-3">apartment</span>
         <h2 class="text-lg font-semibold mb-2">Create Your First Unit</h2>
@@ -81,7 +79,6 @@
         </button>
       </div>
     {% else %}
-      <!-- TODO: show a unit list here -->
       <div class="w-full max-w-4xl">
         <h2 class="text-lg font-bold mb-4">Your Units</h2>
         <ul class="space-y-2">
@@ -102,10 +99,8 @@
   <!-- MODAL -->
   <div id="createUnitModal" class="modal-overlay hidden">
     <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="create-unit-title">
-      <!-- Close button -->
       <button onclick="closeCreateUnitModal()" class="modal-close" aria-label="Close">✕</button>
 
-      <!-- Top title -->
       <div class="modal-top">
         <div class="modal-title">
           <h1 id="create-unit-title">Create New Unit</h1>
@@ -113,7 +108,6 @@
         </div>
       </div>
 
-      <!-- Progress steps header -->
       <div class="modal-steps">
         <div class="step active"><span>1</span> Unit Information</div>
         <div class="step"><span>2</span> Date Range</div>
@@ -121,11 +115,10 @@
         <div class="step"><span>4</span> Review</div>
       </div>
 
-      <!-- Step 1 form -->
       <form method="POST" action="{{ url_for('unitcoordinator.create_unit') }}" class="modal-form" id="create-unit-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <!-- STEP 1: Unit Info -->
+        <!-- STEP 1 -->
         <section class="wizard-step" data-step="1">
           <h2>Unit Information</h2>
           <p class="subtext">Enter the basic details for your teaching unit</p>
@@ -142,7 +135,6 @@
           </div>
 
           <div class="form-grid">
-            <!-- your custom Semester select remains -->
             <div class="form-group">
               <label>Semester *</label>
               <div class="select" data-name="semester">
@@ -172,24 +164,36 @@
           </div>
         </section>
 
-        <!-- STEP 2: Date Range -->
+        <!-- STEP 2: Date Range (INLINE CALENDARS) -->
         <section class="wizard-step hidden" data-step="2">
           <h2>When does this unit run?</h2>
           <p class="subtext">Select the start and end dates for your unit</p>
 
           <div class="date-grid">
+            <!-- Start Date -->
             <div class="date-card">
-              <label>Start Date *</label>
-              <input type="date" name="start_date" required />
+              <label for="start_date_input">Start Date *</label>
+
+              <!-- This hidden input holds the actual value for Flask -->
+              <input type="text" id="start_date_input" name="start_date" required class="sr-only"/>
+
+              <!-- Flatpickr will render its always-visible calendar here -->
+              <div id="start_calendar" aria-label="Start date calendar"></div>
             </div>
+
+            <!-- End Date -->
             <div class="date-card">
-              <label>End Date *</label>
-              <input type="date" name="end_date" required />
+              <label for="end_date_input">End Date *</label>
+
+              <!-- This hidden input holds the actual value for Flask -->
+              <input type="text" id="end_date_input" name="end_date" required class="sr-only"/>
+
+              <!-- Flatpickr will render its always-visible calendar here -->
+              <div id="end_calendar" aria-label="End date calendar"></div>
             </div>
           </div>
         </section>
 
-        <!-- (Step 3 & 4 panes can be added later) -->
 
         <!-- Footer buttons -->
         <div class="modal-footer">
@@ -198,11 +202,13 @@
           <button type="submit" class="btn-primary hidden" id="submit-btn">Create Unit</button>
         </div>
       </form>
-
+    </div>
+  </div>
 
   <!-- JS -->
   <script>
     function openCreateUnitModal() {
+      setStep(1);
       const modal = document.getElementById("createUnitModal");
       modal.classList.remove("hidden");
       modal.classList.add("flex");
@@ -217,21 +223,17 @@
   <script>
     // Custom select (Semester)
     document.querySelectorAll('.select').forEach(initSelect);
-
     function initSelect(root) {
       const trigger = root.querySelector('.select-trigger');
-      const list    = root.querySelector('.select-list');
       const hidden  = root.querySelector('input[type="hidden"]');
       const valueEl = root.querySelector('.select-value');
       const options = Array.from(root.querySelectorAll('.option'));
 
-      // open/close
       trigger.addEventListener('click', () => {
         const open = root.classList.toggle('open');
         trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
       });
 
-      // select option
       options.forEach(opt => {
         opt.addEventListener('click', () => {
           options.forEach(o => o.classList.remove('selected'));
@@ -244,7 +246,6 @@
         });
       });
 
-      // click outside
       document.addEventListener('click', (e) => {
         if (!root.contains(e.target)) {
           root.classList.remove('open');
@@ -252,40 +253,30 @@
         }
       });
 
-      // basic keyboard support
       trigger.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          trigger.click();
-        } else if (e.key === 'Escape') {
-          root.classList.remove('open');
-          trigger.setAttribute('aria-expanded', 'false');
-        }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); trigger.click(); }
+        else if (e.key === 'Escape') { root.classList.remove('open'); trigger.setAttribute('aria-expanded', 'false'); }
       });
     }
   </script>
 
   <script>
-    let currentStep = 1; // 1..4 (we're using 1 & 2 for now)
+    let currentStep = 1;
 
     function setStep(n) {
       currentStep = n;
-      // panes
       document.querySelectorAll('.wizard-step').forEach(s => {
         s.classList.toggle('hidden', parseInt(s.dataset.step) !== currentStep);
       });
-      // stepper bubbles active
       document.querySelectorAll('.modal-steps .step').forEach((el, idx) => {
         el.classList.toggle('active', idx + 1 === currentStep);
       });
-      // footer buttons
-      document.getElementById('next-btn').classList.toggle('hidden', currentStep >= 2); // when you add step 3/4 adjust logic
+      document.getElementById('next-btn').classList.toggle('hidden', currentStep >= 2);
       document.getElementById('submit-btn').classList.toggle('hidden', currentStep < 2);
     }
 
     function nextStep() {
       if (currentStep === 1) {
-        // quick validation of step1 required fields
         const f = document.getElementById('create-unit-form');
         const required = ['unit_name','unit_code','year','semester'];
         for (const name of required) {
@@ -295,23 +286,62 @@
       }
       setStep(Math.min(2, currentStep + 1));
     }
+    function prevStep() { setStep(Math.max(1, currentStep - 1)); }
+  </script>
 
-    function prevStep() {
-      setStep(Math.max(1, currentStep - 1));
-    }
+  <!-- Flatpickr init -->
+  <script>
+    flatpickr("#start_date", {
+      dateFormat: "d/m/Y",
+      allowInput: true
+    });
+    flatpickr("#end_date", {
+      dateFormat: "d/m/Y",
+      allowInput: true
+    });
+  </script>
 
-    // Modal open/close keep starting at step 1
-    function openCreateUnitModal() {
-      setStep(1);
-      const modal = document.getElementById("createUnitModal");
-      modal.classList.remove("hidden");
-      modal.classList.add("flex");
-    }
-    function closeCreateUnitModal() {
-      const modal = document.getElementById("createUnitModal");
-      modal.classList.add("hidden");
-      modal.classList.remove("flex");
-    }
+  <script>
+    // Format used in inputs sent to Flask (dd/mm/yyyy)
+    const DATE_FMT = "d/m/Y";
+
+    // Create inline calendars inside the containers and sync with hidden inputs
+    const startInput = document.getElementById("start_date_input");
+    const endInput   = document.getElementById("end_date_input");
+
+    // Defaults (optional): today for both
+    const today = new Date();
+
+    const startPicker = flatpickr("#start_calendar", {
+      inline: true,
+      dateFormat: DATE_FMT,
+      defaultDate: today,
+      // We keep the input value in sync for the form post
+      onChange: (selectedDates, dateStr) => {
+        startInput.value = dateStr;
+        // set min on end calendar
+        endPicker.set("minDate", selectedDates[0] || null);
+        // if end is before start, push it to start
+        if (endPicker.selectedDates[0] && selectedDates[0] && endPicker.selectedDates[0] < selectedDates[0]) {
+          endPicker.setDate(selectedDates[0], true);
+        }
+      }
+    });
+
+    const endPicker = flatpickr("#end_calendar", {
+      inline: true,
+      dateFormat: DATE_FMT,
+      defaultDate: today,
+      onChange: (selectedDates, dateStr) => {
+        endInput.value = dateStr;
+        // set max on start calendar
+        startPicker.set("maxDate", selectedDates[0] || null);
+      }
+    });
+
+    // Initialize hidden inputs so the first submit works even before user changes anything
+    startInput.value = startPicker.formatDate(startPicker.selectedDates[0] || today, DATE_FMT);
+    endInput.value   = endPicker.formatDate(endPicker.selectedDates[0]   || today, DATE_FMT);
   </script>
 
 </body>

@@ -569,8 +569,60 @@
 .wizard-step.hidden { display: none; }
 
 /* Date range layout (two cards side-by-side) */
-.date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 8px; }
-.date-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:18px; }
+.date-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.date-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+/* Hide the “real” inputs but keep them accessible for form posting */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0,0,0,0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Flatpickr (inline) polish */
+.flatpickr-calendar.inline {
+  border: none;
+  box-shadow: none;
+  width: 100%;
+}
+
+.flatpickr-calendar .flatpickr-months {
+  margin-bottom: 6px;
+}
+
+.flatpickr-calendar .flatpickr-days {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+/* make selection + hover feel crisp */
+.flatpickr-day:hover {
+  background: #f3f4f6;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+  background: #111827 !important;
+  color: #fff !important;
+  border-color: #111827 !important;
+}
 .date-card label { display:block; font-size:14px; font-weight:600; color:#374151; margin-bottom:8px; }
 .date-card input[type="date"] {
   width:100%; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; font-size:14px;
