@@ -8,11 +8,24 @@ import json
 
 facilitator_bp = Blueprint('facilitator', __name__, url_prefix='/facilitator')
 
+def get_greeting():
+    """Return time-based greeting"""
+    hour = datetime.now().hour
+    if hour < 12:
+        return "Good morning"
+    elif hour < 17:
+        return "Good afternoon"
+    else:
+        return "Good evening"
+
 @facilitator_bp.route("/dashboard")
 @login_required
-@role_required(UserRole.FACILITATOR)  # If your decorator expects a string, use "FACILITATOR"
+@role_required(UserRole.FACILITATOR)
 def dashboard():
-    return render_template("facilitator_dashboard.html")
+    user = get_current_user()
+    greeting = get_greeting()
+    return render_template("facilitator_dashboard.html", user=user, greeting=greeting)
+
 
 @facilitator_bp.route("/")
 @login_required
