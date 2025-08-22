@@ -155,25 +155,26 @@
 .welcome-banner {
     background: linear-gradient(90deg, #111827 0%, rgba(17, 24, 39, 0.95) 70%, rgba(17, 24, 39, 0.85) 100%);
     color: var(--color-text-white);
-    padding: 24px;
-    border-radius: 12px;
+    padding: 24px 28px;
+    border-radius: 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 24px;
+    min-height: 80px;
 }
 .welcome-text h2 {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
 }
 .welcome-text .facilitator-name {
-    font-size: 14px;
+    font-size: 18px;
     margin-bottom: 4px;
     opacity: 0.9;
 }
 .welcome-text .session-info {
-    font-size: 12px;
+    font-size: 16px;
     color: var(--color-text-subtle);
 }
 
@@ -184,8 +185,8 @@
 }
 
 .welcome-icon-wrapper {
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
     background-color: rgba(255, 255, 255, 0.2);
     display: flex;
@@ -302,6 +303,19 @@
 /* CSS for section section:details */
 #details {
     margin-top: 24px;
+}
+
+/* Updated details section for single column */
+.details-single {
+    display: block;
+}
+
+.details-single .details-card {
+    background-color: var(--surface-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--gap-lg);
+    max-width: 100%;
 }
 .details-grid {
     display: grid;
@@ -545,7 +559,7 @@
     </div>
 </section>
 <section id="details" class="main-content-wrapper">
-    <div class="details-grid">
+    <div class="details-single">
         <div class="details-card">
             <div class="card-header">
                 <h3>Your Upcoming Sessions</h3>
@@ -578,76 +592,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="details-card">
-            <div class="card-header">
-                <h3>Recent Activity</h3>
-            </div>
-            <div class="activity-list">
-                <div class="activity-item">
-                    <div class="activity-info">
-                        <div class="activity-icon-wrapper success"><img src="images/2_120.svg" alt=""></div>
-                        <div>
-                            <p class="activity-title">Session completed</p>
-                            <p class="activity-time">2 hours ago</p>
-                        </div>
-                    </div>
-                    <span class="tag activity-tag completed">completed</span>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-info">
-                        <div class="activity-icon-wrapper info"><img src="images/2_130.svg" alt=""></div>
-                        <div>
-                            <p class="activity-title">New session assigned</p>
-                            <p class="activity-time">1 day ago</p>
-                        </div>
-                    </div>
-                    <span class="tag activity-tag assigned">assigned</span>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-info">
-                        <div class="activity-icon-wrapper error"><img src="images/2_140.svg" alt=""></div>
-                        <div>
-                            <p class="activity-title">Availability updated</p>
-                            <p class="activity-time">2 weeks ago</p>
-                        </div>
-                    </div>
-                    <span class="tag activity-tag updated">updated</span>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-info">
-                        <div class="activity-icon-wrapper success"><img src="images/2_150.svg" alt=""></div>
-                        <div>
-                            <p class="activity-title">Overtime approved</p>
-                            <p class="activity-time">3 weeks ago</p>
-                        </div>
-                    </div>
-                    <span class="tag activity-tag approved">approved</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-<section id="actions" class="main-content-wrapper">
-    <div class="actions-card">
-        <h3>Quick Actions</h3>
-        <div class="actions-grid">
-            <a href="#" class="action-button">
-                <span class="material-icons" aria-hidden="true">calendar_view_week</span>
-                <span>View Schedule</span>
-            </a>
-            <a href="#" class="action-button">
-                <span class="material-icons" aria-hidden="true">edit_calendar</span>
-                <span>Update Availability</span>
-            </a>
-            <a href="#" class="action-button">
-                <span class="material-icons" aria-hidden="true">notifications</span>
-                <span>Notifications</span>
-            </a>
-            <a href="#" class="action-button">
-                <span class="material-icons" aria-hidden="true">settings</span>
-                <span>Profile Settings</span>
-            </a>
         </div>
     </div>
 </section>
@@ -1023,33 +967,42 @@
 
 .notification-filters {
   display: flex;
-  gap: var(--gap-sm);
-  margin-bottom: var(--gap-lg);
-  padding: 4px;
+  justify-content: center;
+  align-items: center;
   background-color: var(--surface-secondary);
-  border-radius: 8px;
+  border-radius: 9999px;
+  padding: 6px;
+  gap: 8px;
+  max-width: 600px;
+  margin: 0 auto var(--gap-lg) auto;
 }
 
 .filter-btn {
-  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 9999px;
   border: none;
-  border-radius: 6px;
-  background: none;
-  color: var(--color-text-secondary);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  color: #374151;
+  background: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, color 0.2s;
+  position: relative;
+  flex: 1;
+  justify-content: center;
 }
 
 .filter-btn.active {
-  background-color: var(--surface-primary);
-  color: var(--color-text-primary);
+  background-color: #ffffff;
+  color: #111827;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .filter-btn:not(.active):hover {
-  background-color: rgba(255,255,255,0.5);
+  background-color: #e5e7eb;
 }
 
 .notifications-list {
@@ -1658,7 +1611,7 @@ input:checked + .toggle-slider:before {
 <script>
 // Navigation between dashboard, calendar, and notifications
 document.addEventListener('DOMContentLoaded', function() {
-    const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details, #actions');
+    const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
     const calendarView = document.getElementById('calendar-view');
     const notificationsView = document.getElementById('notifications-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
