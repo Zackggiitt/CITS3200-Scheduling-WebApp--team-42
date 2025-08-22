@@ -698,7 +698,471 @@
   </div>
 </section>
 
+<!-- Add this after the calendar-view section, before the calendar-styles -->
 
+<!-- Notifications View (initially hidden) -->
+<section id="notifications-view" class="main-content-wrapper" style="display: none;">
+  <div class="notifications-container">
+    <div class="notifications-header">
+      <h2>Notifications</h2>
+      <div class="notification-actions">
+        <button id="mark-all-read" class="notification-action-btn">
+          <span class="material-icons">done_all</span>
+          Mark All Read
+        </button>
+        <button id="clear-all" class="notification-action-btn secondary">
+          <span class="material-icons">clear_all</span>
+          Clear All
+        </button>
+      </div>
+    </div>
+    
+    <div class="notification-filters">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="shifts">Shifts</button>
+      <button class="filter-btn" data-filter="updates">Updates</button>
+      <button class="filter-btn" data-filter="alerts">Alerts</button>
+    </div>
+    
+    <div class="notifications-list" id="notifications-list">
+      <!-- Shift Notifications -->
+      <div class="notification-item unread" data-type="shifts">
+        <div class="notification-icon shift">
+          <span class="material-icons">schedule</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>New Shift Allocated</h4>
+            <span class="notification-time">5 minutes ago</span>
+          </div>
+          <p class="notification-message">You have been assigned to Lab Session CITS3200 on Friday, August 25, 2025 from 2:00 PM - 6:00 PM in Building 314, Room 105.</p>
+          <div class="notification-actions-inline">
+            <button class="action-btn accept">
+              <span class="material-icons">check</span>
+              Accept
+            </button>
+            <button class="action-btn decline">
+              <span class="material-icons">close</span>
+              Decline
+            </button>
+          </div>
+        </div>
+        <div class="notification-status unread-indicator"></div>
+      </div>
+
+      <div class="notification-item unread" data-type="updates">
+        <div class="notification-icon update">
+          <span class="material-icons">info</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>Class Information Updated</h4>
+            <span class="notification-time">2 hours ago</span>
+          </div>
+          <p class="notification-message">CITS3200 Software Engineering Project - Location changed from Building 314 Room 105 to Building 314 Room 208. Session time remains 2:00 PM - 6:00 PM.</p>
+          <div class="notification-meta">
+            <span class="tag update">Location Change</span>
+          </div>
+        </div>
+        <div class="notification-status unread-indicator"></div>
+      </div>
+
+      <div class="notification-item" data-type="shifts">
+        <div class="notification-icon shift">
+          <span class="material-icons">event_available</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>Shift Confirmed</h4>
+            <span class="notification-time">1 day ago</span>
+          </div>
+          <p class="notification-message">Your shift for CITS1001 Object-Oriented Programming on Thursday, August 24, 2025 from 9:00 AM - 1:00 PM has been confirmed.</p>
+          <div class="notification-meta">
+            <span class="tag confirmed">Confirmed</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="notification-item unread" data-type="alerts">
+        <div class="notification-icon alert">
+          <span class="material-icons">warning</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>Availability Update Required</h4>
+            <span class="notification-time">3 days ago</span>
+          </div>
+          <p class="notification-message">Your availability hasn't been updated in 2 weeks. Please update your available times to ensure optimal shift assignments.</p>
+          <div class="notification-actions-inline">
+            <button class="action-btn primary">
+              <span class="material-icons">edit_calendar</span>
+              Update Now
+            </button>
+          </div>
+        </div>
+        <div class="notification-status unread-indicator"></div>
+      </div>
+
+      <div class="notification-item" data-type="updates">
+        <div class="notification-icon update">
+          <span class="material-icons">schedule_send</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>Session Time Changed</h4>
+            <span class="notification-time">1 week ago</span>
+          </div>
+          <p class="notification-message">CITS2200 Data Structures session time updated from 10:00 AM - 2:00 PM to 11:00 AM - 3:00 PM for Wednesday, August 30, 2025.</p>
+          <div class="notification-meta">
+            <span class="tag update">Time Change</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="notification-item" data-type="shifts">
+        <div class="notification-icon shift">
+          <span class="material-icons">assignment_turned_in</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>Shift Completed</h4>
+            <span class="notification-time">1 week ago</span>
+          </div>
+          <p class="notification-message">Your shift for CITS1402 Relational Database Management Systems on August 15, 2025 has been marked as completed. Thank you for your service!</p>
+          <div class="notification-meta">
+            <span class="tag completed">Completed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notifications-empty" id="notifications-empty" style="display: none;">
+      <div class="empty-state">
+        <span class="material-icons">notifications_off</span>
+        <h3>No notifications</h3>
+        <p>You're all caught up! Check back later for updates.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style id="notifications-styles">
+/* Notifications Styles */
+.notifications-container {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: var(--gap-lg);
+  margin-top: 24px;
+}
+
+.notifications-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--gap-lg);
+  padding-bottom: var(--gap-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.notifications-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.notification-actions {
+  display: flex;
+  gap: var(--gap-sm);
+}
+
+.notification-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--surface-primary);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.notification-action-btn:hover {
+  background-color: var(--surface-secondary);
+}
+
+.notification-action-btn.secondary {
+  color: var(--color-text-secondary);
+}
+
+.notification-filters {
+  display: flex;
+  gap: var(--gap-sm);
+  margin-bottom: var(--gap-lg);
+  padding: 4px;
+  background-color: var(--surface-secondary);
+  border-radius: 8px;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn.active {
+  background-color: var(--surface-primary);
+  color: var(--color-text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.filter-btn:not(.active):hover {
+  background-color: rgba(255,255,255,0.5);
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.notification-item {
+  display: flex;
+  gap: var(--gap-md);
+  padding: var(--gap-md);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--surface-primary);
+  position: relative;
+  transition: all 0.2s;
+}
+
+.notification-item.unread {
+  border-left: 4px solid #3b82f6;
+  background-color: var(--surface-info-light);
+}
+
+.notification-item:hover {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.notification-icon.shift {
+  background-color: var(--surface-success-light);
+  color: var(--color-text-success);
+}
+
+.notification-icon.update {
+  background-color: var(--surface-info-light);
+  color: #3b82f6;
+}
+
+.notification-icon.alert {
+  background-color: var(--surface-warning);
+  color: var(--color-text-warning);
+}
+
+.notification-content {
+  flex-grow: 1;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--gap-sm);
+}
+
+.notification-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.notification-message {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  margin-bottom: var(--gap-sm);
+}
+
+.notification-meta {
+  display: flex;
+  gap: var(--gap-sm);
+  margin-bottom: var(--gap-sm);
+}
+
+.notification-actions-inline {
+  display: flex;
+  gap: var(--gap-sm);
+  margin-top: var(--gap-sm);
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--surface-primary);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background-color: var(--surface-secondary);
+}
+
+.action-btn.accept {
+  border-color: var(--color-text-success);
+  color: var(--color-text-success);
+}
+
+.action-btn.accept:hover {
+  background-color: var(--surface-success-light);
+}
+
+.action-btn.decline {
+  border-color: var(--status-red);
+  color: var(--status-red);
+}
+
+.action-btn.decline:hover {
+  background-color: var(--surface-error-light);
+}
+
+.action-btn.primary {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.action-btn.primary:hover {
+  background-color: #2563eb;
+}
+
+.notification-status {
+  width: 8px;
+  flex-shrink: 0;
+}
+
+.unread-indicator {
+  background-color: #3b82f6;
+  border-radius: 4px;
+}
+
+.tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.tag.update {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.tag.confirmed {
+  background-color: var(--surface-success-light);
+  color: var(--color-text-success);
+}
+
+.tag.completed {
+  background-color: var(--status-black);
+  color: var(--color-text-white);
+}
+
+.notifications-empty {
+  text-align: center;
+  padding: var(--gap-xl) var(--gap-lg);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-md);
+  color: var(--color-text-tertiary);
+}
+
+.empty-state .material-icons {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.empty-state p {
+  font-size: 14px;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .notifications-header {
+    flex-direction: column;
+    gap: var(--gap-md);
+    align-items: stretch;
+  }
+  
+  .notification-actions {
+    justify-content: center;
+  }
+  
+  .notification-filters {
+    flex-wrap: wrap;
+  }
+  
+  .notification-item {
+    flex-direction: column;
+    gap: var(--gap-sm);
+  }
+  
+  .notification-header {
+    flex-direction: column;
+    gap: var(--gap-sm);
+  }
+  
+  .notification-actions-inline {
+    flex-wrap: wrap;
+  }
+}
+</style>
 
 <!-- Add this CSS to your existing style block -->
 <style id="calendar-styles">
@@ -895,10 +1359,11 @@
 }
 </style>
 <script>
-// Navigation between dashboard and calendar
+// Navigation between dashboard, calendar, and notifications
 document.addEventListener('DOMContentLoaded', function() {
     const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details, #actions');
     const calendarView = document.getElementById('calendar-view');
+    const notificationsView = document.getElementById('notifications-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
     
     // Navigation click handlers
@@ -911,15 +1376,23 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
             
             // Show/hide sections
-            if (this.getAttribute('href') === '#schedule') {
+            const href = this.getAttribute('href');
+            if (href === '#schedule') {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
                 calendarView.style.display = 'block';
+                notificationsView.style.display = 'none';
                 initCalendar();
+            } else if (href === '#notifications') {
+                // Show notifications view
+                dashboardSections.forEach(section => section.style.display = 'none');
+                calendarView.style.display = 'none';
+                notificationsView.style.display = 'block';
             } else {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
                 calendarView.style.display = 'none';
+                notificationsView.style.display = 'none';
             }
         });
     });
@@ -1041,9 +1514,80 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCalendarHeader();
         generateCalendarDays();
     });
+
+    // NOTIFICATIONS FUNCTIONALITY
+    // Notification filters
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const notificationItems = document.querySelectorAll('.notification-item');
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Update active filter
+            filterBtns.forEach(f => f.classList.remove('active'));
+            this.classList.add('active');
+            
+            const filter = this.getAttribute('data-filter');
+            
+            // Filter notifications
+            notificationItems.forEach(item => {
+                if (filter === 'all' || item.getAttribute('data-type') === filter) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+
+    // Mark all as read
+    document.getElementById('mark-all-read').addEventListener('click', function() {
+        const unreadItems = document.querySelectorAll('.notification-item.unread');
+        unreadItems.forEach(item => {
+            item.classList.remove('unread');
+        });
+        
+        // Update notification badge
+        const badge = document.querySelector('.notification-badge');
+        if (badge) {
+            badge.textContent = '0';
+            badge.style.display = 'none';
+        }
+    });
+
+    // Clear all notifications
+    document.getElementById('clear-all').addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear all notifications?')) {
+            const notificationsList = document.getElementById('notifications-list');
+            const emptyState = document.getElementById('notifications-empty');
+            
+            notificationsList.style.display = 'none';
+            emptyState.style.display = 'block';
+            
+            // Update notification badge
+            const badge = document.querySelector('.notification-badge');
+            if (badge) {
+                badge.textContent = '0';
+                badge.style.display = 'none';
+            }
+        }
+    });
+
+    // Individual notification actions
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.action-btn.accept')) {
+            const notification = e.target.closest('.notification-item');
+            notification.classList.remove('unread');
+            alert('Shift accepted successfully!');
+        }
+        
+        if (e.target.closest('.action-btn.decline')) {
+            const notification = e.target.closest('.notification-item');
+            notification.style.display = 'none';
+            alert('Shift declined.');
+        }
+    });
 });
 </script>
-
 </body>
 </html>
 
