@@ -27,17 +27,14 @@ unitcoordinator_bp = Blueprint(
 )
 
 # CSV columns for the combined facilitators/venues file
+# CSV columns for simplified upload (2 columns)
 CSV_HEADERS = [
-    "type",            # facilitator | venue
-    "email",           # (facilitator)
-    "first_name",      # (facilitator, optional)
-    "last_name",       # (facilitator, optional)
-    "venue_name",      # (venue)
-    "venue_capacity",  # (venue, optional int)
-    "venue_location",  # (venue, optional)
+    "facilitator_email",   # optional per row
+    "venue_name",          # optional per row
 ]
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
 
 
 # ------------------------------------------------------------------------------
