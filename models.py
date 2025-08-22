@@ -39,6 +39,19 @@ class Unit(db.Model):
     __table_args__ = (
         db.UniqueConstraint("unit_code", "year", "semester", "created_by", name="uq_unit_per_uc"),
     )
+    
+# models.py
+class UnitVenue(db.Model):
+    __tablename__ = "unit_venue"
+    id = db.Column(db.Integer, primary_key=True)
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=False)
+    venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'), nullable=False)
+
+    unit = db.relationship('Unit', backref=db.backref('unit_venues', cascade='all, delete-orphan', lazy=True))
+    venue = db.relationship('Venue', backref=db.backref('used_in_units', cascade='all, delete-orphan', lazy=True))
+
+    __table_args__ = (db.UniqueConstraint('unit_id', 'venue_id', name='uq_venue_per_unit'),)
+
 
 
 class Module(db.Model):
