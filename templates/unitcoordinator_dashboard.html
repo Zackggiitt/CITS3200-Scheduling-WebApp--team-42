@@ -224,41 +224,39 @@
               <div>
                 <h3 class="setup-card__title">Setup Required</h3>
                 <p class="setup-card__hint">
-                  Before creating sessions, please upload facilitators and venues using the CSV template below.
+                  Before creating sessions, please upload facilitators and venues using the CSV template.
                 </p>
               </div>
             </div>
-
-            <div class="setup-actions">
-              <a
-                class="btn-outline"
-                href="{{ url_for('unitcoordinator.download_setup_csv_template') }}"
-                target="_blank"
-                rel="noopener"
-              >
-                <span class="material-icons" style="font-size:18px">download</span>
-                Download CSV Template
-              </a>
-
-              <div class="upload-block">
-                <label for="setup_csv" class="upload-label">Upload Facilitators & Venues CSV</label>
-                <input
-                  id="setup_csv"
-                  name="setup_csv"
-                  type="file"
-                  accept=".csv"
-                  class="upload-input"
-                  aria-describedby="upload_help"
-                />
-                <div id="upload_help" class="upload-help">Use the provided template for column names.</div>
-
-                <!-- Progress + result -->
-                <div id="upload_status" class="upload-status hidden"></div>
+            <div class="upload-row">
+              <!-- Left: Download template -->
+              <div class="upload-col">
+                <div class="hint-title">CSV Template</div>
+                <p class="hint-sub">Use this file for correct column names.</p>
+                <a class="btn-outline w-full sm:w-auto"
+                   href="{{ url_for('unitcoordinator.download_setup_csv_template') }}"
+                   target="_blank" rel="noopener">
+                  <span class="material-icons" style="font-size:18px">download</span>
+                  Download CSV Template
+                </a>
+              </div>
+              <!-- Right: Upload CSV -->
+              <div class="upload-col">
+                <div class="hint-title">Upload CSV</div>
+                <p class="hint-sub">Facilitator emails and venue names (2 columns).</p>
+                <div class="filepicker">
+                  <input id="setup_csv" name="setup_csv" type="file" accept=".csv" class="filepicker-input" />
+                  <label for="setup_csv" class="filepicker-btn">
+                    <span class="material-icons">upload_file</span>
+                    Choose File
+                  </label>
+                  <span id="file_name" class="filepicker-name" aria-live="polite">No file selected</span>
+                </div>
+                <!-- Status -->
+                <div id="upload_status" class="upload-status hidden" role="status" aria-live="polite"></div>
               </div>
             </div>
           </div>
-
-          <!-- Hidden field flips to 'true' after a successful upload -->
           <input type="hidden" name="setup_complete" id="setup_complete" value="false"/>
         </section>
 
@@ -510,6 +508,7 @@
     const statusBox    = document.getElementById('upload_status');
     const setupFlagEl  = document.getElementById('setup_complete');
     const unitIdEl     = document.getElementById('unit_id');
+    const fileNameEl   = document.getElementById('file_name');
 
     if (uploadInput) {
       uploadInput.addEventListener('change', async (e) => {
@@ -519,8 +518,17 @@
 
         const file = e.target.files?.[0];
         const unitId = unitIdEl.value;
-        if (!file)  { statusBox.textContent = 'No file selected.'; return; }
-        if (!unitId){ statusBox.textContent = 'Missing unit id. Go back to Step 2 and try again.'; return; }
+        if (!file) {
+          statusBox.textContent = 'No file selected.';
+          fileNameEl.textContent = 'No file selected';
+          return;
+        }
+        fileNameEl.textContent = file.name;
+        if (!unitId) {
+          statusBox.textContent = 'Missing unit id. Go back to Step 2 and try again.';
+          fileNameEl.textContent = 'No file selected';
+          return;
+        }
 
         const form = new FormData();
         form.append('unit_id', unitId);
@@ -542,6 +550,7 @@
                 ${errs.map(x => `<li>${x}</li>`).join('')}
               </ul>`;
             setupFlagEl.value = 'false';
+            fileNameEl.textContent = 'No file selected';
             return;
           }
 
@@ -549,16 +558,62 @@
             <div class="text-green-700 font-semibold">Upload successful</div>
             <div class="text-sm text-green-800">
               Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}<br/>
-              Venues created: ${data.created_venues} · Updated: ${data.updated_venues}
+              Venues created: ${data.created_venues} · Linked: ${data.linked_venues} · Updated: ${data.updated_venues}
             </div>`;
           setupFlagEl.value = 'true';
+          fileNameEl.textContent = file.name; // Keep file name after successful upload
         } catch (err) {
           console.error(err);
           statusBox.textContent = 'Unexpected error during upload.';
           setupFlagEl.value = 'false';
+          fileNameEl.textContent = 'No file selected';
         }
       });
     }
   </script>
+
+  <script>
+    const fileNameEl = document.getElementById('file_name');
+
+    if (uploadInput) {
+      uploadInput.addEventListener('change', (e) => {
+        const f = e.target.files?.[0];
+        fileNameEl.textContent = f ? f.name : 'No file selected';
+      });
+
+      uploadInput.addEventListener('change', async (e) => {
+        // ... your existing upload code remains the same up to the fetch() ...
+        // After you parse `data`:
+
+        // reset status box classes first
+        statusBox.classList.remove('hidden', 'success', 'error');
+
+        if (!res.ok || !data.ok) {
+          const errs = (data.errors || [data.error]).filter(Boolean);
+          statusBox.classList.add('error');
+          statusBox.innerHTML = `
+            <div class="font-semibold mb-1">Upload failed</div>
+            <ul class="list-disc list-inside text-sm">
+              ${errs.map(x => `<li>${x}</li>`).join('')}
+            </ul>`;
+          setupFlagEl.value = 'false';
+          return;
+        }
+
+        statusBox.classList.add('success');
+        statusBox.innerHTML = `
+          <div class="font-semibold">Upload successful</div>
+          <div class="text-sm mt-1">
+            Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}<br/>
+            Venues created: ${data.created_venues} · Updated: ${data.updated_venues}
+          </div>`;
+        setupFlagEl.value = 'true';
+
+        // Optional: ensure the status is visible if the card is tall
+        statusBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      });
+    }
+  </script>
+
 </body>
 </html>
