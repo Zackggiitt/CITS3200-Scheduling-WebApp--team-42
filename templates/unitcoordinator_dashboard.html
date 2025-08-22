@@ -258,6 +258,42 @@
             </div>
           </div>
           <input type="hidden" name="setup_complete" id="setup_complete" value="false"/>
+          <!-- STEP 3B: Calendar -->
+          <div id="calendar_wrap" class="mt-4 hidden">
+            <div class="cal-toolbar">
+              <button class="cal-btn" id="prevWeek">‹ Previous Week</button>
+              <button class="cal-btn" id="nextWeek">Next Week ›</button>
+              <button class="cal-btn" id="goToday">Today</button>
+              <div class="cal-title">
+                <div id="calWeekTitle" class="font-semibold"></div>
+                <div id="calWeekRange" class="text-xs text-gray-500"></div>
+              </div>
+              <label class="ml-auto text-sm flex items-center gap-2">
+                <input id="toggleHolidays" type="checkbox" class="cal-checkbox" />
+                Show holidays
+              </label>
+            </div>
+            <div class="cal-grid" id="calGrid" aria-label="Session Schedule"></div>
+            <!-- Right-side inspector -->
+            <aside id="calInspector" class="cal-inspector hidden" aria-live="polite">
+              <div class="cal-inspector__header">Session Overview</div>
+              <div class="cal-inspector__body">
+                <div class="row"><span>Day:</span><strong id="inspDay"></strong></div>
+                <div class="row"><span>Time:</span><strong id="inspTime"></strong></div>
+                <div class="row"><span>Duration:</span><strong id="inspDur"></strong></div>
+                <div class="row"><span>Start Date:</span><strong id="inspDate"></strong></div>
+                <div class="mt-3">
+                  <label class="block text-sm font-medium mb-1">Venue</label>
+                  <input id="inspVenue" class="cal-input" placeholder="e.g., Ezone 2.07" />
+                </div>
+              </div>
+              <div class="cal-inspector__footer">
+                <button id="inspDelete" class="cal-btn danger hidden">Delete</button>
+                <button id="inspCancel" class="cal-btn">Cancel</button>
+                <button id="inspSave" class="cal-btn primary">Save</button>
+              </div>
+            </aside>
+          </div>
         </section>
 
         <!-- Footer buttons -->
@@ -273,8 +309,7 @@
   <!-- JS -->
   <script>
     // --- CSRF Token ---
-    const CSRF_TOKEN =
-      document.querySelector('input[name="csrf_token"]')?.value || '';
+    const CSRF_TOKEN = document.querySelector('input[name="csrf_token"]')?.value || '';
 
     // --- Modal open/close ---
     function openCreateUnitModal() {
@@ -293,7 +328,7 @@
     document.querySelectorAll('.select').forEach(initSelect);
     function initSelect(root) {
       const trigger = root.querySelector('.select-trigger');
-      const hidden  = root.querySelector('input[type="hidden"]');
+      const hidden = root.querySelector('input[type="hidden"]');
       const valueEl = root.querySelector('.select-value');
       const options = Array.from(root.querySelectorAll('.option'));
 
@@ -344,15 +379,15 @@
 
     function updateDateSummary() {
       const startEl = document.querySelector('[name="start_date"]');
-      const endEl   = document.querySelector('[name="end_date"]');
-      const box     = document.getElementById('date-summary');
-      const textEl  = document.getElementById('date-summary-text');
+      const endEl = document.querySelector('[name="end_date"]');
+      const box = document.getElementById('date-summary');
+      const textEl = document.getElementById('date-summary-text');
       if (!startEl || !endEl) return;
 
       const sv = (startEl.value || '').trim();
-      const ev = (endEl.value   || '').trim();
+      const ev = (endEl.value || '').trim();
       const start = parseDMY(sv);
-      const end   = parseDMY(ev);
+      const end = parseDMY(ev);
 
       if (!start || !end) { box.classList.add('hidden'); return; }
       if (end < start) {
@@ -361,19 +396,19 @@
         return;
       }
 
-      const diffMs   = end - start;
+      const diffMs = end - start;
       const diffDays = Math.ceil(diffMs / 86400000);
-      const weeks    = Math.ceil(diffDays / 7);
+      const weeks = Math.ceil(diffDays / 7);
 
       textEl.textContent =
-        `Unit will run from ${formatUS(start)} to ${formatUS(end)} (${diffDays} day${diffDays!==1?'s':''}, ${weeks} week${weeks!==1?'s':''})`;
+        `Unit will run from ${formatUS(start)} to ${formatUS(end)} (${diffDays} day${diffDays !== 1 ? 's' : ''}, ${weeks} week${weeks !== 1 ? 's' : ''})`;
       box.classList.remove('hidden');
     }
 
     // --- Flatpickr calendars ---
     const startInput = document.getElementById("start_date_input");
-    const endInput   = document.getElementById("end_date_input");
-    const today      = new Date();
+    const endInput = document.getElementById("end_date_input");
+    const today = new Date();
 
     const startPicker = flatpickr("#start_calendar", {
       inline: true,
@@ -401,7 +436,7 @@
     });
 
     startInput.value = startPicker.formatDate(startPicker.selectedDates[0] || today, DATE_FMT);
-    endInput.value   = endPicker.formatDate(endPicker.selectedDates[0]   || today, DATE_FMT);
+    endInput.value = endPicker.formatDate(endPicker.selectedDates[0] || today, DATE_FMT);
     updateDateSummary();
 
     // --- Step navigation ---
@@ -417,7 +452,7 @@
         el.classList.toggle('active', idx + 1 === currentStep);
       });
 
-      const nextBtn   = document.getElementById('next-btn');
+      const nextBtn = document.getElementById('next-btn');
       const submitBtn = document.getElementById('submit-btn');
       nextBtn.classList.remove('hidden');
       submitBtn.classList.add('hidden');
@@ -430,7 +465,7 @@
     async function nextStep() {
       if (currentStep === 1) {
         const f = document.getElementById('create-unit-form');
-        const required = ['unit_name','unit_code','year','semester'];
+        const required = ['unit_name', 'unit_code', 'year', 'semester'];
         for (const name of required) {
           const el = f.querySelector(`[name="${name}"]`);
           if (!el || !el.value.trim()) { el?.focus(); return; }
@@ -440,7 +475,7 @@
 
       if (currentStep === 2) {
         const start = document.querySelector('[name="start_date"]')?.value?.trim();
-        const end   = document.querySelector('[name="end_date"]')?.value?.trim();
+        const end = document.querySelector('[name="end_date"]')?.value?.trim();
         if (!start || !end) return;
         try {
           const unitId = await ensureDraftAndSetUnitId();
@@ -469,12 +504,12 @@
     function readUnitBasics() {
       const f = document.getElementById('create-unit-form');
       return {
-        unit_code:   f.querySelector('[name="unit_code"]')?.value?.trim() || '',
-        unit_name:   f.querySelector('[name="unit_name"]')?.value?.trim() || '',
-        year:        f.querySelector('[name="year"]')?.value?.trim() || '',
-        semester:    f.querySelector('[name="semester"]')?.value?.trim() || '',
-        start_date:  f.querySelector('[name="start_date"]')?.value?.trim() || '',
-        end_date:    f.querySelector('[name="end_date"]')?.value?.trim() || '',
+        unit_code: f.querySelector('[name="unit_code"]')?.value?.trim() || '',
+        unit_name: f.querySelector('[name="unit_name"]')?.value?.trim() || '',
+        year: f.querySelector('[name="year"]')?.value?.trim() || '',
+        semester: f.querySelector('[name="semester"]')?.value?.trim() || '',
+        start_date: f.querySelector('[name="start_date"]')?.value?.trim() || '',
+        end_date: f.querySelector('[name="end_date"]')?.value?.trim() || '',
       };
     }
 
@@ -484,12 +519,12 @@
         throw new Error('Missing unit basics');
       }
       const form = new FormData();
-      form.append('unit_code',  basic.unit_code);
-      form.append('unit_name',  basic.unit_name);
-      form.append('year',       basic.year);
-      form.append('semester',   basic.semester);
+      form.append('unit_code', basic.unit_code);
+      form.append('unit_name', basic.unit_name);
+      form.append('year', basic.year);
+      form.append('semester', basic.semester);
       form.append('start_date', basic.start_date);
-      form.append('end_date',   basic.end_date);
+      form.append('end_date', basic.end_date);
 
       const res = await fetch("{{ url_for('unitcoordinator.create_or_get_draft') }}", {
         method: 'POST',
@@ -504,15 +539,15 @@
     }
 
     // --- CSV Upload ---
-    const uploadInput  = document.getElementById('setup_csv');
-    const statusBox    = document.getElementById('upload_status');
-    const setupFlagEl  = document.getElementById('setup_complete');
-    const unitIdEl     = document.getElementById('unit_id');
-    const fileNameEl   = document.getElementById('file_name');
+    const uploadInput = document.getElementById('setup_csv');
+    const statusBox = document.getElementById('upload_status');
+    const setupFlagEl = document.getElementById('setup_complete');
+    const unitIdEl = document.getElementById('unit_id');
+    const fileNameEl = document.getElementById('file_name');
 
     if (uploadInput) {
       uploadInput.addEventListener('change', async (e) => {
-        statusBox.classList.remove('hidden');
+        statusBox.classList.remove('hidden', 'success', 'error');
         statusBox.textContent = 'Uploading…';
         setupFlagEl.value = 'false';
 
@@ -520,12 +555,14 @@
         const unitId = unitIdEl.value;
         if (!file) {
           statusBox.textContent = 'No file selected.';
+          statusBox.classList.add('error');
           fileNameEl.textContent = 'No file selected';
           return;
         }
         fileNameEl.textContent = file.name;
         if (!unitId) {
           statusBox.textContent = 'Missing unit id. Go back to Step 2 and try again.';
+          statusBox.classList.add('error');
           fileNameEl.textContent = 'No file selected';
           return;
         }
@@ -544,76 +581,75 @@
 
           if (!res.ok || !data.ok) {
             const errs = (data.errors || [data.error]).filter(Boolean);
+            statusBox.classList.add('error');
             statusBox.innerHTML = `
-              <div class="text-red-600 font-medium mb-1">Upload failed</div>
-              <ul class="list-disc list-inside text-sm text-red-700">
+              <div class="font-semibold mb-1">Upload failed</div>
+              <ul class="list-disc list-inside text-sm">
                 ${errs.map(x => `<li>${x}</li>`).join('')}
               </ul>`;
             setupFlagEl.value = 'false';
             fileNameEl.textContent = 'No file selected';
+            statusBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             return;
           }
 
+          statusBox.classList.add('success');
           statusBox.innerHTML = `
-            <div class="text-green-700 font-semibold">Upload successful</div>
-            <div class="text-sm text-green-800">
+            <div class="font-semibold">Upload successful</div>
+            <div class="text-sm mt-1">
               Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}<br/>
               Venues created: ${data.created_venues} · Linked: ${data.linked_venues} · Updated: ${data.updated_venues}
             </div>`;
           setupFlagEl.value = 'true';
           fileNameEl.textContent = file.name; // Keep file name after successful upload
+          statusBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+          // Show calendar after successful upload
+          showCalendarIfReady();
+          if (!window.__calendarInitRan) {
+            __calendarInitRan = true;
+            initCalendar();
+          }
         } catch (err) {
           console.error(err);
           statusBox.textContent = 'Unexpected error during upload.';
+          statusBox.classList.add('error');
           setupFlagEl.value = 'false';
           fileNameEl.textContent = 'No file selected';
+          statusBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
       });
-    }
-  </script>
 
-  <script>
-    const fileNameEl = document.getElementById('file_name');
-
-    if (uploadInput) {
       uploadInput.addEventListener('change', (e) => {
         const f = e.target.files?.[0];
         fileNameEl.textContent = f ? f.name : 'No file selected';
       });
-
-      uploadInput.addEventListener('change', async (e) => {
-        // ... your existing upload code remains the same up to the fetch() ...
-        // After you parse `data`:
-
-        // reset status box classes first
-        statusBox.classList.remove('hidden', 'success', 'error');
-
-        if (!res.ok || !data.ok) {
-          const errs = (data.errors || [data.error]).filter(Boolean);
-          statusBox.classList.add('error');
-          statusBox.innerHTML = `
-            <div class="font-semibold mb-1">Upload failed</div>
-            <ul class="list-disc list-inside text-sm">
-              ${errs.map(x => `<li>${x}</li>`).join('')}
-            </ul>`;
-          setupFlagEl.value = 'false';
-          return;
-        }
-
-        statusBox.classList.add('success');
-        statusBox.innerHTML = `
-          <div class="font-semibold">Upload successful</div>
-          <div class="text-sm mt-1">
-            Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}<br/>
-            Venues created: ${data.created_venues} · Updated: ${data.updated_venues}
-          </div>`;
-        setupFlagEl.value = 'true';
-
-        // Optional: ensure the status is visible if the card is tall
-        statusBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      });
     }
-  </script>
 
+    // --- Calendar Logic ---
+    function showCalendarIfReady() {
+      const ok = document.getElementById('setup_complete')?.value === 'true';
+      document.getElementById('calendar_wrap').classList.toggle('hidden', !ok);
+    }
+
+    // Placeholder for calendar initialization (to be implemented)
+    function initCalendar() {
+      console.log('Calendar initialization placeholder');
+      // Add FullCalendar or custom calendar logic here
+    }
+
+    // Override nextStep to include calendar visibility
+    const _origNextStep = nextStep;
+    nextStep = async function() {
+      await _origNextStep();
+      if (currentStep === 3) {
+        showCalendarIfReady();
+        if (!window.__calendarInitRan) {
+          __calendarInitRan = true;
+          initCalendar();
+        }
+      }
+    };
+  </script>
 </body>
 </html>

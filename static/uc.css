@@ -760,3 +760,31 @@
   background: #fef2f2; border-color: #ef4444; color: #7f1d1d;
 }
 
+/* step 3 calendar (part b)*/
+/* === Calendar === */
+.cal-toolbar{display:flex; align-items:center; gap:8px; padding:10px 12px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; margin-bottom:10px;}
+.cal-btn{font-size:14px; padding:6px 10px; border:1px solid #d1d5db; border-radius:8px; background:#fff;}
+.cal-btn:hover{background:#f9fafb;}
+.cal-btn.primary{background:#111827; color:#fff; border-color:#111827;}
+.cal-btn.danger{border-color:#ef4444; color:#b91c1c;}
+.cal-title{margin-left:8px;}
+.cal-checkbox{width:16px; height:16px;}
+
+.cal-grid{position:relative; display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; min-height:540px;}
+.cal-col{position:relative; background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden;}
+.cal-col__label{padding:10px; border-bottom:1px solid #e5e7eb; font-size:12px; color:#111827;}
+.cal-col__sub{font-size:11px; color:#6b7280;}
+.cal-col__body{position:relative; height:640px; background-image: linear-gradient(to bottom, rgba(229,231,235,.8) 1px, transparent 1px); background-size: 100% 24px;}
+.cal-col--disabled .cal-col__body{opacity:.5; pointer-events:none;}
+
+.cal-block{position:absolute; left:8px; right:8px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:6px; font-size:12px; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.cal-block.draft{background:#e5f7ff; border-color:#bae6fd; outline: 2px dashed #38bdf8;}
+
+.cal-inspector{position:fixed; right:24px; top:90px; width:320px; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 10px 24px rgba(0,0,0,.08); display:flex; flex-direction:column;}
+.cal-inspector__header{padding:12px 14px; border-bottom:1px solid #e5e7eb; font-weight:700;}
+.cal-inspector__body{padding:12px 14px; font-size:14px;}
+.cal-inspector__body .row{display:flex; justify-content:space-between; margin-bottom:6px; color:#374151;}
+.cal-input{width:100%; border:1px solid #d1d5db; border-radius:8px; padding:8px;}
+.cal-inspector__footer{display:flex; gap:8px; justify-content:flex-end; padding:10px 14px; border-top:1px solid #e5e7eb;}
+
+
