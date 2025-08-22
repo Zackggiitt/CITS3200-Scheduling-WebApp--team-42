@@ -251,11 +251,11 @@ def download_setup_csv_template():
     writer.writeheader()
 
     # --- SAMPLE ROWS (for debugging only, uncomment if needed) ---
-    # writer.writerow({"facilitator_email": "alex@example.edu", "venue_name": ""})
-    # writer.writerow({"facilitator_email": "riley@example.edu", "venue_name": ""})
-    # writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.07"})
-    # writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.12"})
-    # writer.writerow({"facilitator_email": "sam@example.edu", "venue_name": "Engineering Hub 3.01"})
+    writer.writerow({"facilitator_email": "alex@example.edu", "venue_name": ""})
+    writer.writerow({"facilitator_email": "riley@example.edu", "venue_name": ""})
+    writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.07"})
+    writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.12"})
+    writer.writerow({"facilitator_email": "sam@example.edu", "venue_name": "Engineering Hub 3.01"})
 
     mem = BytesIO(sio.getvalue().encode("utf-8"))
     mem.seek(0)
@@ -353,6 +353,7 @@ def upload_setup_csv():
             "created_users": created_users,
             "linked_facilitators": linked_facilitators,
             "created_venues": created_venues,
+            "updated_venues": 0,          # keep for UI compatibility
             "errors": errors[:20],
         }), 400
 
@@ -361,4 +362,7 @@ def upload_setup_csv():
         "created_users": created_users,
         "linked_facilitators": linked_facilitators,
         "created_venues": created_venues,
-    })
+        "updated_venues": 0,              # keep for UI compatibility
+    }), 200
+
+
