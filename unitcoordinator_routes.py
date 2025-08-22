@@ -2,7 +2,7 @@ import logging
 import csv
 import re
 from io import StringIO, BytesIO
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy import and_, func
 
 from flask import (
@@ -423,11 +423,113 @@ def upload_setup_csv():
     }), 200
 
 
+# ---------- Step 3B: Calendar / Sessions ----------
+@unitcoordinator_bp.get("/units/<int:unit_id>/calendar")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def calendar_week(unit_id: int):
+    """Return sessions that intersect the visible week."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    week_start_raw = (request.args.get("week_start") or "").strip()  # YYYY-MM-DD
+    try:
+        week_start = datetime.strptime(week_start_raw, "%Y-%m-%d").date()
+    except Exception:
+        return jsonify({"ok": False, "error": "Invalid week_start format (use YYYY-MM-DD)"}), 400
+
+    week_end = week_start + timedelta(days=7)  # exclusive
+    sessions = (
+        Session.query.join(Module)
+        .filter(
+            Module.unit_id == unit.id,
+            Session.start_time < datetime.combine(week_end, datetime.min.time()),
+            Session.end_time >= datetime.combine(week_start, datetime.min.time()),
+        )
+        .order_by(Session.start_time.asc())
+        .all()
+    )
+
+    return jsonify({
+        "ok": True,
+        "unit_range": {
+            "start": unit.start_date.isoformat() if unit.start_date else None,
+            "end": unit.end_date.isoformat() if unit.end_date else None,
+        },
+        "sessions": [_serialize_session(s) for s in sessions],
+    })
+
+
+@unitcoordinator_bp.post("/units/<int:unit_id>/sessions")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def create_session(unit_id: int):
+    """Create a simple session (uses a per-unit 'General' module)."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"ok": False, "error": "Invalid or missing JSON data"}), 400
+
+    start_raw = (data.get("start") or "").strip()
+    end_raw = (data.get("end") or "").strip()
+    venue = (data.get("venue") or "").strip()
+
+    # Validate datetime inputs
+    start_dt = _parse_dt(start_raw)
+    end_dt = _parse_dt(end_raw)
+    if not start_dt or not end_dt:
+        return jsonify({"ok": False, "error": "Invalid datetime format (use YYYY-MM-DDTHH:MM)"}), 400
+    if end_dt <= start_dt:
+        return jsonify({"ok": False, "error": "End time must be after start time"}), 400
+
+    # Range guard
+    if unit.start_date and start_dt.date() < unit.start_date:
+        return jsonify({"ok": False, "error": "Session start date is before unit start date"}), 400
+    if unit.end_date and end_dt.date() > unit.end_date:
+        return jsonify({"ok": False, "error": "Session end date is after unit end date"}), 400
+
+    # Validate venue if provided
+    if venue:
+        venue_rec = db.session.query(Venue).filter(func.lower(Venue.name) == venue.lower()).first()
+        if not venue_rec:
+            return jsonify({"ok": False, "error": f"Venue '{venue}' not found"}), 404
+        unit_venue = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue_rec.id).first()
+        if not unit_venue:
+            return jsonify({"ok": False, "error": f"Venue '{venue}' not linked to this unit"}), 400
+
+    # Create session
+    mod = _get_or_create_default_module(unit)
+    session = Session(
+        module_id=mod.id,
+        session_type="general",
+        start_time=start_dt,
+        end_time=end_dt,
+        day_of_week=start_dt.weekday(),
+        location=venue or None,
+        required_skills=None,
+        max_facilitators=1,
+    )
+    db.session.add(session)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
+
+    return jsonify({"ok": True, "session": _serialize_session(session)}), 201
+
+
 @unitcoordinator_bp.put("/sessions/<int:session_id>")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def update_session(session_id: int):
-    """Move/resize or update venue for a session."""
+    """Move/resize or update venue for an existing session."""
     user = get_current_user()
     session = Session.query.get(session_id)
     if not session or session.module.unit.created_by != user.id:
@@ -467,7 +569,7 @@ def update_session(session_id: int):
         else:
             session.location = None
 
-    # Range guard
+    # Range and sanity checks
     if unit.start_date and session.start_time.date() < unit.start_date:
         return jsonify({"ok": False, "error": "Session start date is before unit start date"}), 400
     if unit.end_date and session.end_time.date() > unit.end_date:

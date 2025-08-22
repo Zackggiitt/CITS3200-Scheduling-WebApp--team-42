@@ -651,5 +651,233 @@
       }
     };
   </script>
+
+  <script>
+    // === Calendar core ===
+    const unitId     = () => document.getElementById('unit_id').value;
+    const startDMY   = () => document.querySelector('[name="start_date"]').value;
+    const endDMY     = () => document.querySelector('[name="end_date"]').value;
+    const toIsoDate  = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const pad2 = (n) => String(n).padStart(2,'0');
+
+    function fromDMY(str){ // "DD/MM/YYYY" -> Date
+      const [dd,mm,yy] = str.split('/').map(Number);
+      return new Date(yy, mm-1, dd);
+    }
+
+    let weekStart;         // Date of Monday currently shown
+    let sessions = [];     // [{id,title,start,end,venue}]
+    let draft = null;      // in-progress block (not yet saved)
+
+    function mondayOf(d) {
+      const t = new Date(d);
+      const day = (t.getDay()+6)%7; // 0=Mon
+      t.setDate(t.getDate() - day);
+      t.setHours(0,0,0,0);
+      return t;
+    }
+
+    function initCalendar(){
+      weekStart = mondayOf(new Date());
+      bindToolbar();
+      renderWeek();
+    }
+
+    function bindToolbar(){
+      document.getElementById('prevWeek').onclick = () => { weekStart.setDate(weekStart.getDate()-7); renderWeek(); };
+      document.getElementById('nextWeek').onclick = () => { weekStart.setDate(weekStart.getDate()+7); renderWeek(); };
+      document.getElementById('goToday').onclick  = () => { weekStart = mondayOf(new Date()); renderWeek(); };
+    }
+
+    async function renderWeek(){
+      const grid = document.getElementById('calGrid');
+      grid.innerHTML = '';
+      const ws = new Date(weekStart);
+      const we = new Date(weekStart); we.setDate(we.getDate()+6);
+
+      document.getElementById('calWeekTitle').textContent =
+        `Week of ${ws.toLocaleDateString(undefined, {month:'long', day:'numeric', year:'numeric'})}`;
+      document.getElementById('calWeekRange').textContent =
+        `${(ws.getMonth()+1)}/${ws.getDate()}/${ws.getFullYear()} – ${(we.getMonth()+1)}/${we.getDate()}/${we.getFullYear()}`;
+
+      await fetchWeekSessions();
+
+      // Build 7 columns * 24h with 30-min slots
+      const startRange = fromDMY(startDMY());
+      const endRange   = fromDMY(endDMY());
+
+      for (let d=0; d<7; d++){
+        const col = document.createElement('div');
+        col.className = 'cal-col';
+        const dayDate = new Date(weekStart); dayDate.setDate(dayDate.getDate()+d);
+        const label = document.createElement('div');
+        label.className='cal-col__label';
+        label.innerHTML = `<div>${dayDate.toLocaleDateString(undefined,{weekday:'short'})}</div>
+                          <div>${pad2(dayDate.getDate())} ${dayDate.toLocaleDateString(undefined,{month:'short'})}</div>
+                          <div class="cal-col__sub">${(dayDate < startRange || dayDate > endRange) ? 'Outside range' : '&nbsp;'}</div>`;
+        col.appendChild(label);
+
+        const body = document.createElement('div');
+        body.className = 'cal-col__body';
+        const outside = (dayDate < startRange || dayDate > endRange);
+        if (!outside) {
+          body.addEventListener('mousedown', (e)=> beginDraft(e, dayDate));
+        } else {
+          body.classList.add('cal-col--disabled');
+        }
+        col.appendChild(body);
+        grid.appendChild(col);
+      }
+
+      // Render saved sessions that intersect this week
+      for (const s of sessions){
+        const sd = new Date(s.start);
+        if (sd < new Date(weekStart) || sd >= new Date(weekStart.getTime()+7*86400000)) continue;
+        placeBlock(s, false);
+      }
+    }
+
+    async function fetchWeekSessions(){
+      const res = await fetch(
+        `{{ url_for('unitcoordinator.calendar_week', unit_id='__ID__') }}`
+          .replace('__ID__', unitId())
+        + `?week_start=${toIsoDate(weekStart)}`
+      );
+      const data = await res.json();
+      if (!res.ok || !data.ok){ console.warn(data); sessions = []; return; }
+      sessions = data.sessions || [];
+    }
+
+    // --- Draft creation by drag ---
+    let dragStartMin = null;
+
+    function beginDraft(e, dayDate){
+      const target = e.currentTarget;
+      const rect = target.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const minutesFromMidnight = Math.floor((y / rect.height) * 24 * 60);
+      dragStartMin = Math.floor(minutesFromMidnight / 30) * 30; // 30-min grid
+
+      draft = {
+        id: null,
+        start: toSlotISO(dayDate, dragStartMin),
+        end:   toSlotISO(dayDate, dragStartMin + 180), // default 3h
+        venue: ''
+      };
+      placeBlock(draft, true);
+
+      const onMove = (ev)=>{
+        const y2 = ev.clientY - rect.top;
+        const m2 = Math.max(0, Math.min(24*60, Math.floor((y2/rect.height)*24*60)));
+        const snapped = Math.max(dragStartMin+30, Math.floor(m2/30)*30);
+        draft.end = toSlotISO(dayDate, snapped);
+        placeBlock(draft, true);
+      };
+      const onUp = ()=>{
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        openInspector(draft);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+
+    function toSlotISO(dayDate, mins){
+      const hh = Math.floor(mins/60), mm = mins%60;
+      return `${toIsoDate(dayDate)}T${pad2(hh)}:${pad2(mm)}`;
+    }
+
+    function placeBlock(item, isDraft){
+      // find column
+      const dayIdx = (new Date(item.start).getDay()+6)%7;
+      const colBody = document.querySelectorAll('.cal-col .cal-col__body')[dayIdx];
+      if (!colBody) return;
+
+      // remove previous draft
+      if (isDraft) colBody.querySelectorAll('.cal-block.draft').forEach(n=>n.remove());
+
+      const rect = colBody.getBoundingClientRect();
+      const start = new Date(item.start), end = new Date(item.end);
+      const top = ((start.getHours()*60 + start.getMinutes()) / (24*60)) * rect.height;
+      const height = ((end - start) / 60000) / (24*60) * rect.height;
+
+      const el = document.createElement('div');
+      el.className = 'cal-block' + (isDraft ? ' draft' : '');
+      el.style.top = `${top}px`;
+      el.style.height = `${height}px`;
+      el.textContent = (item.title || 'New Session');
+      el.onclick = ()=> openInspector(item);
+      colBody.appendChild(el);
+    }
+
+    // --- Inspector (create/update/delete) ---
+    const insp = {
+      wrap:    document.getElementById('calInspector'),
+      day:     document.getElementById('inspDay'),
+      time:    document.getElementById('inspTime'),
+      dur:     document.getElementById('inspDur'),
+      date:    document.getElementById('inspDate'),
+      venue:   document.getElementById('inspVenue'),
+      save:    document.getElementById('inspSave'),
+      cancel:  document.getElementById('inspCancel'),
+      del:     document.getElementById('inspDelete'),
+    };
+    let editing = null;
+
+    function openInspector(item){
+      editing = item;
+      const s = new Date(item.start), e = new Date(item.end);
+      insp.day.textContent = s.toLocaleDateString(undefined,{weekday:'long'});
+      insp.time.textContent = `${pad2(s.getHours())}:${pad2(s.getMinutes())} – ${pad2(e.getHours())}:${pad2(e.getMinutes())}`;
+      insp.dur.textContent = `${Math.round((e-s)/60000)} minutes`;
+      insp.date.textContent = s.toLocaleDateString();
+      insp.venue.value = item.venue || '';
+      insp.del.classList.toggle('hidden', !item.id);
+      insp.wrap.classList.remove('hidden');
+    }
+
+    insp.cancel.onclick = ()=> { insp.wrap.classList.add('hidden'); };
+    insp.del.onclick = async ()=>{
+      if (!editing?.id) return;
+      const res = await fetch(`{{ url_for('unitcoordinator.delete_session', session_id='__ID__') }}`.replace('__ID__', editing.id), { method:'DELETE', headers:{'X-CSRFToken': CSRF_TOKEN }});
+      if (res.ok){
+        sessions = sessions.filter(s=>s.id!==editing.id);
+        renderWeek();
+        insp.wrap.classList.add('hidden');
+      }
+    };
+    insp.save.onclick = async ()=>{
+      const payload = {...editing, venue: insp.venue.value.trim()};
+      if (!editing.id){
+        // create
+        const res = await fetch(`{{ url_for('unitcoordinator.create_session', unit_id='__UID__') }}`.replace('__UID__', unitId()), {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-CSRFToken': CSRF_TOKEN},
+          body: JSON.stringify({ start: payload.start, end: payload.end, venue: payload.venue })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok){
+          sessions.push(data.session);
+          insp.wrap.classList.add('hidden');
+          renderWeek();
+        } else alert(data.error || 'Failed to save');
+      } else {
+        // update
+        const res = await fetch(`{{ url_for('unitcoordinator.update_session', session_id='__ID__') }}`.replace('__ID__', editing.id), {
+          method:'PUT',
+          headers:{'Content-Type':'application/json','X-CSRFToken': CSRF_TOKEN},
+          body: JSON.stringify({ start: payload.start, end: payload.end, venue: payload.venue })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok){
+          const idx = sessions.findIndex(s=>s.id===editing.id);
+          sessions[idx] = data.session;
+          insp.wrap.classList.add('hidden');
+          renderWeek();
+        } else alert(data.error || 'Failed to update');
+      }
+    };
+  </script>
+
 </body>
 </html>
