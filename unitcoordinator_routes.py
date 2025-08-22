@@ -14,7 +14,7 @@ from flask import (
 from auth import login_required, get_current_user
 from utils import role_required
 from models import db
-from models import UserRole, Unit, User, Venue, UnitFacilitator
+from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -339,9 +339,13 @@ def upload_setup_csv():
         if venue_name:
             venue = Venue.query.filter_by(name=venue_name).first()
             if not venue:
-                venue = Venue(name=venue_name)  # capacity/location unknown from this CSV
+                venue = Venue(name=venue_name)
                 db.session.add(venue)
-                created_venues += 1
+                created_venues += 1  # newly cataloged venue
+            # Always ensure unit-scoped link exists
+            link = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first()
+            if not link:
+                db.session.add(UnitVenue(unit_id=unit.id, venue_id=venue.id))
 
         # If a row is entirely blank, silently ignore it (no error)
 
