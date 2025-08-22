@@ -15,8 +15,34 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 
+  <!-- FullCalendar -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
+
   <!-- App CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}" />
+  <style>
+    /* small helper styles for “Outside range” label on day headers */
+    .fc-daygrid-day.out-of-range,
+    .fc-timegrid-col.out-of-range {
+      opacity: .5;
+      pointer-events: none;
+      background-image: repeating-linear-gradient(
+        -45deg, rgba(229,231,235,.8), rgba(229,231,235,.8) 6px, transparent 6px, transparent 12px
+      );
+    }
+    .fc-col-header-cell .fc-outside-chip {
+      display: inline-block;
+      font-size: 10px;
+      color: #6b7280;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 9999px;
+      padding: 2px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+  </style>
 </head>
 <body class="bg-gray-50">
   <!-- HEADER -->
@@ -213,7 +239,7 @@
           </div>
         </section>
 
-        <!-- STEP 3: Sessions (CSV bootstrap) -->
+        <!-- STEP 3: Sessions -->
         <section class="wizard-step hidden" data-step="3" aria-labelledby="sessions-setup-title">
           <h2 id="sessions-setup-title">Sessions</h2>
           <p class="subtext">Teaching sessions & schedule</p>
@@ -257,7 +283,9 @@
               </div>
             </div>
           </div>
+
           <input type="hidden" name="setup_complete" id="setup_complete" value="false"/>
+
           <!-- STEP 3B: Calendar -->
           <div id="calendar_wrap" class="mt-4 hidden">
             <div class="cal-toolbar">
@@ -273,7 +301,9 @@
                 Show holidays
               </label>
             </div>
-            <div class="cal-grid" id="calGrid" aria-label="Session Schedule"></div>
+
+            <div id="calGrid" class="mt-2" aria-label="Session Schedule"></div>
+
             <!-- Right-side inspector -->
             <aside id="calInspector" class="cal-inspector hidden" aria-live="polite">
               <div class="cal-inspector__header">Session Overview</div>
@@ -310,6 +340,15 @@
   <script>
     // --- CSRF Token ---
     const CSRF_TOKEN = document.querySelector('input[name="csrf_token"]')?.value || '';
+
+    // --- Route templates built safely with numeric placeholders we can replace ---
+    const CAL_WEEK_TEMPLATE   = "{{ url_for('unitcoordinator.calendar_week',  unit_id=0) }}";
+    const CREATE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.create_session', unit_id=0) }}";
+    const UPDATE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.update_session', session_id=0) }}";
+    const DELETE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.delete_session', session_id=0) }}";
+
+    function withUnitId(tpl, id)     { return tpl.replace(/\/0(\/|$)/, `/${id}$1`); }
+    function withSessionId(tpl, id)  { return tpl.replace(/0(\/|$)/, `${id}$1`); }
 
     // --- Modal open/close ---
     function openCreateUnitModal() {
@@ -362,7 +401,7 @@
       });
     }
 
-    // --- Date utilities ---
+    // --- Date utils ---
     const DATE_FMT = "d/m/Y"; // what we show/store in hidden inputs
 
     function parseDMY(str) {
@@ -372,7 +411,9 @@
       const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
       return isNaN(d) ? null : d;
     }
-
+    function toIsoDate(d) {
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
     function formatUS(d) { // M/D/YYYY
       return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
     }
@@ -500,7 +541,7 @@
     }
     function prevStep() { setStep(Math.max(1, currentStep - 1)); }
 
-    // --- Helpers for draft unit ---
+    // --- Draft helper (creates or finds the unit and sets #unit_id) ---
     function readUnitBasics() {
       const f = document.getElementById('create-unit-form');
       return {
@@ -538,7 +579,7 @@
       return data.unit_id;
     }
 
-    // --- CSV Upload ---
+    // --- CSV Upload (Step 3a) ---
     const uploadInput = document.getElementById('setup_csv');
     const statusBox = document.getElementById('upload_status');
     const setupFlagEl = document.getElementById('setup_complete');
@@ -601,14 +642,15 @@
               Venues created: ${data.created_venues} · Linked: ${data.linked_venues} · Updated: ${data.updated_venues}
             </div>`;
           setupFlagEl.value = 'true';
-          fileNameEl.textContent = file.name; // Keep file name after successful upload
           statusBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
-          // Show calendar after successful upload
+          // reveal & init calendar
           showCalendarIfReady();
           if (!window.__calendarInitRan) {
-            __calendarInitRan = true;
+            window.__calendarInitRan = true;
             initCalendar();
+          } else {
+            refreshCalendarRange(); // if already running, update valid range/labels
           }
         } catch (err) {
           console.error(err);
@@ -626,258 +668,228 @@
       });
     }
 
-    // --- Calendar Logic ---
     function showCalendarIfReady() {
       const ok = document.getElementById('setup_complete')?.value === 'true';
       document.getElementById('calendar_wrap').classList.toggle('hidden', !ok);
     }
 
-    // Placeholder for calendar initialization (to be implemented)
-    function initCalendar() {
-      console.log('Calendar initialization placeholder');
-      // Add FullCalendar or custom calendar logic here
+    // --- Calendar (Step 3b) with FullCalendar ---
+    let calendar;
+
+    function getRange() {
+      const s = parseDMY(document.querySelector('[name="start_date"]')?.value?.trim() || '');
+      const e = parseDMY(document.querySelector('[name="end_date"]')?.value?.trim() || '');
+      return { start: s, end: e };
     }
 
-    // Override nextStep to include calendar visibility
+    function isOutOfRange(date) {
+      const { start, end } = getRange();
+      if (!start || !end) return false;
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const s = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      const e = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+      return d < s || d > e;
+    }
+
+    function labelOutsideInHeader() {
+      // add/removes the small “Outside range” chip in the header for each day column
+      const headerCells = document.querySelectorAll('.fc-col-header .fc-col-header-cell');
+      headerCells.forEach(cell => {
+        const dateStr = cell.getAttribute('data-date'); // FullCalendar sets data-date on headers
+        if (!dateStr) return;
+        const d = new Date(dateStr);
+        let chip = cell.querySelector('.fc-outside-chip');
+        const out = isOutOfRange(d);
+        if (out) {
+          if (!chip) {
+            chip = document.createElement('span');
+            chip.className = 'fc-outside-chip';
+            chip.textContent = 'Outside range';
+            cell.appendChild(chip);
+          }
+        } else if (chip) {
+          chip.remove();
+        }
+      });
+    }
+
+    function stampOutsideOnBody() {
+      // gray out time columns (timeGrid) and day cells (dayGrid) that are out of range
+      document.querySelectorAll('.fc-timegrid-col, .fc-daygrid-day').forEach(el => {
+        const dateStr = el.getAttribute('data-date');
+        if (!dateStr) return;
+        const out = isOutOfRange(new Date(dateStr));
+        el.classList.toggle('out-of-range', out);
+      });
+    }
+
+    function updateToolbarTitle() {
+      const titleEl = document.getElementById('calWeekTitle');
+      const rangeEl = document.getElementById('calWeekRange');
+      const view = calendar.view;
+      const s = new Date(view.activeStart);
+      const e = new Date(view.activeEnd);
+      const ws = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+      const we = new Date(e.getFullYear(), e.getMonth(), e.getDate() - 1); // activeEnd is exclusive
+
+      titleEl.textContent = `Week of ${ws.toLocaleDateString(undefined, { month:'long', day:'numeric', year:'numeric' })}`;
+      rangeEl.textContent = `${ws.getMonth()+1}/${ws.getDate()}/${ws.getFullYear()} – ${we.getMonth()+1}/${we.getDate()}/${we.getFullYear()}`;
+    }
+
+    function refreshCalendarRange() {
+      // we’re not using validRange to keep out-of-range visible + labeled;
+      // instead, we mark cells and block clicks.
+      calendar.render(); // ensure DOM present
+      updateToolbarTitle();
+      labelOutsideInHeader();
+      stampOutsideOnBody();
+      calendar.refetchEvents();
+    }
+
+    function initCalendar() {
+      const calendarEl = document.getElementById('calGrid');
+      const inspector = document.getElementById('calInspector');
+      const unitId = document.getElementById('unit_id').value;
+
+      calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        headerToolbar: false,
+        firstDay: 1, // Monday
+        allDaySlot: false,
+        slotDuration: '00:30:00',
+        nowIndicator: true,
+
+        // fetch sessions for whatever week is visible
+        events: async (fetchInfo, successCallback, failureCallback) => {
+          try {
+            const weekStart = fetchInfo.startStr.split('T')[0];
+            const res = await fetch(`${withUnitId(CAL_WEEK_TEMPLATE, unitId)}?week_start=${weekStart}`, {
+              headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+            const data = await res.json();
+            if (res.ok && data.ok) {
+              // Expecting data.sessions to be FC-event-ish objects
+              successCallback(data.sessions);
+            } else {
+              failureCallback(new Error(data.error || 'Failed to load sessions'));
+            }
+          } catch (err) {
+            failureCallback(err);
+          }
+        },
+
+        datesSet: () => {
+          updateToolbarTitle();
+          // Small delay to ensure header/body DOM is ready
+          setTimeout(() => {
+            labelOutsideInHeader();
+            stampOutsideOnBody();
+          }, 0);
+        },
+
+        dayCellDidMount: (arg) => {
+          // ensure headers get data-date for our chip helper
+          if (arg.el.classList.contains('fc-col-header-cell')) {
+            arg.el.setAttribute('data-date', arg.dateStr);
+          }
+        },
+
+        dateClick: async (info) => {
+          const d = new Date(info.dateStr);
+          if (isOutOfRange(d)) return; // block clicks outside range
+
+          const start = info.dateStr.slice(0,16);
+          const end = new Date(info.date.getTime() + 60 * 60 * 1000).toISOString().slice(0,16);
+          const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, unitId), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+            body: JSON.stringify({ start, end, venue: '' })
+          });
+          const data = await res.json();
+          if (!data.ok) {
+            alert(data.error || 'Failed to create session');
+          } else {
+            calendar.refetchEvents();
+          }
+        },
+
+        eventClick: (info) => {
+          // open inspector
+          const ev = info.event;
+          const start = ev.start;
+          const end = ev.end || new Date(ev.start.getTime() + 60*60*1000);
+          document.getElementById('inspDay').textContent  = start.toLocaleDateString('en-US', { weekday: 'long' });
+          document.getElementById('inspTime').textContent = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+          document.getElementById('inspDur').textContent  = `${Math.round((end - start)/60000)} minutes`;
+          document.getElementById('inspDate').textContent = start.toLocaleDateString();
+          document.getElementById('inspVenue').value      = ev.extendedProps.venue || '';
+          document.getElementById('inspDelete').classList.remove('hidden');
+          inspector.classList.remove('hidden');
+
+          // wire actions
+          document.getElementById('inspSave').onclick = async () => {
+            const payload = {
+              start: ev.start.toISOString().slice(0,16),
+              end: (ev.end || new Date(ev.start.getTime() + 60*60*1000)).toISOString().slice(0,16),
+              venue: document.getElementById('inspVenue').value
+            };
+            const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+              body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!data.ok) {
+              alert(data.error || 'Failed to update');
+            } else {
+              inspector.classList.add('hidden');
+              calendar.refetchEvents();
+            }
+          };
+
+          document.getElementById('inspDelete').onclick = async () => {
+            if (!confirm('Delete this session?')) return;
+            const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
+              method: 'DELETE',
+              headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+            const data = await res.json();
+            if (!data.ok) {
+              alert(data.error || 'Failed to delete');
+            } else {
+              inspector.classList.add('hidden');
+              calendar.refetchEvents();
+            }
+          };
+
+          document.getElementById('inspCancel').onclick = () => inspector.classList.add('hidden');
+        }
+      });
+
+      calendar.render();
+
+      // external toolbar controls
+      document.getElementById('prevWeek').onclick = () => calendar.prev();
+      document.getElementById('nextWeek').onclick = () => calendar.next();
+      document.getElementById('goToday').onclick  = () => calendar.today();
+
+      refreshCalendarRange();
+    }
+
+    // show calendar when landing on step 3
     const _origNextStep = nextStep;
     nextStep = async function() {
       await _origNextStep();
       if (currentStep === 3) {
         showCalendarIfReady();
-        if (!window.__calendarInitRan) {
-          __calendarInitRan = true;
+        if (!window.__calendarInitRan && document.getElementById('setup_complete')?.value === 'true') {
+          window.__calendarInitRan = true;
           initCalendar();
+        } else if (window.__calendarInitRan) {
+          refreshCalendarRange();
         }
       }
     };
   </script>
-
-  <script>
-    // === Calendar core ===
-    const unitId     = () => document.getElementById('unit_id').value;
-    const startDMY   = () => document.querySelector('[name="start_date"]').value;
-    const endDMY     = () => document.querySelector('[name="end_date"]').value;
-    const toIsoDate  = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const pad2 = (n) => String(n).padStart(2,'0');
-
-    function fromDMY(str){ // "DD/MM/YYYY" -> Date
-      const [dd,mm,yy] = str.split('/').map(Number);
-      return new Date(yy, mm-1, dd);
-    }
-
-    let weekStart;         // Date of Monday currently shown
-    let sessions = [];     // [{id,title,start,end,venue}]
-    let draft = null;      // in-progress block (not yet saved)
-
-    function mondayOf(d) {
-      const t = new Date(d);
-      const day = (t.getDay()+6)%7; // 0=Mon
-      t.setDate(t.getDate() - day);
-      t.setHours(0,0,0,0);
-      return t;
-    }
-
-    function initCalendar(){
-      weekStart = mondayOf(new Date());
-      bindToolbar();
-      renderWeek();
-    }
-
-    function bindToolbar(){
-      document.getElementById('prevWeek').onclick = () => { weekStart.setDate(weekStart.getDate()-7); renderWeek(); };
-      document.getElementById('nextWeek').onclick = () => { weekStart.setDate(weekStart.getDate()+7); renderWeek(); };
-      document.getElementById('goToday').onclick  = () => { weekStart = mondayOf(new Date()); renderWeek(); };
-    }
-
-    async function renderWeek(){
-      const grid = document.getElementById('calGrid');
-      grid.innerHTML = '';
-      const ws = new Date(weekStart);
-      const we = new Date(weekStart); we.setDate(we.getDate()+6);
-
-      document.getElementById('calWeekTitle').textContent =
-        `Week of ${ws.toLocaleDateString(undefined, {month:'long', day:'numeric', year:'numeric'})}`;
-      document.getElementById('calWeekRange').textContent =
-        `${(ws.getMonth()+1)}/${ws.getDate()}/${ws.getFullYear()} – ${(we.getMonth()+1)}/${we.getDate()}/${we.getFullYear()}`;
-
-      await fetchWeekSessions();
-
-      // Build 7 columns * 24h with 30-min slots
-      const startRange = fromDMY(startDMY());
-      const endRange   = fromDMY(endDMY());
-
-      for (let d=0; d<7; d++){
-        const col = document.createElement('div');
-        col.className = 'cal-col';
-        const dayDate = new Date(weekStart); dayDate.setDate(dayDate.getDate()+d);
-        const label = document.createElement('div');
-        label.className='cal-col__label';
-        label.innerHTML = `<div>${dayDate.toLocaleDateString(undefined,{weekday:'short'})}</div>
-                          <div>${pad2(dayDate.getDate())} ${dayDate.toLocaleDateString(undefined,{month:'short'})}</div>
-                          <div class="cal-col__sub">${(dayDate < startRange || dayDate > endRange) ? 'Outside range' : '&nbsp;'}</div>`;
-        col.appendChild(label);
-
-        const body = document.createElement('div');
-        body.className = 'cal-col__body';
-        const outside = (dayDate < startRange || dayDate > endRange);
-        if (!outside) {
-          body.addEventListener('mousedown', (e)=> beginDraft(e, dayDate));
-        } else {
-          body.classList.add('cal-col--disabled');
-        }
-        col.appendChild(body);
-        grid.appendChild(col);
-      }
-
-      // Render saved sessions that intersect this week
-      for (const s of sessions){
-        const sd = new Date(s.start);
-        if (sd < new Date(weekStart) || sd >= new Date(weekStart.getTime()+7*86400000)) continue;
-        placeBlock(s, false);
-      }
-    }
-
-    async function fetchWeekSessions(){
-      const res = await fetch(
-        `{{ url_for('unitcoordinator.calendar_week', unit_id='__ID__') }}`
-          .replace('__ID__', unitId())
-        + `?week_start=${toIsoDate(weekStart)}`
-      );
-      const data = await res.json();
-      if (!res.ok || !data.ok){ console.warn(data); sessions = []; return; }
-      sessions = data.sessions || [];
-    }
-
-    // --- Draft creation by drag ---
-    let dragStartMin = null;
-
-    function beginDraft(e, dayDate){
-      const target = e.currentTarget;
-      const rect = target.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      const minutesFromMidnight = Math.floor((y / rect.height) * 24 * 60);
-      dragStartMin = Math.floor(minutesFromMidnight / 30) * 30; // 30-min grid
-
-      draft = {
-        id: null,
-        start: toSlotISO(dayDate, dragStartMin),
-        end:   toSlotISO(dayDate, dragStartMin + 180), // default 3h
-        venue: ''
-      };
-      placeBlock(draft, true);
-
-      const onMove = (ev)=>{
-        const y2 = ev.clientY - rect.top;
-        const m2 = Math.max(0, Math.min(24*60, Math.floor((y2/rect.height)*24*60)));
-        const snapped = Math.max(dragStartMin+30, Math.floor(m2/30)*30);
-        draft.end = toSlotISO(dayDate, snapped);
-        placeBlock(draft, true);
-      };
-      const onUp = ()=>{
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
-        openInspector(draft);
-      };
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
-    }
-
-    function toSlotISO(dayDate, mins){
-      const hh = Math.floor(mins/60), mm = mins%60;
-      return `${toIsoDate(dayDate)}T${pad2(hh)}:${pad2(mm)}`;
-    }
-
-    function placeBlock(item, isDraft){
-      // find column
-      const dayIdx = (new Date(item.start).getDay()+6)%7;
-      const colBody = document.querySelectorAll('.cal-col .cal-col__body')[dayIdx];
-      if (!colBody) return;
-
-      // remove previous draft
-      if (isDraft) colBody.querySelectorAll('.cal-block.draft').forEach(n=>n.remove());
-
-      const rect = colBody.getBoundingClientRect();
-      const start = new Date(item.start), end = new Date(item.end);
-      const top = ((start.getHours()*60 + start.getMinutes()) / (24*60)) * rect.height;
-      const height = ((end - start) / 60000) / (24*60) * rect.height;
-
-      const el = document.createElement('div');
-      el.className = 'cal-block' + (isDraft ? ' draft' : '');
-      el.style.top = `${top}px`;
-      el.style.height = `${height}px`;
-      el.textContent = (item.title || 'New Session');
-      el.onclick = ()=> openInspector(item);
-      colBody.appendChild(el);
-    }
-
-    // --- Inspector (create/update/delete) ---
-    const insp = {
-      wrap:    document.getElementById('calInspector'),
-      day:     document.getElementById('inspDay'),
-      time:    document.getElementById('inspTime'),
-      dur:     document.getElementById('inspDur'),
-      date:    document.getElementById('inspDate'),
-      venue:   document.getElementById('inspVenue'),
-      save:    document.getElementById('inspSave'),
-      cancel:  document.getElementById('inspCancel'),
-      del:     document.getElementById('inspDelete'),
-    };
-    let editing = null;
-
-    function openInspector(item){
-      editing = item;
-      const s = new Date(item.start), e = new Date(item.end);
-      insp.day.textContent = s.toLocaleDateString(undefined,{weekday:'long'});
-      insp.time.textContent = `${pad2(s.getHours())}:${pad2(s.getMinutes())} – ${pad2(e.getHours())}:${pad2(e.getMinutes())}`;
-      insp.dur.textContent = `${Math.round((e-s)/60000)} minutes`;
-      insp.date.textContent = s.toLocaleDateString();
-      insp.venue.value = item.venue || '';
-      insp.del.classList.toggle('hidden', !item.id);
-      insp.wrap.classList.remove('hidden');
-    }
-
-    insp.cancel.onclick = ()=> { insp.wrap.classList.add('hidden'); };
-    insp.del.onclick = async ()=>{
-      if (!editing?.id) return;
-      const res = await fetch(`{{ url_for('unitcoordinator.delete_session', session_id='__ID__') }}`.replace('__ID__', editing.id), { method:'DELETE', headers:{'X-CSRFToken': CSRF_TOKEN }});
-      if (res.ok){
-        sessions = sessions.filter(s=>s.id!==editing.id);
-        renderWeek();
-        insp.wrap.classList.add('hidden');
-      }
-    };
-    insp.save.onclick = async ()=>{
-      const payload = {...editing, venue: insp.venue.value.trim()};
-      if (!editing.id){
-        // create
-        const res = await fetch(`{{ url_for('unitcoordinator.create_session', unit_id='__UID__') }}`.replace('__UID__', unitId()), {
-          method:'POST',
-          headers:{'Content-Type':'application/json','X-CSRFToken': CSRF_TOKEN},
-          body: JSON.stringify({ start: payload.start, end: payload.end, venue: payload.venue })
-        });
-        const data = await res.json();
-        if (res.ok && data.ok){
-          sessions.push(data.session);
-          insp.wrap.classList.add('hidden');
-          renderWeek();
-        } else alert(data.error || 'Failed to save');
-      } else {
-        // update
-        const res = await fetch(`{{ url_for('unitcoordinator.update_session', session_id='__ID__') }}`.replace('__ID__', editing.id), {
-          method:'PUT',
-          headers:{'Content-Type':'application/json','X-CSRFToken': CSRF_TOKEN},
-          body: JSON.stringify({ start: payload.start, end: payload.end, venue: payload.venue })
-        });
-        const data = await res.json();
-        if (res.ok && data.ok){
-          const idx = sessions.findIndex(s=>s.id===editing.id);
-          sessions[idx] = data.session;
-          insp.wrap.classList.add('hidden');
-          renderWeek();
-        } else alert(data.error || 'Failed to update');
-      }
-    };
-  </script>
-
 </body>
 </html>
