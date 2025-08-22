@@ -12,11 +12,11 @@ def get_greeting():
     """Return time-based greeting"""
     hour = datetime.now().hour
     if hour < 12:
-        return "Good morning"
+        return "Good Morning"
     elif hour < 17:
-        return "Good afternoon"
+        return "Good Afternoon"
     else:
-        return "Good evening"
+        return "Good Evening"
 
 @facilitator_bp.route("/dashboard")
 @login_required
