@@ -117,6 +117,8 @@
 
       <form method="POST" action="{{ url_for('unitcoordinator.create_unit') }}" class="modal-form" id="create-unit-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="unit_id" id="unit_id" value="">
+
 
         <!-- STEP 1 -->
         <section class="wizard-step" data-step="1">
@@ -212,6 +214,56 @@
           </div>
         </section>
 
+        <!-- STEP 3: Sessions (CSV bootstrap) -->
+        <section class="wizard-step hidden" data-step="3" aria-labelledby="sessions-setup-title">
+          <h2 id="sessions-setup-title">Sessions</h2>
+          <p class="subtext">Teaching sessions & schedule</p>
+
+          <div class="setup-card">
+            <div class="setup-card__header">
+              <span class="material-icons">cloud_upload</span>
+              <div>
+                <h3 class="setup-card__title">Setup Required</h3>
+                <p class="setup-card__hint">
+                  Before creating sessions, please upload facilitators and venues using the CSV template below.
+                </p>
+              </div>
+            </div>
+
+            <div class="setup-actions">
+              <a
+                class="btn-outline"
+                href="{{ url_for('unitcoordinator.download_setup_csv_template') }}"
+                target="_blank"
+                rel="noopener"
+              >
+                <span class="material-icons" style="font-size:18px">download</span>
+                Download CSV Template
+              </a>
+
+              <div class="upload-block">
+                <label for="setup_csv" class="upload-label">Upload Facilitators & Venues CSV</label>
+                <input
+                  id="setup_csv"
+                  name="setup_csv"
+                  type="file"
+                  accept=".csv"
+                  class="upload-input"
+                  aria-describedby="upload_help"
+                />
+                <div id="upload_help" class="upload-help">Use the provided template for column names.</div>
+
+                <!-- Progress + result -->
+                <div id="upload_status" class="upload-status hidden"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hidden field flips to 'true' after a successful upload -->
+          <input type="hidden" name="setup_complete" id="setup_complete" value="false"/>
+        </section>
+
+
         <!-- Footer buttons -->
         <div class="modal-footer">
           <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
@@ -223,7 +275,13 @@
   </div>
 
   <!-- JS -->
+
   <script>
+    // --- CSRF Token ---
+    const CSRF_TOKEN =
+      document.querySelector('input[name="csrf_token"]')?.value || '';
+
+    // --- Modal open/close ---
     function openCreateUnitModal() {
       setStep(1);
       const modal = document.getElementById("createUnitModal");
@@ -235,10 +293,8 @@
       modal.classList.add("hidden");
       modal.classList.remove("flex");
     }
-  </script>
 
-  <script>
-    // Custom select (Semester)
+    // --- Custom select (Semester) ---
     document.querySelectorAll('.select').forEach(initSelect);
     function initSelect(root) {
       const trigger = root.querySelector('.select-trigger');
@@ -275,43 +331,11 @@
         else if (e.key === 'Escape') { root.classList.remove('open'); trigger.setAttribute('aria-expanded', 'false'); }
       });
     }
-  </script>
 
-  <script>
-    let currentStep = 1;
-
-    function setStep(n) {
-      currentStep = n;
-      document.querySelectorAll('.wizard-step').forEach(s => {
-        s.classList.toggle('hidden', parseInt(s.dataset.step) !== currentStep);
-      });
-      document.querySelectorAll('.modal-steps .step').forEach((el, idx) => {
-        el.classList.toggle('active', idx + 1 === currentStep);
-      });
-      document.getElementById('next-btn').classList.toggle('hidden', currentStep >= 2);
-      document.getElementById('submit-btn').classList.toggle('hidden', currentStep < 2);
-    }
-
-    function nextStep() {
-      if (currentStep === 1) {
-        const f = document.getElementById('create-unit-form');
-        const required = ['unit_name','unit_code','year','semester'];
-        for (const name of required) {
-          const el = f.querySelector(`[name="${name}"]`);
-          if (!el || !el.value.trim()) { el?.focus(); return; }
-        }
-      }
-      setStep(Math.min(2, currentStep + 1));
-    }
-    function prevStep() { setStep(Math.max(1, currentStep - 1)); }
-  </script>
-
-  <script>
-    // ---- helpers ----
+    // --- Date utilities ---
     const DATE_FMT = "d/m/Y"; // what we show/store in hidden inputs
 
     function parseDMY(str) {
-      // Accept dd/mm/yyyy
       const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(str);
       if (!m) return null;
       const [_, dd, mm, yyyy] = m;
@@ -328,12 +352,10 @@
       const endEl   = document.querySelector('[name="end_date"]');
       const box     = document.getElementById('date-summary');
       const textEl  = document.getElementById('date-summary-text');
-
       if (!startEl || !endEl) return;
 
       const sv = (startEl.value || '').trim();
       const ev = (endEl.value   || '').trim();
-
       const start = parseDMY(sv);
       const end   = parseDMY(ev);
 
@@ -344,8 +366,8 @@
         return;
       }
 
-      const diffMs   = end - start;                    // exclusive-like display (your mock)
-      const diffDays = Math.ceil(diffMs / 86400000);   // 1000*60*60*24
+      const diffMs   = end - start;
+      const diffDays = Math.ceil(diffMs / 86400000);
       const weeks    = Math.ceil(diffDays / 7);
 
       textEl.textContent =
@@ -353,7 +375,7 @@
       box.classList.remove('hidden');
     }
 
-    // ---- inline calendars ----
+    // --- Flatpickr calendars ---
     const startInput = document.getElementById("start_date_input");
     const endInput   = document.getElementById("end_date_input");
     const today      = new Date();
@@ -383,11 +405,166 @@
       }
     });
 
-    // Initialize hidden inputs and summary once
     startInput.value = startPicker.formatDate(startPicker.selectedDates[0] || today, DATE_FMT);
     endInput.value   = endPicker.formatDate(endPicker.selectedDates[0]   || today, DATE_FMT);
     updateDateSummary();
+
+    // --- Step navigation ---
+    let currentStep = 1;
+    const TOTAL_STEPS = 4;
+
+    function setStep(n) {
+      currentStep = n;
+      document.querySelectorAll('.wizard-step').forEach(s => {
+        s.classList.toggle('hidden', parseInt(s.dataset.step) !== currentStep);
+      });
+      document.querySelectorAll('.modal-steps .step').forEach((el, idx) => {
+        el.classList.toggle('active', idx + 1 === currentStep);
+      });
+
+      const nextBtn   = document.getElementById('next-btn');
+      const submitBtn = document.getElementById('submit-btn');
+      nextBtn.classList.remove('hidden');
+      submitBtn.classList.add('hidden');
+      if (currentStep === TOTAL_STEPS) {
+        nextBtn.classList.add('hidden');
+        submitBtn.classList.remove('hidden');
+      }
+    }
+
+    async function nextStep() {
+      if (currentStep === 1) {
+        const f = document.getElementById('create-unit-form');
+        const required = ['unit_name','unit_code','year','semester'];
+        for (const name of required) {
+          const el = f.querySelector(`[name="${name}"]`);
+          if (!el || !el.value.trim()) { el?.focus(); return; }
+        }
+        return setStep(2);
+      }
+
+      if (currentStep === 2) {
+        const start = document.querySelector('[name="start_date"]')?.value?.trim();
+        const end   = document.querySelector('[name="end_date"]')?.value?.trim();
+        if (!start || !end) return;
+        try {
+          const unitId = await ensureDraftAndSetUnitId();
+          console.debug('Draft unit id:', unitId);
+        } catch (e) {
+          alert('Could not create/get unit draft: ' + e.message);
+          return;
+        }
+        return setStep(3);
+      }
+
+      if (currentStep === 3) {
+        const ok = document.getElementById('setup_complete')?.value === 'true';
+        if (!ok) {
+          const box = document.getElementById('upload_status');
+          box.classList.remove('hidden');
+          box.textContent = 'Please upload the facilitators & venues CSV before continuing.';
+          return;
+        }
+        return setStep(4);
+      }
+    }
+    function prevStep() { setStep(Math.max(1, currentStep - 1)); }
+
+    // --- Helpers for draft unit ---
+    function readUnitBasics() {
+      const f = document.getElementById('create-unit-form');
+      return {
+        unit_code:   f.querySelector('[name="unit_code"]')?.value?.trim() || '',
+        unit_name:   f.querySelector('[name="unit_name"]')?.value?.trim() || '',
+        year:        f.querySelector('[name="year"]')?.value?.trim() || '',
+        semester:    f.querySelector('[name="semester"]')?.value?.trim() || '',
+        start_date:  f.querySelector('[name="start_date"]')?.value?.trim() || '',
+        end_date:    f.querySelector('[name="end_date"]')?.value?.trim() || '',
+      };
+    }
+
+    async function ensureDraftAndSetUnitId() {
+      const basic = readUnitBasics();
+      if (!basic.unit_code || !basic.unit_name || !basic.year || !basic.semester) {
+        throw new Error('Missing unit basics');
+      }
+      const form = new FormData();
+      form.append('unit_code',  basic.unit_code);
+      form.append('unit_name',  basic.unit_name);
+      form.append('year',       basic.year);
+      form.append('semester',   basic.semester);
+      form.append('start_date', basic.start_date);
+      form.append('end_date',   basic.end_date);
+
+      const res = await fetch("{{ url_for('unitcoordinator.create_or_get_draft') }}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+        body: form
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create/fetch draft');
+      document.getElementById('unit_id').value = data.unit_id;
+      return data.unit_id;
+    }
+
+    // --- CSV Upload ---
+    const uploadInput  = document.getElementById('setup_csv');
+    const statusBox    = document.getElementById('upload_status');
+    const setupFlagEl  = document.getElementById('setup_complete');
+    const unitIdEl     = document.getElementById('unit_id');
+
+    if (uploadInput) {
+      uploadInput.addEventListener('change', async (e) => {
+        statusBox.classList.remove('hidden');
+        statusBox.textContent = 'Uploading…';
+        setupFlagEl.value = 'false';
+
+        const file = e.target.files?.[0];
+        const unitId = unitIdEl.value;
+        if (!file)  { statusBox.textContent = 'No file selected.'; return; }
+        if (!unitId){ statusBox.textContent = 'Missing unit id. Go back to Step 2 and try again.'; return; }
+
+        const form = new FormData();
+        form.append('unit_id', unitId);
+        form.append('setup_csv', file);
+
+        try {
+          const res = await fetch("{{ url_for('unitcoordinator.upload_setup_csv') }}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN },
+            body: form
+          });
+          const data = await res.json();
+
+          if (!res.ok || !data.ok) {
+            const errs = (data.errors || [data.error]).filter(Boolean);
+            statusBox.innerHTML = `
+              <div class="text-red-600 font-medium mb-1">Upload failed</div>
+              <ul class="list-disc list-inside text-sm text-red-700">
+                ${errs.map(x => `<li>${x}</li>`).join('')}
+              </ul>`;
+            setupFlagEl.value = 'false';
+            return;
+          }
+
+          statusBox.innerHTML = `
+            <div class="text-green-700 font-semibold">Upload successful</div>
+            <div class="text-sm text-green-800">
+              Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}<br/>
+              Venues created: ${data.created_venues} · Updated: ${data.updated_venues}
+            </div>`;
+          setupFlagEl.value = 'true';
+        } catch (err) {
+          console.error(err);
+          statusBox.textContent = 'Unexpected error during upload.';
+          setupFlagEl.value = 'false';
+        }
+      });
+    }
   </script>
+
+
 
 </body>
 </html>

@@ -32,7 +32,6 @@ class Unit(db.Model):
     description = db.Column(db.Text, nullable=True)   # ← add this
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    description = db.Column(db.Text)
     start_date  = db.Column(db.Date)   # first day unit runs
     end_date    = db.Column(db.Date)   # last day unit runs
 
@@ -110,6 +109,34 @@ class Session(db.Model):
     
     def __repr__(self):
         return f'<Session {self.module.module_name} - {self.start_time}>'
+    
+class Venue(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False, unique=True)
+    capacity = db.Column(db.Integer, nullable=True)  # optional
+    location = db.Column(db.String(200), nullable=True)
+
+    def __repr__(self):
+        return f"<Venue {self.name}>"
+    
+class UnitFacilitator(db.Model):
+    __tablename__ = "unit_facilitator"
+
+    id = db.Column(db.Integer, primary_key=True)
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    unit = db.relationship('Unit', backref=db.backref('unit_facilitators', cascade='all, delete-orphan', lazy=True))
+    user = db.relationship('User', backref=db.backref('facilitated_units', cascade='all, delete-orphan', lazy=True))
+
+    __table_args__ = (
+        db.UniqueConstraint('unit_id', 'user_id', name='uq_facilitator_per_unit'),
+    )
+
+    def __repr__(self):
+        return f'<UnitFacilitator unit={self.unit_id} user={self.user_id}>'
+
+
 
 class Availability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
