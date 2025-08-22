@@ -1571,7 +1571,7 @@
 }
 
 input:checked + .toggle-slider {
-  background-color: #2196F3;
+  background-color: #000000;
 }
 
 input:checked + .toggle-slider:before {
@@ -1624,7 +1624,7 @@ input:checked + .toggle-slider:before {
 }
 
 .update-btn {
-  background-color: #1f2937;
+  background-color: #000000;
   color: white;
   border: none;
   padding: 12px 32px;
@@ -1636,7 +1636,7 @@ input:checked + .toggle-slider:before {
 }
 
 .update-btn:hover {
-  background-color: #111827;
+  background-color: #000000;
 }
 
 @media (max-width: 768px) {
@@ -1893,6 +1893,64 @@ document.addEventListener('DOMContentLoaded', function() {
             notification.style.display = 'none';
             alert('Shift declined.');
         }
+
+    
+
+        // AVAILABILITY FUNCTIONALITY
+    // Handle toggle switches for time inputs
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('day-checkbox')) {
+            const dayRow = e.target.closest('.day-row');
+            const timeInputs = dayRow.querySelector('.time-inputs');
+            
+            if (e.target.checked) {
+                // Show time inputs when toggle is ON
+                timeInputs.classList.remove('disabled');
+                timeInputs.innerHTML = `
+                    <input type="time" class="time-input" value="08:00">
+                    <span class="time-separator">to</span>
+                    <input type="time" class="time-input" value="18:00">
+                `;
+            } else {
+                // Show "Not available" when toggle is OFF
+                timeInputs.classList.add('disabled');
+                timeInputs.innerHTML = '<span class="not-available">Not available</span>';
+            }
+        }
+    });
+
+    // Handle update availability button
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('update-btn')) {
+            // Collect all availability data
+            const availability = [];
+            document.querySelectorAll('.day-checkbox').forEach(checkbox => {
+                const dayRow = checkbox.closest('.day-row');
+                const dayName = checkbox.getAttribute('data-day');
+                const isAvailable = checkbox.checked;
+                
+                if (isAvailable) {
+                    const timeInputs = dayRow.querySelectorAll('.time-input');
+                    const startTime = timeInputs[0].value;
+                    const endTime = timeInputs[1].value;
+                    availability.push({
+                        day: dayName,
+                        available: true,
+                        startTime: startTime,
+                        endTime: endTime
+                    });
+                } else {
+                    availability.push({
+                        day: dayName,
+                        available: false
+                    });
+                }
+            });
+            
+            console.log('Saving availability:', availability);
+            alert('Availability updated successfully!');
+        }
+    });
     });
 });
 </script>
