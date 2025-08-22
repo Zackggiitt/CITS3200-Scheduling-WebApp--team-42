@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Generated Page</title>
+  <title>Facilitator Portal</title>
   <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='facilitator.css') }}">
   <style id="sections-styles">
@@ -54,12 +56,20 @@
     font-weight: 600;
 }
 .logout-button {
+    background: none;
     border: 1px solid var(--border-dark);
     padding: 6px 12px;
     border-radius: 4px;
     color: var(--color-text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    font-size: 14px;
 }
-
+.logout-button:hover {
+    background-color: var(--surface-secondary);
+}
 @media (max-width: 768px) {
     .site-header {
         flex-direction: column;
@@ -76,33 +86,53 @@
 #navigation {
     padding-top: 24px;
 }
+
 .dashboard-nav {
     display: flex;
     justify-content: center;
     align-items: center;
     background-color: var(--surface-secondary);
     border-radius: 9999px;
-    padding: 4px;
-    gap: var(--gap-sm);
+    padding: 6px;
+    gap: 8px;
+    max-width: 1200px; /* Increased from default (was probably ~400-500px) */
+    margin: 0 auto;
 }
+
 .dashboard-nav-item {
     display: flex;
     align-items: center;
-    gap: var(--gap-sm);
-    padding: 8px 16px;
+    gap: 8px;
+    padding: 12px 24px; /* Increased from 8px 16px */
     border-radius: 9999px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151; /* grey text */
     transition: background-color 0.2s, color 0.2s;
+    position: relative;
+    flex: 1; /* Make items take equal space */
+    justify-content: center; /* Center content within each item */
 }
+
 .dashboard-nav-item.active {
-    background-color: var(--surface-primary);
-    color: var(--color-text-primary);
+    background-color: #ffffff;
+    color: #111827; /* dark text */
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
+
 .dashboard-nav-item:not(.active):hover {
     background-color: #e5e7eb;
+}
+
+/* Notification badge */
+.notification-badge {
+    background-color: #dc2626; /* red */
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 9999px;
+    padding: 2px 6px;
+    margin-left: 4px;
 }
 
 @media (max-width: 768px) {
@@ -110,9 +140,11 @@
         flex-direction: column;
         align-items: stretch;
         border-radius: 8px;
+        max-width: none;
     }
     .dashboard-nav-item {
         justify-content: center;
+        flex: none;
     }
 }
 
@@ -121,13 +153,14 @@
     margin-top: 24px;
 }
 .welcome-banner {
+    background: linear-gradient(90deg, #111827 0%, rgba(17, 24, 39, 0.95) 70%, rgba(17, 24, 39, 0.85) 100%);
+    color: var(--color-text-white);
+    padding: 24px;
+    border-radius: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: var(--surface-dark-gradient);
-    color: var(--color-text-white);
-    padding: 24px;
-    border-radius: 8px;
+    margin-bottom: 24px;
 }
 .welcome-text h2 {
     font-size: 18px;
@@ -143,6 +176,13 @@
     font-size: 12px;
     color: var(--color-text-subtle);
 }
+
+.user-role {
+    font-size: 16px;
+    color: var(--color-text-subtle);
+    margin-bottom: 12px;
+}
+
 .welcome-icon-wrapper {
     width: 48px;
     height: 48px;
@@ -398,65 +438,69 @@
 <body>
 <header class="site-header">
     <div class="logo">
-        <img src="images/2_7.svg" alt="Logo" class="icon">
+        <span class="material-icons" aria-hidden="true">school</span>
         <h1>Facilitator Portal</h1>
     </div>
     <nav class="user-nav">
         <a href="#" class="user-nav-item notification-item">
-            <img src="images/2_12.svg" alt="Notifications" class="icon">
+            <span class="material-icons" aria-hidden="true">notifications</span>
             <span class="badge">3</span>
-        </a>
-        <a href="#" class="user-nav-item">
-            <img src="images/2_17.svg" alt="" class="icon">
-            <span>Lab Facilitator</span>
         </a>
         <a href="#" class="user-nav-item facilitator-tag">
             <span>Lab Facilitator</span>
         </a>
-        <a href="#" class="user-nav-item logout-button">
-            <img src="images/2_23.svg" alt="" class="icon">
-            <span>Logout</span>
-        </a>
+        <div class="user-nav-item">
+            <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="logout-button">
+                    <span class="material-icons" aria-hidden="true">logout</span>
+                    <span>Logout</span>
+                </button>
+            </form>
+        </div>
     </nav>
 </header>
+
 <section id="navigation" class="main-content-wrapper">
     <nav class="dashboard-nav">
         <a href="#dashboard" class="dashboard-nav-item active">
-            <img src="images/2_28.svg" alt="" class="icon">
+            <span class="material-icons" aria-hidden="true">dashboard</span>
             <span>Dashboard</span>
         </a>
         <a href="#schedule" class="dashboard-nav-item">
-            <img src="images/2_32.svg" alt="" class="icon">
+            <span class="material-icons" aria-hidden="true">calendar_today</span>
             <span>My Schedule</span>
         </a>
-        <a href="#notifications" class="dashboard-nav-item">
-            <img src="images/2_36.svg" alt="" class="icon">
+        <a href="#notifications" class="dashboard-nav-item notification">
+            <span class="material-icons" aria-hidden="true">notifications</span>
             <span>Notifications</span>
-            <span class="badge">3</span>
+            <span class="notification-badge">3</span>
         </a>
     </nav>
 </section>
+
+
 <section id="welcome" class="main-content-wrapper">
-    <div class="welcome-banner">
-        <div class="welcome-text">
-            <h2>Good morning, Lab! 👋</h2>
-            <p class="facilitator-name">Lab Facilitator</p>
-            <p class="session-info">You have 1 pending session approval and 4 sessions this week.</p>
-        </div>
-        <div class="welcome-icon-wrapper">
-            <img src="images/2_48.svg" alt="User Icon">
-        </div>
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <h2>{{ greeting }}, {{ user.first_name }}! 👋</h2>
+      <p class="user-role">Lab Facilitator</p>
+      <p class="session-info">You have 3 upcoming sessions today.</p>
     </div>
+    <div class="welcome-icon-wrapper">
+      <span class="material-icons" style="color: white; font-size: 24px;" aria-hidden="true">wb_sunny</span>
+    </div>
+  </div>
 </section>
 <section id="alert" class="main-content-wrapper">
     <div class="alert-bar">
         <div class="alert-content">
-            <img src="images/2_52.svg" alt="Alert Icon" class="icon">
+            <span class="material-icons" aria-hidden="true">warning</span>
             <p><strong>Availability Update Needed!</strong> Your availability was last updated 2 weeks ago. Please update it to receive better session assignments.</p>
         </div>
         <a href="#" class="alert-button">
             <span>Update Now</span>
-            <img src="images/2_56.svg" alt="Arrow Icon" class="icon">
+            <span class="material-icons" aria-hidden="true">arrow_forward</span>
         </a>
     </div>
 </section>
@@ -465,7 +509,7 @@
         <div class="stat-card">
             <div class="stat-header">
                 <h4>This Week Hours</h4>
-                <img src="images/2_63.svg" alt="">
+                <span class="material-icons" aria-hidden="true">schedule</span>
             </div>
             <p class="stat-value">32</p>
             <p class="stat-subtext">4 sessions</p>
@@ -473,7 +517,7 @@
         <div class="stat-card">
             <div class="stat-header">
                 <h4>Pending Approvals</h4>
-                <img src="images/2_70.svg" alt="">
+                <span class="material-icons" aria-hidden="true">pending_actions</span>
             </div>
             <p class="stat-value">1</p>
             <p class="stat-subtext">Needs response</p>
@@ -481,7 +525,7 @@
         <div class="stat-card">
             <div class="stat-header">
                 <h4>Total Hours (Month)</h4>
-                <img src="images/2_77.svg" alt="">
+                <span class="material-icons" aria-hidden="true">calendar_today</span>
             </div>
             <p class="stat-value">156</p>
             <p class="stat-subtext">This month</p>
@@ -489,7 +533,7 @@
         <div class="stat-card">
             <div class="stat-header">
                 <h4>Available Days</h4>
-                <img src="images/2_84.svg" alt="">
+                <span class="material-icons" aria-hidden="true">event_available</span>
             </div>
             <p class="stat-value">4</p>
             <p class="stat-subtext">Per week</p>
@@ -585,23 +629,427 @@
         <h3>Quick Actions</h3>
         <div class="actions-grid">
             <a href="#" class="action-button">
-                <img src="images/2_225.svg" alt="">
+                <span class="material-icons" aria-hidden="true">calendar_view_week</span>
                 <span>View Schedule</span>
             </a>
             <a href="#" class="action-button">
-                <img src="images/2_245.svg" alt="">
-                <span>View Schedule</span>
+                <span class="material-icons" aria-hidden="true">edit_calendar</span>
+                <span>Update Availability</span>
             </a>
             <a href="#" class="action-button">
-                <img src="images/2_250.svg" alt="">
-                <span>View Schedule</span>
+                <span class="material-icons" aria-hidden="true">notifications</span>
+                <span>Notifications</span>
             </a>
             <a href="#" class="action-button">
-                <img src="images/2_255.svg" alt="">
-                <span>View Schedule</span>
+                <span class="material-icons" aria-hidden="true">settings</span>
+                <span>Profile Settings</span>
             </a>
         </div>
     </div>
 </section>
+<!-- Add this after the existing sections, before closing </body> -->
+
+<!-- Calendar View (initially hidden) -->
+<section id="calendar-view" class="main-content-wrapper" style="display: none;">
+  <div class="calendar-container">
+    <div class="calendar-header">
+      <h2>My Schedule</h2>
+      <div class="calendar-controls">
+        <button id="prev-month" class="calendar-btn">
+          <span class="material-icons">chevron_left</span>
+        </button>
+        <span id="current-month" class="month-title">August 2025</span>
+        <button id="next-month" class="calendar-btn">
+          <span class="material-icons">chevron_right</span>
+        </button>
+      </div>
+    </div>
+    
+    <div class="calendar-grid">
+      <div class="calendar-weekdays">
+        <div class="weekday">Sun</div>
+        <div class="weekday">Mon</div>
+        <div class="weekday">Tue</div>
+        <div class="weekday">Wed</div>
+        <div class="weekday">Thu</div>
+        <div class="weekday">Fri</div>
+        <div class="weekday">Sat</div>
+      </div>
+      
+      <div class="calendar-days" id="calendar-days">
+        <!-- Calendar days will be generated by JavaScript -->
+      </div>
+    </div>
+    
+    <div class="schedule-legend">
+      <div class="legend-item">
+        <div class="legend-color confirmed"></div>
+        <span>Confirmed Sessions</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color pending"></div>
+        <span>Pending Sessions</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color available"></div>
+        <span>Available</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- Add this CSS to your existing style block -->
+<style id="calendar-styles">
+/* Calendar Styles */
+.calendar-container {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: var(--gap-lg);
+  margin-top: 24px;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--gap-lg);
+}
+
+.calendar-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-md);
+}
+
+.calendar-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-btn:hover {
+  background-color: var(--surface-secondary);
+}
+
+.month-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  min-width: 120px;
+  text-align: center;
+}
+
+.calendar-grid {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background-color: var(--surface-secondary);
+}
+
+.weekday {
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border-right: 1px solid var(--border-color);
+}
+
+.weekday:last-child {
+  border-right: none;
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-day {
+  min-height: 80px;
+  padding: 8px;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+  background-color: var(--surface-primary);
+}
+
+.calendar-day:nth-child(7n) {
+  border-right: none;
+}
+
+.calendar-day.other-month {
+  background-color: var(--surface-secondary);
+  color: var(--color-text-subtle);
+}
+
+.calendar-day.today {
+  background-color: var(--surface-info-light);
+}
+
+.day-number {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.event {
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.event.confirmed {
+  background-color: var(--status-black);
+  color: var(--color-text-white);
+}
+
+.event.pending {
+  background-color: var(--surface-pending-light);
+  color: var(--color-text-secondary);
+}
+
+.event.available {
+  background-color: var(--surface-success-light);
+  color: var(--color-text-success);
+}
+
+.schedule-legend {
+  display: flex;
+  justify-content: center;
+  gap: var(--gap-lg);
+  margin-top: var(--gap-md);
+  padding-top: var(--gap-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.legend-color.confirmed {
+  background-color: var(--status-black);
+}
+
+.legend-color.pending {
+  background-color: var(--surface-pending-light);
+}
+
+.legend-color.available {
+  background-color: var(--surface-success-light);
+}
+
+@media (max-width: 768px) {
+  .calendar-header {
+    flex-direction: column;
+    gap: var(--gap-md);
+  }
+  
+  .calendar-day {
+    min-height: 60px;
+    padding: 4px;
+  }
+  
+  .schedule-legend {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+</style>
+<script>
+// Navigation between dashboard and calendar
+document.addEventListener('DOMContentLoaded', function() {
+    const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details, #actions');
+    const calendarView = document.getElementById('calendar-view');
+    const navItems = document.querySelectorAll('.dashboard-nav-item');
+    
+    // Navigation click handlers
+    navItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Update active state
+            navItems.forEach(nav => nav.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show/hide sections
+            if (this.getAttribute('href') === '#schedule') {
+                // Show calendar view
+                dashboardSections.forEach(section => section.style.display = 'none');
+                calendarView.style.display = 'block';
+                initCalendar();
+            } else {
+                // Show dashboard view
+                dashboardSections.forEach(section => section.style.display = 'block');
+                calendarView.style.display = 'none';
+            }
+        });
+    });
+    
+    // Calendar functionality
+    let currentDate = new Date();
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"];
+    
+    function initCalendar() {
+        updateCalendarHeader();
+        generateCalendarDays();
+    }
+    
+    function updateCalendarHeader() {
+        const monthTitle = document.getElementById('current-month');
+        monthTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+    }
+    
+    function generateCalendarDays() {
+        const calendarDays = document.getElementById('calendar-days');
+        calendarDays.innerHTML = '';
+        
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        
+        // First day of the month and how many days in month
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startingDayOfWeek = firstDay.getDay();
+        
+        // Previous month's trailing days
+        const prevMonth = new Date(year, month, 0);
+        const daysInPrevMonth = prevMonth.getDate();
+        
+        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+            const dayElement = createDayElement(daysInPrevMonth - i, true);
+            calendarDays.appendChild(dayElement);
+        }
+        
+        // Current month days
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayElement = createDayElement(day, false);
+            calendarDays.appendChild(dayElement);
+        }
+        
+        // Next month's leading days
+        const totalCells = calendarDays.children.length;
+        const remainingCells = 42 - totalCells; // 6 rows × 7 days
+        
+        for (let day = 1; day <= remainingCells; day++) {
+            const dayElement = createDayElement(day, true);
+            calendarDays.appendChild(dayElement);
+        }
+    }
+    
+    function createDayElement(dayNumber, isOtherMonth) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        
+        if (isOtherMonth) {
+            dayElement.classList.add('other-month');
+        }
+        
+        // Check if it's today
+        const today = new Date();
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        
+        if (!isOtherMonth && 
+            dayNumber === today.getDate() && 
+            month === today.getMonth() && 
+            year === today.getFullYear()) {
+            dayElement.classList.add('today');
+        }
+        
+        dayElement.innerHTML = `
+            <div class="day-number">${dayNumber}</div>
+            <div class="day-events">
+                ${generateEvents(dayNumber, isOtherMonth)}
+            </div>
+        `;
+        
+        return dayElement;
+    }
+    
+    function generateEvents(dayNumber, isOtherMonth) {
+        if (isOtherMonth) return '';
+        
+        // Sample events (replace with real data)
+        const events = [];
+        
+        if (dayNumber === 22) { // Today
+            events.push('<div class="event confirmed">Lab Session 9-5</div>');
+        }
+        if (dayNumber === 23) { // Tomorrow
+            events.push('<div class="event pending">Lab Session 9-5</div>');
+        }
+        if (dayNumber === 25) {
+            events.push('<div class="event available">Available</div>');
+        }
+        if (dayNumber === 28) {
+            events.push('<div class="event confirmed">Lab Session 2-6</div>');
+        }
+        
+        return events.join('');
+    }
+    
+    // Month navigation
+    document.getElementById('prev-month').addEventListener('click', function() {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        updateCalendarHeader();
+        generateCalendarDays();
+    });
+    
+    document.getElementById('next-month').addEventListener('click', function() {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        updateCalendarHeader();
+        generateCalendarDays();
+    });
+});
+</script>
+
 </body>
 </html>
+
+
+
+
+
+
+
