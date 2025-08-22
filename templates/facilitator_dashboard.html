@@ -1,64 +1,607 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facilitator Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generated Page</title>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='facilitator.css') }}">
+  <style id="sections-styles">
+/* CSS for section section:header */
+.site-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 32px;
+    background-color: var(--surface-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+.logo {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+}
+.logo h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+.user-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-lg);
+}
+.user-nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    font-size: 14px;
+    color: var(--color-text-secondary);
+}
+.notification-item {
+    gap: 4px;
+}
+.facilitator-tag {
+    background-color: var(--surface-success-light);
+    color: var(--color-text-success);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.logout-button {
+    border: 1px solid var(--border-dark);
+    padding: 6px 12px;
+    border-radius: 4px;
+    color: var(--color-text-primary);
+}
+
+@media (max-width: 768px) {
+    .site-header {
+        flex-direction: column;
+        gap: var(--gap-md);
+    }
+    .user-nav {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: var(--gap-md);
+    }
+}
+
+/* CSS for section section:navigation */
+#navigation {
+    padding-top: 24px;
+}
+.dashboard-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--surface-secondary);
+    border-radius: 9999px;
+    padding: 4px;
+    gap: var(--gap-sm);
+}
+.dashboard-nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    padding: 8px 16px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    transition: background-color 0.2s, color 0.2s;
+}
+.dashboard-nav-item.active {
+    background-color: var(--surface-primary);
+    color: var(--color-text-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.dashboard-nav-item:not(.active):hover {
+    background-color: #e5e7eb;
+}
+
+@media (max-width: 768px) {
+    .dashboard-nav {
+        flex-direction: column;
+        align-items: stretch;
+        border-radius: 8px;
+    }
+    .dashboard-nav-item {
+        justify-content: center;
+    }
+}
+
+/* CSS for section section:welcome */
+#welcome {
+    margin-top: 24px;
+}
+.welcome-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface-dark-gradient);
+    color: var(--color-text-white);
+    padding: 24px;
+    border-radius: 8px;
+}
+.welcome-text h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.welcome-text .facilitator-name {
+    font-size: 14px;
+    margin-bottom: 4px;
+    opacity: 0.9;
+}
+.welcome-text .session-info {
+    font-size: 12px;
+    color: var(--color-text-subtle);
+}
+.welcome-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.welcome-icon-wrapper img {
+    width: 20px;
+    height: 20px;
+}
+@media (max-width: 480px) {
+    .welcome-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--gap-md);
+    }
+}
+
+/* CSS for section section:alert */
+#alert {
+    margin-top: 24px;
+}
+.alert-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--gap-md);
+    background-color: var(--surface-warning);
+    border: 1px solid var(--border-warning);
+    color: var(--color-text-warning);
+    padding: 16px 24px;
+    border-radius: 8px;
+}
+.alert-content {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    font-size: 12px;
+}
+.alert-button {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    background-color: var(--status-orange);
+    color: var(--color-text-white);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+@media (max-width: 768px) {
+    .alert-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .alert-button {
+        justify-content: center;
+    }
+}
+
+/* CSS for section section:stats */
+#stats {
+    margin-top: 24px;
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--gap-lg);
+}
+.stat-card {
+    background-color: var(--surface-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--gap-md);
+}
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--gap-sm);
+}
+.stat-header h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+.stat-header img {
+    width: 12px;
+    height: 12px;
+}
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+}
+.stat-subtext {
+    font-size: 10px;
+    color: var(--color-text-tertiary);
+    margin-top: 4px;
+}
+@media (max-width: 992px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 576px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* CSS for section section:details */
+#details {
+    margin-top: 24px;
+}
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gap-lg);
+}
+.details-card {
+    background-color: var(--surface-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--gap-lg);
+}
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--gap-md);
+}
+.card-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+}
+.view-all-link {
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    padding: 4px 12px;
+    border-radius: 4px;
+}
+.session-list, .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-md);
+}
+.session-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--gap-md);
+}
+.session-info { flex-grow: 1; }
+.session-title { display: flex; align-items: center; gap: var(--gap-sm); margin-bottom: 4px; }
+.session-title h4 { font-size: 14px; font-weight: 600; }
+.tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: capitalize; }
+.tag.confirmed { background-color: var(--surface-confirmed-dark); color: var(--color-text-white); }
+.tag.pending { background-color: var(--surface-pending-dark); color: var(--color-text-secondary); }
+.session-time { font-size: 12px; color: var(--color-text-tertiary); margin-bottom: 4px; }
+.session-location { font-size: 10px; color: var(--color-text-tertiary); }
+.session-actions { display: flex; gap: var(--gap-sm); }
+.action-btn { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 4px; }
+.activity-item { display: flex; justify-content: space-between; align-items: center; }
+.activity-info { display: flex; align-items: center; gap: var(--gap-sm); }
+.activity-icon-wrapper { width: 24px; height: 24px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+.activity-icon-wrapper.success { background-color: var(--surface-success-light); }
+.activity-icon-wrapper.info { background-color: var(--surface-info-light); }
+.activity-icon-wrapper.error { background-color: var(--surface-error-light); }
+.activity-title { font-size: 12px; font-weight: 600; }
+.activity-time { font-size: 10px; color: var(--color-text-tertiary); }
+.tag.activity-tag { color: var(--color-text-white); }
+.tag.completed, .tag.approved { background-color: var(--status-black); }
+.tag.assigned { background-color: var(--surface-pending-light); color: var(--color-text-secondary); }
+.tag.updated { background-color: var(--status-red); }
+
+@media (max-width: 992px) {
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 480px) {
+    .session-item, .session-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--gap-sm);
+    }
+    .session-actions {
+        width: 100%;
+        flex-direction: row;
+    }
+    .action-btn {
+        flex-grow: 1;
+        justify-content: center;
+    }
+}
+
+/* CSS for section section:actions */
+#actions {
+    margin-top: 24px;
+}
+.actions-card {
+    background-color: var(--surface-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--gap-lg);
+}
+.actions-card h3 {
+    font-size: 14px;
+    font-weight: 400;
+    margin-bottom: var(--gap-md);
+}
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--gap-lg);
+}
+.action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--gap-sm);
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.action-button:hover {
+    background-color: var(--surface-secondary);
+}
+@media (max-width: 992px) {
+    .actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 576px) {
+    .actions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+  </style>
+  <script src="global.js" defer></script>
 </head>
 <body>
-    <div class="dashboard-container">
-        <header class="dashboard-header">
-            <h1>Facilitator Dashboard</h1>
-            <div class="user-info">
-                {% if user.avatar_url %}
-                    <img src="{{ user.avatar_url }}" alt="Avatar" class="avatar">
-                {% endif %}
-                <span>Welcome, {{ user.first_name }} {{ user.last_name }}!</span>
-                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+<header class="site-header">
+    <div class="logo">
+        <img src="images/2_7.svg" alt="Logo" class="icon">
+        <h1>Facilitator Portal</h1>
+    </div>
+    <nav class="user-nav">
+        <a href="#" class="user-nav-item notification-item">
+            <img src="images/2_12.svg" alt="Notifications" class="icon">
+            <span class="badge">3</span>
+        </a>
+        <a href="#" class="user-nav-item">
+            <img src="images/2_17.svg" alt="" class="icon">
+            <span>Lab Facilitator</span>
+        </a>
+        <a href="#" class="user-nav-item facilitator-tag">
+            <span>Lab Facilitator</span>
+        </a>
+        <a href="#" class="user-nav-item logout-button">
+            <img src="images/2_23.svg" alt="" class="icon">
+            <span>Logout</span>
+        </a>
+    </nav>
+</header>
+<section id="navigation" class="main-content-wrapper">
+    <nav class="dashboard-nav">
+        <a href="#dashboard" class="dashboard-nav-item active">
+            <img src="images/2_28.svg" alt="" class="icon">
+            <span>Dashboard</span>
+        </a>
+        <a href="#schedule" class="dashboard-nav-item">
+            <img src="images/2_32.svg" alt="" class="icon">
+            <span>My Schedule</span>
+        </a>
+        <a href="#notifications" class="dashboard-nav-item">
+            <img src="images/2_36.svg" alt="" class="icon">
+            <span>Notifications</span>
+            <span class="badge">3</span>
+        </a>
+    </nav>
+</section>
+<section id="welcome" class="main-content-wrapper">
+    <div class="welcome-banner">
+        <div class="welcome-text">
+            <h2>Good morning, Lab! 👋</h2>
+            <p class="facilitator-name">Lab Facilitator</p>
+            <p class="session-info">You have 1 pending session approval and 4 sessions this week.</p>
+        </div>
+        <div class="welcome-icon-wrapper">
+            <img src="images/2_48.svg" alt="User Icon">
+        </div>
+    </div>
+</section>
+<section id="alert" class="main-content-wrapper">
+    <div class="alert-bar">
+        <div class="alert-content">
+            <img src="images/2_52.svg" alt="Alert Icon" class="icon">
+            <p><strong>Availability Update Needed!</strong> Your availability was last updated 2 weeks ago. Please update it to receive better session assignments.</p>
+        </div>
+        <a href="#" class="alert-button">
+            <span>Update Now</span>
+            <img src="images/2_56.svg" alt="Arrow Icon" class="icon">
+        </a>
+    </div>
+</section>
+<section id="stats" class="main-content-wrapper">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <h4>This Week Hours</h4>
+                <img src="images/2_63.svg" alt="">
             </div>
-        </header>
-
-        <div class="dashboard-content">
-            <div class="dashboard-grid">
-                <!-- My Schedule -->
-                <div class="dashboard-card">
-                    <h3>My Schedule</h3>
-                    <p>View your assigned teaching modules</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('facilitator.view_schedule') }}" class="btn btn-primary">View Schedule</a>
+            <p class="stat-value">32</p>
+            <p class="stat-subtext">4 sessions</p>
+        </div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <h4>Pending Approvals</h4>
+                <img src="images/2_70.svg" alt="">
+            </div>
+            <p class="stat-value">1</p>
+            <p class="stat-subtext">Needs response</p>
+        </div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <h4>Total Hours (Month)</h4>
+                <img src="images/2_77.svg" alt="">
+            </div>
+            <p class="stat-value">156</p>
+            <p class="stat-subtext">This month</p>
+        </div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <h4>Available Days</h4>
+                <img src="images/2_84.svg" alt="">
+            </div>
+            <p class="stat-value">4</p>
+            <p class="stat-subtext">Per week</p>
+        </div>
+    </div>
+</section>
+<section id="details" class="main-content-wrapper">
+    <div class="details-grid">
+        <div class="details-card">
+            <div class="card-header">
+                <h3>Your Upcoming Sessions</h3>
+                <a href="#" class="view-all-link">View All</a>
+            </div>
+            <div class="session-list">
+                <div class="session-item">
+                    <div class="session-info">
+                        <div class="session-title">
+                            <h4>Today</h4>
+                            <span class="tag confirmed">confirmed</span>
+                        </div>
+                        <p class="session-time">8:00 AM - 4:00 PM</p>
+                        <p class="session-location">Main Store</p>
                     </div>
                 </div>
-
-                <!-- Availability -->
-                <div class="dashboard-card">
-                    <h3>Availability</h3>
-                    <p>Update your availability preferences</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('facilitator.manage_availability') }}" class="btn btn-primary">Update Availability</a>
+                <div class="session-item">
+                    <div class="session-info">
+                        <div class="session-title">
+                            <h4>Tomorrow</h4>
+                            <span class="tag pending">pending</span>
+                        </div>
+                        <p class="session-time">8:00 AM - 4:00 PM</p>
                     </div>
-                </div>
-
-                <!-- Skills & Preferences -->
-                <div class="dashboard-card">
-                    <h3>Skills & Preferences</h3>
-                    <p>Manage your skills and teaching preferences</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('facilitator.manage_skills') }}" class="btn btn-primary">Update Skills</a>
-                    </div>
-                </div>
-
-                <!-- Shift Swaps -->
-                <div class="dashboard-card">
-                    <h3>Shift Swaps</h3>
-                    <p>Request and manage shift exchanges</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('facilitator.view_swaps') }}" class="btn btn-primary">View Swaps</a>
-                        <a href="{{ url_for('facilitator.request_swap') }}" class="btn btn-secondary">Request Swap</a>
+                    <div class="session-actions">
+                        <a href="#" class="action-btn accept">
+                            <img src="images/2_111.svg" alt=""> Accept
+                        </a>
+                        <a href="#" class="action-btn decline">Decline</a>
                     </div>
                 </div>
             </div>
         </div>
+        <div class="details-card">
+            <div class="card-header">
+                <h3>Recent Activity</h3>
+            </div>
+            <div class="activity-list">
+                <div class="activity-item">
+                    <div class="activity-info">
+                        <div class="activity-icon-wrapper success"><img src="images/2_120.svg" alt=""></div>
+                        <div>
+                            <p class="activity-title">Session completed</p>
+                            <p class="activity-time">2 hours ago</p>
+                        </div>
+                    </div>
+                    <span class="tag activity-tag completed">completed</span>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-info">
+                        <div class="activity-icon-wrapper info"><img src="images/2_130.svg" alt=""></div>
+                        <div>
+                            <p class="activity-title">New session assigned</p>
+                            <p class="activity-time">1 day ago</p>
+                        </div>
+                    </div>
+                    <span class="tag activity-tag assigned">assigned</span>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-info">
+                        <div class="activity-icon-wrapper error"><img src="images/2_140.svg" alt=""></div>
+                        <div>
+                            <p class="activity-title">Availability updated</p>
+                            <p class="activity-time">2 weeks ago</p>
+                        </div>
+                    </div>
+                    <span class="tag activity-tag updated">updated</span>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-info">
+                        <div class="activity-icon-wrapper success"><img src="images/2_150.svg" alt=""></div>
+                        <div>
+                            <p class="activity-title">Overtime approved</p>
+                            <p class="activity-time">3 weeks ago</p>
+                        </div>
+                    </div>
+                    <span class="tag activity-tag approved">approved</span>
+                </div>
+            </div>
+        </div>
     </div>
+</section>
+<section id="actions" class="main-content-wrapper">
+    <div class="actions-card">
+        <h3>Quick Actions</h3>
+        <div class="actions-grid">
+            <a href="#" class="action-button">
+                <img src="images/2_225.svg" alt="">
+                <span>View Schedule</span>
+            </a>
+            <a href="#" class="action-button">
+                <img src="images/2_245.svg" alt="">
+                <span>View Schedule</span>
+            </a>
+            <a href="#" class="action-button">
+                <img src="images/2_250.svg" alt="">
+                <span>View Schedule</span>
+            </a>
+            <a href="#" class="action-button">
+                <img src="images/2_255.svg" alt="">
+                <span>View Schedule</span>
+            </a>
+        </div>
+    </div>
+</section>
 </body>
 </html>
