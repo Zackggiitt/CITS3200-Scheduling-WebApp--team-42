@@ -241,22 +241,30 @@ def create_or_get_draft():
 @role_required(UserRole.UNIT_COORDINATOR)
 def download_setup_csv_template():
     """
-    Returns a single CSV with a 'type' column (facilitator|venue).
+    Returns a CSV with two columns:
+      - facilitator_email
+      - venue_name
+    Rows may have either or both. Blank cells are ignored.
     """
     sio = StringIO()
     writer = csv.DictWriter(sio, fieldnames=CSV_HEADERS, extrasaction="ignore")
     writer.writeheader()
-    # sample rows
-    writer.writerow({"type": "facilitator", "email": "alex@example.edu", "first_name": "Alex", "last_name": "Ng"})
-    writer.writerow({"type": "facilitator", "email": "riley@example.edu", "first_name": "Riley", "last_name": "Lee"})
-    writer.writerow({"type": "venue", "venue_name": "Ezone 2.07", "venue_capacity": "40", "venue_location": "Ezone North"})
-    writer.writerow({"type": "venue", "venue_name": "Ezone 2.12", "venue_capacity": "24", "venue_location": "Ezone North"})
+
+    # --- SAMPLE ROWS (for debugging only, uncomment if needed) ---
+    # writer.writerow({"facilitator_email": "alex@example.edu", "venue_name": ""})
+    # writer.writerow({"facilitator_email": "riley@example.edu", "venue_name": ""})
+    # writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.07"})
+    # writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.12"})
+    # writer.writerow({"facilitator_email": "sam@example.edu", "venue_name": "Engineering Hub 3.01"})
 
     mem = BytesIO(sio.getvalue().encode("utf-8"))
     mem.seek(0)
-    return send_file(mem, mimetype="text/csv", as_attachment=True,
-                     download_name="facilitators_venues_template.csv")
-
+    return send_file(
+        mem,
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="facilitators_venues_template.csv",
+    )
 
 @unitcoordinator_bp.post("/upload-setup-csv")
 @login_required
