@@ -270,13 +270,15 @@ def download_setup_csv_template():
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def upload_setup_csv():
-
     """
-    Accepts a CSV (template above) and:
-      - ensures every facilitator exists as a User(role=FACILITATOR)
-      - links facilitators to the given Unit
-      - upserts Venues
-    Returns counts + errors for UI.
+    Accepts a 2-column CSV:
+      - facilitator_email
+      - venue_name
+
+    For each row:
+      - If facilitator_email is present: ensure a User(role=FACILITATOR) exists; link to the Unit
+      - If venue_name is present: upsert a Venue by name (name only)
+    Returns counts + errors.
     """
     user = get_current_user()
 
@@ -284,7 +286,6 @@ def upload_setup_csv():
     if not unit_id:
         return jsonify({"ok": False, "error": "Missing unit_id"}), 400
 
-    # Strict ownership check
     unit = _get_user_unit_or_404(user, unit_id)
     if not unit:
         return jsonify({"ok": False, "error": "Unit not found"}), 404
@@ -299,70 +300,50 @@ def upload_setup_csv():
     except Exception as e:
         return jsonify({"ok": False, "error": f"Failed to read CSV: {e}"}), 400
 
-    if "type" not in (reader.fieldnames or []):
-        return jsonify({"ok": False, "error": "CSV missing required column: type"}), 400
+    # Validate headers
+    fns = [fn.strip().lower() for fn in (reader.fieldnames or [])]
+    required = {"facilitator_email", "venue_name"}
+    if not required.issubset(set(fns)):
+        return jsonify({
+            "ok": False,
+            "error": f"CSV must include headers: {', '.join(sorted(required))}"
+        }), 400
 
+    # Counters
     created_users = 0
     linked_facilitators = 0
     created_venues = 0
-    updated_venues = 0
     errors = []
 
-    for idx, row in enumerate(reader, start=2):
-        kind = (row.get("type") or "").strip().lower()
-        if kind not in {"facilitator", "venue"}:
-            errors.append(f"Row {idx}: invalid type '{kind}'"); continue
+    for idx, row in enumerate(reader, start=2):  # start=2 for human-friendly row numbers
+        fac_email = (row.get("facilitator_email") or "").strip()
+        venue_name = (row.get("venue_name") or "").strip()
 
-        if kind == "facilitator":
-            email = (row.get("email") or "").strip()
-            if not _valid_email(email):
-                errors.append(f"Row {idx}: invalid facilitator email"); continue
+        # Process facilitator email if present
+        if fac_email:
+            if not _valid_email(fac_email):
+                errors.append(f"Row {idx}: invalid facilitator_email '{fac_email}'")
+            else:
+                user_rec = User.query.filter_by(email=fac_email).first()
+                if not user_rec:
+                    user_rec = User(email=fac_email, role=UserRole.FACILITATOR)
+                    db.session.add(user_rec)
+                    created_users += 1
 
-            user_rec = User.query.filter_by(email=email).first()
-            if not user_rec:
-                user_rec = User(
-                    email=email,
-                    first_name=(row.get("first_name") or "").strip() or None,
-                    last_name=(row.get("last_name") or "").strip() or None,
-                    role=UserRole.FACILITATOR,
-                )
-                db.session.add(user_rec)
-                created_users += 1
+                exists = UnitFacilitator.query.filter_by(unit_id=unit.id, user_id=user_rec.id).first()
+                if not exists:
+                    db.session.add(UnitFacilitator(unit_id=unit.id, user_id=user_rec.id))
+                    linked_facilitators += 1
 
-            exists = UnitFacilitator.query.filter_by(unit_id=unit.id, user_id=user_rec.id).first()
-            if not exists:
-                db.session.add(UnitFacilitator(unit_id=unit.id, user_id=user_rec.id))
-                linked_facilitators += 1
-
-        else:  # venue
-            name = (row.get("venue_name") or "").strip()
-            if not name:
-                errors.append(f"Row {idx}: venue_name is required"); continue
-
-            cap_val = row.get("venue_capacity")
-            try:
-                capacity = int(cap_val) if cap_val not in (None, "") else None
-            except ValueError:
-                errors.append(f"Row {idx}: venue_capacity must be an integer"); continue
-
-            venue = Venue.query.filter_by(name=name).first()
+        # Process venue name if present
+        if venue_name:
+            venue = Venue.query.filter_by(name=venue_name).first()
             if not venue:
-                venue = Venue(
-                    name=name,
-                    capacity=capacity,
-                    location=(row.get("venue_location") or "").strip() or None
-                )
+                venue = Venue(name=venue_name)  # capacity/location unknown from this CSV
                 db.session.add(venue)
                 created_venues += 1
-            else:
-                changed = False
-                if capacity is not None and venue.capacity != capacity:
-                    venue.capacity = capacity; changed = True
-                loc = (row.get("venue_location") or "").strip() or None
-                if loc is not None and venue.location != loc:
-                    venue.location = loc; changed = True
-                if changed:
-                    updated_venues += 1
+
+        # If a row is entirely blank, silently ignore it (no error)
 
     db.session.commit()
 
@@ -372,7 +353,6 @@ def upload_setup_csv():
             "created_users": created_users,
             "linked_facilitators": linked_facilitators,
             "created_venues": created_venues,
-            "updated_venues": updated_venues,
             "errors": errors[:20],
         }), 400
 
@@ -381,5 +361,4 @@ def upload_setup_csv():
         "created_users": created_users,
         "linked_facilitators": linked_facilitators,
         "created_venues": created_venues,
-        "updated_venues": updated_venues,
     })
