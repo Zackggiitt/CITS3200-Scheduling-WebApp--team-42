@@ -291,8 +291,8 @@
           <!-- STEP 3B: Calendar -->
           <div id="calendar_wrap" class="mt-4 hidden">
             <div class="cal-toolbar">
-              <button type="button" class="cal-btn" id="prevWeek">‹ Previous Week</button>ek</button>
-              <button type="button" class="cal-btn" id="nextWeek">Next Week ›</button>button>
+              <button type="button" class="cal-btn" id="prevWeek">‹ Previous Week</button>ek</button>ek</button>
+              <button type="button" class="cal-btn" id="nextWeek">Next Week ›</button>button>button>
               <button type="button" class="cal-btn" id="goToday">Today</button>
               <div class="cal-title">
                 <div id="calWeekTitle" class="font-semibold"></div>
@@ -331,9 +331,9 @@
 
         <!-- Footer buttons -->
         <div class="modal-footer">
-          <button type="button" id="inspDelete" class="cal-btn danger hidden">Delete</button>
-          <button type="button" id="inspCancel" class="cal-btn">Cancel</button>button>
-          <button type="button" id="inspSave" class="cal-btn primary">Save</button>
+          <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
+          <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
+          <button type="submit" class="btn-primary hidden" id="submit-btn">Create Unit</button>
         </div>
       </form>
     </div>
