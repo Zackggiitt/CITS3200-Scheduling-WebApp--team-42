@@ -13,62 +13,116 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='facilitator.css') }}">
   <style id="sections-styles">
+
 /* CSS for section section:header */
 .site-header {
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 32px;
-    background-color: var(--surface-primary);
-    border-bottom: 1px solid var(--border-color);
 }
+
+.site-header .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 6px 16px;              /* Same slim height as UC */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+}
+
 .logo {
     display: flex;
     align-items: center;
-    gap: var(--gap-sm);
+    gap: 8px;
 }
+
+.logo .material-icons {
+    color: #111827;
+    font-size: 18px;                /* Same small icon size as UC */
+    line-height: 1;
+}
+
 .logo h1 {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--color-text-primary);
+    font-size: 16px;                /* Same compact title size as UC */
+    font-weight: 700;
+    color: #111827;
+    white-space: nowrap;
 }
+
 .user-nav {
     display: flex;
     align-items: center;
-    gap: var(--gap-lg);
+    gap: 10px;                      /* Same tight spacing as UC */
 }
-.user-nav-item {
-    display: flex;
+
+.notification-icon {
+    font-size: 20px;               /* Same as UC notification icon */
+    color: #4b5563;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 9999px;
+}
+
+.notification-icon:hover {
+    background: #f3f4f6;
+}
+
+.user-info {
+    display: inline-flex;
     align-items: center;
-    gap: var(--gap-sm);
-    font-size: 14px;
-    color: var(--color-text-secondary);
+    gap: 6px;
+    color: #374151;
+    white-space: nowrap;
 }
-.notification-item {
-    gap: 4px;
+
+.profile-icon {
+    font-size: 18px;               /* Same as UC account icon */
+    color: #6b7280;
 }
-.facilitator-tag {
-    background-color: var(--surface-success-light);
-    color: var(--color-text-success);
-    padding: 4px 8px;
-    border-radius: 4px;
+
+.user-name {
+    font-size: 14px;              
+}
+
+.user-role-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;                  
+    padding: 0 10px;
+    border-radius: 9999px;
+    background: #85eba0;           
+    color: #08551c;                
     font-size: 12px;
     font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
 }
+
 .logout-button {
-    background: none;
-    border: 1px solid var(--border-dark);
-    padding: 6px 12px;
-    border-radius: 4px;
-    color: var(--color-text-primary);
-    cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: var(--gap-sm);
+    gap: 6px;
+    padding: 6px 10px;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
     font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
 }
+
 .logout-button:hover {
-    background-color: var(--surface-secondary);
+    background: #f9fafb;
+    color: #111827;
+}
+
+.logout-button .material-icons {
+    font-size: 16px;
 }
 @media (max-width: 768px) {
     .site-header {
@@ -80,8 +134,11 @@
         justify-content: center;
         gap: var(--gap-md);
     }
+    .user-info {
+        flex-direction: column;
+        text-align: center;
+    }
 }
-
 /* CSS for section section:navigation */
 #navigation {
     padding-top: 24px;
@@ -451,28 +508,29 @@
 </head>
 <body>
 <header class="site-header">
-    <div class="logo">
-        <span class="material-icons" aria-hidden="true">school</span>
-        <h1>Facilitator Portal</h1>
-    </div>
-    <nav class="user-nav">
-        <a href="#" class="user-nav-item notification-item">
-            <span class="material-icons" aria-hidden="true">notifications</span>
-            <span class="badge">3</span>
-        </a>
-        <a href="#" class="user-nav-item facilitator-tag">
-            <span>Lab Facilitator</span>
-        </a>
-        <div class="user-nav-item">
-            <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="logout-button">
-                    <span class="material-icons" aria-hidden="true">logout</span>
-                    <span>Logout</span>
-                </button>
-            </form>
+    <div class="container">
+        <div class="logo">
+            <span class="material-icons" aria-hidden="true">school</span>
+            <h1>Facilitator Portal</h1>
         </div>
-    </nav>
+        <nav class="user-nav">
+            <span class="material-icons notification-icon" aria-hidden="true">notifications</span>
+            <div class="user-info">
+                <span class="material-icons profile-icon" aria-hidden="true">account_circle</span>
+                <span class="user-name">facilitator Test</span>
+            </div>
+            <span class="user-role-tag">Lab Facilitator</span>
+            <div class="user-nav-item">
+                <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="logout-button">
+                        <span class="material-icons" aria-hidden="true">logout</span>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+        </nav>
+    </div>
 </header>
 
 <section id="navigation" class="main-content-wrapper">
@@ -1657,7 +1715,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    // Update greeting icon based on time of day
+function updateGreetingIcon() {
+    const now = new Date();
+    const hour = now.getHours();
+    const iconElement = document.querySelector('.welcome-icon-wrapper .material-icons');
     
+    if (iconElement) {
+        if (hour >= 5 && hour < 12) {
+            // Morning (5 AM - 11:59 AM)
+            iconElement.textContent = 'wb_sunny';
+        } else if (hour >= 12 && hour < 17) {
+            // Afternoon (12 PM - 4:59 PM)
+            iconElement.textContent = 'wb_sunny';
+        } else {
+            // Night (9 PM - 4:59 AM)
+            iconElement.textContent = 'nights_stay';
+        }
+    }
+}
+
+// Call the function when page loads
+updateGreetingIcon();
     // Calendar functionality
     let currentDate = new Date();
     const monthNames = ["January", "February", "March", "April", "May", "June",
@@ -1807,11 +1886,40 @@ document.addEventListener('DOMContentLoaded', function() {
             item.classList.remove('unread');
         });
         
-        // Update notification badge
+        // Remove notification badge completely
         const badge = document.querySelector('.notification-badge');
         if (badge) {
-            badge.textContent = '0';
-            badge.style.display = 'none';
+            badge.remove(); // This completely removes the red badge
+        }
+    });
+        
+    // Function to check if there are any unread notifications and update badge
+    function updateNotificationBadge() {
+        const unreadCount = document.querySelectorAll('.notification-item.unread').length;
+        const badge = document.querySelector('.notification-badge');
+        
+        if (unreadCount === 0 && badge) {
+            badge.remove(); // Remove the red badge when no unread notifications
+        } else if (badge) {
+            badge.textContent = unreadCount; // Update the count
+        }
+    }
+
+    // Call this function whenever notifications are read
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.action-btn.accept')) {
+            const notification = e.target.closest('.notification-item');
+            notification.classList.remove('unread');
+            updateNotificationBadge(); // Update badge count
+            alert('Shift accepted successfully!');
+        }
+        
+        if (e.target.closest('.action-btn.decline')) {
+            const notification = e.target.closest('.notification-item');
+            notification.classList.remove('unread');
+            notification.style.display = 'none';
+            updateNotificationBadge(); // Update badge count
+            alert('Shift declined.');
         }
     });
 
