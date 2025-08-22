@@ -1,0 +1,678 @@
+/* uc.css */
+.header {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb; /* subtle divider */
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 6px 16px;              /* slim height like screenshot */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Left cluster (icon + title) */
+.left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-school {
+  color: #111827;                 /* near-black */
+  font-size: 18px;                /* small icon */
+  line-height: 1;
+}
+
+.title {
+  font-size: 16px;                /* compact title */
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+}
+
+/* Right cluster */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;                      /* tight spacing like the image */
+}
+
+/* Generic small icon button */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 9999px;
+  color: #4b5563;
+}
+.icon-btn:hover { background: #f3f4f6; }
+
+/* Create button (outlined, small) */
+.create-unit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1;
+}
+.create-unit-btn:hover { background: #f9fafb; }
+.icon-add { font-size: 16px; }
+
+/* Notifications with badge */
+.notification-container {
+  position: relative;
+}
+.notification-btn .material-icons {
+  font-size: 20px;
+}
+.notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  height: 16px;
+  width: 16px;
+  background: #ef4444;           /* red */
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* User name & avatar */
+.user {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #374151;
+  white-space: nowrap;
+}
+.icon-account { font-size: 18px; color: #6b7280; }
+.user-name { font-size: 14px; }
+
+/* Role pill */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  background: #dbeafe;           /* light blue */
+  color: #3b82f6;                /* blue text */
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Logout (ghost) */
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1;
+}
+.logout-btn:hover { background: #f9fafb; color: #111827; }
+.icon-logout { font-size: 16px; }
+
+/* Ensure logout form stays inline with other items */
+.logout-form {
+  margin: 0;               /* remove default margins */
+  display: inline-flex;    /* inline-flex keeps it in the flex row */
+}
+
+/* bottom half if there is no units */
+/* Empty State Card */
+.empty-state-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.empty-state-card .material-icons {
+  font-size: 48px;
+  color: #111827; /* dark gray */
+  margin-bottom: 12px;
+}
+
+.empty-state-card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #111827;
+}
+
+.empty-state-card p {
+  font-size: 14px;
+  color: #6b7280; /* muted gray */
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* Large "Create Unit" button */
+.empty-state-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 14px;
+  background: #111827;   /* black background */
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.empty-state-btn:hover {
+  background: #1f2937; /* slightly lighter black on hover */
+}
+
+.empty-state-btn .material-icons {
+  font-size: 16px;
+}
+
+
+/* This is the create unit css */
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.modal-overlay.flex { display: flex; }
+
+/* Modal Box */
+.modal-box {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 900px;
+  position: relative;
+  padding-bottom: 1rem;
+}
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  color: #6b7280;
+  font-size: 18px;
+}
+.modal-close:hover { color: #111827; }
+
+/* Steps Header */
+.modal-steps {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 2rem;
+  font-size: 14px;
+  color: #6b7280;
+}
+.modal-steps .step {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.modal-steps .step span {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid #d1d5db;
+  font-size: 12px;
+}
+.modal-steps .step.active span {
+  background: #111827;
+  color: #fff;
+  border: none;
+}
+.modal-steps .step.active { color: #111827; }
+
+/* Form Styling */
+.modal-form {
+  padding: 2rem;
+}
+.modal-form h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.modal-form .subtext {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  color: #374151;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 14px;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #111827;
+  outline: none;
+}
+
+.modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding: 12px 20px;
+  margin-top: 6px;
+
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-cancel {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+}
+.btn-cancel:hover { background: #f9fafb; }
+.btn-primary {
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  background: #111827;
+  color: #fff;
+  font-weight: 600;
+}
+.btn-primary:hover { background: #1f2937; }
+
+/* ===== Modal skeleton ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.5); /* dim background */
+  display: none;           /* toggled with .flex via JS */
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-overlay.flex { display: flex; }
+
+.modal-box {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 1100px;       /* wide like screenshot */
+  height: 88vh;            /* tall dialog */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;        /* header/footer stickiness */
+}
+
+/* Close “X” */
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  color: #9ca3af;
+  font-size: 16px;
+  line-height: 1;
+}
+.modal-close:hover { color: #111827; }
+
+/* ===== Top title bar ===== */
+.modal-top {
+  padding: 20px 28px 8px 28px;
+}
+.modal-title h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+.modal-title p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* ===== Stepper ===== */
+.modal-steps {
+  display: flex;
+  justify-content: space-between;   /* spread evenly */
+  padding: 12px 28px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.modal-steps .step {
+  flex: 1;                          /* each takes equal space */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  justify-content: center;          /* center content in each slot */
+}
+
+
+/* number bubble */
+.modal-steps .step span {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* active step */
+.modal-steps .step.active { color: #111827; }
+.modal-steps .step.active span {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+/* faint divider after steps 1–3 */
+.modal-steps .step:not(:last-child)::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 2px;
+  background: #e5e7eb;
+  margin-left: 14px;
+  border-radius: 999px;
+}
+/* ===== Custom Select (Semester) ===== */
+.select { position: relative; width: 100%; }
+.select-trigger{
+  width:100%; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:8px;
+  padding:10px 40px 10px 12px; font-size:14px; color:#111827; text-align:left;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.select-trigger:hover{ background:#eef0f3; }
+.select-trigger:focus{ outline:none; border-color:#111827; box-shadow:0 0 0 3px rgba(17,24,39,.08); }
+.select-caret{ font-size:20px; color:#6b7280; }
+
+.select-list{
+  position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:60;
+  background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+  box-shadow:0 12px 24px rgba(0,0,0,.08), 0 4px 8px rgba(0,0,0,.05);
+  padding:6px 0; list-style:none; margin:0; display:none;
+}
+.select.open .select-list{ display:block; }
+
+.option{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:10px 12px; font-size:14px; color:#111827; cursor:pointer;
+}
+.option:hover{ background:#f3f4f6; }
+.option .check{ font-size:18px; color:#111827; opacity:0; }
+.option.selected .check{ opacity:1; }
+
+
+/* ===== Form body ===== */
+.modal-form {
+  padding: 28px 28px 16px 28px;
+  overflow: auto;                  /* scroll main body */
+  flex: 1;                         /* fill space between header & footer */
+}
+
+.modal-form h2 {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  color: #111827;
+  margin: 8px 0 6px 0;
+}
+
+.modal-form .subtext {
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+/* two-column grid like screenshot */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+/* input look: soft grey bg, subtle border, rounded */
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  background: #f3f4f6;             /* light grey fill */
+  border: 1px solid #e5e7eb;       /* very subtle outline */
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #111827;
+}
+
+.form-group textarea { resize: vertical; }
+
+/* focus ring (clean, not neon) */
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+/* ===== Sticky footer with buttons ===== */
+.modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding: 12px 20px;
+  margin-top: 6px;
+
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-cancel {
+  padding: 8px 14px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.btn-cancel:hover { background: #f9fafb; }
+
+.btn-primary {
+  padding: 8px 18px;
+  background: #0b0b12;  /* near-black like header card button */
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-primary:hover { background: #1f2937; }
+
+/* this is for step 2 of the unit creawt thing idk*/
+/* evenly spaced steps you already have; add: */
+.modal-steps { display: grid; grid-template-columns: repeat(4,1fr); align-items:center; }
+
+/* Step panes */
+.wizard-step.hidden { display: none; }
+
+/* Date step calendar grid */
+.date-grid {
+  display: flex;
+  justify-content: center;
+  gap: 48px;              /* wider gap between calendars (was 32px) */
+  margin-top: 2rem;       /* more space above calendars */
+  margin-bottom: 2rem;    /* more space below calendars */
+  flex-wrap: wrap;        /* allow stacking on smaller screens */
+}
+
+.date-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;          /* more padding inside each calendar */
+  min-width: 300px;       /* stop them from shrinking too small */
+}
+
+/* Date range summary chip */
+.summary-card {
+  max-width: 700px;
+  margin: 2rem auto 0;    /* more spacing before summary */
+  padding: 14px 18px;     /* more padding inside summary */
+  background: #f9fafb;    /* subtle grey background to separate */
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+}
+/* Hide the “real” inputs but keep them accessible for form posting */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0,0,0,0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Flatpickr (inline) polish */
+.flatpickr-calendar.inline {
+  border: none;
+  box-shadow: none;
+  width: 100%;
+}
+
+.flatpickr-calendar .flatpickr-months {
+  margin-bottom: 6px;
+}
+
+.flatpickr-calendar .flatpickr-days {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+/* make selection + hover feel crisp */
+.flatpickr-day:hover {
+  background: #f3f4f6;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+  background: #111827 !important;
+  color: #fff !important;
+  border-color: #111827 !important;
+}
+.date-card label { display:block; font-size:14px; font-weight:600; color:#374151; margin-bottom:8px; }
+.date-card input[type="date"] {
+  width:100%; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; font-size:14px;
+}
+.date-card input[type="date"]:focus { outline:none; border-color:#111827; box-shadow:0 0 0 3px rgba(17,24,39,.08); }
+
+
+/* Date range summary chip */
+.summary-card {
+  max-width: 640px;
+  margin: 14px auto 0;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #374151;
+  font-size: 14px;
+}
+
+.summary-icon {
+  font-size: 18px;
+  color: #111827;
+  background: #f3f4f6;
+  border-radius: 9999px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

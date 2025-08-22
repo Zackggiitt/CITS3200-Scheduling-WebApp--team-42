@@ -25,12 +25,21 @@ class SkillLevel(Enum):
 # Add new models for units and modules
 class Unit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    unit_code = db.Column(db.String(20), unique=True, nullable=False)  # e.g., GENG2000
-    unit_name = db.Column(db.String(200), nullable=False)  # e.g., "Engineering Computing"
+    unit_code = db.Column(db.String(20), nullable=False)
+    unit_name = db.Column(db.String(200), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    semester = db.Column(db.String(20), nullable=False)
+    description = db.Column(db.Text, nullable=True)   # ← add this
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def __repr__(self):
-        return f'<Unit {self.unit_code} - {self.unit_name}>'
+    description = db.Column(db.Text)
+    start_date  = db.Column(db.Date)   # first day unit runs
+    end_date    = db.Column(db.Date)   # last day unit runs
+
+    creator = db.relationship("User", backref="units")
+    __table_args__ = (
+        db.UniqueConstraint("unit_code", "year", "semester", "created_by", name="uq_unit_per_uc"),
+    )
 
 
 class Module(db.Model):
@@ -69,6 +78,10 @@ class User(db.Model):
     # Hours constraints for optimization
     min_hours = db.Column(db.Integer, default=0)
     max_hours = db.Column(db.Integer, default=20)
+    
+    @property
+    def full_name(self):
+        return f"{self.first_name or ''} {self.last_name or ''}".strip() or self.email
     
     # Relationships
     availability = db.relationship('Availability', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -160,3 +173,16 @@ class FacilitatorSkill(db.Model):
     
     def __repr__(self):
         return f'<FacilitatorSkill {self.facilitator.email} - {self.module.module_name} ({self.skill_level.value})>'
+    
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.String(255), nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='notifications')
+
+    def __repr__(self):
+        return f'<Notification {self.user.email} - {self.message[:20]}>'
+

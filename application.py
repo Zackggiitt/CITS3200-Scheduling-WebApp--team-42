@@ -1,29 +1,52 @@
 # application.py
+
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
+
 from models import db, User, UserRole
 from auth import login_required, is_safe_url, get_current_user
 from authlib.integrations.flask_client import OAuth
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from utils import role_required
+from flask_wtf.csrf import CSRFProtect
 
-# Import blueprints
+# Blueprints
 from admin_routes import admin_bp
 from facilitator_routes import facilitator_bp
 from unitcoordinator_routes import unitcoordinator_bp
+from auth import auth_bp  # contains POST /logout
 
 load_dotenv()
+
 app = Flask(__name__)
-limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+
+# Recommended cookie hardening
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",               # consider "Strict" if it fits your flows
+    SESSION_COOKIE_SECURE=False if app.debug else True,  # True in production (HTTPS)
+)
+
+# Rate limiting
+limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
+
+# CSRF protection (protects all POST forms, incl. logout form)
+csrf = CSRFProtect(app)
+
+# DB
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///dev.db")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db.init_app(app)
 
 # Register blueprints
 app.register_blueprint(admin_bp)
 app.register_blueprint(facilitator_bp)
 app.register_blueprint(unitcoordinator_bp)
+app.register_blueprint(auth_bp)
 
 # OAuth configuration
 oauth = OAuth(app)
@@ -35,16 +58,17 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'}
 )
 
-# DB
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///dev.db")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db.init_app(app)
+# Make current user available globally (optional, handy for headers)
+@app.context_processor
+def inject_user():
+    return {"user": get_current_user()}
 
-# Set g.user for all requests
+# Set g.user for all requests (kept from your version)
 @app.before_request
 def before_request():
     g.user = get_current_user()
 
+# Create DB tables and ensure default admin
 with app.app_context():
     db.create_all()
     admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
@@ -73,7 +97,7 @@ def index():
             flash("Session expired. Please log in again.")
             return render_template("login.html")
 
-        role = user.role  # Use database-stored role
+        role = user.role
         if role == UserRole.ADMIN:
             return redirect(url_for('admin.dashboard'))
         elif role == UserRole.UNIT_COORDINATOR:
@@ -88,11 +112,10 @@ def login():
     if request.method == "POST":
         email = request.form["email"].strip().lower()
         password = request.form["password"]
-        selected_role = request.form.get("user_role", "facilitator")  # Default to facilitator if not set
+        selected_role = request.form.get("user_role", "facilitator")
 
         user = User.query.filter_by(email=email).first()
         if user and user.password_hash and check_password_hash(user.password_hash, password):
-            # Validate selected role against user's actual role
             allowed = (
                 (selected_role == "admin" and user.role == UserRole.ADMIN) or
                 (selected_role == "unit_coordinator" and user.role == UserRole.UNIT_COORDINATOR) or
@@ -103,14 +126,13 @@ def login():
                 return render_template("login.html")
 
             session["user_id"] = user.id
-            role = user.role  # Use database-stored role for redirection
             target = request.args.get("next")
             if target and is_safe_url(target):
                 return redirect(target)
 
-            if role == UserRole.ADMIN:
+            if user.role == UserRole.ADMIN:
                 return redirect(url_for("admin.dashboard"))
-            elif role == UserRole.UNIT_COORDINATOR:
+            elif user.role == UserRole.UNIT_COORDINATOR:
                 return redirect(url_for("unitcoordinator.dashboard"))
             else:
                 return redirect(url_for("facilitator.dashboard"))
@@ -144,7 +166,7 @@ def google_callback():
                 oauth_provider='google',
                 oauth_id=oauth_id,
                 avatar_url=avatar_url,
-                role=UserRole.FACILITATOR  # Default role
+                role=UserRole.FACILITATOR
             )
             db.session.add(user)
             db.session.commit()
@@ -155,10 +177,9 @@ def google_callback():
             db.session.commit()
 
         session['user_id'] = user.id
-        role = user.role
-        if role == UserRole.ADMIN:
+        if user.role == UserRole.ADMIN:
             return redirect(url_for("admin.dashboard"))
-        elif role == UserRole.UNIT_COORDINATOR:
+        elif user.role == UserRole.UNIT_COORDINATOR:
             return redirect(url_for("unitcoordinator.dashboard"))
         else:
             return redirect(url_for("facilitator.dashboard"))
@@ -182,7 +203,7 @@ def signup():
                 last_name=last,
                 email=email,
                 password_hash=generate_password_hash(password),
-                role=UserRole.FACILITATOR  # Default role, no selection
+                role=UserRole.FACILITATOR
             )
             db.session.add(user)
             db.session.commit()
@@ -190,16 +211,11 @@ def signup():
             return redirect(url_for("login"))
     return render_template("signup.html")
 
-@app.route("/logout")
-def logout():
-    session.pop("user_id", None)
-    session.pop("role", None)  # Remove any residual role
-    flash("Logged out!")
-    return redirect(url_for("login"))
+# NOTE: Removed the old GET /logout route. Use POST /logout via auth blueprint.
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
-    flash("Too many login attempts. Please try again in few minutes.")
+    flash("Too many login attempts. Please try again in a few minutes.")
     return render_template("login.html"), 429
 
 if __name__ == "__main__":
