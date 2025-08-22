@@ -467,6 +467,10 @@
             <span class="material-icons" aria-hidden="true">dashboard</span>
             <span>Dashboard</span>
         </a>
+        <a href="#availability" class="dashboard-nav-item">
+            <span class="material-icons" aria-hidden="true">event_available</span>
+            <span>Availability</span>
+        </a>
         <a href="#schedule" class="dashboard-nav-item">
             <span class="material-icons" aria-hidden="true">calendar_today</span>
             <span>My Schedule</span>
@@ -648,6 +652,122 @@
     </div>
 </section>
 <!-- Add this after the existing sections, before closing </body> -->
+<!-- Availability View (initially hidden) -->
+<section id="availability-view" class="main-content-wrapper" style="display: none;">
+  <div class="availability-container">
+    <div class="availability-header">
+      <div>
+        <h2>My Availability</h2>
+        <p class="availability-subtitle">Set your available days and hours for scheduling</p>
+      </div>
+    </div>
+    
+    <div class="availability-days">
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="monday" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Monday</span>
+        </div>
+        <div class="time-inputs">
+          <input type="time" class="time-input" value="08:00">
+          <span class="time-separator">to</span>
+          <input type="time" class="time-input" value="18:00">
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="tuesday" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Tuesday</span>
+        </div>
+        <div class="time-inputs">
+          <input type="time" class="time-input" value="08:00">
+          <span class="time-separator">to</span>
+          <input type="time" class="time-input" value="18:00">
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="wednesday">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Wednesday</span>
+        </div>
+        <div class="time-inputs disabled">
+          <span class="not-available">Not available</span>
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="thursday" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Thursday</span>
+        </div>
+        <div class="time-inputs">
+          <input type="time" class="time-input" value="08:00">
+          <span class="time-separator">to</span>
+          <input type="time" class="time-input" value="18:00">
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="friday" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Friday</span>
+        </div>
+        <div class="time-inputs">
+          <input type="time" class="time-input" value="08:00">
+          <span class="time-separator">to</span>
+          <input type="time" class="time-input" value="16:00">
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="saturday">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Saturday</span>
+        </div>
+        <div class="time-inputs disabled">
+          <span class="not-available">Not available</span>
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="sunday">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Sunday</span>
+        </div>
+        <div class="time-inputs disabled">
+          <span class="not-available">Not available</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="availability-footer">
+      <button class="update-btn">Update Availability</button>
+    </div>
+  </div>
+</section>
 
 <!-- Calendar View (initially hidden) -->
 <section id="calendar-view" class="main-content-wrapper" style="display: none;">
@@ -845,6 +965,8 @@
     </div>
   </div>
 </section>
+
+
 
 <style id="notifications-styles">
 /* Notifications Styles */
@@ -1358,6 +1480,181 @@
   }
 }
 </style>
+
+<style id="availability-styles">
+/* Availability Styles */
+.availability-container {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: var(--gap-lg);
+  margin-top: 24px;
+}
+
+.availability-header {
+  margin-bottom: var(--gap-lg);
+  padding-bottom: var(--gap-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.availability-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+
+.availability-subtitle {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.availability-days {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.day-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background-color: var(--surface-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.day-toggle {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: #2196F3;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+.day-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  min-width: 80px;
+}
+
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.time-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: var(--surface-primary);
+  color: var(--color-text-primary);
+}
+
+.time-separator {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.time-inputs.disabled {
+  opacity: 0.5;
+}
+
+.not-available {
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+.availability-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--gap-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.update-btn {
+  background-color: #1f2937;
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.update-btn:hover {
+  background-color: #111827;
+}
+
+@media (max-width: 768px) {
+  .day-row {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .day-toggle {
+    justify-content: space-between;
+  }
+  
+  .time-inputs {
+    justify-content: center;
+  }
+}
+</style>
 <script>
 // Navigation between dashboard, calendar, and notifications
 document.addEventListener('DOMContentLoaded', function() {
@@ -1377,20 +1674,31 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Show/hide sections
             const href = this.getAttribute('href');
-            if (href === '#schedule') {
+            const availabilityView = document.getElementById('availability-view');
+
+            if (href === '#availability') {
+                // Show availability view
+                dashboardSections.forEach(section => section.style.display = 'none');
+                availabilityView.style.display = 'block';
+                calendarView.style.display = 'none';
+                notificationsView.style.display = 'none';
+            } else if (href === '#schedule') {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
+                availabilityView.style.display = 'none';
                 calendarView.style.display = 'block';
                 notificationsView.style.display = 'none';
                 initCalendar();
             } else if (href === '#notifications') {
                 // Show notifications view
                 dashboardSections.forEach(section => section.style.display = 'none');
+                availabilityView.style.display = 'none';
                 calendarView.style.display = 'none';
                 notificationsView.style.display = 'block';
             } else {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
+                availabilityView.style.display = 'none';
                 calendarView.style.display = 'none';
                 notificationsView.style.display = 'none';
             }
