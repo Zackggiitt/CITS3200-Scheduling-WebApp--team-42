@@ -611,7 +611,7 @@
                 <h4>Available Days</h4>
                 <span class="material-icons" aria-hidden="true">event_available</span>
             </div>
-            <p class="stat-value">4</p>
+            <p class="stat-value" id="available-days-count">4</p>
             <p class="stat-subtext">Per week</p>
         </div>
     </div>
@@ -1672,6 +1672,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
     const calendarView = document.getElementById('calendar-view');
     const notificationsView = document.getElementById('notifications-view');
+    const availabilityView = document.getElementById('availability-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
     
     // Navigation click handlers
@@ -1685,7 +1686,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Show/hide sections
             const href = this.getAttribute('href');
-            const availabilityView = document.getElementById('availability-view');
 
             if (href === '#availability') {
                 // Show availability view
@@ -1715,28 +1715,31 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
     // Update greeting icon based on time of day
-function updateGreetingIcon() {
-    const now = new Date();
-    const hour = now.getHours();
-    const iconElement = document.querySelector('.welcome-icon-wrapper .material-icons');
-    
-    if (iconElement) {
-        if (hour >= 5 && hour < 12) {
-            // Morning (5 AM - 11:59 AM)
-            iconElement.textContent = 'wb_sunny';
-        } else if (hour >= 12 && hour < 17) {
-            // Afternoon (12 PM - 4:59 PM)
-            iconElement.textContent = 'wb_sunny';
-        } else {
-            // Night (9 PM - 4:59 AM)
-            iconElement.textContent = 'nights_stay';
+    function updateGreetingIcon() {
+        const now = new Date();
+        const hour = now.getHours();
+        const iconElement = document.querySelector('.welcome-icon-wrapper .material-icons');
+        
+        if (iconElement) {
+            if (hour >= 5 && hour < 12) {
+                // Morning (5 AM - 11:59 AM)
+                iconElement.textContent = 'wb_sunny';
+            } else if (hour >= 12 && hour < 17) {
+                // Afternoon (12 PM - 4:59 PM)
+                iconElement.textContent = 'wb_sunny';
+            } else {
+                // Night (9 PM - 4:59 AM)
+                iconElement.textContent = 'nights_stay';
+            }
         }
     }
-}
 
-// Call the function when page loads
-updateGreetingIcon();
+    // Call the function when page loads
+    updateGreetingIcon();
+    updateAvailableDaysCounter();
+
     // Calendar functionality
     let currentDate = new Date();
     const monthNames = ["January", "February", "March", "April", "May", "June",
@@ -1749,11 +1752,15 @@ updateGreetingIcon();
     
     function updateCalendarHeader() {
         const monthTitle = document.getElementById('current-month');
-        monthTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+        if (monthTitle) {
+            monthTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+        }
     }
     
     function generateCalendarDays() {
         const calendarDays = document.getElementById('calendar-days');
+        if (!calendarDays) return;
+        
         calendarDays.innerHTML = '';
         
         const year = currentDate.getFullYear();
@@ -1843,17 +1850,24 @@ updateGreetingIcon();
     }
     
     // Month navigation
-    document.getElementById('prev-month').addEventListener('click', function() {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        updateCalendarHeader();
-        generateCalendarDays();
-    });
+    const prevMonthBtn = document.getElementById('prev-month');
+    const nextMonthBtn = document.getElementById('next-month');
     
-    document.getElementById('next-month').addEventListener('click', function() {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        updateCalendarHeader();
-        generateCalendarDays();
-    });
+    if (prevMonthBtn) {
+        prevMonthBtn.addEventListener('click', function() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            updateCalendarHeader();
+            generateCalendarDays();
+        });
+    }
+    
+    if (nextMonthBtn) {
+        nextMonthBtn.addEventListener('click', function() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            updateCalendarHeader();
+            generateCalendarDays();
+        });
+    }
 
     // NOTIFICATIONS FUNCTIONALITY
     // Notification filters
@@ -1880,18 +1894,41 @@ updateGreetingIcon();
     });
 
     // Mark all as read
-    document.getElementById('mark-all-read').addEventListener('click', function() {
-        const unreadItems = document.querySelectorAll('.notification-item.unread');
-        unreadItems.forEach(item => {
-            item.classList.remove('unread');
+    const markAllReadBtn = document.getElementById('mark-all-read');
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', function() {
+            const unreadItems = document.querySelectorAll('.notification-item.unread');
+            unreadItems.forEach(item => {
+                item.classList.remove('unread');
+            });
+            
+            // Remove notification badge completely
+            const badge = document.querySelector('.notification-badge');
+            if (badge) {
+                badge.remove();
+            }
         });
-        
-        // Remove notification badge completely
-        const badge = document.querySelector('.notification-badge');
-        if (badge) {
-            badge.remove(); // This completely removes the red badge
-        }
-    });
+    }
+
+    // Clear all notifications
+    const clearAllBtn = document.getElementById('clear-all');
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all notifications?')) {
+                const notificationsList = document.getElementById('notifications-list');
+                const emptyState = document.getElementById('notifications-empty');
+                
+                if (notificationsList) notificationsList.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'block';
+                
+                // Update notification badge
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    badge.remove();
+                }
+            }
+        });
+    }
         
     // Function to check if there are any unread notifications and update badge
     function updateNotificationBadge() {
@@ -1899,112 +1936,30 @@ updateGreetingIcon();
         const badge = document.querySelector('.notification-badge');
         
         if (unreadCount === 0 && badge) {
-            badge.remove(); // Remove the red badge when no unread notifications
+            badge.remove();
         } else if (badge) {
-            badge.textContent = unreadCount; // Update the count
+            badge.textContent = unreadCount;
         }
     }
 
-    // Call this function whenever notifications are read
+    // GLOBAL CLICK HANDLER - Only one for all click events
     document.addEventListener('click', function(e) {
+        // Handle notification accept/decline buttons
         if (e.target.closest('.action-btn.accept')) {
             const notification = e.target.closest('.notification-item');
             notification.classList.remove('unread');
-            updateNotificationBadge(); // Update badge count
+            updateNotificationBadge();
             alert('Shift accepted successfully!');
-        }
-        
-        if (e.target.closest('.action-btn.decline')) {
+        } else if (e.target.closest('.action-btn.decline')) {
             const notification = e.target.closest('.notification-item');
             notification.classList.remove('unread');
             notification.style.display = 'none';
-            updateNotificationBadge(); // Update badge count
+            updateNotificationBadge();
             alert('Shift declined.');
         }
-    });
-
-    // Clear all notifications
-    document.getElementById('clear-all').addEventListener('click', function() {
-        if (confirm('Are you sure you want to clear all notifications?')) {
-            const notificationsList = document.getElementById('notifications-list');
-            const emptyState = document.getElementById('notifications-empty');
-            
-            notificationsList.style.display = 'none';
-            emptyState.style.display = 'block';
-            
-            // Update notification badge
-            const badge = document.querySelector('.notification-badge');
-            if (badge) {
-                badge.textContent = '0';
-                badge.style.display = 'none';
-            }
-        }
-    });
-
-    // Individual notification actions
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.action-btn.accept')) {
-            const notification = e.target.closest('.notification-item');
-            notification.classList.remove('unread');
-            alert('Shift accepted successfully!');
-        }
         
-        if (e.target.closest('.action-btn.decline')) {
-            const notification = e.target.closest('.notification-item');
-            notification.style.display = 'none';
-            alert('Shift declined.');
-        }
-
-    // Handle "Update Now" button in alert section
-    document.getElementById('update-now-btn').addEventListener('click', function(e) {
-        e.preventDefault();
-        
-        // Remove active state from all nav items
-        const navItems = document.querySelectorAll('.dashboard-nav-item');
-        navItems.forEach(nav => nav.classList.remove('active'));
-        
-        // Add active state to availability tab
-        const availabilityNavItem = document.querySelector('a[href="#availability"]');
-        availabilityNavItem.classList.add('active');
-        
-        // Hide all sections
-        const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
-        const availabilityView = document.getElementById('availability-view');
-        const calendarView = document.getElementById('calendar-view');
-        const notificationsView = document.getElementById('notifications-view');
-        
-        dashboardSections.forEach(section => section.style.display = 'none');
-        availabilityView.style.display = 'block';
-        calendarView.style.display = 'none';
-        notificationsView.style.display = 'none';
-    });
-
-    // AVAILABILITY FUNCTIONALITY
-    // Handle toggle switches for time inputs
-    document.addEventListener('change', function(e) {
-        if (e.target.classList.contains('day-checkbox')) {
-            const dayRow = e.target.closest('.day-row');
-            const timeInputs = dayRow.querySelector('.time-inputs');
-            
-            if (e.target.checked) {
-                // Show time inputs when toggle is ON
-                timeInputs.classList.remove('disabled');
-                timeInputs.innerHTML = `
-                    <input type="time" class="time-input" value="08:00">
-                    <span class="time-separator">to</span>
-                    <input type="time" class="time-input" value="18:00">
-                `;
-            } else {
-                // Show "Not available" when toggle is OFF
-                timeInputs.classList.add('disabled');
-                timeInputs.innerHTML = '<span class="not-available">Not available</span>';
-            }
-        }
-    });
-
-    // Handle update availability button
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('update-btn')) {
+        // Handle update availability button
+        else if (e.target.classList.contains('update-btn')) {
             // Collect all availability data
             const availability = [];
             document.querySelectorAll('.day-checkbox').forEach(checkbox => {
@@ -2014,8 +1969,8 @@ updateGreetingIcon();
                 
                 if (isAvailable) {
                     const timeInputs = dayRow.querySelectorAll('.time-input');
-                    const startTime = timeInputs[0].value;
-                    const endTime = timeInputs[1].value;
+                    const startTime = timeInputs[0] ? timeInputs[0].value : '';
+                    const endTime = timeInputs[1] ? timeInputs[1].value : '';
                     availability.push({
                         day: dayName,
                         available: true,
@@ -2042,7 +1997,7 @@ updateGreetingIcon();
             }
 
             if (alertIcon) {
-                alertIcon.textContent = 'checklist'; // Change from warning to checklist
+                alertIcon.textContent = 'checklist';
             }
 
             // Change alert styling to success
@@ -2058,13 +2013,79 @@ updateGreetingIcon();
             if (updateBtn) {
                 updateBtn.style.display = 'none';
             }
-                                                    
+        }
+        
+        // Handle "Update Now" button in alert section
+        else if (e.target.closest('#update-now-btn')) {
+            e.preventDefault();
+            
+            // Remove active state from all nav items
+            navItems.forEach(nav => nav.classList.remove('active'));
+            
+            // Add active state to availability tab
+            const availabilityNavItem = document.querySelector('a[href="#availability"]');
+            if (availabilityNavItem) {
+                availabilityNavItem.classList.add('active');
+            }
+            
+            // Hide all sections and show availability
+            dashboardSections.forEach(section => section.style.display = 'none');
+            availabilityView.style.display = 'block';
+            calendarView.style.display = 'none';
+            notificationsView.style.display = 'none';
         }
     });
+
+    // AVAILABILITY TOGGLE FUNCTIONALITY
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('day-checkbox')) {
+            const dayRow = e.target.closest('.day-row');
+            const timeInputs = dayRow.querySelector('.time-inputs');
+            
+            if (e.target.checked) {
+                // Show time inputs when toggle is ON
+                timeInputs.classList.remove('disabled');
+                timeInputs.innerHTML = `
+                    <input type="time" class="time-input" value="08:00">
+                    <span class="time-separator">to</span>
+                    <input type="time" class="time-input" value="18:00">
+                `;
+            } else {
+                // Show "Not available" when toggle is OFF
+                timeInputs.classList.add('disabled');
+                timeInputs.innerHTML = '<span class="not-available">Not available</span>';
+            }
+
+            // Update available days counter
+            updateAvailableDaysCounter();
+        }
     });
+
+
+    // Function to update the available days counter
+    function updateAvailableDaysCounter() {
+        const checkedDays = document.querySelectorAll('.day-checkbox:checked').length;
+        const availableDaysElement = document.getElementById('available-days-count');
+        
+        if (availableDaysElement) {
+            availableDaysElement.textContent = checkedDays;
+        }
+    }
+
+
+
 });
 </script>
 </body>
+</html>
+
+
+
+
+
+
+
+
 </html>
 
 
