@@ -244,7 +244,8 @@
           <h2 id="sessions-setup-title">Sessions</h2>
           <p class="subtext">Teaching sessions & schedule</p>
 
-          <div class="setup-card">
+          <!-- Upload CSV wrapper (now has an id so we can hide it after success) -->
+          <div id="setup_wrap" class="setup-card">
             <div class="setup-card__header">
               <span class="material-icons">cloud_upload</span>
               <div>
@@ -254,22 +255,25 @@
                 </p>
               </div>
             </div>
+
             <div class="upload-row">
               <!-- Left: Download template -->
               <div class="upload-col">
                 <div class="hint-title">CSV Template</div>
                 <p class="hint-sub">Use this file for correct column names.</p>
                 <a class="btn-outline w-full sm:w-auto"
-                   href="{{ url_for('unitcoordinator.download_setup_csv_template') }}"
-                   target="_blank" rel="noopener">
+                  href="{{ url_for('unitcoordinator.download_setup_csv_template') }}"
+                  target="_blank" rel="noopener">
                   <span class="material-icons" style="font-size:18px">download</span>
                   Download CSV Template
                 </a>
               </div>
+
               <!-- Right: Upload CSV -->
               <div class="upload-col">
                 <div class="hint-title">Upload CSV</div>
                 <p class="hint-sub">Facilitator emails and venue names (2 columns).</p>
+
                 <div class="filepicker">
                   <input id="setup_csv" name="setup_csv" type="file" accept=".csv" class="filepicker-input" />
                   <label for="setup_csv" class="filepicker-btn">
@@ -278,6 +282,7 @@
                   </label>
                   <span id="file_name" class="filepicker-name" aria-live="polite">No file selected</span>
                 </div>
+
                 <!-- Status -->
                 <div id="upload_status" class="upload-status hidden" role="status" aria-live="polite"></div>
               </div>
@@ -325,6 +330,7 @@
             </aside>
           </div>
         </section>
+
 
         <!-- Footer buttons -->
         <div class="modal-footer">
@@ -614,52 +620,66 @@
 
         try {
           const res = await fetch("{{ url_for('unitcoordinator.upload_setup_csv') }}", {
-            method: 'POST',
-            headers: { 'X-CSRFToken': CSRF_TOKEN },
-            body: form
+            method: "POST",
+            headers: {
+              "X-CSRFToken": CSRF_TOKEN,
+              "X-CSRF-Token": CSRF_TOKEN, // helps if your CSRF lib expects this casing
+            },
+            // credentials: "include", // uncomment if you’re on a different subdomain and need cookies
+            body: form,
           });
-          const data = await res.json();
+
+          let data;
+          try {
+            data = await res.clone().json();
+          } catch (e) {
+            const text = await res.text();
+            throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
+          }
 
           if (!res.ok || !data.ok) {
             const errs = (data.errors || [data.error]).filter(Boolean);
-            statusBox.classList.add('error');
+            statusBox.classList.add("error");
             statusBox.innerHTML = `
               <div class="font-semibold mb-1">Upload failed</div>
               <ul class="list-disc list-inside text-sm">
-                ${errs.map(x => `<li>${x}</li>`).join('')}
+                ${errs.map((x) => `<li>${x}</li>`).join("")}
               </ul>`;
-            setupFlagEl.value = 'false';
-            fileNameEl.textContent = 'No file selected';
-            statusBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            setupFlagEl.value = "false";
+            fileNameEl.textContent = "No file selected";
+            statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
             return;
           }
 
-          statusBox.classList.add('success');
+          // success branch (unchanged)
+          statusBox.classList.add("success");
           statusBox.innerHTML = `
             <div class="font-semibold">Upload successful</div>
             <div class="text-sm mt-1">
               Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}<br/>
               Venues created: ${data.created_venues} · Linked: ${data.linked_venues} · Updated: ${data.updated_venues}
             </div>`;
-          setupFlagEl.value = 'true';
-          statusBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          setupFlagEl.value = "true";
+          fileNameEl.textContent = file.name;
+          statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
-          // reveal & init calendar
           showCalendarIfReady();
+          setTimeout(() => statusBox.classList.add("hidden"), 300);
           if (!window.__calendarInitRan) {
             window.__calendarInitRan = true;
             initCalendar();
           } else {
-            refreshCalendarRange(); // if already running, update valid range/labels
+            refreshCalendarRange();
           }
         } catch (err) {
           console.error(err);
-          statusBox.textContent = 'Unexpected error during upload.';
-          statusBox.classList.add('error');
-          setupFlagEl.value = 'false';
-          fileNameEl.textContent = 'No file selected';
-          statusBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          statusBox.textContent = String(err.message || "Unexpected error during upload.");
+          statusBox.classList.add("error");
+          setupFlagEl.value = "false";
+          fileNameEl.textContent = "No file selected";
+          statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
         }
+
       });
 
       uploadInput.addEventListener('change', (e) => {
@@ -668,93 +688,15 @@
       });
     }
 
-    function showCalendarIfReady() {
-      const ok = document.getElementById('setup_complete')?.value === 'true';
-      document.getElementById('calendar_wrap').classList.toggle('hidden', !ok);
-    }
-
-    // --- Calendar (Step 3b) with FullCalendar ---
-    let calendar;
-
-    function getRange() {
-      const s = parseDMY(document.querySelector('[name="start_date"]')?.value?.trim() || '');
-      const e = parseDMY(document.querySelector('[name="end_date"]')?.value?.trim() || '');
-      return { start: s, end: e };
-    }
-
-    function isOutOfRange(date) {
-      const { start, end } = getRange();
-      if (!start || !end) return false;
-      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const s = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-      const e = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-      return d < s || d > e;
-    }
-
-    function labelOutsideInHeader() {
-      // add/removes the small “Outside range” chip in the header for each day column
-      const headerCells = document.querySelectorAll('.fc-col-header .fc-col-header-cell');
-      headerCells.forEach(cell => {
-        const dateStr = cell.getAttribute('data-date'); // FullCalendar sets data-date on headers
-        if (!dateStr) return;
-        const d = new Date(dateStr);
-        let chip = cell.querySelector('.fc-outside-chip');
-        const out = isOutOfRange(d);
-        if (out) {
-          if (!chip) {
-            chip = document.createElement('span');
-            chip.className = 'fc-outside-chip';
-            chip.textContent = 'Outside range';
-            cell.appendChild(chip);
-          }
-        } else if (chip) {
-          chip.remove();
-        }
-      });
-    }
-
-    function stampOutsideOnBody() {
-      // gray out time columns (timeGrid) and day cells (dayGrid) that are out of range
-      document.querySelectorAll('.fc-timegrid-col, .fc-daygrid-day').forEach(el => {
-        const dateStr = el.getAttribute('data-date');
-        if (!dateStr) return;
-        const out = isOutOfRange(new Date(dateStr));
-        el.classList.toggle('out-of-range', out);
-      });
-    }
-
-    function updateToolbarTitle() {
-      const titleEl = document.getElementById('calWeekTitle');
-      const rangeEl = document.getElementById('calWeekRange');
-      const view = calendar.view;
-      const s = new Date(view.activeStart);
-      const e = new Date(view.activeEnd);
-      const ws = new Date(s.getFullYear(), s.getMonth(), s.getDate());
-      const we = new Date(e.getFullYear(), e.getMonth(), e.getDate() - 1); // activeEnd is exclusive
-
-      titleEl.textContent = `Week of ${ws.toLocaleDateString(undefined, { month:'long', day:'numeric', year:'numeric' })}`;
-      rangeEl.textContent = `${ws.getMonth()+1}/${ws.getDate()}/${ws.getFullYear()} – ${we.getMonth()+1}/${we.getDate()}/${we.getFullYear()}`;
-    }
-
-    function refreshCalendarRange() {
-      // we’re not using validRange to keep out-of-range visible + labeled;
-      // instead, we mark cells and block clicks.
-      calendar.render(); // ensure DOM present
-      updateToolbarTitle();
-      labelOutsideInHeader();
-      stampOutsideOnBody();
-      calendar.refetchEvents();
-    }
-
     function initCalendar() {
       const calendarEl = document.getElementById('calGrid');
-      const inspector = document.getElementById('calInspector');
-      const unitId = document.getElementById('unit_id').value;
+      const inspector  = document.getElementById('calInspector');
+      const unitId     = document.getElementById('unit_id').value;
 
       calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
         headerToolbar: false,
-        firstDay: 1, // Monday
+        firstDay: 1,            // Monday
         allDaySlot: false,
         slotDuration: '00:30:00',
         nowIndicator: true,
@@ -782,15 +724,23 @@
           updateToolbarTitle();
           // Small delay to ensure header/body DOM is ready
           setTimeout(() => {
-            labelOutsideInHeader();
+            // labelOutsideInHeader(); // no longer needed; handled by dayHeaderDidMount
             stampOutsideOnBody();
           }, 0);
         },
 
-        dayCellDidMount: (arg) => {
-          // ensure headers get data-date for our chip helper
-          if (arg.el.classList.contains('fc-col-header-cell')) {
-            arg.el.setAttribute('data-date', arg.dateStr);
+        // Add “Outside range” chip to day headers
+        dayHeaderDidMount: (arg) => {
+          // arg.date is the Date for this header column
+          const out = isOutOfRange(arg.date);
+          // remove any old chip if re-rendered
+          const existing = arg.el.querySelector('.fc-outside-chip');
+          if (existing) existing.remove();
+          if (out) {
+            const chip = document.createElement('span');
+            chip.className = 'fc-outside-chip';
+            chip.textContent = 'Outside range';
+            arg.el.appendChild(chip);
           }
         },
 
@@ -798,8 +748,9 @@
           const d = new Date(info.dateStr);
           if (isOutOfRange(d)) return; // block clicks outside range
 
-          const start = info.dateStr.slice(0,16);
-          const end = new Date(info.date.getTime() + 60 * 60 * 1000).toISOString().slice(0,16);
+          const start = fmtLocalYYYYMMDDHHMM(info.date);
+          const end   = fmtLocalYYYYMMDDHHMM(new Date(info.date.getTime() + 60 * 60 * 1000));
+
           const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, unitId), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
@@ -817,20 +768,21 @@
           // open inspector
           const ev = info.event;
           const start = ev.start;
-          const end = ev.end || new Date(ev.start.getTime() + 60*60*1000);
+          const end   = ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000);
+
           document.getElementById('inspDay').textContent  = start.toLocaleDateString('en-US', { weekday: 'long' });
           document.getElementById('inspTime').textContent = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-          document.getElementById('inspDur').textContent  = `${Math.round((end - start)/60000)} minutes`;
+          document.getElementById('inspDur').textContent  = `${Math.round((end - start) / 60000)} minutes`;
           document.getElementById('inspDate').textContent = start.toLocaleDateString();
           document.getElementById('inspVenue').value      = ev.extendedProps.venue || '';
           document.getElementById('inspDelete').classList.remove('hidden');
           inspector.classList.remove('hidden');
 
-          // wire actions
+          // Save
           document.getElementById('inspSave').onclick = async () => {
             const payload = {
-              start: ev.start.toISOString().slice(0,16),
-              end: (ev.end || new Date(ev.start.getTime() + 60*60*1000)).toISOString().slice(0,16),
+              start: fmtLocalYYYYMMDDHHMM(ev.start),
+              end:   fmtLocalYYYYMMDDHHMM(ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000)),
               venue: document.getElementById('inspVenue').value
             };
             const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
@@ -847,6 +799,7 @@
             }
           };
 
+          // Delete
           document.getElementById('inspDelete').onclick = async () => {
             if (!confirm('Delete this session?')) return;
             const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
@@ -862,6 +815,7 @@
             }
           };
 
+          // Cancel/close
           document.getElementById('inspCancel').onclick = () => inspector.classList.add('hidden');
         }
       });
@@ -875,6 +829,114 @@
 
       refreshCalendarRange();
     }
+
+// --- Calendar helpers & globals ---
+    let calendar;
+
+    // Read the unit's start/end from Step 2 inputs
+    function getUnitRange() {
+      const s = document.querySelector('[name="start_date"]')?.value?.trim();
+      const e = document.querySelector('[name="end_date"]')?.value?.trim();
+      const start = s ? parseDMY(s) : null;
+      const end   = e ? parseDMY(e) : null;
+      return { start, end };
+    }
+
+    // Format a Date as local "YYYY-MM-DDTHH:MM"
+    function fmtLocalYYYYMMDDHHMM(d) {
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // Return true if date is outside unit range
+    function isOutOfRange(d) {
+      const { start, end } = getUnitRange();
+      if (!start || !end) return false;
+      // Note: end is inclusive; calendar validRange end is exclusive
+      return d < start || d > end;
+    }
+
+    // Update toolbar title and range text above the grid
+    function updateToolbarTitle() {
+      const titleEl = document.getElementById('calWeekTitle');
+      const rangeEl = document.getElementById('calWeekRange');
+      if (!calendar || !titleEl || !rangeEl) return;
+
+      const view = calendar.view;
+      // Week title (e.g., "Aug 19–25, 2025")
+      const fmt = (dt, opts) => dt.toLocaleDateString(undefined, opts);
+      const s = view.currentStart;
+      const e = new Date(view.currentEnd.getTime() - 1); // end is exclusive
+      const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+      const title = sameMonth
+        ? `${fmt(s, { month: 'short' })} ${s.getDate()}–${e.getDate()}, ${e.getFullYear()}`
+        : `${fmt(s, { month: 'short' })} ${s.getDate()} – ${fmt(e, { month: 'short' })} ${e.getDate()}, ${e.getFullYear()}`;
+      titleEl.textContent = title;
+
+      const { start, end } = getUnitRange();
+      rangeEl.textContent = (start && end)
+        ? `Unit range: ${fmt(start, { month:'short', day:'numeric', year:'numeric' })} → ${fmt(end, { month:'short', day:'numeric', year:'numeric' })}`
+        : '';
+    }
+
+    // Add “out-of-range” styling to body cells for visible dates
+    function stampOutsideOnBody() {
+      if (!calendar) return;
+      const { start, end } = getUnitRange();
+      if (!start || !end) return;
+
+      // Timegrid columns
+      document.querySelectorAll('.fc-timegrid-col').forEach((col) => {
+        const dateStr = col.getAttribute('data-date');
+        if (!dateStr) return;
+        const d = new Date(dateStr + 'T00:00:00');
+        col.classList.toggle('out-of-range', isOutOfRange(d));
+      });
+
+      // Daygrid cells (if you switch views later)
+      document.querySelectorAll('.fc-daygrid-day').forEach((cell) => {
+        const dateStr = cell.getAttribute('data-date');
+        if (!dateStr) return;
+        const d = new Date(dateStr + 'T00:00:00');
+        cell.classList.toggle('out-of-range', isOutOfRange(d));
+      });
+    }
+
+    // Apply the unit validRange to the calendar (and refetch)
+    function refreshCalendarRange() {
+      if (!calendar) return;
+      const { start, end } = getUnitRange();
+      if (start && end) {
+        // FullCalendar expects end to be exclusive
+        const endExclusive = new Date(end.getTime());
+        endExclusive.setDate(endExclusive.getDate() + 1);
+        calendar.setOption('validRange', {
+          start: toIsoDate(start),
+          end: toIsoDate(endExclusive),
+        });
+      }
+      updateToolbarTitle();
+      stampOutsideOnBody();
+      calendar.refetchEvents();
+    }
+
+    // Hide upload card + show calendar if CSV step is complete
+    function showCalendarIfReady() {
+      const ready = document.getElementById('setup_complete')?.value === 'true';
+      const wrapUpload = document.getElementById('setup_wrap');
+      const wrapCal = document.getElementById('calendar_wrap');
+      if (!wrapUpload || !wrapCal) return;
+
+      if (ready) {
+        wrapUpload.classList.add('hidden');
+        wrapCal.classList.remove('hidden');
+      } else {
+        wrapCal.classList.add('hidden');
+        wrapUpload.classList.remove('hidden');
+      }
+    }
+
+
 
     // show calendar when landing on step 3
     const _origNextStep = nextStep;
