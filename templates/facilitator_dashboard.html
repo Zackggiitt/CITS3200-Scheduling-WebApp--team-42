@@ -574,7 +574,7 @@
             <span class="material-icons" aria-hidden="true">warning</span>
             <p><strong>Availability Update Needed!</strong> Your availability was last updated 2 weeks ago. Please update it to receive better session assignments.</p>
         </div>
-        <a href="#" class="alert-button">
+        <a href="#" class="alert-button" id="update-now-btn">
             <span>Update Now</span>
             <span class="material-icons" aria-hidden="true">arrow_forward</span>
         </a>
@@ -1955,9 +1955,31 @@ updateGreetingIcon();
             alert('Shift declined.');
         }
 
-    
+    // Handle "Update Now" button in alert section
+    document.getElementById('update-now-btn').addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Remove active state from all nav items
+        const navItems = document.querySelectorAll('.dashboard-nav-item');
+        navItems.forEach(nav => nav.classList.remove('active'));
+        
+        // Add active state to availability tab
+        const availabilityNavItem = document.querySelector('a[href="#availability"]');
+        availabilityNavItem.classList.add('active');
+        
+        // Hide all sections
+        const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
+        const availabilityView = document.getElementById('availability-view');
+        const calendarView = document.getElementById('calendar-view');
+        const notificationsView = document.getElementById('notifications-view');
+        
+        dashboardSections.forEach(section => section.style.display = 'none');
+        availabilityView.style.display = 'block';
+        calendarView.style.display = 'none';
+        notificationsView.style.display = 'none';
+    });
 
-        // AVAILABILITY FUNCTIONALITY
+    // AVAILABILITY FUNCTIONALITY
     // Handle toggle switches for time inputs
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('day-checkbox')) {
@@ -2009,7 +2031,34 @@ updateGreetingIcon();
             });
             
             console.log('Saving availability:', availability);
-            alert('Availability updated successfully!');
+            alert('All up to date!');
+
+            // Update the alert box message and icon
+            const alertContent = document.querySelector('.alert-content p');
+            const alertIcon = document.querySelector('.alert-content .material-icons');
+
+            if (alertContent) {
+                alertContent.innerHTML = '<strong>All up to date!</strong> Your availability has been successfully updated.';
+            }
+
+            if (alertIcon) {
+                alertIcon.textContent = 'checklist'; // Change from warning to checklist
+            }
+
+            // Change alert styling to success
+            const alertBar = document.querySelector('.alert-bar');
+            if (alertBar) {
+                alertBar.style.backgroundColor = '#d1fae5';
+                alertBar.style.borderColor = '#10b981';
+                alertBar.style.color = '#065f46';
+            }
+
+            // Hide the "Update Now" button
+            const updateBtn = document.getElementById('update-now-btn');
+            if (updateBtn) {
+                updateBtn.style.display = 'none';
+            }
+                                                    
         }
     });
     });
