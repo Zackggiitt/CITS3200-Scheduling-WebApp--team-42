@@ -1,9 +1,8 @@
-# unitcoordinator_routes.py
 import logging
 import csv
 import re
 from io import StringIO, BytesIO
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy import and_, func
 
 from flask import (
@@ -14,7 +13,7 @@ from flask import (
 from auth import login_required, get_current_user
 from utils import role_required
 from models import db
-from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue
+from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -65,6 +64,39 @@ def _get_user_unit_or_404(user, unit_id: int):
     return unit
 
 
+def _iso(d: date) -> str:
+    return d.isoformat()
+
+
+def _parse_dt(s: str):
+    """Parse 'YYYY-MM-DDTHH:MM' to datetime."""
+    try:
+        return datetime.strptime(s, "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None
+
+
+def _get_or_create_default_module(unit: Unit) -> Module:
+    """Get or create a default 'General' module for the unit."""
+    m = Module.query.filter_by(unit_id=unit.id, module_name="General").first()
+    if not m:
+        m = Module(unit_id=unit.id, module_name="General", module_type="general")
+        db.session.add(m)
+        db.session.commit()
+    return m
+
+
+def _serialize_session(s: Session):
+    """Serialize a Session object to JSON."""
+    return {
+        "id": s.id,
+        "title": s.module.module_name or "Session",
+        "start": s.start_time.isoformat(timespec="minutes"),
+        "end": s.end_time.isoformat(timespec="minutes"),
+        "venue": s.location or "",
+    }
+
+
 # ------------------------------------------------------------------------------
 # Views
 # ------------------------------------------------------------------------------
@@ -89,14 +121,14 @@ def create_unit():
     """
     user = get_current_user()
 
-    unit_id    = (request.form.get("unit_id") or "").strip()
-    unit_code  = (request.form.get("unit_code") or "").strip()
-    unit_name  = (request.form.get("unit_name") or "").strip()
-    year_raw   = (request.form.get("year") or "").strip()
-    semester   = (request.form.get("semester") or "").strip()
+    unit_id = (request.form.get("unit_id") or "").strip()
+    unit_code = (request.form.get("unit_code") or "").strip()
+    unit_name = (request.form.get("unit_name") or "").strip()
+    year_raw = (request.form.get("year") or "").strip()
+    semester = (request.form.get("semester") or "").strip()
     description = (request.form.get("description") or "").strip()
-    start_raw  = (request.form.get("start_date") or "").strip()
-    end_raw    = (request.form.get("end_date") or "").strip()
+    start_raw = (request.form.get("start_date") or "").strip()
+    end_raw = (request.form.get("end_date") or "").strip()
 
     # Basic validation (Step 1 core)
     if not (unit_code and unit_name and year_raw and semester):
@@ -111,7 +143,7 @@ def create_unit():
 
     # Dates (Step 2) – optional but validated if present
     start_date = _parse_date_multi(start_raw)
-    end_date   = _parse_date_multi(end_raw)
+    end_date = _parse_date_multi(end_raw)
     if start_raw and not start_date:
         flash("Invalid Start Date format.", "error")
         return redirect(url_for("unitcoordinator.dashboard"))
@@ -139,13 +171,13 @@ def create_unit():
                 return redirect(url_for("unitcoordinator.dashboard"))
 
         # Apply updates
-        unit.unit_code   = unit_code
-        unit.unit_name   = unit_name
-        unit.year        = year
-        unit.semester    = semester
+        unit.unit_code = unit_code
+        unit.unit_name = unit_name
+        unit.year = year
+        unit.semester = semester
         unit.description = description or None
-        unit.start_date  = start_date
-        unit.end_date    = end_date
+        unit.start_date = start_date
+        unit.end_date = end_date
         db.session.commit()
 
         flash("Unit updated successfully!", "success")
@@ -173,14 +205,13 @@ def create_unit():
     db.session.add(new_unit)
     db.session.commit()
 
+    # Create default module for new unit
+    _get_or_create_default_module(new_unit)
+
     flash("Unit created successfully!", "success")
     return redirect(url_for("unitcoordinator.dashboard"))
 
 
-# ------------------------------------------------------------------------------
-# (Optional) Draft helper so Step 3 upload has a unit_id
-# Call this after Step 1–2 to get/create a unit id without leaving the modal.
-# ------------------------------------------------------------------------------
 @unitcoordinator_bp.post("/create_or_get_draft")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
@@ -193,10 +224,10 @@ def create_or_get_draft():
 
     unit_code = (request.form.get("unit_code") or "").strip()
     unit_name = (request.form.get("unit_name") or "").strip()
-    year_raw  = (request.form.get("year") or "").strip()
-    semester  = (request.form.get("semester") or "").strip()
+    year_raw = (request.form.get("year") or "").strip()
+    semester = (request.form.get("semester") or "").strip()
     start_date = (request.form.get("start_date") or "").strip()
-    end_date   = (request.form.get("end_date") or "").strip()
+    end_date = (request.form.get("end_date") or "").strip()
 
     if not (unit_code and unit_name and year_raw and semester):
         return jsonify({"ok": False, "error": "Missing required fields"}), 400
@@ -207,7 +238,7 @@ def create_or_get_draft():
         return jsonify({"ok": False, "error": "Year must be an integer"}), 400
 
     parsed_start = _parse_date_multi(start_date)
-    parsed_end   = _parse_date_multi(end_date)
+    parsed_end = _parse_date_multi(end_date)
     if parsed_start and parsed_end and parsed_start > parsed_end:
         return jsonify({"ok": False, "error": "Start date must be before end date"}), 400
 
@@ -226,13 +257,12 @@ def create_or_get_draft():
         )
         db.session.add(unit)
         db.session.commit()
+        # Create default module for new unit
+        _get_or_create_default_module(unit)
 
     return jsonify({"ok": True, "unit_id": unit.id})
 
 
-# ------------------------------------------------------------------------------
-# Step 3: CSV template + upload handlers
-# ------------------------------------------------------------------------------
 @unitcoordinator_bp.get("/csv-template")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
@@ -391,3 +421,84 @@ def upload_setup_csv():
         "linked_venues": linked_venues,
         "updated_venues": 0,  # Keep for UI compatibility
     }), 200
+
+
+@unitcoordinator_bp.put("/sessions/<int:session_id>")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def update_session(session_id: int):
+    """Move/resize or update venue for a session."""
+    user = get_current_user()
+    session = Session.query.get(session_id)
+    if not session or session.module.unit.created_by != user.id:
+        return jsonify({"ok": False, "error": "Session not found or unauthorized"}), 404
+
+    unit = session.module.unit
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"ok": False, "error": "Invalid or missing JSON data"}), 400
+
+    # Validate and update start/end times
+    if "start" in data:
+        start_time = _parse_dt(data["start"])
+        if not start_time:
+            return jsonify({"ok": False, "error": "Invalid start time format (use YYYY-MM-DDTHH:MM)"}), 400
+        session.start_time = start_time
+        session.day_of_week = start_time.weekday()
+
+    if "end" in data:
+        end_time = _parse_dt(data["end"])
+        if not end_time:
+            return jsonify({"ok": False, "error": "Invalid end time format (use YYYY-MM-DDTHH:MM)"}), 400
+        session.end_time = end_time
+
+    # Validate and update venue
+    if "venue" in data:
+        venue_name = (data["venue"] or "").strip()
+        if venue_name:
+            # Check if venue exists and is linked to the unit
+            venue = db.session.query(Venue).filter(func.lower(Venue.name) == venue_name.lower()).first()
+            if not venue:
+                return jsonify({"ok": False, "error": f"Venue '{venue_name}' not found"}), 404
+            unit_venue = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first()
+            if not unit_venue:
+                return jsonify({"ok": False, "error": f"Venue '{venue_name}' not linked to this unit"}), 400
+            session.location = venue_name
+        else:
+            session.location = None
+
+    # Range guard
+    if unit.start_date and session.start_time.date() < unit.start_date:
+        return jsonify({"ok": False, "error": "Session start date is before unit start date"}), 400
+    if unit.end_date and session.end_time.date() > unit.end_date:
+        return jsonify({"ok": False, "error": "Session end date is after unit end date"}), 400
+    if session.end_time <= session.start_time:
+        return jsonify({"ok": False, "error": "End time must be after start time"}), 400
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
+
+    return jsonify({"ok": True, "session": _serialize_session(session)})
+
+
+@unitcoordinator_bp.delete("/sessions/<int:session_id>")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def delete_session(session_id: int):
+    """Delete a session."""
+    user = get_current_user()
+    session = Session.query.get(session_id)
+    if not session or session.module.unit.created_by != user.id:
+        return jsonify({"ok": False, "error": "Session not found or unauthorized"}), 404
+
+    try:
+        db.session.delete(session)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
+
+    return jsonify({"ok": True})
