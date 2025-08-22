@@ -4,7 +4,7 @@ import csv
 import re
 from io import StringIO, BytesIO
 from datetime import datetime
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 
 from flask import (
     Blueprint, render_template, redirect, url_for, flash, request,
@@ -27,15 +27,12 @@ unitcoordinator_bp = Blueprint(
 )
 
 # CSV columns for the combined facilitators/venues file
-# CSV columns for simplified upload (2 columns)
 CSV_HEADERS = [
     "facilitator_email",   # optional per row
     "venue_name",          # optional per row
 ]
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
-
 
 # ------------------------------------------------------------------------------
 # Helpers
@@ -251,11 +248,11 @@ def download_setup_csv_template():
     writer.writeheader()
 
     # --- SAMPLE ROWS (for debugging only, uncomment if needed) ---
-    writer.writerow({"facilitator_email": "alex@example.edu", "venue_name": ""})
-    writer.writerow({"facilitator_email": "riley@example.edu", "venue_name": ""})
-    writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.07"})
-    writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.12"})
-    writer.writerow({"facilitator_email": "sam@example.edu", "venue_name": "Engineering Hub 3.01"})
+    # writer.writerow({"facilitator_email": "alex@example.edu", "venue_name": ""})
+    # writer.writerow({"facilitator_email": "riley@example.edu", "venue_name": ""})
+    # writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.07"})
+    # writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.12"})
+    # writer.writerow({"facilitator_email": "sam@example.edu", "venue_name": "Engineering Hub 3.01"})
 
     mem = BytesIO(sio.getvalue().encode("utf-8"))
     mem.seek(0)
@@ -265,6 +262,7 @@ def download_setup_csv_template():
         as_attachment=True,
         download_name="facilitators_venues_template.csv",
     )
+
 
 @unitcoordinator_bp.post("/upload-setup-csv")
 @login_required
@@ -277,7 +275,7 @@ def upload_setup_csv():
 
     For each row:
       - If facilitator_email is present: ensure a User(role=FACILITATOR) exists; link to the Unit
-      - If venue_name is present: upsert a Venue by name (name only)
+      - If venue_name is present: upsert a Venue by name (name only); link to the Unit
     Returns counts + errors.
     """
     user = get_current_user()
@@ -313,6 +311,7 @@ def upload_setup_csv():
     created_users = 0
     linked_facilitators = 0
     created_venues = 0
+    linked_venues = 0
     errors = []
 
     for idx, row in enumerate(reader, start=2):  # start=2 for human-friendly row numbers
@@ -337,19 +336,41 @@ def upload_setup_csv():
 
         # Process venue name if present
         if venue_name:
-            venue = Venue.query.filter_by(name=venue_name).first()
+            # Normalize venue name
+            venue_name = " ".join(venue_name.lstrip(",").strip().split())
+
+            # Case-insensitive lookup to prevent duplicates
+            venue = db.session.query(Venue).filter(func.lower(Venue.name) == venue_name.lower()).first()
+
+            # Upsert global catalog
             if not venue:
                 venue = Venue(name=venue_name)
                 db.session.add(venue)
-                created_venues += 1  # newly cataloged venue
-            # Always ensure unit-scoped link exists
+                created_venues += 1  # Newly cataloged venue
+
+            # Ensure per-unit link
             link = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first()
             if not link:
                 db.session.add(UnitVenue(unit_id=unit.id, venue_id=venue.id))
+                linked_venues += 1
 
         # If a row is entirely blank, silently ignore it (no error)
 
-    db.session.commit()
+    # Commit all changes at once
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        errors.append(f"Database error: {str(e)}")
+        return jsonify({
+            "ok": False,
+            "created_users": created_users,
+            "linked_facilitators": linked_facilitators,
+            "created_venues": created_venues,
+            "linked_venues": linked_venues,
+            "updated_venues": 0,  # Keep for UI compatibility
+            "errors": errors[:20],
+        }), 400
 
     if errors:
         return jsonify({
@@ -357,7 +378,8 @@ def upload_setup_csv():
             "created_users": created_users,
             "linked_facilitators": linked_facilitators,
             "created_venues": created_venues,
-            "updated_venues": 0,          # keep for UI compatibility
+            "linked_venues": linked_venues,
+            "updated_venues": 0,  # Keep for UI compatibility
             "errors": errors[:20],
         }), 400
 
@@ -366,7 +388,6 @@ def upload_setup_csv():
         "created_users": created_users,
         "linked_facilitators": linked_facilitators,
         "created_venues": created_venues,
-        "updated_venues": 0,              # keep for UI compatibility
+        "linked_venues": linked_venues,
+        "updated_venues": 0,  # Keep for UI compatibility
     }), 200
-
-
