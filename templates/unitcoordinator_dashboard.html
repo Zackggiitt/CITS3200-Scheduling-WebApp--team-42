@@ -342,18 +342,37 @@
               </div>
 
               <div class="cal-inspector__body">
-                <div class="form-block">
-                  <label class="block text-sm font-medium mb-1">Session name</label>
-                  <input id="inspName" class="cal-input" placeholder="e.g., Module 3: Design Review" />
-                </div>
+                <!-- BASIC INFORMATION CARD -->
+                <section class="insp-section">
+                  <header class="insp-section__hdr">
+                    <span class="material-icons">menu_book</span>
+                    <h4>Basic Information</h4>
+                  </header>
 
-                <div class="form-block">
-                  <label class="block text-sm font-medium mb-1">Venue</label>
-                  <div class="select-wrap">
-                    <input id="inspVenue" class="cal-input" placeholder="— Select a venue —" />
-                  </div>
-                </div>
+                  <!-- Session Name -->
+                  <label class="insp-field">
+                    <span class="insp-field__label">
+                      <span class="material-icons">edit</span>
+                      Session Name
+                    </span>
+                    <input id="inspName" class="cal-input cal-input--soft" placeholder="New Session" />
+                  </label>
+
+                  <!-- Venue -->
+                  <label class="insp-field">
+                    <span class="insp-field__label">
+                      <span class="material-icons">place</span>
+                      Venue
+                    </span>
+
+                    <!-- we still upgrade this to a native <select> in JS -->
+                    <div class="select-wrap">
+                      <input id="inspVenue" class="cal-input cal-input--soft" placeholder="Select a venue" />
+                    </div>
+                  </label>
+                </section>
               </div>
+
 
               <div class="cal-inspector__footer">
                 <button type="button" id="inspDelete" class="cal-btn danger hidden">Delete</button>
@@ -974,24 +993,22 @@
 
     function populateVenueSelect(selectEl, venues, selectedId, selectedName) {
       const opts = [
-        '<option value="" disabled selected hidden>— Select a venue —</option>'
+        '<option value="" disabled selected hidden>Select a venue</option>'
       ].concat(venues.map(v => `<option value="${v.id}">${v.name}</option>`));
-
       selectEl.innerHTML = opts.join('');
 
-      // Prefer id; fall back to matching by name. If neither, keep placeholder.
       if (selectedId) {
         selectEl.value = String(selectedId);
       } else if (selectedName) {
         const match = venues.find(v => (v.name || '').toLowerCase() === selectedName.toLowerCase());
         if (match) selectEl.value = String(match.id);
       }
-      
-      // If no selection made, keep it invalid to style placeholder (CSS :invalid)
+
       if (!selectEl.value) {
         selectEl.setAttribute('required', 'required');
       }
     }
+
 
 
     // One-time upgrade on load so the element exists for openInspector
@@ -1018,7 +1035,10 @@
 
       // Session name (supports multiple backends)
       const name = ev.extendedProps?.session_name || ev.extendedProps?.module_name || ev.title || '';
-      document.getElementById('inspName').value = name;
+      const nameInput = document.getElementById('inspName');
+      nameInput.placeholder = 'New Session';
+      nameInput.value = name; // keep current session/module name if present
+
 
       // Venue select
       const sel = upgradeVenueInputToSelect();

@@ -416,4 +416,70 @@
 .kv-row dd{font-weight:600}
 .form-block{margin:12px 14px}
 
+/* ------ Inspector > Basic Information card ------ */
+.insp-section {
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px 14px 14px;
+  margin: 12px 14px;
+}
+
+.insp-section__hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.insp-section__hdr h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+.insp-section__hdr .material-icons {
+  font-size: 18px;
+  color: var(--c-text);
+}
+
+/* field label row */
+.insp-field { display: block; margin-bottom: 12px; }
+.insp-field:last-child { margin-bottom: 0; }
+.insp-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+.insp-field__label .material-icons {
+  font-size: 18px;
+  color: #4b5563;
+}
+
+/* soft input look */
+.cal-input--soft {
+  background: #f3f4f6;
+  border-color: var(--c-line);
+  min-height: 44px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+.cal-input--soft::placeholder { color: #6b7280; }
+
+/* make the select mimic the same look */
+.select-wrap select {
+  background-color: #f3f4f6;            /* same soft fill */
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  min-height: 44px;
+  font-size: 0.95rem;
+}
+
+/* placeholder state for select */
+.select-wrap select:invalid { color: #6b7280; }
+
+
 
