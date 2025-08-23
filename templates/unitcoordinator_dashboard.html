@@ -311,25 +311,57 @@
 
             <!-- Right-side inspector -->
             <aside id="calInspector" class="cal-inspector hidden" aria-live="polite">
-              <div class="cal-inspector__header">Session Overview</div>
-              <div class="cal-inspector__body">
-                <div class="row"><span>Day:</span><strong id="inspDay"></strong></div>
-                <div class="row"><span>Time:</span><strong id="inspTime"></strong></div>
-                <div class="row"><span>Duration:</span><strong id="inspDur"></strong></div>
-                <div class="row"><span>Start Date:</span><strong id="inspDate"></strong></div>
-                <div class="mt-3">
-                  <label class="block text-sm font-medium mb-1">Venue</label>
-                  <div class="select-wrap"> 
-                  <input id="inspVenue" class="cal-input" placeholder="e.g., Ezone 2.07" />
+              <!-- Title bar -->
+              <div class="insp-top">
+                <div class="insp-top-left">
+                  <span class="material-icons insp-top-icon" aria-hidden="true">edit</span>
+                  <div>
+                    <div class="insp-title">Edit Session</div>
+                    <div id="inspSub" class="insp-sub">Tuesday • 10:30–14:00</div>
+                  </div>
+                </div>
+                <div class="insp-top-actions">
+                  <button type="button" id="inspNextBtn" class="icon-btn" title="Next"><span class="material-icons">chevron_right</span></button>
+                  <button type="button" id="inspCloseBtn" class="icon-btn" title="Close"><span class="material-icons">close</span></button>
                 </div>
               </div>
+
+              <!-- Blue card -->
+              <div class="insp-card">
+                <div class="insp-card__hdr">
+                  <span class="material-icons" aria-hidden="true">event_note</span>
+                  <span>Session Overview</span>
+                </div>
+
+                <dl class="insp-kv">
+                  <div class="kv-row"><dt>Day:</dt>       <dd id="inspDay"></dd></div>
+                  <div class="kv-row"><dt>Time:</dt>      <dd id="inspTime"></dd></div>
+                  <div class="kv-row"><dt>Duration:</dt>  <dd id="inspDur"></dd></div>
+                  <div class="kv-row"><dt>Start Date:</dt><dd id="inspDate"></dd></div>
+                </dl>
+              </div>
+
+              <div class="cal-inspector__body">
+                <div class="form-block">
+                  <label class="block text-sm font-medium mb-1">Session name</label>
+                  <input id="inspName" class="cal-input" placeholder="e.g., Module 3: Design Review" />
+                </div>
+
+                <div class="form-block">
+                  <label class="block text-sm font-medium mb-1">Venue</label>
+                  <div class="select-wrap">
+                    <input id="inspVenue" class="cal-input" placeholder="— Select a venue —" />
+                  </div>
+                </div>
+              </div>
+
               <div class="cal-inspector__footer">
                 <button type="button" id="inspDelete" class="cal-btn danger hidden">Delete</button>
                 <button type="button" id="inspCancel" class="cal-btn">Cancel</button>
                 <button type="button" id="inspSave" class="cal-btn primary">Save</button>
               </div>
-
             </aside>
+
           </div>
         </section>
       </form>
