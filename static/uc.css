@@ -802,3 +802,28 @@
 .modal-form { overflow: auto; }   /* already true in your CSS, keep it */
 
 
+/* modal layout: header (fixed) + body (scroll) + footer (fixed) */
+.modal-box { display: flex; flex-direction: column; height: 88vh; overflow: hidden; }
+.modal-form { flex: 1; overflow: auto; }
+
+/* footer pinned at bottom, above any calendar layers */
+.modal-footer {
+  flex-shrink: 0;
+  position: relative;         /* give it a stacking context */
+  z-index: 30;                /* above FullCalendar content */
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* optional: subtle top shadow so it reads as fixed */
+.modal-footer::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: -8px; height: 8px;
+  box-shadow: 0 -6px 12px rgba(0,0,0,.06) inset;
+  pointer-events: none;
+}

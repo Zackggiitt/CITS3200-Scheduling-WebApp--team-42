@@ -330,15 +330,16 @@
             </aside>
           </div>
         </section>
-
-
-        <!-- Footer buttons -->
-        <div class="modal-footer">
-          <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
-          <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
-          <button type="submit" class="btn-primary hidden" id="submit-btn">Create Unit</button>
-        </div>
       </form>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
+        <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
+
+        <!-- submit still links to the form via id -->
+        <button type="submit" class="btn-primary hidden" id="submit-btn" form="create-unit-form">
+          Create Unit
+        </button>
+      </div>
     </div>
   </div>
 
