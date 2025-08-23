@@ -871,6 +871,11 @@
       return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
+    function fmtRange(start, end){
+      const t = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return `${t(start)}–${t(end)}`;
+    }
+
     // Return true if date is outside unit range
     function isOutOfRange(d) {
       const { start, end } = getUnitRange();

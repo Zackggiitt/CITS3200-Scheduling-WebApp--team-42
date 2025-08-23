@@ -379,3 +379,23 @@
 /* Ensure dropdown aligns to control width on some browsers */
 .select-wrap { max-width: 100%; }
 .select-wrap select { max-width: 100%; }
+
+/* Inspector top bar */
+.insp-top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--c-line);}
+.insp-top-left{display:flex;gap:10px;align-items:center}
+.insp-top-icon{background:#eef2ff;color:#4f46e5;border-radius:10px;padding:6px;font-size:18px}
+.insp-title{font-weight:700;color:#111827}
+.insp-sub{font-size:12px;color:#6b7280;margin-top:2px}
+
+/* Blue card */
+.insp-card{margin:14px;border:1px solid #c7d2fe;background:#eef2ff;border-radius:12px;overflow:hidden}
+.insp-card__hdr{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #c7d2fe;font-weight:600;color:#1e3a8a}
+.insp-card__hdr .material-icons{font-size:18px}
+.insp-kv{padding:10px 12px}
+.kv-row{display:flex;justify-content:space-between;padding:6px 0}
+.kv-row dt{color:#374151}
+.kv-row dd{color:#1e3a8a;font-weight:700}
+
+/* Minor form spacing */
+.form-block{margin-top:12px}
+
