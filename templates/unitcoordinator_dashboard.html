@@ -15,8 +15,34 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 
+  <!-- FullCalendar -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
+
   <!-- App CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}" />
+  <style>
+    /* small helper styles for “Outside range” label on day headers */
+    .fc-daygrid-day.out-of-range,
+    .fc-timegrid-col.out-of-range {
+      opacity: .5;
+      pointer-events: none;
+      background-image: repeating-linear-gradient(
+        -45deg, rgba(229,231,235,.8), rgba(229,231,235,.8) 6px, transparent 6px, transparent 12px
+      );
+    }
+    .fc-col-header-cell .fc-outside-chip {
+      display: inline-block;
+      font-size: 10px;
+      color: #6b7280;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 9999px;
+      padding: 2px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+  </style>
 </head>
 <body class="bg-gray-50">
   <!-- HEADER -->
@@ -117,6 +143,7 @@
 
       <form method="POST" action="{{ url_for('unitcoordinator.create_unit') }}" class="modal-form" id="create-unit-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="unit_id" id="unit_id" value="">
 
         <!-- STEP 1 -->
         <section class="wizard-step" data-step="1">
@@ -212,6 +239,99 @@
           </div>
         </section>
 
+        <!-- STEP 3: Sessions -->
+        <section class="wizard-step hidden" data-step="3" aria-labelledby="sessions-setup-title">
+          <h2 id="sessions-setup-title">Sessions</h2>
+          <p class="subtext">Teaching sessions & schedule</p>
+
+          <!-- Upload CSV wrapper (now has an id so we can hide it after success) -->
+          <div id="setup_wrap" class="setup-card">
+            <div class="setup-card__header">
+              <span class="material-icons">cloud_upload</span>
+              <div>
+                <h3 class="setup-card__title">Setup Required</h3>
+                <p class="setup-card__hint">
+                  Before creating sessions, please upload facilitators and venues using the CSV template.
+                </p>
+              </div>
+            </div>
+
+            <div class="upload-row">
+              <!-- Left: Download template -->
+              <div class="upload-col">
+                <div class="hint-title">CSV Template</div>
+                <p class="hint-sub">Use this file for correct column names.</p>
+                <a class="btn-outline w-full sm:w-auto"
+                  href="{{ url_for('unitcoordinator.download_setup_csv_template') }}"
+                  target="_blank" rel="noopener">
+                  <span class="material-icons" style="font-size:18px">download</span>
+                  Download CSV Template
+                </a>
+              </div>
+
+              <!-- Right: Upload CSV -->
+              <div class="upload-col">
+                <div class="hint-title">Upload CSV</div>
+                <p class="hint-sub">Facilitator emails and venue names (2 columns).</p>
+
+                <div class="filepicker">
+                  <input id="setup_csv" name="setup_csv" type="file" accept=".csv" class="filepicker-input" />
+                  <label for="setup_csv" class="filepicker-btn">
+                    <span class="material-icons">upload_file</span>
+                    Choose File
+                  </label>
+                  <span id="file_name" class="filepicker-name" aria-live="polite">No file selected</span>
+                </div>
+
+                <!-- Status -->
+                <div id="upload_status" class="upload-status hidden" role="status" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+
+          <input type="hidden" name="setup_complete" id="setup_complete" value="false"/>
+
+          <!-- STEP 3B: Calendar -->
+          <div id="calendar_wrap" class="mt-4 hidden">
+            <div class="cal-toolbar">
+              <button class="cal-btn" id="prevWeek">‹ Previous Week</button>
+              <button class="cal-btn" id="nextWeek">Next Week ›</button>
+              <button class="cal-btn" id="goToday">Today</button>
+              <div class="cal-title">
+                <div id="calWeekTitle" class="font-semibold"></div>
+                <div id="calWeekRange" class="text-xs text-gray-500"></div>
+              </div>
+              <label class="ml-auto text-sm flex items-center gap-2">
+                <input id="toggleHolidays" type="checkbox" class="cal-checkbox" />
+                Show holidays
+              </label>
+            </div>
+
+            <div id="calGrid" class="mt-2" aria-label="Session Schedule"></div>
+
+            <!-- Right-side inspector -->
+            <aside id="calInspector" class="cal-inspector hidden" aria-live="polite">
+              <div class="cal-inspector__header">Session Overview</div>
+              <div class="cal-inspector__body">
+                <div class="row"><span>Day:</span><strong id="inspDay"></strong></div>
+                <div class="row"><span>Time:</span><strong id="inspTime"></strong></div>
+                <div class="row"><span>Duration:</span><strong id="inspDur"></strong></div>
+                <div class="row"><span>Start Date:</span><strong id="inspDate"></strong></div>
+                <div class="mt-3">
+                  <label class="block text-sm font-medium mb-1">Venue</label>
+                  <input id="inspVenue" class="cal-input" placeholder="e.g., Ezone 2.07" />
+                </div>
+              </div>
+              <div class="cal-inspector__footer">
+                <button id="inspDelete" class="cal-btn danger hidden">Delete</button>
+                <button id="inspCancel" class="cal-btn">Cancel</button>
+                <button id="inspSave" class="cal-btn primary">Save</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+
         <!-- Footer buttons -->
         <div class="modal-footer">
           <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
@@ -224,6 +344,19 @@
 
   <!-- JS -->
   <script>
+    // --- CSRF Token ---
+    const CSRF_TOKEN = document.querySelector('input[name="csrf_token"]')?.value || '';
+
+    // --- Route templates built safely with numeric placeholders we can replace ---
+    const CAL_WEEK_TEMPLATE   = "{{ url_for('unitcoordinator.calendar_week',  unit_id=0) }}";
+    const CREATE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.create_session', unit_id=0) }}";
+    const UPDATE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.update_session', session_id=0) }}";
+    const DELETE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.delete_session', session_id=0) }}";
+
+    function withUnitId(tpl, id)     { return tpl.replace(/\/0(\/|$)/, `/${id}$1`); }
+    function withSessionId(tpl, id)  { return tpl.replace(/0(\/|$)/, `${id}$1`); }
+
+    // --- Modal open/close ---
     function openCreateUnitModal() {
       setStep(1);
       const modal = document.getElementById("createUnitModal");
@@ -235,14 +368,12 @@
       modal.classList.add("hidden");
       modal.classList.remove("flex");
     }
-  </script>
 
-  <script>
-    // Custom select (Semester)
+    // --- Custom select (Semester) ---
     document.querySelectorAll('.select').forEach(initSelect);
     function initSelect(root) {
       const trigger = root.querySelector('.select-trigger');
-      const hidden  = root.querySelector('input[type="hidden"]');
+      const hidden = root.querySelector('input[type="hidden"]');
       const valueEl = root.querySelector('.select-value');
       const options = Array.from(root.querySelectorAll('.option'));
 
@@ -275,67 +406,35 @@
         else if (e.key === 'Escape') { root.classList.remove('open'); trigger.setAttribute('aria-expanded', 'false'); }
       });
     }
-  </script>
 
-  <script>
-    let currentStep = 1;
-
-    function setStep(n) {
-      currentStep = n;
-      document.querySelectorAll('.wizard-step').forEach(s => {
-        s.classList.toggle('hidden', parseInt(s.dataset.step) !== currentStep);
-      });
-      document.querySelectorAll('.modal-steps .step').forEach((el, idx) => {
-        el.classList.toggle('active', idx + 1 === currentStep);
-      });
-      document.getElementById('next-btn').classList.toggle('hidden', currentStep >= 2);
-      document.getElementById('submit-btn').classList.toggle('hidden', currentStep < 2);
-    }
-
-    function nextStep() {
-      if (currentStep === 1) {
-        const f = document.getElementById('create-unit-form');
-        const required = ['unit_name','unit_code','year','semester'];
-        for (const name of required) {
-          const el = f.querySelector(`[name="${name}"]`);
-          if (!el || !el.value.trim()) { el?.focus(); return; }
-        }
-      }
-      setStep(Math.min(2, currentStep + 1));
-    }
-    function prevStep() { setStep(Math.max(1, currentStep - 1)); }
-  </script>
-
-  <script>
-    // ---- helpers ----
+    // --- Date utils ---
     const DATE_FMT = "d/m/Y"; // what we show/store in hidden inputs
 
     function parseDMY(str) {
-      // Accept dd/mm/yyyy
       const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(str);
       if (!m) return null;
       const [_, dd, mm, yyyy] = m;
       const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
       return isNaN(d) ? null : d;
     }
-
+    function toIsoDate(d) {
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
     function formatUS(d) { // M/D/YYYY
       return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
     }
 
     function updateDateSummary() {
       const startEl = document.querySelector('[name="start_date"]');
-      const endEl   = document.querySelector('[name="end_date"]');
-      const box     = document.getElementById('date-summary');
-      const textEl  = document.getElementById('date-summary-text');
-
+      const endEl = document.querySelector('[name="end_date"]');
+      const box = document.getElementById('date-summary');
+      const textEl = document.getElementById('date-summary-text');
       if (!startEl || !endEl) return;
 
       const sv = (startEl.value || '').trim();
-      const ev = (endEl.value   || '').trim();
-
+      const ev = (endEl.value || '').trim();
       const start = parseDMY(sv);
-      const end   = parseDMY(ev);
+      const end = parseDMY(ev);
 
       if (!start || !end) { box.classList.add('hidden'); return; }
       if (end < start) {
@@ -344,19 +443,19 @@
         return;
       }
 
-      const diffMs   = end - start;                    // exclusive-like display (your mock)
-      const diffDays = Math.ceil(diffMs / 86400000);   // 1000*60*60*24
-      const weeks    = Math.ceil(diffDays / 7);
+      const diffMs = end - start;
+      const diffDays = Math.ceil(diffMs / 86400000);
+      const weeks = Math.ceil(diffDays / 7);
 
       textEl.textContent =
-        `Unit will run from ${formatUS(start)} to ${formatUS(end)} (${diffDays} day${diffDays!==1?'s':''}, ${weeks} week${weeks!==1?'s':''})`;
+        `Unit will run from ${formatUS(start)} to ${formatUS(end)} (${diffDays} day${diffDays !== 1 ? 's' : ''}, ${weeks} week${weeks !== 1 ? 's' : ''})`;
       box.classList.remove('hidden');
     }
 
-    // ---- inline calendars ----
+    // --- Flatpickr calendars ---
     const startInput = document.getElementById("start_date_input");
-    const endInput   = document.getElementById("end_date_input");
-    const today      = new Date();
+    const endInput = document.getElementById("end_date_input");
+    const today = new Date();
 
     const startPicker = flatpickr("#start_calendar", {
       inline: true,
@@ -383,11 +482,476 @@
       }
     });
 
-    // Initialize hidden inputs and summary once
     startInput.value = startPicker.formatDate(startPicker.selectedDates[0] || today, DATE_FMT);
-    endInput.value   = endPicker.formatDate(endPicker.selectedDates[0]   || today, DATE_FMT);
+    endInput.value = endPicker.formatDate(endPicker.selectedDates[0] || today, DATE_FMT);
     updateDateSummary();
-  </script>
 
+    // --- Step navigation ---
+    let currentStep = 1;
+    const TOTAL_STEPS = 4;
+
+    function setStep(n) {
+      currentStep = n;
+      document.querySelectorAll('.wizard-step').forEach(s => {
+        s.classList.toggle('hidden', parseInt(s.dataset.step) !== currentStep);
+      });
+      document.querySelectorAll('.modal-steps .step').forEach((el, idx) => {
+        el.classList.toggle('active', idx + 1 === currentStep);
+      });
+
+      const nextBtn = document.getElementById('next-btn');
+      const submitBtn = document.getElementById('submit-btn');
+      nextBtn.classList.remove('hidden');
+      submitBtn.classList.add('hidden');
+      if (currentStep === TOTAL_STEPS) {
+        nextBtn.classList.add('hidden');
+        submitBtn.classList.remove('hidden');
+      }
+    }
+
+    async function nextStep() {
+      if (currentStep === 1) {
+        const f = document.getElementById('create-unit-form');
+        const required = ['unit_name', 'unit_code', 'year', 'semester'];
+        for (const name of required) {
+          const el = f.querySelector(`[name="${name}"]`);
+          if (!el || !el.value.trim()) { el?.focus(); return; }
+        }
+        return setStep(2);
+      }
+
+      if (currentStep === 2) {
+        const start = document.querySelector('[name="start_date"]')?.value?.trim();
+        const end = document.querySelector('[name="end_date"]')?.value?.trim();
+        if (!start || !end) return;
+        try {
+          const unitId = await ensureDraftAndSetUnitId();
+          console.debug('Draft unit id:', unitId);
+        } catch (e) {
+          alert('Could not create/get unit draft: ' + e.message);
+          return;
+        }
+        return setStep(3);
+      }
+
+      if (currentStep === 3) {
+        const ok = document.getElementById('setup_complete')?.value === 'true';
+        if (!ok) {
+          const box = document.getElementById('upload_status');
+          box.classList.remove('hidden');
+          box.textContent = 'Please upload the facilitators & venues CSV before continuing.';
+          return;
+        }
+        return setStep(4);
+      }
+    }
+    function prevStep() { setStep(Math.max(1, currentStep - 1)); }
+
+    // --- Draft helper (creates or finds the unit and sets #unit_id) ---
+    function readUnitBasics() {
+      const f = document.getElementById('create-unit-form');
+      return {
+        unit_code: f.querySelector('[name="unit_code"]')?.value?.trim() || '',
+        unit_name: f.querySelector('[name="unit_name"]')?.value?.trim() || '',
+        year: f.querySelector('[name="year"]')?.value?.trim() || '',
+        semester: f.querySelector('[name="semester"]')?.value?.trim() || '',
+        start_date: f.querySelector('[name="start_date"]')?.value?.trim() || '',
+        end_date: f.querySelector('[name="end_date"]')?.value?.trim() || '',
+      };
+    }
+
+    async function ensureDraftAndSetUnitId() {
+      const basic = readUnitBasics();
+      if (!basic.unit_code || !basic.unit_name || !basic.year || !basic.semester) {
+        throw new Error('Missing unit basics');
+      }
+      const form = new FormData();
+      form.append('unit_code', basic.unit_code);
+      form.append('unit_name', basic.unit_name);
+      form.append('year', basic.year);
+      form.append('semester', basic.semester);
+      form.append('start_date', basic.start_date);
+      form.append('end_date', basic.end_date);
+
+      const res = await fetch("{{ url_for('unitcoordinator.create_or_get_draft') }}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+        body: form
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create/fetch draft');
+      document.getElementById('unit_id').value = data.unit_id;
+      return data.unit_id;
+    }
+
+    // --- CSV Upload (Step 3a) ---
+    const uploadInput = document.getElementById('setup_csv');
+    const statusBox = document.getElementById('upload_status');
+    const setupFlagEl = document.getElementById('setup_complete');
+    const unitIdEl = document.getElementById('unit_id');
+    const fileNameEl = document.getElementById('file_name');
+
+    if (uploadInput) {
+      uploadInput.addEventListener('change', async (e) => {
+        statusBox.classList.remove('hidden', 'success', 'error');
+        statusBox.textContent = 'Uploading…';
+        setupFlagEl.value = 'false';
+
+        const file = e.target.files?.[0];
+        const unitId = unitIdEl.value;
+        if (!file) {
+          statusBox.textContent = 'No file selected.';
+          statusBox.classList.add('error');
+          fileNameEl.textContent = 'No file selected';
+          return;
+        }
+        fileNameEl.textContent = file.name;
+        if (!unitId) {
+          statusBox.textContent = 'Missing unit id. Go back to Step 2 and try again.';
+          statusBox.classList.add('error');
+          fileNameEl.textContent = 'No file selected';
+          return;
+        }
+
+        const form = new FormData();
+        form.append('unit_id', unitId);
+        form.append('setup_csv', file);
+
+        try {
+          const res = await fetch("{{ url_for('unitcoordinator.upload_setup_csv') }}", {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": CSRF_TOKEN,
+              "X-CSRF-Token": CSRF_TOKEN, // helps if your CSRF lib expects this casing
+            },
+            // credentials: "include", // uncomment if you’re on a different subdomain and need cookies
+            body: form,
+          });
+
+          let data;
+          try {
+            data = await res.clone().json();
+          } catch (e) {
+            const text = await res.text();
+            throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
+          }
+
+          if (!res.ok || !data.ok) {
+            const errs = (data.errors || [data.error]).filter(Boolean);
+            statusBox.classList.add("error");
+            statusBox.innerHTML = `
+              <div class="font-semibold mb-1">Upload failed</div>
+              <ul class="list-disc list-inside text-sm">
+                ${errs.map((x) => `<li>${x}</li>`).join("")}
+              </ul>`;
+            setupFlagEl.value = "false";
+            fileNameEl.textContent = "No file selected";
+            statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            return;
+          }
+
+          // success branch (unchanged)
+          statusBox.classList.add("success");
+          statusBox.innerHTML = `
+            <div class="font-semibold">Upload successful</div>
+            <div class="text-sm mt-1">
+              Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}<br/>
+              Venues created: ${data.created_venues} · Linked: ${data.linked_venues} · Updated: ${data.updated_venues}
+            </div>`;
+          setupFlagEl.value = "true";
+          fileNameEl.textContent = file.name;
+          statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+
+          showCalendarIfReady();
+          setTimeout(() => statusBox.classList.add("hidden"), 300);
+          if (!window.__calendarInitRan) {
+            window.__calendarInitRan = true;
+            initCalendar();
+          } else {
+            refreshCalendarRange();
+          }
+        } catch (err) {
+          console.error(err);
+          statusBox.textContent = String(err.message || "Unexpected error during upload.");
+          statusBox.classList.add("error");
+          setupFlagEl.value = "false";
+          fileNameEl.textContent = "No file selected";
+          statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+
+      });
+
+      uploadInput.addEventListener('change', (e) => {
+        const f = e.target.files?.[0];
+        fileNameEl.textContent = f ? f.name : 'No file selected';
+      });
+    }
+
+    function initCalendar() {
+      const calendarEl = document.getElementById('calGrid');
+      const inspector  = document.getElementById('calInspector');
+      const unitId     = document.getElementById('unit_id').value;
+
+      calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        headerToolbar: false,
+        firstDay: 1,            // Monday
+        allDaySlot: false,
+        slotDuration: '00:30:00',
+        nowIndicator: true,
+
+        // fetch sessions for whatever week is visible
+        events: async (fetchInfo, successCallback, failureCallback) => {
+          try {
+            const weekStart = fetchInfo.startStr.split('T')[0];
+            const res = await fetch(`${withUnitId(CAL_WEEK_TEMPLATE, unitId)}?week_start=${weekStart}`, {
+              headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+            const data = await res.json();
+            if (res.ok && data.ok) {
+              // Expecting data.sessions to be FC-event-ish objects
+              successCallback(data.sessions);
+            } else {
+              failureCallback(new Error(data.error || 'Failed to load sessions'));
+            }
+          } catch (err) {
+            failureCallback(err);
+          }
+        },
+
+        datesSet: () => {
+          updateToolbarTitle();
+          // Small delay to ensure header/body DOM is ready
+          setTimeout(() => {
+            // labelOutsideInHeader(); // no longer needed; handled by dayHeaderDidMount
+            stampOutsideOnBody();
+          }, 0);
+        },
+
+        // Add “Outside range” chip to day headers
+        dayHeaderDidMount: (arg) => {
+          // arg.date is the Date for this header column
+          const out = isOutOfRange(arg.date);
+          // remove any old chip if re-rendered
+          const existing = arg.el.querySelector('.fc-outside-chip');
+          if (existing) existing.remove();
+          if (out) {
+            const chip = document.createElement('span');
+            chip.className = 'fc-outside-chip';
+            chip.textContent = 'Outside range';
+            arg.el.appendChild(chip);
+          }
+        },
+
+        dateClick: async (info) => {
+          const d = new Date(info.dateStr);
+          if (isOutOfRange(d)) return; // block clicks outside range
+
+          const start = fmtLocalYYYYMMDDHHMM(info.date);
+          const end   = fmtLocalYYYYMMDDHHMM(new Date(info.date.getTime() + 60 * 60 * 1000));
+
+          const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, unitId), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+            body: JSON.stringify({ start, end, venue: '' })
+          });
+          const data = await res.json();
+          if (!data.ok) {
+            alert(data.error || 'Failed to create session');
+          } else {
+            calendar.refetchEvents();
+          }
+        },
+
+        eventClick: (info) => {
+          // open inspector
+          const ev = info.event;
+          const start = ev.start;
+          const end   = ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000);
+
+          document.getElementById('inspDay').textContent  = start.toLocaleDateString('en-US', { weekday: 'long' });
+          document.getElementById('inspTime').textContent = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+          document.getElementById('inspDur').textContent  = `${Math.round((end - start) / 60000)} minutes`;
+          document.getElementById('inspDate').textContent = start.toLocaleDateString();
+          document.getElementById('inspVenue').value      = ev.extendedProps.venue || '';
+          document.getElementById('inspDelete').classList.remove('hidden');
+          inspector.classList.remove('hidden');
+
+          // Save
+          document.getElementById('inspSave').onclick = async () => {
+            const payload = {
+              start: fmtLocalYYYYMMDDHHMM(ev.start),
+              end:   fmtLocalYYYYMMDDHHMM(ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000)),
+              venue: document.getElementById('inspVenue').value
+            };
+            const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+              body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!data.ok) {
+              alert(data.error || 'Failed to update');
+            } else {
+              inspector.classList.add('hidden');
+              calendar.refetchEvents();
+            }
+          };
+
+          // Delete
+          document.getElementById('inspDelete').onclick = async () => {
+            if (!confirm('Delete this session?')) return;
+            const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
+              method: 'DELETE',
+              headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+            const data = await res.json();
+            if (!data.ok) {
+              alert(data.error || 'Failed to delete');
+            } else {
+              inspector.classList.add('hidden');
+              calendar.refetchEvents();
+            }
+          };
+
+          // Cancel/close
+          document.getElementById('inspCancel').onclick = () => inspector.classList.add('hidden');
+        }
+      });
+
+      calendar.render();
+
+      // external toolbar controls
+      document.getElementById('prevWeek').onclick = () => calendar.prev();
+      document.getElementById('nextWeek').onclick = () => calendar.next();
+      document.getElementById('goToday').onclick  = () => calendar.today();
+
+      refreshCalendarRange();
+    }
+
+// --- Calendar helpers & globals ---
+    let calendar;
+
+    // Read the unit's start/end from Step 2 inputs
+    function getUnitRange() {
+      const s = document.querySelector('[name="start_date"]')?.value?.trim();
+      const e = document.querySelector('[name="end_date"]')?.value?.trim();
+      const start = s ? parseDMY(s) : null;
+      const end   = e ? parseDMY(e) : null;
+      return { start, end };
+    }
+
+    // Format a Date as local "YYYY-MM-DDTHH:MM"
+    function fmtLocalYYYYMMDDHHMM(d) {
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // Return true if date is outside unit range
+    function isOutOfRange(d) {
+      const { start, end } = getUnitRange();
+      if (!start || !end) return false;
+      // Note: end is inclusive; calendar validRange end is exclusive
+      return d < start || d > end;
+    }
+
+    // Update toolbar title and range text above the grid
+    function updateToolbarTitle() {
+      const titleEl = document.getElementById('calWeekTitle');
+      const rangeEl = document.getElementById('calWeekRange');
+      if (!calendar || !titleEl || !rangeEl) return;
+
+      const view = calendar.view;
+      // Week title (e.g., "Aug 19–25, 2025")
+      const fmt = (dt, opts) => dt.toLocaleDateString(undefined, opts);
+      const s = view.currentStart;
+      const e = new Date(view.currentEnd.getTime() - 1); // end is exclusive
+      const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+      const title = sameMonth
+        ? `${fmt(s, { month: 'short' })} ${s.getDate()}–${e.getDate()}, ${e.getFullYear()}`
+        : `${fmt(s, { month: 'short' })} ${s.getDate()} – ${fmt(e, { month: 'short' })} ${e.getDate()}, ${e.getFullYear()}`;
+      titleEl.textContent = title;
+
+      const { start, end } = getUnitRange();
+      rangeEl.textContent = (start && end)
+        ? `Unit range: ${fmt(start, { month:'short', day:'numeric', year:'numeric' })} → ${fmt(end, { month:'short', day:'numeric', year:'numeric' })}`
+        : '';
+    }
+
+    // Add “out-of-range” styling to body cells for visible dates
+    function stampOutsideOnBody() {
+      if (!calendar) return;
+      const { start, end } = getUnitRange();
+      if (!start || !end) return;
+
+      // Timegrid columns
+      document.querySelectorAll('.fc-timegrid-col').forEach((col) => {
+        const dateStr = col.getAttribute('data-date');
+        if (!dateStr) return;
+        const d = new Date(dateStr + 'T00:00:00');
+        col.classList.toggle('out-of-range', isOutOfRange(d));
+      });
+
+      // Daygrid cells (if you switch views later)
+      document.querySelectorAll('.fc-daygrid-day').forEach((cell) => {
+        const dateStr = cell.getAttribute('data-date');
+        if (!dateStr) return;
+        const d = new Date(dateStr + 'T00:00:00');
+        cell.classList.toggle('out-of-range', isOutOfRange(d));
+      });
+    }
+
+    // Apply the unit validRange to the calendar (and refetch)
+    function refreshCalendarRange() {
+      if (!calendar) return;
+      const { start, end } = getUnitRange();
+      if (start && end) {
+        // FullCalendar expects end to be exclusive
+        const endExclusive = new Date(end.getTime());
+        endExclusive.setDate(endExclusive.getDate() + 1);
+        calendar.setOption('validRange', {
+          start: toIsoDate(start),
+          end: toIsoDate(endExclusive),
+        });
+      }
+      updateToolbarTitle();
+      stampOutsideOnBody();
+      calendar.refetchEvents();
+    }
+
+    // Hide upload card + show calendar if CSV step is complete
+    function showCalendarIfReady() {
+      const ready = document.getElementById('setup_complete')?.value === 'true';
+      const wrapUpload = document.getElementById('setup_wrap');
+      const wrapCal = document.getElementById('calendar_wrap');
+      if (!wrapUpload || !wrapCal) return;
+
+      if (ready) {
+        wrapUpload.classList.add('hidden');
+        wrapCal.classList.remove('hidden');
+      } else {
+        wrapCal.classList.add('hidden');
+        wrapUpload.classList.remove('hidden');
+      }
+    }
+
+
+
+    // show calendar when landing on step 3
+    const _origNextStep = nextStep;
+    nextStep = async function() {
+      await _origNextStep();
+      if (currentStep === 3) {
+        showCalendarIfReady();
+        if (!window.__calendarInitRan && document.getElementById('setup_complete')?.value === 'true') {
+          window.__calendarInitRan = true;
+          initCalendar();
+        } else if (window.__calendarInitRan) {
+          refreshCalendarRange();
+        }
+      }
+    };
+  </script>
 </body>
 </html>

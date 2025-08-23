@@ -12,6 +12,8 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from utils import role_required
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.exceptions import RequestEntityTooLarge
+
 
 # Blueprints
 from admin_routes import admin_bp
@@ -36,6 +38,17 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "5
 
 # CSRF protection (protects all POST forms, incl. logout form)
 csrf = CSRFProtect(app)
+
+# File uploads (CSV)
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB cap
+# Ensure Flask‑WTF accepts header-style CSRF tokens sent by fetch()
+app.config["WTF_CSRF_METHODS"] = ["POST", "PUT", "PATCH", "DELETE"]
+# (Flask‑WTF already reads 'X-CSRFToken' / 'X-CSRF-Token' from headers)
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(e):
+    return "File too large (max 5MB). Please reduce the CSV size.", 413
+
 
 # DB
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///dev.db")
