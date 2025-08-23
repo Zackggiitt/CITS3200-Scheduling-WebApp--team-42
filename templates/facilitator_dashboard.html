@@ -1,64 +1,2148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facilitator Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facilitator Portal</title>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='facilitator.css') }}">
+  <style id="sections-styles">
+
+/* CSS for section section:header */
+.site-header {
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.site-header .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 6px 16px;              /* Same slim height as UC */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logo .material-icons {
+    color: #111827;
+    font-size: 18px;                /* Same small icon size as UC */
+    line-height: 1;
+}
+
+.logo h1 {
+    font-size: 16px;                /* Same compact title size as UC */
+    font-weight: 700;
+    color: #111827;
+    white-space: nowrap;
+}
+
+.user-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;                      /* Same tight spacing as UC */
+}
+
+.notification-icon {
+    font-size: 20px;               /* Same as UC notification icon */
+    color: #4b5563;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 9999px;
+}
+
+.notification-icon:hover {
+    background: #f3f4f6;
+}
+
+.user-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #374151;
+    white-space: nowrap;
+}
+
+.profile-icon {
+    font-size: 18px;               /* Same as UC account icon */
+    color: #6b7280;
+}
+
+.user-name {
+    font-size: 14px;              
+}
+
+.user-role-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;                  
+    padding: 0 10px;
+    border-radius: 9999px;
+    background: #85eba0;           
+    color: #08551c;                
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.logout-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.logout-button:hover {
+    background: #f9fafb;
+    color: #111827;
+}
+
+.logout-button .material-icons {
+    font-size: 16px;
+}
+@media (max-width: 768px) {
+    .site-header {
+        flex-direction: column;
+        gap: var(--gap-md);
+    }
+    .user-nav {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: var(--gap-md);
+    }
+    .user-info {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+/* CSS for section section:navigation */
+#navigation {
+    padding-top: 24px;
+}
+
+.dashboard-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--surface-secondary);
+    border-radius: 9999px;
+    padding: 6px;
+    gap: 8px;
+    max-width: 1200px; /* Increased from default (was probably ~400-500px) */
+    margin: 0 auto;
+}
+
+.dashboard-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px; /* Increased from 8px 16px */
+    border-radius: 9999px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151; /* grey text */
+    transition: background-color 0.2s, color 0.2s;
+    position: relative;
+    flex: 1; /* Make items take equal space */
+    justify-content: center; /* Center content within each item */
+}
+
+.dashboard-nav-item.active {
+    background-color: #ffffff;
+    color: #111827; /* dark text */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.dashboard-nav-item:not(.active):hover {
+    background-color: #e5e7eb;
+}
+
+/* Notification badge */
+.notification-badge {
+    background-color: #dc2626; /* red */
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 9999px;
+    padding: 2px 6px;
+    margin-left: 4px;
+}
+
+@media (max-width: 768px) {
+    .dashboard-nav {
+        flex-direction: column;
+        align-items: stretch;
+        border-radius: 8px;
+        max-width: none;
+    }
+    .dashboard-nav-item {
+        justify-content: center;
+        flex: none;
+    }
+}
+
+
+#welcome {
+    margin-top: 24px; 
+}
+
+.welcome-banner {
+    background: linear-gradient(90deg, #111827 0%, rgba(17, 24, 39, 0.95) 70%, rgba(17, 24, 39, 0.85) 100%);
+    color: var(--color-text-white);
+    padding: 24px 28px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px; 
+    min-height: 80px;
+}
+.welcome-text h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+.welcome-text .facilitator-name {
+    font-size: 18px;
+    margin-bottom: 4px;
+    opacity: 0.9;
+}
+.welcome-text .session-info {
+    font-size: 16px;
+    color: var(--color-text-subtle);
+}
+
+.user-role {
+    font-size: 16px;
+    color: var(--color-text-subtle);
+    margin-bottom: 12px;
+}
+
+.welcome-icon-wrapper {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.welcome-icon-wrapper img {
+    width: 20px;
+    height: 20px;
+}
+@media (max-width: 480px) {
+    .welcome-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--gap-md);
+    }
+}
+
+/* CSS for section section:alert */
+#alert {
+    margin-top: 24px;
+}
+.alert-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--gap-md);
+    background-color: var(--surface-warning);
+    border: 1px solid var(--border-warning);
+    color: var(--color-text-warning);
+    padding: 16px 24px;
+    border-radius: 8px;
+}
+.alert-content {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    font-size: 12px;
+}
+.alert-button {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    background-color: var(--status-orange);
+    color: var(--color-text-white);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+@media (max-width: 768px) {
+    .alert-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .alert-button {
+        justify-content: center;
+    }
+}
+
+/* CSS for section section:stats */
+#stats {
+    margin-top: 24px;
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--gap-lg);
+}
+.stat-card {
+    background-color: var(--surface-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--gap-md);
+}
+/* Colored stat cards */
+.stat-card.purple {
+    background: linear-gradient(135deg, #fff7ec 0%, #fef3e2 100%);
+    border-color: #fff7ec;
+}
+
+.stat-card.blue {
+    background: linear-gradient(135deg, #effbfb 0%, #e0f2f1 100%);
+    border-color: #effbfb;
+}
+
+.stat-card.gray {
+    background: linear-gradient(135deg, #f5f1ff 0%, #ede9fe 100%);
+    border-color: #f5f1ff;
+}
+
+.stat-card.green {
+    background: linear-gradient(135deg, #f4f9ff 0%, #e0f2fe 100%);
+    border-color: #f4f9ff;
+}
+
+/* Update text colors for better contrast */
+.stat-card.purple .stat-header h4,
+.stat-card.purple .stat-value {
+    color: #000000;
+}
+
+.stat-card.blue .stat-header h4,
+.stat-card.blue .stat-value {
+    color: #000000;
+}
+
+.stat-card.gray .stat-header h4,
+.stat-card.gray .stat-value {
+    color: #000000;
+}
+
+.stat-card.green .stat-header h4,
+.stat-card.green .stat-value {
+    color: #000000;
+}
+
+/* Icon colors */
+.stat-card.purple .material-icons {
+    color: #000000;
+}
+
+.stat-card.blue .material-icons {
+    color: #000000;
+}
+
+.stat-card.gray .material-icons {
+    color: #000000;
+}
+
+.stat-card.green .material-icons {
+    color: #000000;
+}
+
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--gap-sm);
+}
+.stat-header h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+.stat-header img {
+    width: 12px;
+    height: 12px;
+}
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+}
+.stat-subtext {
+    font-size: 10px;
+    color: var(--color-text-tertiary);
+    margin-top: 4px;
+}
+@media (max-width: 992px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 576px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* CSS for section section:details */
+#details {
+    margin-top: 24px;
+}
+
+/* Updated details section for single column */
+.details-single {
+    display: block;
+}
+
+.details-single .details-card {
+    background-color: var(--surface-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--gap-lg);
+    max-width: 100%;
+}
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gap-lg);
+}
+.details-card {
+    background-color: var(--surface-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--gap-lg);
+}
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--gap-md);
+}
+.card-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+}
+.view-all-link {
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    padding: 4px 12px;
+    border-radius: 4px;
+}
+.session-list, .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-md);
+}
+.session-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--gap-md);
+}
+.session-info { flex-grow: 1; }
+.session-title { display: flex; align-items: center; gap: var(--gap-sm); margin-bottom: 4px; }
+.session-title h4 { font-size: 14px; font-weight: 600; }
+.tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: capitalize; }
+.tag.confirmed { background-color: var(--surface-confirmed-dark); color: var(--color-text-white); }
+.tag.pending { background-color: var(--surface-pending-dark); color: var(--color-text-secondary); }
+.session-time { font-size: 12px; color: var(--color-text-tertiary); margin-bottom: 4px; }
+.session-location { font-size: 10px; color: var(--color-text-tertiary); }
+.session-actions { display: flex; gap: var(--gap-sm); }
+.action-btn { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 4px; }
+.activity-item { display: flex; justify-content: space-between; align-items: center; }
+.activity-info { display: flex; align-items: center; gap: var(--gap-sm); }
+.activity-icon-wrapper { width: 24px; height: 24px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+.activity-icon-wrapper.success { background-color: var(--surface-success-light); }
+.activity-icon-wrapper.info { background-color: var(--surface-info-light); }
+.activity-icon-wrapper.error { background-color: var(--surface-error-light); }
+.activity-title { font-size: 12px; font-weight: 600; }
+.activity-time { font-size: 10px; color: var(--color-text-tertiary); }
+.tag.activity-tag { color: var(--color-text-white); }
+.tag.completed, .tag.approved { background-color: var(--status-black); }
+.tag.assigned { background-color: var(--surface-pending-light); color: var(--color-text-secondary); }
+.tag.updated { background-color: var(--status-red); }
+
+@media (max-width: 992px) {
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 480px) {
+    .session-item, .session-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--gap-sm);
+    }
+    .session-actions {
+        width: 100%;
+        flex-direction: row;
+    }
+    .action-btn {
+        flex-grow: 1;
+        justify-content: center;
+    }
+}
+
+/* CSS for section section:actions */
+#actions {
+    margin-top: 24px;
+}
+.actions-card {
+    background-color: var(--surface-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--gap-lg);
+}
+.actions-card h3 {
+    font-size: 14px;
+    font-weight: 400;
+    margin-bottom: var(--gap-md);
+}
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--gap-lg);
+}
+.action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--gap-sm);
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.action-button:hover {
+    background-color: var(--surface-secondary);
+}
+@media (max-width: 992px) {
+    .actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 576px) {
+    .actions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+  </style>
+  <script src="global.js" defer></script>
 </head>
 <body>
-    <div class="dashboard-container">
-        <header class="dashboard-header">
-            <h1>Facilitator Dashboard</h1>
+<header class="site-header">
+    <div class="container">
+        <div class="logo">
+            <span class="material-icons" aria-hidden="true">person</span>
+            <h1>Facilitator Portal</h1>
+        </div>
+        <nav class="user-nav">
+            <span class="material-icons notification-icon" aria-hidden="true">notifications</span>
             <div class="user-info">
-                {% if user.avatar_url %}
-                    <img src="{{ user.avatar_url }}" alt="Avatar" class="avatar">
-                {% endif %}
-                <span>Welcome, {{ user.first_name }} {{ user.last_name }}!</span>
-                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+                <span class="material-icons profile-icon" aria-hidden="true">account_circle</span>
+                <span class="user-name">facilitator Test</span>
             </div>
-        </header>
+            <span class="user-role-tag">Lab Facilitator</span>
+            <div class="user-nav-item">
+                <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="logout-button">
+                        <span class="material-icons" aria-hidden="true">logout</span>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+        </nav>
+    </div>
+</header>
 
-        <div class="dashboard-content">
-            <div class="dashboard-grid">
-                <!-- My Schedule -->
-                <div class="dashboard-card">
-                    <h3>My Schedule</h3>
-                    <p>View your assigned teaching modules</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('facilitator.view_schedule') }}" class="btn btn-primary">View Schedule</a>
+<section id="navigation" class="main-content-wrapper">
+    <nav class="dashboard-nav">
+        <a href="#dashboard" class="dashboard-nav-item active">
+            <span class="material-icons" aria-hidden="true">dashboard</span>
+            <span>Dashboard</span>
+        </a>
+        <a href="#availability" class="dashboard-nav-item">
+            <span class="material-icons" aria-hidden="true">event_available</span>
+            <span>Availability</span>
+        </a>
+        <a href="#schedule" class="dashboard-nav-item">
+            <span class="material-icons" aria-hidden="true">calendar_today</span>
+            <span>My Schedule</span>
+        </a>
+        <a href="#notifications" class="dashboard-nav-item notification">
+            <span class="material-icons" aria-hidden="true">notifications</span>
+            <span>Notifications</span>
+            <span class="notification-badge">3</span>
+        </a>
+    </nav>
+</section>
+
+
+<section id="welcome" class="main-content-wrapper">
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <h2>{{ greeting }}, {{ user.first_name }}! 👋</h2>
+      <p class="user-role">Lab Facilitator</p>
+      <p class="session-info">You have 3 upcoming sessions today.</p>
+    </div>
+    <div class="welcome-icon-wrapper">
+      <span class="material-icons" style="color: white; font-size: 24px;" aria-hidden="true">wb_sunny</span>
+    </div>
+  </div>
+</section>
+<section id="alert" class="main-content-wrapper">
+    <div class="alert-bar">
+        <div class="alert-content">
+            <span class="material-icons" aria-hidden="true">warning</span>
+            <p><strong>Availability Update Needed!</strong> Your availability was last updated 2 weeks ago. Please update it to receive better session assignments.</p>
+        </div>
+        <a href="#" class="alert-button" id="update-now-btn">
+            <span>Update Now</span>
+            <span class="material-icons" aria-hidden="true">arrow_forward</span>
+        </a>
+    </div>
+</section>
+<section id="stats" class="main-content-wrapper">
+    <div class="stats-grid">
+        <div class="stat-card purple">
+            <div class="stat-header">
+                <h4>This Week Hours</h4>
+                <span class="material-icons" aria-hidden="true">schedule</span>
+            </div>
+            <p class="stat-value">32</p>
+            <p class="stat-subtext">4 sessions</p>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-header">
+                <h4>Pending Approvals</h4>
+                <span class="material-icons" aria-hidden="true">pending_actions</span>
+            </div>
+            <p class="stat-value">1</p>
+            <p class="stat-subtext">Needs response</p>
+        </div>
+        <div class="stat-card gray">
+            <div class="stat-header">
+                <h4>Total Hours (Month)</h4>
+                <span class="material-icons" aria-hidden="true">calendar_today</span>
+            </div>
+            <p class="stat-value">156</p>
+            <p class="stat-subtext">This month</p>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-header">
+                <h4>Available Days</h4>
+                <span class="material-icons" aria-hidden="true">event_available</span>
+            </div>
+            <p class="stat-value" id="available-days-count">4</p>
+            <p class="stat-subtext">Per week</p>
+        </div>
+    </div>
+</section>
+<section id="details" class="main-content-wrapper">
+    <div class="details-single">
+        <div class="details-card">
+            <div class="card-header">
+                <h3>Your Upcoming Sessions</h3>
+                <a href="#" class="view-all-link">View All</a>
+            </div>
+            <div class="session-list">
+                <div class="session-item">
+                    <div class="session-info">
+                        <div class="session-title">
+                            <h4>Today</h4>
+                            <span class="tag confirmed">confirmed</span>
+                        </div>
+                        <p class="session-time">8:00 AM - 4:00 PM</p>
+                        <p class="session-location">Main Store</p>
                     </div>
                 </div>
-
-                <!-- Availability -->
-                <div class="dashboard-card">
-                    <h3>Availability</h3>
-                    <p>Update your availability preferences</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('facilitator.manage_availability') }}" class="btn btn-primary">Update Availability</a>
+                <div class="session-item">
+                    <div class="session-info">
+                        <div class="session-title">
+                            <h4>Tomorrow</h4>
+                            <span class="tag pending">pending</span>
+                        </div>
+                        <p class="session-time">8:00 AM - 4:00 PM</p>
                     </div>
-                </div>
-
-                <!-- Skills & Preferences -->
-                <div class="dashboard-card">
-                    <h3>Skills & Preferences</h3>
-                    <p>Manage your skills and teaching preferences</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('facilitator.manage_skills') }}" class="btn btn-primary">Update Skills</a>
-                    </div>
-                </div>
-
-                <!-- Shift Swaps -->
-                <div class="dashboard-card">
-                    <h3>Shift Swaps</h3>
-                    <p>Request and manage shift exchanges</p>
-                    <div class="card-actions">
-                        <a href="{{ url_for('facilitator.view_swaps') }}" class="btn btn-primary">View Swaps</a>
-                        <a href="{{ url_for('facilitator.request_swap') }}" class="btn btn-secondary">Request Swap</a>
+                    <div class="session-actions">
+                        <a href="#" class="action-btn accept">
+                            <img src="images/2_111.svg" alt=""> Accept
+                        </a>
+                        <a href="#" class="action-btn decline">Decline</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</section>
+<!-- Add this after the existing sections, before closing </body> -->
+<!-- Availability View (initially hidden) -->
+<section id="availability-view" class="main-content-wrapper" style="display: none;">
+  <div class="availability-container">
+    <div class="availability-header">
+      <div>
+        <h2>My Availability</h2>
+        <p class="availability-subtitle">Set your available days and hours for scheduling</p>
+      </div>
+    </div>
+    
+    <div class="availability-days">
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="monday" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Monday</span>
+        </div>
+        <div class="time-inputs">
+          <input type="time" class="time-input" value="08:00">
+          <span class="time-separator">to</span>
+          <input type="time" class="time-input" value="18:00">
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="tuesday" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Tuesday</span>
+        </div>
+        <div class="time-inputs">
+          <input type="time" class="time-input" value="08:00">
+          <span class="time-separator">to</span>
+          <input type="time" class="time-input" value="18:00">
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="wednesday">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Wednesday</span>
+        </div>
+        <div class="time-inputs disabled">
+          <span class="not-available">Not available</span>
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="thursday" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Thursday</span>
+        </div>
+        <div class="time-inputs">
+          <input type="time" class="time-input" value="08:00">
+          <span class="time-separator">to</span>
+          <input type="time" class="time-input" value="18:00">
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="friday" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Friday</span>
+        </div>
+        <div class="time-inputs">
+          <input type="time" class="time-input" value="08:00">
+          <span class="time-separator">to</span>
+          <input type="time" class="time-input" value="16:00">
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="saturday">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Saturday</span>
+        </div>
+        <div class="time-inputs disabled">
+          <span class="not-available">Not available</span>
+        </div>
+      </div>
+
+      <div class="day-row">
+        <div class="day-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" class="day-checkbox" data-day="sunday">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="day-label">Sunday</span>
+        </div>
+        <div class="time-inputs disabled">
+          <span class="not-available">Not available</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="availability-footer">
+      <button class="update-btn">Update Availability</button>
+    </div>
+  </div>
+</section>
+
+<!-- Calendar View (initially hidden) -->
+<section id="calendar-view" class="main-content-wrapper" style="display: none;">
+  <div class="calendar-container">
+    <div class="calendar-header">
+      <h2>My Schedule</h2>
+      <div class="calendar-controls">
+        <button id="prev-month" class="calendar-btn">
+          <span class="material-icons">chevron_left</span>
+        </button>
+        <span id="current-month" class="month-title">August 2025</span>
+        <button id="next-month" class="calendar-btn">
+          <span class="material-icons">chevron_right</span>
+        </button>
+      </div>
+    </div>
+    
+    <div class="calendar-grid">
+      <div class="calendar-weekdays">
+        <div class="weekday">Sun</div>
+        <div class="weekday">Mon</div>
+        <div class="weekday">Tue</div>
+        <div class="weekday">Wed</div>
+        <div class="weekday">Thu</div>
+        <div class="weekday">Fri</div>
+        <div class="weekday">Sat</div>
+      </div>
+      
+      <div class="calendar-days" id="calendar-days">
+        <!-- Calendar days will be generated by JavaScript -->
+      </div>
+    </div>
+    
+    <div class="schedule-legend">
+      <div class="legend-item">
+        <div class="legend-color confirmed"></div>
+        <span>Confirmed Sessions</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color pending"></div>
+        <span>Pending Sessions</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color available"></div>
+        <span>Available</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Add this after the calendar-view section, before the calendar-styles -->
+
+<!-- Notifications View (initially hidden) -->
+<section id="notifications-view" class="main-content-wrapper" style="display: none;">
+  <div class="notifications-container">
+    <div class="notifications-header">
+      <h2>Notifications</h2>
+      <div class="notification-actions">
+        <button id="mark-all-read" class="notification-action-btn">
+          <span class="material-icons">done_all</span>
+          Mark All Read
+        </button>
+        <button id="clear-all" class="notification-action-btn secondary">
+          <span class="material-icons">clear_all</span>
+          Clear All
+        </button>
+      </div>
+    </div>
+    
+    <div class="notification-filters">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="shifts">Shifts</button>
+      <button class="filter-btn" data-filter="updates">Updates</button>
+      <button class="filter-btn" data-filter="alerts">Alerts</button>
+    </div>
+    
+    <div class="notifications-list" id="notifications-list">
+      <!-- Shift Notifications -->
+      <div class="notification-item unread" data-type="shifts">
+        <div class="notification-icon shift">
+          <span class="material-icons">schedule</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>New Shift Allocated</h4>
+            <span class="notification-time">5 minutes ago</span>
+          </div>
+          <p class="notification-message">You have been assigned to Lab Session CITS3200 on Friday, August 25, 2025 from 2:00 PM - 6:00 PM in Building 314, Room 105.</p>
+          <div class="notification-actions-inline">
+            <button class="action-btn accept">
+              <span class="material-icons">check</span>
+              Accept
+            </button>
+            <button class="action-btn decline">
+              <span class="material-icons">close</span>
+              Decline
+            </button>
+          </div>
+        </div>
+        <div class="notification-status unread-indicator"></div>
+      </div>
+
+      <div class="notification-item unread" data-type="updates">
+        <div class="notification-icon update">
+          <span class="material-icons">info</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>Class Information Updated</h4>
+            <span class="notification-time">2 hours ago</span>
+          </div>
+          <p class="notification-message">CITS3200 Software Engineering Project - Location changed from Building 314 Room 105 to Building 314 Room 208. Session time remains 2:00 PM - 6:00 PM.</p>
+          <div class="notification-meta">
+            <span class="tag update">Location Change</span>
+          </div>
+        </div>
+        <div class="notification-status unread-indicator"></div>
+      </div>
+
+      <div class="notification-item" data-type="shifts">
+        <div class="notification-icon shift">
+          <span class="material-icons">event_available</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>Shift Confirmed</h4>
+            <span class="notification-time">1 day ago</span>
+          </div>
+          <p class="notification-message">Your shift for CITS1001 Object-Oriented Programming on Thursday, August 24, 2025 from 9:00 AM - 1:00 PM has been confirmed.</p>
+          <div class="notification-meta">
+            <span class="tag confirmed">Confirmed</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="notification-item unread" data-type="alerts">
+        <div class="notification-icon alert">
+          <span class="material-icons">warning</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>Availability Update Required</h4>
+            <span class="notification-time">3 days ago</span>
+          </div>
+          <p class="notification-message">Your availability hasn't been updated in 2 weeks. Please update your available times to ensure optimal shift assignments.</p>
+          <div class="notification-actions-inline">
+            <button class="action-btn primary">
+              <span class="material-icons">edit_calendar</span>
+              Update Now
+            </button>
+          </div>
+        </div>
+        <div class="notification-status unread-indicator"></div>
+      </div>
+
+      <div class="notification-item" data-type="updates">
+        <div class="notification-icon update">
+          <span class="material-icons">schedule_send</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>Session Time Changed</h4>
+            <span class="notification-time">1 week ago</span>
+          </div>
+          <p class="notification-message">CITS2200 Data Structures session time updated from 10:00 AM - 2:00 PM to 11:00 AM - 3:00 PM for Wednesday, August 30, 2025.</p>
+          <div class="notification-meta">
+            <span class="tag update">Time Change</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="notification-item" data-type="shifts">
+        <div class="notification-icon shift">
+          <span class="material-icons">assignment_turned_in</span>
+        </div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>Shift Completed</h4>
+            <span class="notification-time">1 week ago</span>
+          </div>
+          <p class="notification-message">Your shift for CITS1402 Relational Database Management Systems on August 15, 2025 has been marked as completed. Thank you for your service!</p>
+          <div class="notification-meta">
+            <span class="tag completed">Completed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notifications-empty" id="notifications-empty" style="display: none;">
+      <div class="empty-state">
+        <span class="material-icons">notifications_off</span>
+        <h3>No notifications</h3>
+        <p>You're all caught up! Check back later for updates.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<style id="notifications-styles">
+/* Notifications Styles */
+.notifications-container {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: var(--gap-lg);
+  margin-top: 24px;
+}
+
+.notifications-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--gap-lg);
+  padding-bottom: var(--gap-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.notifications-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.notification-actions {
+  display: flex;
+  gap: var(--gap-sm);
+}
+
+.notification-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--surface-primary);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.notification-action-btn:hover {
+  background-color: var(--surface-secondary);
+}
+
+.notification-action-btn.secondary {
+  color: var(--color-text-secondary);
+}
+
+.notification-filters {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--surface-secondary);
+  border-radius: 9999px;
+  padding: 6px;
+  gap: 8px;
+  max-width: 600px;
+  margin: 0 auto var(--gap-lg) auto;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  background: none;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  position: relative;
+  flex: 1;
+  justify-content: center;
+}
+
+.filter-btn.active {
+  background-color: #ffffff;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.filter-btn:not(.active):hover {
+  background-color: #e5e7eb;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.notification-item {
+  display: flex;
+  gap: var(--gap-md);
+  padding: var(--gap-md);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--surface-primary);
+  position: relative;
+  transition: all 0.2s;
+}
+
+.notification-item.unread {
+  border-left: 4px solid #3b82f6;
+  background-color: var(--surface-info-light);
+}
+
+.notification-item:hover {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.notification-icon.shift {
+  background-color: var(--surface-success-light);
+  color: var(--color-text-success);
+}
+
+.notification-icon.update {
+  background-color: var(--surface-info-light);
+  color: #3b82f6;
+}
+
+.notification-icon.alert {
+  background-color: var(--surface-warning);
+  color: var(--color-text-warning);
+}
+
+.notification-content {
+  flex-grow: 1;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--gap-sm);
+}
+
+.notification-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.notification-message {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  margin-bottom: var(--gap-sm);
+}
+
+.notification-meta {
+  display: flex;
+  gap: var(--gap-sm);
+  margin-bottom: var(--gap-sm);
+}
+
+.notification-actions-inline {
+  display: flex;
+  gap: var(--gap-sm);
+  margin-top: var(--gap-sm);
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--surface-primary);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background-color: var(--surface-secondary);
+}
+
+.action-btn.accept {
+  border-color: var(--color-text-success);
+  color: var(--color-text-success);
+}
+
+.action-btn.accept:hover {
+  background-color: var(--surface-success-light);
+}
+
+.action-btn.decline {
+  border-color: var(--status-red);
+  color: var(--status-red);
+}
+
+.action-btn.decline:hover {
+  background-color: var(--surface-error-light);
+}
+
+.action-btn.primary {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.action-btn.primary:hover {
+  background-color: #2563eb;
+}
+
+.notification-status {
+  width: 8px;
+  flex-shrink: 0;
+}
+
+.unread-indicator {
+  background-color: #3b82f6;
+  border-radius: 4px;
+}
+
+.tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.tag.update {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.tag.confirmed {
+  background-color: var(--surface-success-light);
+  color: var(--color-text-success);
+}
+
+.tag.completed {
+  background-color: var(--status-black);
+  color: var(--color-text-white);
+}
+
+.notifications-empty {
+  text-align: center;
+  padding: var(--gap-xl) var(--gap-lg);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-md);
+  color: var(--color-text-tertiary);
+}
+
+.empty-state .material-icons {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.empty-state p {
+  font-size: 14px;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .notifications-header {
+    flex-direction: column;
+    gap: var(--gap-md);
+    align-items: stretch;
+  }
+  
+  .notification-actions {
+    justify-content: center;
+  }
+  
+  .notification-filters {
+    flex-wrap: wrap;
+  }
+  
+  .notification-item {
+    flex-direction: column;
+    gap: var(--gap-sm);
+  }
+  
+  .notification-header {
+    flex-direction: column;
+    gap: var(--gap-sm);
+  }
+  
+  .notification-actions-inline {
+    flex-wrap: wrap;
+  }
+}
+</style>
+
+<!-- Add this CSS to your existing style block -->
+<style id="calendar-styles">
+/* Calendar Styles */
+.calendar-container {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: var(--gap-lg);
+  margin-top: 24px;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--gap-lg);
+}
+
+.calendar-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-md);
+}
+
+.calendar-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-btn:hover {
+  background-color: var(--surface-secondary);
+}
+
+.month-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  min-width: 120px;
+  text-align: center;
+}
+
+.calendar-grid {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background-color: var(--surface-secondary);
+}
+
+.weekday {
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border-right: 1px solid var(--border-color);
+}
+
+.weekday:last-child {
+  border-right: none;
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-day {
+  min-height: 80px;
+  padding: 8px;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+  background-color: var(--surface-primary);
+}
+
+.calendar-day:nth-child(7n) {
+  border-right: none;
+}
+
+.calendar-day.other-month {
+  background-color: var(--surface-secondary);
+  color: var(--color-text-subtle);
+}
+
+.calendar-day.today {
+  background-color: var(--surface-info-light);
+}
+
+.day-number {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.event {
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.event.confirmed {
+  background-color: var(--status-black);
+  color: var(--color-text-white);
+}
+
+.event.pending {
+  background-color: var(--surface-pending-light);
+  color: var(--color-text-secondary);
+}
+
+.event.available {
+  background-color: var(--surface-success-light);
+  color: var(--color-text-success);
+}
+
+.schedule-legend {
+  display: flex;
+  justify-content: center;
+  gap: var(--gap-lg);
+  margin-top: var(--gap-md);
+  padding-top: var(--gap-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.legend-color.confirmed {
+  background-color: var(--status-black);
+}
+
+.legend-color.pending {
+  background-color: var(--surface-pending-light);
+}
+
+.legend-color.available {
+  background-color: var(--surface-success-light);
+}
+
+@media (max-width: 768px) {
+  .calendar-header {
+    flex-direction: column;
+    gap: var(--gap-md);
+  }
+  
+  .calendar-day {
+    min-height: 60px;
+    padding: 4px;
+  }
+  
+  .schedule-legend {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+</style>
+
+<style id="availability-styles">
+/* Availability Styles */
+.availability-container {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: var(--gap-lg);
+  margin-top: 24px;
+}
+
+.availability-header {
+  margin-bottom: var(--gap-lg);
+  padding-bottom: var(--gap-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.availability-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+
+.availability-subtitle {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.availability-days {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.day-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background-color: var(--surface-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.day-toggle {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: #000000;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+.day-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  min-width: 80px;
+}
+
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.time-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: var(--surface-primary);
+  color: var(--color-text-primary);
+}
+
+.time-separator {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.time-inputs.disabled {
+  opacity: 0.5;
+}
+
+.not-available {
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+.availability-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--gap-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.update-btn {
+  background-color: #000000;
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.update-btn:hover {
+  background-color: #000000;
+}
+
+@media (max-width: 768px) {
+  .day-row {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .day-toggle {
+    justify-content: space-between;
+  }
+  
+  .time-inputs {
+    justify-content: center;
+  }
+}
+</style>
+<script>
+// Navigation between dashboard, calendar, and notifications
+document.addEventListener('DOMContentLoaded', function() {
+    const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
+    const calendarView = document.getElementById('calendar-view');
+    const notificationsView = document.getElementById('notifications-view');
+    const availabilityView = document.getElementById('availability-view');
+    const navItems = document.querySelectorAll('.dashboard-nav-item');
+    
+    // Navigation click handlers
+    navItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Update active state
+            navItems.forEach(nav => nav.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show/hide sections
+            const href = this.getAttribute('href');
+
+            if (href === '#availability') {
+                // Show availability view
+                dashboardSections.forEach(section => section.style.display = 'none');
+                availabilityView.style.display = 'block';
+                calendarView.style.display = 'none';
+                notificationsView.style.display = 'none';
+            } else if (href === '#schedule') {
+                // Show calendar view
+                dashboardSections.forEach(section => section.style.display = 'none');
+                availabilityView.style.display = 'none';
+                calendarView.style.display = 'block';
+                notificationsView.style.display = 'none';
+                initCalendar();
+            } else if (href === '#notifications') {
+                // Show notifications view
+                dashboardSections.forEach(section => section.style.display = 'none');
+                availabilityView.style.display = 'none';
+                calendarView.style.display = 'none';
+                notificationsView.style.display = 'block';
+            } else {
+                // Show dashboard view
+                dashboardSections.forEach(section => section.style.display = 'block');
+                availabilityView.style.display = 'none';
+                calendarView.style.display = 'none';
+                notificationsView.style.display = 'none';
+            }
+        });
+    });
+
+    // Update greeting icon based on time of day
+    function updateGreetingIcon() {
+        const now = new Date();
+        const hour = now.getHours();
+        const iconElement = document.querySelector('.welcome-icon-wrapper .material-icons');
+        
+        if (iconElement) {
+            if (hour >= 5 && hour < 12) {
+                // Morning (5 AM - 11:59 AM)
+                iconElement.textContent = 'wb_sunny';
+            } else if (hour >= 12 && hour < 17) {
+                // Afternoon (12 PM - 4:59 PM)
+                iconElement.textContent = 'wb_sunny';
+            } else {
+                // Night (9 PM - 4:59 AM)
+                iconElement.textContent = 'nights_stay';
+            }
+        }
+    }
+
+    // Call the function when page loads
+    updateGreetingIcon();
+    updateAvailableDaysCounter();
+
+    // Calendar functionality
+    let currentDate = new Date();
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"];
+    
+    function initCalendar() {
+        updateCalendarHeader();
+        generateCalendarDays();
+    }
+    
+    function updateCalendarHeader() {
+        const monthTitle = document.getElementById('current-month');
+        if (monthTitle) {
+            monthTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+        }
+    }
+    
+    function generateCalendarDays() {
+        const calendarDays = document.getElementById('calendar-days');
+        if (!calendarDays) return;
+        
+        calendarDays.innerHTML = '';
+        
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        
+        // First day of the month and how many days in month
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startingDayOfWeek = firstDay.getDay();
+        
+        // Previous month's trailing days
+        const prevMonth = new Date(year, month, 0);
+        const daysInPrevMonth = prevMonth.getDate();
+        
+        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+            const dayElement = createDayElement(daysInPrevMonth - i, true);
+            calendarDays.appendChild(dayElement);
+        }
+        
+        // Current month days
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayElement = createDayElement(day, false);
+            calendarDays.appendChild(dayElement);
+        }
+        
+        // Next month's leading days
+        const totalCells = calendarDays.children.length;
+        const remainingCells = 42 - totalCells; // 6 rows × 7 days
+        
+        for (let day = 1; day <= remainingCells; day++) {
+            const dayElement = createDayElement(day, true);
+            calendarDays.appendChild(dayElement);
+        }
+    }
+    
+    function createDayElement(dayNumber, isOtherMonth) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        
+        if (isOtherMonth) {
+            dayElement.classList.add('other-month');
+        }
+        
+        // Check if it's today
+        const today = new Date();
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        
+        if (!isOtherMonth && 
+            dayNumber === today.getDate() && 
+            month === today.getMonth() && 
+            year === today.getFullYear()) {
+            dayElement.classList.add('today');
+        }
+        
+        dayElement.innerHTML = `
+            <div class="day-number">${dayNumber}</div>
+            <div class="day-events">
+                ${generateEvents(dayNumber, isOtherMonth)}
+            </div>
+        `;
+        
+        return dayElement;
+    }
+    
+    function generateEvents(dayNumber, isOtherMonth) {
+        if (isOtherMonth) return '';
+        
+        // Sample events (replace with real data)
+        const events = [];
+        
+        if (dayNumber === 22) { // Today
+            events.push('<div class="event confirmed">Lab Session 9-5</div>');
+        }
+        if (dayNumber === 23) { // Tomorrow
+            events.push('<div class="event pending">Lab Session 9-5</div>');
+        }
+        if (dayNumber === 25) {
+            events.push('<div class="event available">Available</div>');
+        }
+        if (dayNumber === 28) {
+            events.push('<div class="event confirmed">Lab Session 2-6</div>');
+        }
+        
+        return events.join('');
+    }
+    
+    // Month navigation
+    const prevMonthBtn = document.getElementById('prev-month');
+    const nextMonthBtn = document.getElementById('next-month');
+    
+    if (prevMonthBtn) {
+        prevMonthBtn.addEventListener('click', function() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            updateCalendarHeader();
+            generateCalendarDays();
+        });
+    }
+    
+    if (nextMonthBtn) {
+        nextMonthBtn.addEventListener('click', function() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            updateCalendarHeader();
+            generateCalendarDays();
+        });
+    }
+
+    // NOTIFICATIONS FUNCTIONALITY
+    // Notification filters
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const notificationItems = document.querySelectorAll('.notification-item');
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Update active filter
+            filterBtns.forEach(f => f.classList.remove('active'));
+            this.classList.add('active');
+            
+            const filter = this.getAttribute('data-filter');
+            
+            // Filter notifications
+            notificationItems.forEach(item => {
+                if (filter === 'all' || item.getAttribute('data-type') === filter) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+
+    // Mark all as read
+    const markAllReadBtn = document.getElementById('mark-all-read');
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', function() {
+            const unreadItems = document.querySelectorAll('.notification-item.unread');
+            unreadItems.forEach(item => {
+                item.classList.remove('unread');
+            });
+            
+            // Remove notification badge completely
+            const badge = document.querySelector('.notification-badge');
+            if (badge) {
+                badge.remove();
+            }
+        });
+    }
+
+    // Clear all notifications
+    const clearAllBtn = document.getElementById('clear-all');
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all notifications?')) {
+                const notificationsList = document.getElementById('notifications-list');
+                const emptyState = document.getElementById('notifications-empty');
+                
+                if (notificationsList) notificationsList.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'block';
+                
+                // Update notification badge
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    badge.remove();
+                }
+            }
+        });
+    }
+        
+    // Function to check if there are any unread notifications and update badge
+    function updateNotificationBadge() {
+        const unreadCount = document.querySelectorAll('.notification-item.unread').length;
+        const badge = document.querySelector('.notification-badge');
+        
+        if (unreadCount === 0 && badge) {
+            badge.remove();
+        } else if (badge) {
+            badge.textContent = unreadCount;
+        }
+    }
+
+    // GLOBAL CLICK HANDLER - Only one for all click events
+    document.addEventListener('click', function(e) {
+        // Handle notification accept/decline buttons
+        if (e.target.closest('.action-btn.accept')) {
+            const notification = e.target.closest('.notification-item');
+            notification.classList.remove('unread');
+            updateNotificationBadge();
+            alert('Shift accepted successfully!');
+        } else if (e.target.closest('.action-btn.decline')) {
+            const notification = e.target.closest('.notification-item');
+            notification.classList.remove('unread');
+            notification.style.display = 'none';
+            updateNotificationBadge();
+            alert('Shift declined.');
+        }
+        
+        // Handle update availability button
+        else if (e.target.classList.contains('update-btn')) {
+            // Collect all availability data
+            const availability = [];
+            document.querySelectorAll('.day-checkbox').forEach(checkbox => {
+                const dayRow = checkbox.closest('.day-row');
+                const dayName = checkbox.getAttribute('data-day');
+                const isAvailable = checkbox.checked;
+                
+                if (isAvailable) {
+                    const timeInputs = dayRow.querySelectorAll('.time-input');
+                    const startTime = timeInputs[0] ? timeInputs[0].value : '';
+                    const endTime = timeInputs[1] ? timeInputs[1].value : '';
+                    availability.push({
+                        day: dayName,
+                        available: true,
+                        startTime: startTime,
+                        endTime: endTime
+                    });
+                } else {
+                    availability.push({
+                        day: dayName,
+                        available: false
+                    });
+                }
+            });
+            
+            console.log('Saving availability:', availability);
+            alert('All up to date!');
+
+            // Update the alert box message and icon
+            const alertContent = document.querySelector('.alert-content p');
+            const alertIcon = document.querySelector('.alert-content .material-icons');
+
+            if (alertContent) {
+                alertContent.innerHTML = '<strong>All up to date!</strong> Your availability has been successfully updated.';
+            }
+
+            if (alertIcon) {
+                alertIcon.textContent = 'checklist';
+            }
+
+            // Change alert styling to success
+            const alertBar = document.querySelector('.alert-bar');
+            if (alertBar) {
+                alertBar.style.backgroundColor = '#d1fae5';
+                alertBar.style.borderColor = '#10b981';
+                alertBar.style.color = '#065f46';
+            }
+
+            // Hide the "Update Now" button
+            const updateBtn = document.getElementById('update-now-btn');
+            if (updateBtn) {
+                updateBtn.style.display = 'none';
+            }
+        }
+        
+        // Handle "Update Now" button in alert section
+        else if (e.target.closest('#update-now-btn')) {
+            e.preventDefault();
+            
+            // Remove active state from all nav items
+            navItems.forEach(nav => nav.classList.remove('active'));
+            
+            // Add active state to availability tab
+            const availabilityNavItem = document.querySelector('a[href="#availability"]');
+            if (availabilityNavItem) {
+                availabilityNavItem.classList.add('active');
+            }
+            
+            // Hide all sections and show availability
+            dashboardSections.forEach(section => section.style.display = 'none');
+            availabilityView.style.display = 'block';
+            calendarView.style.display = 'none';
+            notificationsView.style.display = 'none';
+        }
+    });
+
+    // AVAILABILITY TOGGLE FUNCTIONALITY
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('day-checkbox')) {
+            const dayRow = e.target.closest('.day-row');
+            const timeInputs = dayRow.querySelector('.time-inputs');
+            
+            if (e.target.checked) {
+                // Show time inputs when toggle is ON
+                timeInputs.classList.remove('disabled');
+                timeInputs.innerHTML = `
+                    <input type="time" class="time-input" value="08:00">
+                    <span class="time-separator">to</span>
+                    <input type="time" class="time-input" value="18:00">
+                `;
+            } else {
+                // Show "Not available" when toggle is OFF
+                timeInputs.classList.add('disabled');
+                timeInputs.innerHTML = '<span class="not-available">Not available</span>';
+            }
+
+            // Update available days counter
+            updateAvailableDaysCounter();
+        }
+    });
+
+
+    // Function to update the available days counter
+    function updateAvailableDaysCounter() {
+        const checkedDays = document.querySelectorAll('.day-checkbox:checked').length;
+        const availableDaysElement = document.getElementById('available-days-count');
+        
+        if (availableDaysElement) {
+            availableDaysElement.textContent = checkedDays;
+        }
+    }
+
+
+
+});
+</script>
 </body>
 </html>
+
+
+
+
+
+
+
+

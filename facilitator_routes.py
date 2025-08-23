@@ -1,22 +1,37 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from models import db, User, Session, Assignment, SwapRequest, Availability, SwapStatus, FacilitatorSkill, SkillLevel, Unit, Module
-from auth import facilitator_required, get_current_user
+from auth import facilitator_required, get_current_user, login_required
 from datetime import datetime, time
+from utils import role_required
+from models import UserRole
 import json
 
 facilitator_bp = Blueprint('facilitator', __name__, url_prefix='/facilitator')
 
-@facilitator_bp.route('/dashboard')
-@facilitator_required
+def get_greeting():
+    """Return time-based greeting"""
+    hour = datetime.now().hour
+    if hour < 12:
+        return "Good Morning"
+    elif hour < 17:
+        return "Good Afternoon"
+    else:
+        return "Good Evening"
+
+@facilitator_bp.route("/dashboard")
+@login_required
+@role_required(UserRole.FACILITATOR)
 def dashboard():
     user = get_current_user()
-    upcoming_assignments = Assignment.query.filter_by(facilitator_id=user.id).join(Session).filter(Session.start_time > datetime.utcnow()).order_by(Session.start_time).limit(5).all()
-    pending_swaps = SwapRequest.query.filter_by(requester_id=user.id, status=SwapStatus.PENDING).count()
-    
-    return render_template('facilitator_dashboard.html', 
-                         user=user,
-                         upcoming_assignments=upcoming_assignments,
-                         pending_swaps=pending_swaps)
+    greeting = get_greeting()
+    return render_template("facilitator_dashboard.html", user=user, greeting=greeting)
+
+
+@facilitator_bp.route("/")
+@login_required
+@role_required(UserRole.FACILITATOR)
+def root():
+    return redirect(url_for(".dashboard"))
 
 @facilitator_bp.route('/schedule')
 @facilitator_required
