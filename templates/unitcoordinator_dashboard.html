@@ -353,6 +353,7 @@
     const CREATE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.create_session', unit_id=0) }}";
     const UPDATE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.update_session', session_id=0) }}";
     const DELETE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.delete_session', session_id=0) }}";
+    const LIST_VENUES_TEMPLATE = "{{ url_for('unitcoordinator.list_venues',   unit_id=0) }}";
 
     function withUnitId(tpl, id)     { return tpl.replace(/\/0(\/|$)/, `/${id}$1`); }
     function withSessionId(tpl, id)  { return tpl.replace(/0(\/|$)/, `${id}$1`); }
