@@ -70,6 +70,23 @@ main {
     width: 100%;
 }
 
+/* CSS for section section:alert */
+#alert {
+    margin-top: 8px; /* Add this line */
+    margin-bottom: 8px; /* Add this line */
+}
+
+/* CSS for section section:stats */
+#stats {
+    margin-top: 8px; /* Add this line */
+    margin-bottom: 8px; /* Add this line */
+}
+
+/* CSS for section section:details */
+#details {
+    margin-top: 8px; /* Add this line */
+}
+
 a {
   text-decoration: none;
   color: inherit;
