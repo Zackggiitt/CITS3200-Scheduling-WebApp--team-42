@@ -399,3 +399,21 @@
 /* Minor form spacing */
 .form-block{margin-top:12px}
 
+/* Inspector top bar */
+.insp-top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--c-line);}
+.insp-top-left{display:flex;gap:10px;align-items:center;}
+.insp-top-icon{font-size:20px;color:#6b7280}
+.insp-title{font-weight:700;color:#111827}
+.insp-sub{font-size:13px;color:#6b7280}
+.insp-top-actions .icon-btn .material-icons{font-size:20px}
+
+/* Blue overview card */
+.insp-card{margin:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px}
+.insp-card__hdr{display:flex;align-items:center;gap:8px;font-weight:700;color:#1e40af;margin-bottom:8px}
+.insp-kv{display:grid;grid-template-columns:1fr;gap:6px;color:#1d4ed8}
+.kv-row{display:flex;justify-content:space-between}
+.kv-row dt{color:#1f2937}
+.kv-row dd{font-weight:600}
+.form-block{margin:12px 14px}
+
+

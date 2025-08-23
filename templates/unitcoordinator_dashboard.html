@@ -810,7 +810,7 @@
           const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, unitId), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-            body: JSON.stringify({ start, end, venue: '' })
+            body: JSON.stringify({ start, end, venue: '', session_name: '' })
           });
           const data = await res.json();
           if (!data.ok) {
@@ -998,7 +998,7 @@
     upgradeVenueInputToSelect();
 
 
-    // REPLACE your openInspector with this
+    
     async function openInspector(ev) {
       const inspector = document.getElementById('calInspector');
       if (!ev || !inspector) return;
@@ -1006,29 +1006,39 @@
       const start = ev.start;
       const end   = ev.end || new Date(start.getTime() + 60 * 60 * 1000);
 
-      document.getElementById('inspDay').textContent  = start.toLocaleDateString('en-US', { weekday: 'long' });
-      document.getElementById('inspTime').textContent = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-      document.getElementById('inspDur').textContent  = `${Math.round((end - start) / 60000)} minutes`;
+      // Top bar + blue card
+      document.getElementById('inspSub').textContent =
+        `${start.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmtRange(start, end)}`;
+      document.getElementById('inspDay').textContent  =
+        start.toLocaleDateString('en-US', { weekday: 'long' });
+      document.getElementById('inspTime').textContent = fmtRange(start, end);
+      document.getElementById('inspDur').textContent  = `${Math.round((end - start)/60000)} minutes`;
       document.getElementById('inspDate').textContent = start.toLocaleDateString();
       document.getElementById('inspDelete').classList.remove('hidden');
 
-      // upgrade input -> select and fill options
+      // Session name (supports multiple backends)
+      const name = ev.extendedProps?.session_name || ev.extendedProps?.module_name || ev.title || '';
+      document.getElementById('inspName').value = name;
+
+      // Venue select
       const sel = upgradeVenueInputToSelect();
       const unitId = document.getElementById('unit_id').value;
       const venues = await fetchVenuesForUnit(unitId);
-
-      // existing value from the event (supports both old + new response shapes)
       const selectedId   = ev.extendedProps?.venue_id || null;
-      const selectedName = ev.extendedProps?.venue     || ev.extendedProps?.location || ev.title || '';
-
+      const selectedName = ev.extendedProps?.venue || ev.extendedProps?.location || ev.title || '';
       populateVenueSelect(sel, venues, selectedId, selectedName);
 
-      // wire buttons with this event
+      // Buttons
       wireInspectorButtons(ev);
+
+      // Close buttons on the top bar
+      document.getElementById('inspCloseBtn').onclick = closeInspector;
+      document.getElementById('inspNextBtn').onclick  = () => {/* reserved for future step navigation */};
 
       inspector.classList.remove('hidden');
       requestAnimationFrame(() => inspector.classList.add('open'));
     }
+
 
 
     function closeInspector() {
@@ -1048,17 +1058,23 @@
 
       // Save
       document.getElementById('inspSave').onclick = async () => {
-        const sel = document.getElementById('inspVenue');
-        let payload = {
+        const sel  = document.getElementById('inspVenue');
+        const name = document.getElementById('inspName')?.value?.trim() || '';
+
+        const payload = {
           start: fmtLocalYYYYMMDDHHMM(ev.start),
           end:   fmtLocalYYYYMMDDHHMM(ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000)),
+
+          // send a few common keys so the backend can map to Module
+          session_name: name,   // preferred
+          module_name:  name,   // alt spelling
+          title:        name    // FC fallback
         };
 
-        // Prefer venue_id if a choice is made; otherwise send plain name (or empty)
         if (sel && sel.tagName === 'SELECT' && sel.value) {
           payload.venue_id = Number(sel.value);
         } else {
-          payload.venue = (sel?.value || '').trim(); // gracefully handles old <input> too
+          payload.venue = (sel?.value || '').trim();
         }
 
         const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
@@ -1066,6 +1082,7 @@
           headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
           body: JSON.stringify(payload)
         });
+
         const data = await res.json();
         if (!data.ok) {
           alert(data.error || 'Failed to update');
@@ -1074,6 +1091,7 @@
           calendar.refetchEvents();
         }
       };
+
 
       // Delete
       document.getElementById('inspDelete').onclick = async () => {
