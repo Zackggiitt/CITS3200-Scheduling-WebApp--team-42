@@ -921,25 +921,34 @@
       if (!old || old.tagName === 'SELECT') return old;
       const sel = document.createElement('select');
       sel.id = 'inspVenue';
-      sel.className = old.className;
+      sel.className = old.className + ' select-native'; // optional marker class
       sel.innerHTML = `<option value="">— Select a venue —</option>`;
       old.parentNode.replaceChild(sel, old);
       return sel;
     }
 
+
     function populateVenueSelect(selectEl, venues, selectedId, selectedName) {
-      const opts = ['<option value="">— Select a venue —</option>']
-        .concat(venues.map(v => `<option value="${v.id}">${v.name}</option>`));
+      const opts = [
+        '<option value="" disabled selected hidden>— Select a venue —</option>'
+      ].concat(venues.map(v => `<option value="${v.id}">${v.name}</option>`));
+
       selectEl.innerHTML = opts.join('');
 
-      // Prefer id; fall back to matching by name
+      // Prefer id; fall back to matching by name. If neither, keep placeholder.
       if (selectedId) {
         selectEl.value = String(selectedId);
       } else if (selectedName) {
         const match = venues.find(v => (v.name || '').toLowerCase() === selectedName.toLowerCase());
         if (match) selectEl.value = String(match.id);
       }
+      
+      // If no selection made, keep it invalid to style placeholder (CSS :invalid)
+      if (!selectEl.value) {
+        selectEl.setAttribute('required', 'required');
+      }
     }
+
 
     // One-time upgrade on load so the element exists for openInspector
     upgradeVenueInputToSelect();
