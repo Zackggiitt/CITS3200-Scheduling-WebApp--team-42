@@ -315,3 +315,67 @@
   transform: translateX(0);
   opacity: 1;
 }
+
+
+/* Venue select – native styling polished */
+.select-wrap {
+  position: relative;
+  width: 100%;
+}
+
+/* Hide default arrow (keeps native behavior) */
+.select-wrap select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Base look to match inputs */
+.select-wrap select {
+  width: 100%;
+  border: 1px solid #e5e7eb;              /* gray-200 */
+  background-color: #fff;
+  border-radius: 0.75rem;                  /* rounded-xl feel */
+  padding: 0.625rem 2.5rem 0.625rem 0.875rem; /* right padding for chevron */
+  font-size: 0.95rem;
+  line-height: 1.25rem;
+  color: #111827;                          /* gray-900 */
+  min-height: 44px;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+/* Focus ring */
+.select-wrap select:focus {
+  outline: none;
+  border-color: #111827;                   /* gray-900 */
+  box-shadow: 0 0 0 3px rgba(17,24,39,.1); /* subtle ring */
+}
+
+/* Disabled placeholder style (when value="") */
+.select-wrap select:invalid {
+  color: #6b7280;                          /* gray-500 */
+}
+
+/* Custom chevron using Material Icons */
+.select-wrap::after {
+  content: "expand_more";
+  font-family: "Material Icons";
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  color: #6b7280;                          /* gray-500 */
+  pointer-events: none;
+}
+
+/* High-contrast hover */
+@media (hover:hover) {
+  .select-wrap select:hover {
+    border-color: #9ca3af;                 /* gray-400 */
+  }
+}
+
+/* Ensure dropdown aligns to control width on some browsers */
+.select-wrap { max-width: 100%; }
+.select-wrap select { max-width: 100%; }
