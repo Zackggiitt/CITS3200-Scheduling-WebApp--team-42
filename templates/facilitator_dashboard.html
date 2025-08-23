@@ -320,6 +320,65 @@
     border-radius: 8px;
     padding: var(--gap-md);
 }
+/* Colored stat cards */
+.stat-card.purple {
+    background: linear-gradient(135deg, #fff7ec 0%, #fef3e2 100%);
+    border-color: #fff7ec;
+}
+
+.stat-card.blue {
+    background: linear-gradient(135deg, #effbfb 0%, #e0f2f1 100%);
+    border-color: #effbfb;
+}
+
+.stat-card.gray {
+    background: linear-gradient(135deg, #f5f1ff 0%, #ede9fe 100%);
+    border-color: #f5f1ff;
+}
+
+.stat-card.green {
+    background: linear-gradient(135deg, #f4f9ff 0%, #e0f2fe 100%);
+    border-color: #f4f9ff;
+}
+
+/* Update text colors for better contrast */
+.stat-card.purple .stat-header h4,
+.stat-card.purple .stat-value {
+    color: #000000;
+}
+
+.stat-card.blue .stat-header h4,
+.stat-card.blue .stat-value {
+    color: #000000;
+}
+
+.stat-card.gray .stat-header h4,
+.stat-card.gray .stat-value {
+    color: #000000;
+}
+
+.stat-card.green .stat-header h4,
+.stat-card.green .stat-value {
+    color: #000000;
+}
+
+/* Icon colors */
+.stat-card.purple .material-icons {
+    color: #000000;
+}
+
+.stat-card.blue .material-icons {
+    color: #000000;
+}
+
+.stat-card.gray .material-icons {
+    color: #000000;
+}
+
+.stat-card.green .material-icons {
+    color: #000000;
+}
+
 .stat-header {
     display: flex;
     justify-content: space-between;
@@ -510,7 +569,7 @@
 <header class="site-header">
     <div class="container">
         <div class="logo">
-            <span class="material-icons" aria-hidden="true">school</span>
+            <span class="material-icons" aria-hidden="true">person</span>
             <h1>Facilitator Portal</h1>
         </div>
         <nav class="user-nav">
@@ -582,7 +641,7 @@
 </section>
 <section id="stats" class="main-content-wrapper">
     <div class="stats-grid">
-        <div class="stat-card">
+        <div class="stat-card purple">
             <div class="stat-header">
                 <h4>This Week Hours</h4>
                 <span class="material-icons" aria-hidden="true">schedule</span>
@@ -590,7 +649,7 @@
             <p class="stat-value">32</p>
             <p class="stat-subtext">4 sessions</p>
         </div>
-        <div class="stat-card">
+        <div class="stat-card blue">
             <div class="stat-header">
                 <h4>Pending Approvals</h4>
                 <span class="material-icons" aria-hidden="true">pending_actions</span>
@@ -598,7 +657,7 @@
             <p class="stat-value">1</p>
             <p class="stat-subtext">Needs response</p>
         </div>
-        <div class="stat-card">
+        <div class="stat-card gray">
             <div class="stat-header">
                 <h4>Total Hours (Month)</h4>
                 <span class="material-icons" aria-hidden="true">calendar_today</span>
@@ -606,7 +665,7 @@
             <p class="stat-value">156</p>
             <p class="stat-subtext">This month</p>
         </div>
-        <div class="stat-card">
+        <div class="stat-card green">
             <div class="stat-header">
                 <h4>Available Days</h4>
                 <span class="material-icons" aria-hidden="true">event_available</span>
