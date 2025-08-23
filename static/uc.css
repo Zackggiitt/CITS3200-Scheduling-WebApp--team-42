@@ -268,3 +268,50 @@
 .cal-inspector__body .row{ display:flex; justify-content:space-between; margin-bottom:6px; color:#374151; }
 .cal-input{ width:100%; border:1px solid #d1d5db; border-radius:8px; padding:8px; }
 .cal-inspector__footer{ display:flex; gap:8px; justify-content:flex-end; padding:10px 14px; border-top:1px solid var(--c-line); }
+
+/* --- Calendar shell becomes the positioning context for the inspector --- */
+#calendar_wrap {
+  position: relative;                 /* NEW: anchor for absolute inspector */
+  background: #fff;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  padding: 10px;
+  overflow: hidden;                   /* hide panel while it slides */
+}
+
+/* --- Inspector: slide-in panel --- */
+.cal-inspector {
+  position: absolute;                 /* was fixed */
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 360px;                       /* tweak as you like */
+  background: #fff;
+  border-left: 1px solid var(--c-line);
+  box-shadow: -10px 0 24px rgba(0,0,0,.08);
+  display: flex;
+  flex-direction: column;
+
+  transform: translateX(100%);        /* off-canvas by default */
+  transition: transform .25s ease;
+}
+
+/* visible state */
+.cal-inspector.open {
+  transform: translateX(0);
+}
+
+.cal-inspector__header { padding: 14px; border-bottom: 1px solid var(--c-line); font-weight: 700; }
+.cal-inspector__body   { padding: 14px; font-size: 14px; overflow: auto; } /* scroll body if long */
+.cal-inspector__footer { padding: 10px 14px; border-top: 1px solid var(--c-line); display:flex; gap:8px; justify-content:flex-end; }
+
+.cal-inspector {
+  z-index: 60;              /* above calendar */
+  transform: translateX(12px);
+  opacity: 0;
+  transition: transform .18s ease, opacity .18s ease;
+}
+.cal-inspector.open {
+  transform: translateX(0);
+  opacity: 1;
+}

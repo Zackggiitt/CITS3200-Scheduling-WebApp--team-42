@@ -368,7 +368,11 @@
       const modal = document.getElementById("createUnitModal");
       modal.classList.add("hidden");
       modal.classList.remove("flex");
+      // also hide inspector if open
+      document.getElementById('calInspector')?.classList.add('hidden');
+      document.getElementById('calInspector')?.classList.remove('open');
     }
+
 
     // --- Custom select (Semester) ---
     document.querySelectorAll('.select').forEach(initSelect);
@@ -759,7 +763,7 @@
 
         dateClick: async (info) => {
           const d = new Date(info.dateStr);
-          if (isOutOfRange(d)) return; // block clicks outside range
+          if (isOutOfRange(d)) return;
 
           const start = fmtLocalYYYYMMDDHHMM(info.date);
           const end   = fmtLocalYYYYMMDDHHMM(new Date(info.date.getTime() + 60 * 60 * 1000));
@@ -772,65 +776,26 @@
           const data = await res.json();
           if (!data.ok) {
             alert(data.error || 'Failed to create session');
-          } else {
-            calendar.refetchEvents();
+            return;
           }
+
+          await calendar.refetchEvents();
+
+          // Prefer an id returned by the API, fall back to matching by start time
+          let ev = null;
+          if (data.session_id) {
+            ev = calendar.getEventById(String(data.session_id));
+          }
+          if (!ev) {
+            ev = calendar.getEvents().find(e => e.start && e.start.getTime() === new Date(start).getTime());
+          }
+          if (ev) openInspector(ev);
         },
 
+
         eventClick: (info) => {
-          // open inspector
-          const ev = info.event;
-          const start = ev.start;
-          const end   = ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000);
-
-          document.getElementById('inspDay').textContent  = start.toLocaleDateString('en-US', { weekday: 'long' });
-          document.getElementById('inspTime').textContent = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-          document.getElementById('inspDur').textContent  = `${Math.round((end - start) / 60000)} minutes`;
-          document.getElementById('inspDate').textContent = start.toLocaleDateString();
-          document.getElementById('inspVenue').value      = ev.extendedProps.venue || '';
-          document.getElementById('inspDelete').classList.remove('hidden');
-          inspector.classList.remove('hidden');
-
-          // Save
-          document.getElementById('inspSave').onclick = async () => {
-            const payload = {
-              start: fmtLocalYYYYMMDDHHMM(ev.start),
-              end:   fmtLocalYYYYMMDDHHMM(ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000)),
-              venue: document.getElementById('inspVenue').value
-            };
-            const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-              body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (!data.ok) {
-              alert(data.error || 'Failed to update');
-            } else {
-              inspector.classList.add('hidden');
-              calendar.refetchEvents();
-            }
-          };
-
-          // Delete
-          document.getElementById('inspDelete').onclick = async () => {
-            if (!confirm('Delete this session?')) return;
-            const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
-              method: 'DELETE',
-              headers: { 'X-CSRFToken': CSRF_TOKEN }
-            });
-            const data = await res.json();
-            if (!data.ok) {
-              alert(data.error || 'Failed to delete');
-            } else {
-              inspector.classList.add('hidden');
-              calendar.refetchEvents();
-            }
-          };
-
-          // Cancel/close
-          document.getElementById('inspCancel').onclick = () => inspector.classList.add('hidden');
-        }
+          openInspector(info.event);
+        },  
       });
 
       calendar.render();
@@ -932,6 +897,98 @@
       stampOutsideOnBody();
       calendar.refetchEvents();
     }
+
+    function openInspector(ev) {
+      const inspector = document.getElementById('calInspector');
+      if (!ev || !inspector) return;
+
+      const start = ev.start;
+      const end   = ev.end || new Date(start.getTime() + 60 * 60 * 1000);
+
+      document.getElementById('inspDay').textContent  = start.toLocaleDateString('en-US', { weekday: 'long' });
+      document.getElementById('inspTime').textContent = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+      document.getElementById('inspDur').textContent  = `${Math.round((end - start) / 60000)} minutes`;
+      document.getElementById('inspDate').textContent = start.toLocaleDateString();
+      document.getElementById('inspVenue').value      = ev.extendedProps?.venue || '';
+      document.getElementById('inspDelete').classList.remove('hidden');
+
+      // wire buttons every time we open to bind current event id
+      wireInspectorButtons(ev);
+
+      inspector.classList.remove('hidden');
+      // allow CSS transition to kick in
+      requestAnimationFrame(() => inspector.classList.add('open'));
+    }
+
+    function closeInspector() {
+      const inspector = document.getElementById('calInspector');
+      if (!inspector) return;
+      inspector.classList.remove('open');
+      // wait for transition, then hide
+      inspector.addEventListener('transitionend', function onEnd() {
+        inspector.classList.add('hidden');
+        inspector.removeEventListener('transitionend', onEnd);
+      });
+    }
+
+    function wireInspectorButtons(ev) {
+      const inspector = document.getElementById('calInspector');
+
+      // Save
+      document.getElementById('inspSave').onclick = async () => {
+        const payload = {
+          start: fmtLocalYYYYMMDDHHMM(ev.start),
+          end:   fmtLocalYYYYMMDDHHMM(ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000)),
+          venue: document.getElementById('inspVenue').value
+        };
+        const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          alert(data.error || 'Failed to update');
+        } else {
+          closeInspector();
+          calendar.refetchEvents();
+        }
+      };
+
+      // Delete
+      document.getElementById('inspDelete').onclick = async () => {
+        if (!confirm('Delete this session?')) return;
+        const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': CSRF_TOKEN }
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          alert(data.error || 'Failed to delete');
+        } else {
+          closeInspector();
+          calendar.refetchEvents();
+        }
+      };
+
+      // Cancel
+      document.getElementById('inspCancel').onclick = closeInspector;
+
+      // ESC to close
+      document.addEventListener('keydown', function esc(e){
+        if (e.key === 'Escape') { closeInspector(); document.removeEventListener('keydown', esc); }
+      }, { once:true });
+
+      // Optional: click outside to close (only inside calendar wrapper)
+      const wrap = document.getElementById('calendar_wrap');
+      function outside(e){
+        if (!inspector.contains(e.target)) { closeInspector(); wrap.removeEventListener('mousedown', outside); }
+      }
+      wrap.addEventListener('mousedown', outside, { once:true });
+    }
+
+
+
 
     function showCalendarIfReady() {
       const ready = document.getElementById('setup_complete')?.value === 'true';
