@@ -787,4 +787,18 @@
 .cal-input{width:100%; border:1px solid #d1d5db; border-radius:8px; padding:8px;}
 .cal-inspector__footer{display:flex; gap:8px; justify-content:flex-end; padding:10px 14px; border-top:1px solid #e5e7eb;}
 
+/* --- FullCalendar: remove its inner scrollbar and let it auto-size --- */
+#calendar_wrap { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px; }
+
+.fc .fc-view-harness { height: auto !important; }      /* let view grow */
+.fc .fc-scroller      { overflow: visible !important; } /* kill inner scroll */
+.fc .fc-timegrid-body { overflow: visible !important; } /* safety for some skins */
+
+/* sensible minimum so it doesn't collapse */
+#calGrid { min-height: 560px; }
+
+/* (optional) keep the modal as the single scroller */
+.modal-box  { height: 88vh; }
+.modal-form { overflow: auto; }   /* already true in your CSS, keep it */
+
 

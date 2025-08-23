@@ -692,14 +692,26 @@
       const calendarEl = document.getElementById('calGrid');
       const inspector  = document.getElementById('calInspector');
       const unitId     = document.getElementById('unit_id').value;
-
+  
       calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
         headerToolbar: false,
-        firstDay: 1,            // Monday
+        firstDay: 1,
         allDaySlot: false,
         slotDuration: '00:30:00',
         nowIndicator: true,
+
+        // (optional) shrink to teaching hours
+        slotMinTime: '06:00:00',
+        slotMaxTime: '21:00:00',
+        scrollTime: '08:00:00',
+
+
+        // one-scroll layout
+        height: 'auto',
+        contentHeight: 'auto',
+        expandRows: true,
+        handleWindowResize: true,
 
         // fetch sessions for whatever week is visible
         events: async (fetchInfo, successCallback, failureCallback) => {
@@ -920,21 +932,24 @@
       calendar.refetchEvents();
     }
 
-    // Hide upload card + show calendar if CSV step is complete
     function showCalendarIfReady() {
       const ready = document.getElementById('setup_complete')?.value === 'true';
       const wrapUpload = document.getElementById('setup_wrap');
       const wrapCal = document.getElementById('calendar_wrap');
-      if (!wrapUpload || !wrapCal) return;
 
       if (ready) {
         wrapUpload.classList.add('hidden');
         wrapCal.classList.remove('hidden');
+        // ensure layout is correct after un-hiding
+        if (window.__calendarInitRan && calendar) {
+          setTimeout(() => calendar.updateSize(), 0);
+        }
       } else {
         wrapCal.classList.add('hidden');
         wrapUpload.classList.remove('hidden');
       }
     }
+
 
 
 
