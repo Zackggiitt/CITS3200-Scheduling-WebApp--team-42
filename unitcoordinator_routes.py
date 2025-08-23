@@ -86,16 +86,25 @@ def _get_or_create_default_module(unit: Unit) -> Module:
     return m
 
 
-def _serialize_session(s: Session):
-    """Serialize a Session object to JSON."""
+def _serialize_session(s: Session, venues_by_name=None):
+    """Serialize a Session object to JSON (with optional venue_id mapping)."""
+    venue_name = s.location or ""
+    vid = None
+    if venues_by_name and venue_name:
+        vid = venues_by_name.get(venue_name.strip().lower())
+
     return {
         "id": s.id,
         "title": s.module.module_name or "Session",
         "start": s.start_time.isoformat(timespec="minutes"),
         "end": s.end_time.isoformat(timespec="minutes"),
-        "venue": s.location or "",
+        # Keep top-level 'venue' for backward compatibility
+        "venue": venue_name,
+        "extendedProps": {
+            "venue": venue_name,
+            "venue_id": vid
+        }
     }
-
 
 # ------------------------------------------------------------------------------
 # Views
@@ -277,13 +286,6 @@ def download_setup_csv_template():
     writer = csv.DictWriter(sio, fieldnames=CSV_HEADERS, extrasaction="ignore")
     writer.writeheader()
 
-    # --- SAMPLE ROWS (for debugging only, uncomment if needed) ---
-    # writer.writerow({"facilitator_email": "alex@example.edu", "venue_name": ""})
-    # writer.writerow({"facilitator_email": "riley@example.edu", "venue_name": ""})
-    # writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.07"})
-    # writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.12"})
-    # writer.writerow({"facilitator_email": "sam@example.edu", "venue_name": "Engineering Hub 3.01"})
-
     mem = BytesIO(sio.getvalue().encode("utf-8"))
     mem.seek(0)
     return send_file(
@@ -452,13 +454,22 @@ def calendar_week(unit_id: int):
         .all()
     )
 
+    # Build name->id map for this unit's venues
+    unit_venues = (
+        db.session.query(Venue.id, Venue.name)
+        .join(UnitVenue, UnitVenue.venue_id == Venue.id)
+        .filter(UnitVenue.unit_id == unit.id)
+        .all()
+    )
+    venues_by_name = { (name or "").strip().lower(): vid for vid, name in unit_venues }
+
     return jsonify({
         "ok": True,
         "unit_range": {
             "start": unit.start_date.isoformat() if unit.start_date else None,
             "end": unit.end_date.isoformat() if unit.end_date else None,
         },
-        "sessions": [_serialize_session(s) for s in sessions],
+        "sessions": [_serialize_session(s, venues_by_name) for s in sessions],
     })
 
 
@@ -478,7 +489,8 @@ def create_session(unit_id: int):
 
     start_raw = (data.get("start") or "").strip()
     end_raw = (data.get("end") or "").strip()
-    venue = (data.get("venue") or "").strip()
+    venue_name_in = (data.get("venue") or "").strip()
+    venue_id_in = data.get("venue_id")
 
     # Validate datetime inputs
     start_dt = _parse_dt(start_raw)
@@ -494,14 +506,26 @@ def create_session(unit_id: int):
     if unit.end_date and end_dt.date() > unit.end_date:
         return jsonify({"ok": False, "error": "Session end date is after unit end date"}), 400
 
-    # Validate venue if provided
-    if venue:
-        venue_rec = db.session.query(Venue).filter(func.lower(Venue.name) == venue.lower()).first()
+    # Determine and validate venue; we store the venue NAME in `location`
+    chosen_name = None
+    if venue_id_in:
+        link = (
+            db.session.query(UnitVenue)
+            .join(Venue, Venue.id == UnitVenue.venue_id)
+            .filter(UnitVenue.unit_id == unit.id, UnitVenue.venue_id == venue_id_in)
+            .first()
+        )
+        if not link:
+            return jsonify({"ok": False, "error": "Invalid venue_id for this unit"}), 400
+        chosen_name = Venue.query.get(venue_id_in).name
+    elif venue_name_in:
+        venue_rec = db.session.query(Venue).filter(func.lower(Venue.name) == venue_name_in.lower()).first()
         if not venue_rec:
-            return jsonify({"ok": False, "error": f"Venue '{venue}' not found"}), 404
+            return jsonify({"ok": False, "error": f"Venue '{venue_name_in}' not found"}), 404
         unit_venue = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue_rec.id).first()
         if not unit_venue:
-            return jsonify({"ok": False, "error": f"Venue '{venue}' not linked to this unit"}), 400
+            return jsonify({"ok": False, "error": f"Venue '{venue_name_in}' not linked to this unit"}), 400
+        chosen_name = venue_rec.name  # normalize
 
     # Create session
     mod = _get_or_create_default_module(unit)
@@ -511,7 +535,7 @@ def create_session(unit_id: int):
         start_time=start_dt,
         end_time=end_dt,
         day_of_week=start_dt.weekday(),
-        location=venue or None,
+        location=chosen_name,  # store the normalized name
         required_skills=None,
         max_facilitators=1,
     )
@@ -522,7 +546,14 @@ def create_session(unit_id: int):
         db.session.rollback()
         return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
-    return jsonify({"ok": True, "session": _serialize_session(session)}), 201
+    # Include venue_id in response (when resolvable)
+    venues_by_name = {}
+    if chosen_name:
+        v = db.session.query(Venue.id).filter(func.lower(Venue.name) == chosen_name.lower()).first()
+        if v:
+            venues_by_name[chosen_name.lower()] = v.id
+
+    return jsonify({"ok": True, "session": _serialize_session(session, venues_by_name)}), 201
 
 
 @unitcoordinator_bp.put("/sessions/<int:session_id>")
@@ -542,30 +573,47 @@ def update_session(session_id: int):
 
     # Validate and update start/end times
     if "start" in data:
-        start_time = _parse_dt(data["start"])
+        start_time = _parse_dt(str(data["start"]))
         if not start_time:
             return jsonify({"ok": False, "error": "Invalid start time format (use YYYY-MM-DDTHH:MM)"}), 400
         session.start_time = start_time
         session.day_of_week = start_time.weekday()
 
     if "end" in data:
-        end_time = _parse_dt(data["end"])
+        end_time = _parse_dt(str(data["end"]))
         if not end_time:
             return jsonify({"ok": False, "error": "Invalid end time format (use YYYY-MM-DDTHH:MM)"}), 400
         session.end_time = end_time
 
-    # Validate and update venue
-    if "venue" in data:
+    # Validate and update venue:
+    # Prefer venue_id if present; fall back to 'venue' (name) for backward compatibility
+    venue_set = False
+    if "venue_id" in data:
+        venue_id = data["venue_id"]
+        if venue_id:
+            link = (
+                db.session.query(UnitVenue)
+                .join(Venue, Venue.id == UnitVenue.venue_id)
+                .filter(UnitVenue.unit_id == unit.id, UnitVenue.venue_id == venue_id)
+                .first()
+            )
+            if not link:
+                return jsonify({"ok": False, "error": "Invalid venue_id for this unit"}), 400
+            session.location = Venue.query.get(venue_id).name
+        else:
+            session.location = None
+        venue_set = True
+
+    if not venue_set and "venue" in data:
         venue_name = (data["venue"] or "").strip()
         if venue_name:
-            # Check if venue exists and is linked to the unit
             venue = db.session.query(Venue).filter(func.lower(Venue.name) == venue_name.lower()).first()
             if not venue:
                 return jsonify({"ok": False, "error": f"Venue '{venue_name}' not found"}), 404
             unit_venue = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first()
             if not unit_venue:
                 return jsonify({"ok": False, "error": f"Venue '{venue_name}' not linked to this unit"}), 400
-            session.location = venue_name
+            session.location = venue.name  # normalize
         else:
             session.location = None
 
@@ -583,7 +631,13 @@ def update_session(session_id: int):
         db.session.rollback()
         return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
-    return jsonify({"ok": True, "session": _serialize_session(session)})
+    # Include venue_id in response (when resolvable)
+    venues_by_name = {}
+    if session.location:
+        v = db.session.query(Venue.id).filter(func.lower(Venue.name) == session.location.lower()).first()
+        if v:
+            venues_by_name[session.location.lower()] = v.id
+    return jsonify({"ok": True, "session": _serialize_session(session, venues_by_name)})
 
 
 @unitcoordinator_bp.delete("/sessions/<int:session_id>")
@@ -604,3 +658,26 @@ def delete_session(session_id: int):
         return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
     return jsonify({"ok": True})
+
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/venues")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def list_venues(unit_id: int):
+    """Return venues linked to this unit (id + name)."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    venues = (
+        db.session.query(Venue.id, Venue.name)
+        .join(UnitVenue, UnitVenue.venue_id == Venue.id)
+        .filter(UnitVenue.unit_id == unit.id)
+        .order_by(Venue.name.asc())
+        .all()
+    )
+    return jsonify({
+        "ok": True,
+        "venues": [{"id": v.id, "name": v.name} for v in venues]
+    })
