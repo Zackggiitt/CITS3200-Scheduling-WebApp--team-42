@@ -815,6 +815,12 @@
       refreshCalendarRange();
     }
 
+    // make sure inspector buttons are not treated as submit buttons
+    ['inspDelete','inspCancel','inspSave'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.type = 'button';
+    });
+
 // --- Calendar helpers & globals ---
     let calendar;
 
