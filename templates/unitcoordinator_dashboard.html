@@ -371,9 +371,44 @@
                     </div>
                   </label>
                 </section>
+                <!-- SESSION TIMING -->
+                <section class="insp-section">
+                  <header class="insp-section__hdr">
+                    <span class="material-icons">schedule</span>
+                    <h4>Session Timing</h4>
+                  </header>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="insp-field">
+                      <span class="insp-field__label">
+                        <span class="material-icons">access_time</span>
+                        Start Time
+                      </span>
+                      <!-- we upgrade these to Flatpickr time pickers in JS -->
+                      <input id="inspStartTime" class="cal-input cal-input--soft" placeholder="10:30 AM" />
+                    </label>
+
+                    <label class="insp-field">
+                      <span class="insp-field__label">
+                        <span class="material-icons">schedule</span>
+                        End Time
+                      </span>
+                      <input id="inspEndTime" class="cal-input cal-input--soft" placeholder="01:15 PM" />
+                    </label>
+                  </div>
+
+                  <div class="mt-2">
+                    <div class="text-xs text-gray-500 mb-2">
+                      Quick Presets
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <button type="button" class="cal-btn insp-preset" data-range="09:00-12:00">09:00–12:00</button>
+                      <button type="button" class="cal-btn insp-preset" data-range="13:00-16:00">13:00–16:00</button>
+                      <button type="button" class="cal-btn insp-preset" data-range="09:00-17:00">09:00–17:00</button>
+                    </div>
+                  </div>
+                </section>
               </div>
-
-
               <div class="cal-inspector__footer">
                 <button type="button" id="inspDelete" class="cal-btn danger hidden">Delete</button>
                 <button type="button" id="inspCancel" class="cal-btn">Cancel</button>
@@ -413,21 +448,28 @@
     function withUnitId(tpl, id)     { return tpl.replace(/\/0(\/|$)/, `/${id}$1`); }
     function withSessionId(tpl, id)  { return tpl.replace(/0(\/|$)/, `${id}$1`); }
 
+    function getUnitId() {
+      return document.getElementById('unit_id')?.value || '';
+    }
+  
     // --- Modal open/close ---
     function openCreateUnitModal() {
       setStep(1);
+      document.getElementById('unit_id').value = '';
+      document.getElementById('setup_complete').value = 'false';
+
+      // destroy the real calendar instance
+      if (calendar) {
+        try { calendar.destroy(); } catch {}
+        calendar = null;
+      }
+      window.__calendarInitRan = false;
+
       const modal = document.getElementById("createUnitModal");
       modal.classList.remove("hidden");
       modal.classList.add("flex");
     }
-    function closeCreateUnitModal() {
-      const modal = document.getElementById("createUnitModal");
-      modal.classList.add("hidden");
-      modal.classList.remove("flex");
-      // also hide inspector if open
-      document.getElementById('calInspector')?.classList.add('hidden');
-      document.getElementById('calInspector')?.classList.remove('open');
-    }
+
 
 
     // --- Custom select (Semester) ---
@@ -779,13 +821,13 @@
         // fetch sessions for whatever week is visible
         events: async (fetchInfo, successCallback, failureCallback) => {
           try {
+            const uid = getUnitId();                 // ✅ live read
             const weekStart = fetchInfo.startStr.split('T')[0];
-            const res = await fetch(`${withUnitId(CAL_WEEK_TEMPLATE, unitId)}?week_start=${weekStart}`, {
+            const res = await fetch(`${withUnitId(CAL_WEEK_TEMPLATE, uid)}?week_start=${weekStart}`, {
               headers: { 'X-CSRFToken': CSRF_TOKEN }
             });
             const data = await res.json();
             if (res.ok && data.ok) {
-              // Expecting data.sessions to be FC-event-ish objects
               successCallback(data.sessions);
             } else {
               failureCallback(new Error(data.error || 'Failed to load sessions'));
@@ -794,6 +836,7 @@
             failureCallback(err);
           }
         },
+
 
         datesSet: () => {
           updateToolbarTitle();
@@ -826,7 +869,8 @@
           const start = fmtLocalYYYYMMDDHHMM(info.date);
           const end   = fmtLocalYYYYMMDDHHMM(new Date(info.date.getTime() + 60 * 60 * 1000));
 
-          const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, unitId), {
+          const uid = getUnitId();                   // ✅ live read
+          const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, uid), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
             body: JSON.stringify({ start, end, venue: '', session_name: '' })
@@ -1020,42 +1064,76 @@
       const inspector = document.getElementById('calInspector');
       if (!ev || !inspector) return;
 
+      // keep a handle to the event being edited (for live preview)
+      window.__editingEvent = ev;
+
+      // ---- seed overview fields ----
       const start = ev.start;
       const end   = ev.end || new Date(start.getTime() + 60 * 60 * 1000);
 
-      // Top bar + blue card
+      const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const mins = Math.max(0, Math.round((end - start) / 60000));
+
+      // Top bar subtitle + blue "Session Overview" card
       document.getElementById('inspSub').textContent =
-        `${start.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmtRange(start, end)}`;
+        `${start.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(start)}–${fmt(end)}`;
       document.getElementById('inspDay').textContent  =
         start.toLocaleDateString('en-US', { weekday: 'long' });
-      document.getElementById('inspTime').textContent = fmtRange(start, end);
-      document.getElementById('inspDur').textContent  = `${Math.round((end - start)/60000)} minutes`;
+      document.getElementById('inspTime').textContent = `${fmt(start)}–${fmt(end)}`;
+      document.getElementById('inspDur').textContent  = `${mins} minutes`;
       document.getElementById('inspDate').textContent = start.toLocaleDateString();
       document.getElementById('inspDelete').classList.remove('hidden');
 
-      // Session name (supports multiple backends)
-      const name = ev.extendedProps?.session_name || ev.extendedProps?.module_name || ev.title || '';
+      // ---- name field (supports multiple backends) ----
+      const name = ev.extendedProps?.session_name
+                || ev.extendedProps?.module_name
+                || ev.title
+                || '';
       const nameInput = document.getElementById('inspName');
       nameInput.placeholder = 'New Session';
-      nameInput.value = name; // keep current session/module name if present
+      nameInput.value = name;
 
-
-      // Venue select
-      const sel = upgradeVenueInputToSelect();
-      const unitId = document.getElementById('unit_id').value;
+      // ---- venue select ---- 
+      const sel = upgradeVenueInputToSelect();           // turns #inspVenue into <select>
+      const unitId = getUnitId();                        // live read of whichever unit is active
       const venues = await fetchVenuesForUnit(unitId);
       const selectedId   = ev.extendedProps?.venue_id || null;
-      const selectedName = ev.extendedProps?.venue || ev.extendedProps?.location || ev.title || '';
+      const selectedName = ev.extendedProps?.venue
+                        || ev.extendedProps?.location
+                        || ev.title
+                        || '';
       populateVenueSelect(sel, venues, selectedId, selectedName);
 
-      // Buttons
+      // ---- timing controls (start/end + presets) ----
+      // initialize time pickers and seed them with the event times
+      ensureTimePickers();
+      setTimesIntoPickers(start, end); // also updates the blue overview
+
+      // preset buttons inside this inspector
+      inspector.querySelectorAll('.insp-preset').forEach(btn => {
+        btn.onclick = () => {
+          const range = btn.getAttribute('data-range'); // e.g., "09:00-12:00"
+          const [s, e] = applyPresetTo(ev.start, range);
+          setTimesIntoPickers(s, e);
+
+          // live preview on the calendar event bar
+          if (calendar && window.__editingEvent) {
+            window.__editingEvent.setStart(s);
+            window.__editingEvent.setEnd(e);
+          }
+        };
+      });
+
+      // ---- wire action buttons (Save/Delete/Cancel) for THIS event ----
       wireInspectorButtons(ev);
 
-      // Close buttons on the top bar
+      // ---- top-right buttons ----
       document.getElementById('inspCloseBtn').onclick = closeInspector;
-      document.getElementById('inspNextBtn').onclick  = () => {/* reserved for future step navigation */};
+      document.getElementById('inspNextBtn').onclick  = () => { /* reserved for multi-step later */ };
 
+      // ---- reveal panel (slide in) ----
       inspector.classList.remove('hidden');
+      // ensure it’s anchored to the calendar wrapper for the slide animation
       requestAnimationFrame(() => inspector.classList.add('open'));
     }
 
@@ -1064,13 +1142,14 @@
     function closeInspector() {
       const inspector = document.getElementById('calInspector');
       if (!inspector) return;
+      window.__editingEvent = null;
       inspector.classList.remove('open');
-      // wait for transition, then hide
       inspector.addEventListener('transitionend', function onEnd() {
         inspector.classList.add('hidden');
         inspector.removeEventListener('transitionend', onEnd);
       });
     }
+
 
     // REPLACE your wireInspectorButtons with this
     function wireInspectorButtons(ev) {
@@ -1081,14 +1160,17 @@
         const sel  = document.getElementById('inspVenue');
         const name = document.getElementById('inspName')?.value?.trim() || '';
 
-        const payload = {
-          start: fmtLocalYYYYMMDDHHMM(ev.start),
-          end:   fmtLocalYYYYMMDDHHMM(ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000)),
+        // pull times from the timing controls
+        const { start, end } = getPendingTimes();
+        const startOut = fmtLocalYYYYMMDDHHMM(start || ev.start);
+        const endOut   = fmtLocalYYYYMMDDHHMM(end   || ev.end || new Date(ev.start.getTime() + 60*60*1000));
 
-          // send a few common keys so the backend can map to Module
-          session_name: name,   // preferred
-          module_name:  name,   // alt spelling
-          title:        name    // FC fallback
+        const payload = {
+          start: startOut,
+          end:   endOut,
+          session_name: name,
+          module_name:  name,
+          title:        name
         };
 
         if (sel && sel.tagName === 'SELECT' && sel.value) {
@@ -1111,7 +1193,6 @@
           calendar.refetchEvents();
         }
       };
-
 
       // Delete
       document.getElementById('inspDelete').onclick = async () => {
@@ -1182,5 +1263,86 @@
       }
     };
   </script>
+
+  <script>
+  let _startTP = null;
+  let _endTP = null;
+  let _pendingStart = null; // Date objects for the inspector’s current edit
+  let _pendingEnd = null;
+
+  function ensureTimePickers() {
+    if (!_startTP) {
+      _startTP = flatpickr("#inspStartTime", {
+        enableTime: true, noCalendar: true,
+        dateFormat: "h:i K", time_24hr: false,
+        minuteIncrement: 5,
+        onChange: () => { onTimeChange(); }
+      });
+    }
+    if (!_endTP) {
+      _endTP = flatpickr("#inspEndTime", {
+        enableTime: true, noCalendar: true,
+        dateFormat: "h:i K", time_24hr: false,
+        minuteIncrement: 5,
+        onChange: () => { onTimeChange(); }
+      });
+    }
+  }
+
+  function setTimesIntoPickers(startDate, endDate) {
+    ensureTimePickers();
+    _pendingStart = new Date(startDate);
+    _pendingEnd   = new Date(endDate);
+    _startTP.setDate(_pendingStart, true);
+    _endTP.setDate(_pendingEnd, true);
+    updateInspectorTimeOverview();
+  }
+
+  function onTimeChange() {
+    // Merge selected time back into the stored dates (keep the same day)
+    if (_startTP && _pendingStart) {
+      const t = _startTP.selectedDates[0];
+      if (t) { _pendingStart.setHours(t.getHours(), t.getMinutes(), 0, 0); }
+    }
+    if (_endTP && _pendingEnd) {
+      const t = _endTP.selectedDates[0];
+      if (t) { _pendingEnd.setHours(t.getHours(), t.getMinutes(), 0, 0); }
+    }
+    // Optional: live preview in the blue overview + event bar
+    updateInspectorTimeOverview();
+    if (calendar && window.__editingEvent) {
+      window.__editingEvent.setStart(_pendingStart);
+      window.__editingEvent.setEnd(_pendingEnd);
+    }
+  }
+
+  function updateInspectorTimeOverview() {
+    if (!_pendingStart || !_pendingEnd) return;
+    const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const mins = Math.max(0, Math.round((_pendingEnd - _pendingStart)/60000));
+    document.getElementById('inspTime').textContent = `${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
+    document.getElementById('inspDur').textContent  = `${mins} minutes`;
+    document.getElementById('inspSub').textContent  =
+      `${_pendingStart.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
+  }
+
+  // Parse "HH:MM-HH:MM" like "09:00-12:00" to Date objects on the same day
+  function applyPresetTo(dateBase, rangeStr) {
+    const [a,b] = rangeStr.split('-');
+    const [h1,m1] = a.split(':').map(Number);
+    const [h2,m2] = b.split(':').map(Number);
+    const s = new Date(dateBase); s.setHours(h1, m1, 0, 0);
+    const e = new Date(dateBase); e.setHours(h2, m2, 0, 0);
+    return [s,e];
+  }
+
+  function getPendingTimes() {
+    return {
+      start: _pendingStart ? new Date(_pendingStart) : null,
+      end:   _pendingEnd   ? new Date(_pendingEnd)   : null
+    };
+  }
+  </script>
+
 </body>
 </html>
