@@ -241,9 +241,6 @@
 
         <!-- STEP 3: Sessions -->
         <section class="wizard-step hidden" data-step="3" aria-labelledby="sessions-setup-title">
-          <h2 id="sessions-setup-title">Sessions</h2>
-          <p class="subtext">Teaching sessions & schedule</p>
-
           <!-- Upload CSV wrapper (now has an id so we can hide it after success) -->
           <div id="setup_wrap" class="setup-card">
             <div class="setup-card__header">
@@ -294,51 +291,108 @@
           <!-- STEP 3B: Calendar -->
           <div id="calendar_wrap" class="mt-4 hidden">
             <div class="cal-toolbar">
-              <button class="cal-btn" id="prevWeek">‹ Previous Week</button>
-              <button class="cal-btn" id="nextWeek">Next Week ›</button>
-              <button class="cal-btn" id="goToday">Today</button>
+              <button type="button" class="cal-btn" id="prevWeek">‹ Previous Week</button>
+              <button type="button" class="cal-btn" id="nextWeek">Next Week ›</button>
+              <button type="button" class="cal-btn" id="goToday">Today</button>
+
               <div class="cal-title">
                 <div id="calWeekTitle" class="font-semibold"></div>
                 <div id="calWeekRange" class="text-xs text-gray-500"></div>
               </div>
+
               <label class="ml-auto text-sm flex items-center gap-2">
                 <input id="toggleHolidays" type="checkbox" class="cal-checkbox" />
                 Show holidays
               </label>
             </div>
 
+
             <div id="calGrid" class="mt-2" aria-label="Session Schedule"></div>
 
             <!-- Right-side inspector -->
             <aside id="calInspector" class="cal-inspector hidden" aria-live="polite">
-              <div class="cal-inspector__header">Session Overview</div>
-              <div class="cal-inspector__body">
-                <div class="row"><span>Day:</span><strong id="inspDay"></strong></div>
-                <div class="row"><span>Time:</span><strong id="inspTime"></strong></div>
-                <div class="row"><span>Duration:</span><strong id="inspDur"></strong></div>
-                <div class="row"><span>Start Date:</span><strong id="inspDate"></strong></div>
-                <div class="mt-3">
-                  <label class="block text-sm font-medium mb-1">Venue</label>
-                  <input id="inspVenue" class="cal-input" placeholder="e.g., Ezone 2.07" />
+              <!-- Title bar -->
+              <div class="insp-top">
+                <div class="insp-top-left">
+                  <span class="material-icons insp-top-icon" aria-hidden="true">edit</span>
+                  <div>
+                    <div class="insp-title">Edit Session</div>
+                    <div id="inspSub" class="insp-sub">Tuesday • 10:30–14:00</div>
+                  </div>
+                </div>
+                <div class="insp-top-actions">
+                  <button type="button" id="inspNextBtn" class="icon-btn" title="Next"><span class="material-icons">chevron_right</span></button>
+                  <button type="button" id="inspCloseBtn" class="icon-btn" title="Close"><span class="material-icons">close</span></button>
                 </div>
               </div>
+
+              <!-- Blue card -->
+              <div class="insp-card">
+                <div class="insp-card__hdr">
+                  <span class="material-icons" aria-hidden="true">event_note</span>
+                  <span>Session Overview</span>
+                </div>
+
+                <dl class="insp-kv">
+                  <div class="kv-row"><dt>Day:</dt>       <dd id="inspDay"></dd></div>
+                  <div class="kv-row"><dt>Time:</dt>      <dd id="inspTime"></dd></div>
+                  <div class="kv-row"><dt>Duration:</dt>  <dd id="inspDur"></dd></div>
+                  <div class="kv-row"><dt>Start Date:</dt><dd id="inspDate"></dd></div>
+                </dl>
+              </div>
+
+              <div class="cal-inspector__body">
+                <!-- BASIC INFORMATION CARD -->
+                <section class="insp-section">
+                  <header class="insp-section__hdr">
+                    <span class="material-icons">menu_book</span>
+                    <h4>Basic Information</h4>
+                  </header>
+
+                  <!-- Session Name -->
+                  <label class="insp-field">
+                    <span class="insp-field__label">
+                      <span class="material-icons">edit</span>
+                      Session Name
+                    </span>
+                    <input id="inspName" class="cal-input cal-input--soft" placeholder="New Session" />
+                  </label>
+
+                  <!-- Venue -->
+                  <label class="insp-field">
+                    <span class="insp-field__label">
+                      <span class="material-icons">place</span>
+                      Venue
+                    </span>
+
+                    <!-- we still upgrade this to a native <select> in JS -->
+                    <div class="select-wrap">
+                      <input id="inspVenue" class="cal-input cal-input--soft" placeholder="Select a venue" />
+                    </div>
+                  </label>
+                </section>
+              </div>
+
+
               <div class="cal-inspector__footer">
-                <button id="inspDelete" class="cal-btn danger hidden">Delete</button>
-                <button id="inspCancel" class="cal-btn">Cancel</button>
-                <button id="inspSave" class="cal-btn primary">Save</button>
+                <button type="button" id="inspDelete" class="cal-btn danger hidden">Delete</button>
+                <button type="button" id="inspCancel" class="cal-btn">Cancel</button>
+                <button type="button" id="inspSave" class="cal-btn primary">Save</button>
               </div>
             </aside>
+
           </div>
         </section>
-
-
-        <!-- Footer buttons -->
-        <div class="modal-footer">
-          <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
-          <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
-          <button type="submit" class="btn-primary hidden" id="submit-btn">Create Unit</button>
-        </div>
       </form>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
+        <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
+
+        <!-- submit still links to the form via id -->
+        <button type="submit" class="btn-primary hidden" id="submit-btn" form="create-unit-form">
+          Create Unit
+        </button>
+      </div>
     </div>
   </div>
 
@@ -352,6 +406,9 @@
     const CREATE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.create_session', unit_id=0) }}";
     const UPDATE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.update_session', session_id=0) }}";
     const DELETE_SESS_TEMPLATE= "{{ url_for('unitcoordinator.delete_session', session_id=0) }}";
+    const LIST_VENUES_TEMPLATE = "{{ url_for('unitcoordinator.list_venues',   unit_id=0) }}";
+
+
 
     function withUnitId(tpl, id)     { return tpl.replace(/\/0(\/|$)/, `/${id}$1`); }
     function withSessionId(tpl, id)  { return tpl.replace(/0(\/|$)/, `${id}$1`); }
@@ -367,7 +424,11 @@
       const modal = document.getElementById("createUnitModal");
       modal.classList.add("hidden");
       modal.classList.remove("flex");
+      // also hide inspector if open
+      document.getElementById('calInspector')?.classList.add('hidden');
+      document.getElementById('calInspector')?.classList.remove('open');
     }
+
 
     // --- Custom select (Semester) ---
     document.querySelectorAll('.select').forEach(initSelect);
@@ -450,6 +511,8 @@
       textEl.textContent =
         `Unit will run from ${formatUS(start)} to ${formatUS(end)} (${diffDays} day${diffDays !== 1 ? 's' : ''}, ${weeks} week${weeks !== 1 ? 's' : ''})`;
       box.classList.remove('hidden');
+
+    
     }
 
     // --- Flatpickr calendars ---
@@ -692,14 +755,26 @@
       const calendarEl = document.getElementById('calGrid');
       const inspector  = document.getElementById('calInspector');
       const unitId     = document.getElementById('unit_id').value;
-
+  
       calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
         headerToolbar: false,
-        firstDay: 1,            // Monday
+        firstDay: 1,
         allDaySlot: false,
         slotDuration: '00:30:00',
         nowIndicator: true,
+
+        // (optional) shrink to teaching hours
+        slotMinTime: '06:00:00',
+        slotMaxTime: '21:00:00',
+        scrollTime: '08:00:00',
+
+
+        // one-scroll layout
+        height: 'auto',
+        contentHeight: 'auto',
+        expandRows: true,
+        handleWindowResize: true,
 
         // fetch sessions for whatever week is visible
         events: async (fetchInfo, successCallback, failureCallback) => {
@@ -746,7 +821,7 @@
 
         dateClick: async (info) => {
           const d = new Date(info.dateStr);
-          if (isOutOfRange(d)) return; // block clicks outside range
+          if (isOutOfRange(d)) return;
 
           const start = fmtLocalYYYYMMDDHHMM(info.date);
           const end   = fmtLocalYYYYMMDDHHMM(new Date(info.date.getTime() + 60 * 60 * 1000));
@@ -754,70 +829,31 @@
           const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, unitId), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-            body: JSON.stringify({ start, end, venue: '' })
+            body: JSON.stringify({ start, end, venue: '', session_name: '' })
           });
           const data = await res.json();
           if (!data.ok) {
             alert(data.error || 'Failed to create session');
-          } else {
-            calendar.refetchEvents();
+            return;
           }
+
+          await calendar.refetchEvents();
+
+          // Prefer an id returned by the API, fall back to matching by start time
+          let ev = null;
+          if (data.session_id) {
+            ev = calendar.getEventById(String(data.session_id));
+          }
+          if (!ev) {
+            ev = calendar.getEvents().find(e => e.start && e.start.getTime() === new Date(start).getTime());
+          }
+          if (ev) openInspector(ev);
         },
 
+
         eventClick: (info) => {
-          // open inspector
-          const ev = info.event;
-          const start = ev.start;
-          const end   = ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000);
-
-          document.getElementById('inspDay').textContent  = start.toLocaleDateString('en-US', { weekday: 'long' });
-          document.getElementById('inspTime').textContent = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-          document.getElementById('inspDur').textContent  = `${Math.round((end - start) / 60000)} minutes`;
-          document.getElementById('inspDate').textContent = start.toLocaleDateString();
-          document.getElementById('inspVenue').value      = ev.extendedProps.venue || '';
-          document.getElementById('inspDelete').classList.remove('hidden');
-          inspector.classList.remove('hidden');
-
-          // Save
-          document.getElementById('inspSave').onclick = async () => {
-            const payload = {
-              start: fmtLocalYYYYMMDDHHMM(ev.start),
-              end:   fmtLocalYYYYMMDDHHMM(ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000)),
-              venue: document.getElementById('inspVenue').value
-            };
-            const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-              body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (!data.ok) {
-              alert(data.error || 'Failed to update');
-            } else {
-              inspector.classList.add('hidden');
-              calendar.refetchEvents();
-            }
-          };
-
-          // Delete
-          document.getElementById('inspDelete').onclick = async () => {
-            if (!confirm('Delete this session?')) return;
-            const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
-              method: 'DELETE',
-              headers: { 'X-CSRFToken': CSRF_TOKEN }
-            });
-            const data = await res.json();
-            if (!data.ok) {
-              alert(data.error || 'Failed to delete');
-            } else {
-              inspector.classList.add('hidden');
-              calendar.refetchEvents();
-            }
-          };
-
-          // Cancel/close
-          document.getElementById('inspCancel').onclick = () => inspector.classList.add('hidden');
-        }
+          openInspector(info.event);
+        },  
       });
 
       calendar.render();
@@ -829,6 +865,12 @@
 
       refreshCalendarRange();
     }
+
+    // make sure inspector buttons are not treated as submit buttons
+    ['inspDelete','inspCancel','inspSave'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.type = 'button';
+    });
 
 // --- Calendar helpers & globals ---
     let calendar;
@@ -846,6 +888,11 @@
     function fmtLocalYYYYMMDDHHMM(d) {
       const pad = (n) => String(n).padStart(2, "0");
       return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function fmtRange(start, end){
+      const t = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return `${t(start)}–${t(end)}`;
     }
 
     // Return true if date is outside unit range
@@ -902,39 +949,221 @@
       });
     }
 
-    // Apply the unit validRange to the calendar (and refetch)
-    function refreshCalendarRange() {
-      if (!calendar) return;
-      const { start, end } = getUnitRange();
-      if (start && end) {
-        // FullCalendar expects end to be exclusive
-        const endExclusive = new Date(end.getTime());
-        endExclusive.setDate(endExclusive.getDate() + 1);
-        calendar.setOption('validRange', {
-          start: toIsoDate(start),
-          end: toIsoDate(endExclusive),
-        });
-      }
-      updateToolbarTitle();
-      stampOutsideOnBody();
-      calendar.refetchEvents();
+        // Apply the unit validRange to the calendar (and refetch)
+        function refreshCalendarRange() {
+          if (!calendar) return;
+          const { start, end } = getUnitRange();
+          if (start && end) {
+            // FullCalendar expects end to be exclusive
+            const endExclusive = new Date(end.getTime());
+            endExclusive.setDate(endExclusive.getDate() + 1);
+            calendar.setOption('validRange', {
+              start: toIsoDate(start),
+              end: toIsoDate(endExclusive),
+            });
+          }
+          updateToolbarTitle();
+          stampOutsideOnBody();
+          calendar.refetchEvents();
+        }
+    // ---------- Venues dropdown helpers ----------
+    window.__venueCache = window.__venueCache || {};
+
+    async function fetchVenuesForUnit(unitId) {
+      if (window.__venueCache[unitId]) return window.__venueCache[unitId];
+      const res = await fetch(withUnitId(LIST_VENUES_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN } });
+      const data = await res.json();
+      const list = (res.ok && data.ok && Array.isArray(data.venues)) ? data.venues : [];
+      window.__venueCache[unitId] = list;
+      return list;
     }
 
-    // Hide upload card + show calendar if CSV step is complete
+    // Turn the plain input#inspVenue into a <select> (keeping the same id & classes)
+    function upgradeVenueInputToSelect() {
+      const old = document.getElementById('inspVenue');
+      if (!old || old.tagName === 'SELECT') return old;
+      const sel = document.createElement('select');
+      sel.id = 'inspVenue';
+      sel.className = old.className + ' select-native'; // optional marker class
+      sel.innerHTML = `<option value="">— Select a venue —</option>`;
+      old.parentNode.replaceChild(sel, old);
+      return sel;
+    }
+
+
+    function populateVenueSelect(selectEl, venues, selectedId, selectedName) {
+      const opts = [
+        '<option value="" disabled selected hidden>Select a venue</option>'
+      ].concat(venues.map(v => `<option value="${v.id}">${v.name}</option>`));
+      selectEl.innerHTML = opts.join('');
+
+      if (selectedId) {
+        selectEl.value = String(selectedId);
+      } else if (selectedName) {
+        const match = venues.find(v => (v.name || '').toLowerCase() === selectedName.toLowerCase());
+        if (match) selectEl.value = String(match.id);
+      }
+
+      if (!selectEl.value) {
+        selectEl.setAttribute('required', 'required');
+      }
+    }
+
+
+
+    // One-time upgrade on load so the element exists for openInspector
+    upgradeVenueInputToSelect();
+
+
+    
+    async function openInspector(ev) {
+      const inspector = document.getElementById('calInspector');
+      if (!ev || !inspector) return;
+
+      const start = ev.start;
+      const end   = ev.end || new Date(start.getTime() + 60 * 60 * 1000);
+
+      // Top bar + blue card
+      document.getElementById('inspSub').textContent =
+        `${start.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmtRange(start, end)}`;
+      document.getElementById('inspDay').textContent  =
+        start.toLocaleDateString('en-US', { weekday: 'long' });
+      document.getElementById('inspTime').textContent = fmtRange(start, end);
+      document.getElementById('inspDur').textContent  = `${Math.round((end - start)/60000)} minutes`;
+      document.getElementById('inspDate').textContent = start.toLocaleDateString();
+      document.getElementById('inspDelete').classList.remove('hidden');
+
+      // Session name (supports multiple backends)
+      const name = ev.extendedProps?.session_name || ev.extendedProps?.module_name || ev.title || '';
+      const nameInput = document.getElementById('inspName');
+      nameInput.placeholder = 'New Session';
+      nameInput.value = name; // keep current session/module name if present
+
+
+      // Venue select
+      const sel = upgradeVenueInputToSelect();
+      const unitId = document.getElementById('unit_id').value;
+      const venues = await fetchVenuesForUnit(unitId);
+      const selectedId   = ev.extendedProps?.venue_id || null;
+      const selectedName = ev.extendedProps?.venue || ev.extendedProps?.location || ev.title || '';
+      populateVenueSelect(sel, venues, selectedId, selectedName);
+
+      // Buttons
+      wireInspectorButtons(ev);
+
+      // Close buttons on the top bar
+      document.getElementById('inspCloseBtn').onclick = closeInspector;
+      document.getElementById('inspNextBtn').onclick  = () => {/* reserved for future step navigation */};
+
+      inspector.classList.remove('hidden');
+      requestAnimationFrame(() => inspector.classList.add('open'));
+    }
+
+
+
+    function closeInspector() {
+      const inspector = document.getElementById('calInspector');
+      if (!inspector) return;
+      inspector.classList.remove('open');
+      // wait for transition, then hide
+      inspector.addEventListener('transitionend', function onEnd() {
+        inspector.classList.add('hidden');
+        inspector.removeEventListener('transitionend', onEnd);
+      });
+    }
+
+    // REPLACE your wireInspectorButtons with this
+    function wireInspectorButtons(ev) {
+      const inspector = document.getElementById('calInspector');
+
+      // Save
+      document.getElementById('inspSave').onclick = async () => {
+        const sel  = document.getElementById('inspVenue');
+        const name = document.getElementById('inspName')?.value?.trim() || '';
+
+        const payload = {
+          start: fmtLocalYYYYMMDDHHMM(ev.start),
+          end:   fmtLocalYYYYMMDDHHMM(ev.end || new Date(ev.start.getTime() + 60 * 60 * 1000)),
+
+          // send a few common keys so the backend can map to Module
+          session_name: name,   // preferred
+          module_name:  name,   // alt spelling
+          title:        name    // FC fallback
+        };
+
+        if (sel && sel.tagName === 'SELECT' && sel.value) {
+          payload.venue_id = Number(sel.value);
+        } else {
+          payload.venue = (sel?.value || '').trim();
+        }
+
+        const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!data.ok) {
+          alert(data.error || 'Failed to update');
+        } else {
+          closeInspector();
+          calendar.refetchEvents();
+        }
+      };
+
+
+      // Delete
+      document.getElementById('inspDelete').onclick = async () => {
+        if (!confirm('Delete this session?')) return;
+        const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': CSRF_TOKEN }
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          alert(data.error || 'Failed to delete');
+        } else {
+          closeInspector();
+          calendar.refetchEvents();
+        }
+      };
+
+      // Cancel
+      document.getElementById('inspCancel').onclick = closeInspector;
+
+      // ESC to close
+      document.addEventListener('keydown', function esc(e){
+        if (e.key === 'Escape') { closeInspector(); document.removeEventListener('keydown', esc); }
+      }, { once:true });
+
+      // Click outside to close (inside calendar wrapper)
+      const wrap = document.getElementById('calendar_wrap');
+      function outside(e){
+        if (!inspector.contains(e.target)) { closeInspector(); wrap.removeEventListener('mousedown', outside); }
+      }
+      wrap.addEventListener('mousedown', outside, { once:true });
+    }
+
+
     function showCalendarIfReady() {
       const ready = document.getElementById('setup_complete')?.value === 'true';
       const wrapUpload = document.getElementById('setup_wrap');
       const wrapCal = document.getElementById('calendar_wrap');
-      if (!wrapUpload || !wrapCal) return;
 
       if (ready) {
         wrapUpload.classList.add('hidden');
         wrapCal.classList.remove('hidden');
+        // ensure layout is correct after un-hiding
+        if (window.__calendarInitRan && calendar) {
+          setTimeout(() => calendar.updateSize(), 0);
+        }
       } else {
         wrapCal.classList.add('hidden');
         wrapUpload.classList.remove('hidden');
       }
     }
+
 
 
 

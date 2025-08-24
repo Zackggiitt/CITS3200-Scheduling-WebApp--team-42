@@ -85,16 +85,38 @@ def _get_or_create_default_module(unit: Unit) -> Module:
         db.session.commit()
     return m
 
+def _serialize_session(s: Session, venues_by_name=None):
+    venue_name = s.location or ""
+    vid = None
+    if venues_by_name and venue_name:
+        vid = venues_by_name.get(venue_name.strip().lower())
 
-def _serialize_session(s: Session):
-    """Serialize a Session object to JSON."""
+    title = s.module.module_name or "Session"
     return {
-        "id": s.id,
-        "title": s.module.module_name or "Session",
+        "id": str(s.id),  # turn this into a string
+        "title": title,
         "start": s.start_time.isoformat(timespec="minutes"),
         "end": s.end_time.isoformat(timespec="minutes"),
-        "venue": s.location or "",
+        "venue": venue_name,
+        "extendedProps": {
+            "venue": venue_name,
+            "venue_id": vid,
+            "session_name": title,
+        }
     }
+
+
+
+def _get_or_create_module_by_name(unit: Unit, name: str) -> Module:
+    name = (name or "").strip()
+    if not name:
+        return _get_or_create_default_module(unit)
+    m = Module.query.filter_by(unit_id=unit.id, module_name=name).first()
+    if not m:
+        m = Module(unit_id=unit.id, module_name=name, module_type="general")
+        db.session.add(m)
+        db.session.flush()  # no commit yet; caller may commit
+    return m
 
 
 # ------------------------------------------------------------------------------
@@ -277,13 +299,6 @@ def download_setup_csv_template():
     writer = csv.DictWriter(sio, fieldnames=CSV_HEADERS, extrasaction="ignore")
     writer.writeheader()
 
-    # --- SAMPLE ROWS (for debugging only, uncomment if needed) ---
-    # writer.writerow({"facilitator_email": "alex@example.edu", "venue_name": ""})
-    # writer.writerow({"facilitator_email": "riley@example.edu", "venue_name": ""})
-    # writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.07"})
-    # writer.writerow({"facilitator_email": "", "venue_name": "Engineering Hub 2.12"})
-    # writer.writerow({"facilitator_email": "sam@example.edu", "venue_name": "Engineering Hub 3.01"})
-
     mem = BytesIO(sio.getvalue().encode("utf-8"))
     mem.seek(0)
     return send_file(
@@ -452,13 +467,22 @@ def calendar_week(unit_id: int):
         .all()
     )
 
+    # Build name->id map for this unit's venues
+    unit_venues = (
+        db.session.query(Venue.id, Venue.name)
+        .join(UnitVenue, UnitVenue.venue_id == Venue.id)
+        .filter(UnitVenue.unit_id == unit.id)
+        .all()
+    )
+    venues_by_name = { (name or "").strip().lower(): vid for vid, name in unit_venues }
+
     return jsonify({
         "ok": True,
         "unit_range": {
             "start": unit.start_date.isoformat() if unit.start_date else None,
             "end": unit.end_date.isoformat() if unit.end_date else None,
         },
-        "sessions": [_serialize_session(s) for s in sessions],
+        "sessions": [_serialize_session(s, venues_by_name) for s in sessions],
     })
 
 
@@ -466,7 +490,7 @@ def calendar_week(unit_id: int):
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def create_session(unit_id: int):
-    """Create a simple session (uses a per-unit 'General' module)."""
+    """Create a simple session (uses/creates a module named by session_name/module_name/title)."""
     user = get_current_user()
     unit = _get_user_unit_or_404(user, unit_id)
     if not unit:
@@ -476,9 +500,13 @@ def create_session(unit_id: int):
     if not data:
         return jsonify({"ok": False, "error": "Invalid or missing JSON data"}), 400
 
+    # name coming from inspector / calendar
+    name_in = (data.get("session_name") or data.get("module_name") or data.get("title") or "").strip()
+
     start_raw = (data.get("start") or "").strip()
     end_raw = (data.get("end") or "").strip()
-    venue = (data.get("venue") or "").strip()
+    venue_name_in = (data.get("venue") or "").strip()
+    venue_id_in = data.get("venue_id")
 
     # Validate datetime inputs
     start_dt = _parse_dt(start_raw)
@@ -494,24 +522,38 @@ def create_session(unit_id: int):
     if unit.end_date and end_dt.date() > unit.end_date:
         return jsonify({"ok": False, "error": "Session end date is after unit end date"}), 400
 
-    # Validate venue if provided
-    if venue:
-        venue_rec = db.session.query(Venue).filter(func.lower(Venue.name) == venue.lower()).first()
+    # Determine and validate venue; we store the venue NAME in `location`
+    chosen_name = None
+    if venue_id_in:
+        link = (
+            db.session.query(UnitVenue)
+            .join(Venue, Venue.id == UnitVenue.venue_id)
+            .filter(UnitVenue.unit_id == unit.id, UnitVenue.venue_id == venue_id_in)
+            .first()
+        )
+        if not link:
+            return jsonify({"ok": False, "error": "Invalid venue_id for this unit"}), 400
+        chosen_name = Venue.query.get(venue_id_in).name
+    elif venue_name_in:
+        venue_rec = db.session.query(Venue).filter(func.lower(Venue.name) == venue_name_in.lower()).first()
         if not venue_rec:
-            return jsonify({"ok": False, "error": f"Venue '{venue}' not found"}), 404
+            return jsonify({"ok": False, "error": f"Venue '{venue_name_in}' not found"}), 404
         unit_venue = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue_rec.id).first()
         if not unit_venue:
-            return jsonify({"ok": False, "error": f"Venue '{venue}' not linked to this unit"}), 400
+            return jsonify({"ok": False, "error": f"Venue '{venue_name_in}' not linked to this unit"}), 400
+        chosen_name = venue_rec.name  # normalize
+
+    # Pick/create module by name (falls back to 'General' if empty)
+    mod = _get_or_create_module_by_name(unit, name_in)
 
     # Create session
-    mod = _get_or_create_default_module(unit)
     session = Session(
         module_id=mod.id,
         session_type="general",
         start_time=start_dt,
         end_time=end_dt,
         day_of_week=start_dt.weekday(),
-        location=venue or None,
+        location=chosen_name,
         required_skills=None,
         max_facilitators=1,
     )
@@ -522,14 +564,27 @@ def create_session(unit_id: int):
         db.session.rollback()
         return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
-    return jsonify({"ok": True, "session": _serialize_session(session)}), 201
+    # Include venue_id in response (when resolvable)
+    venues_by_name = {}
+    if chosen_name:
+            v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == chosen_name.lower()).scalar()
+            if v_id:
+                venues_by_name[chosen_name.lower()] = v_id
+
+    return jsonify({
+        "ok": True,
+        "session_id": session.id,   
+        "session": _serialize_session(session, venues_by_name)
+    }), 201
+
+
 
 
 @unitcoordinator_bp.put("/sessions/<int:session_id>")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def update_session(session_id: int):
-    """Move/resize or update venue for an existing session."""
+    """Move/resize, update venue, or rename session (via module) for an existing session."""
     user = get_current_user()
     session = Session.query.get(session_id)
     if not session or session.module.unit.created_by != user.id:
@@ -540,36 +595,58 @@ def update_session(session_id: int):
     if not data:
         return jsonify({"ok": False, "error": "Invalid or missing JSON data"}), 400
 
-    # Validate and update start/end times
+    # --- Rename session by switching its module ---
+    name_in = (data.get("session_name") or data.get("module_name") or data.get("title") or "").strip()
+    if name_in:
+        new_mod = _get_or_create_module_by_name(unit, name_in)
+        session.module_id = new_mod.id
+
+    # --- Validate and update start/end times ---
     if "start" in data:
-        start_time = _parse_dt(data["start"])
+        start_time = _parse_dt(str(data["start"]))
         if not start_time:
             return jsonify({"ok": False, "error": "Invalid start time format (use YYYY-MM-DDTHH:MM)"}), 400
         session.start_time = start_time
         session.day_of_week = start_time.weekday()
 
     if "end" in data:
-        end_time = _parse_dt(data["end"])
+        end_time = _parse_dt(str(data["end"]))
         if not end_time:
             return jsonify({"ok": False, "error": "Invalid end time format (use YYYY-MM-DDTHH:MM)"}), 400
         session.end_time = end_time
 
-    # Validate and update venue
-    if "venue" in data:
+    # --- Validate and update venue ---
+    venue_set = False
+    if "venue_id" in data:
+        venue_id = data["venue_id"]
+        if venue_id:
+            link = (
+                db.session.query(UnitVenue)
+                .join(Venue, Venue.id == UnitVenue.venue_id)
+                .filter(UnitVenue.unit_id == unit.id, UnitVenue.venue_id == venue_id)
+                .first()
+            )
+            if not link:
+                return jsonify({"ok": False, "error": "Invalid venue_id for this unit"}), 400
+            session.location = Venue.query.get(venue_id).name
+        else:
+            session.location = None
+        venue_set = True
+
+    if not venue_set and "venue" in data:
         venue_name = (data["venue"] or "").strip()
         if venue_name:
-            # Check if venue exists and is linked to the unit
             venue = db.session.query(Venue).filter(func.lower(Venue.name) == venue_name.lower()).first()
             if not venue:
                 return jsonify({"ok": False, "error": f"Venue '{venue_name}' not found"}), 404
             unit_venue = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first()
             if not unit_venue:
                 return jsonify({"ok": False, "error": f"Venue '{venue_name}' not linked to this unit"}), 400
-            session.location = venue_name
+            session.location = venue.name
         else:
             session.location = None
 
-    # Range and sanity checks
+    # --- Range and sanity checks ---
     if unit.start_date and session.start_time.date() < unit.start_date:
         return jsonify({"ok": False, "error": "Session start date is before unit start date"}), 400
     if unit.end_date and session.end_time.date() > unit.end_date:
@@ -577,13 +654,21 @@ def update_session(session_id: int):
     if session.end_time <= session.start_time:
         return jsonify({"ok": False, "error": "End time must be after start time"}), 400
 
+    # --- Commit changes ---
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
-    return jsonify({"ok": True, "session": _serialize_session(session)})
+    # --- Include venue_id in response (when resolvable) ---
+    venues_by_name = {}
+    if session.location:
+            v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == session.location.lower()).scalar()
+            if v_id:
+                venues_by_name[session.location.lower()] = v_id
+
+    return jsonify({"ok": True, "session": _serialize_session(session, venues_by_name)})
 
 
 @unitcoordinator_bp.delete("/sessions/<int:session_id>")
@@ -604,3 +689,26 @@ def delete_session(session_id: int):
         return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
     return jsonify({"ok": True})
+
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/venues")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def list_venues(unit_id: int):
+    """Return venues linked to this unit (id + name)."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    venues = (
+        db.session.query(Venue.id, Venue.name)
+        .join(UnitVenue, UnitVenue.venue_id == Venue.id)
+        .filter(UnitVenue.unit_id == unit.id)
+        .order_by(Venue.name.asc())
+        .all()
+    )
+    return jsonify({
+        "ok": True,
+        "venues": [{"id": v.id, "name": v.name} for v in venues]
+    })
