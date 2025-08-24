@@ -53,8 +53,9 @@
                 <td>
                     <a href="{{ url_for('admin.edit_module', module_id=module.id) }}" class="btn btn-sm btn-secondary mr-2">Edit</a>
                     <a href="{{ url_for('admin.module_details', module_id=module.id) }}" class="btn btn-sm btn-info mr-2">Details</a>
-                    <form method="POST" action="{{ url_for('admin.delete_module', module_id=module.id) }}" style="display: inline;">
-                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this module? This will also delete all associated module details and facilitator skills.')">Delete</button>
+                    <form method="POST" action="{{ url_for('admin.delete_module', module_id=module.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this module? This will also delete all associated module details and facilitator skills.')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                     </form>
                 </td>
             </tr>

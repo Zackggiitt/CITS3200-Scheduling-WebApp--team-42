@@ -35,21 +35,29 @@
                 </div>
 
                 <!-- Module Management -->
+                <div class="action-card">
+                    <h3>Manage Modules</h3>
+                    <p>View and manage all modules within units</p>
+                    <a href="{{ url_for('admin.manage_modules') }}" class="btn-primary">Manage Modules</a>
+                    <a href="{{ url_for('admin.initialize_sample_modules') }}" class="btn-secondary" style="margin-top: 10px;">Initialize Sample Modules</a>
+                </div>
+
+                <!-- Facilitator Management -->
                 <div class="dashboard-card">
-                    <h3>Module Management</h3>
-                    <p>Create and manage teaching modules</p>
+                    <h3>Facilitator Management</h3>
+                    <p>Manage facilitator availability and module skills</p>
                     <div class="card-actions">
-                        <a href="{{ url_for('admin.create_module') }}" class="btn btn-primary">Create Module</a>
-                        <a href="{{ url_for('admin.manage_modules') }}" class="btn btn-secondary">Manage Modules</a>
+                        <a href="{{ url_for('admin.manage_facilitators') }}" class="btn btn-primary">Manage Facilitators</a>
                     </div>
                 </div>
 
                 <!-- Schedule Management -->
                 <div class="dashboard-card">
                     <h3>Schedule Management</h3>
-                    <p>View current schedules</p>
+                    <p>Generate and view schedules</p>
                     <div class="card-actions">
                         <a href="{{ url_for('admin.view_schedule') }}" class="btn btn-primary">View Schedule</a>
+                        <a href="{{ url_for('admin.generate_schedule') }}" class="btn btn-success">Generate Schedule</a>
                     </div>
                 </div>
 
