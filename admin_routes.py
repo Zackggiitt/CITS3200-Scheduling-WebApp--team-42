@@ -120,33 +120,7 @@ def view_schedule():
     assignments = Assignment.query.join(Session).join(User).all()
     return render_template('view_schedule.html', user=user, assignments=assignments)
 
-@admin_bp.route('/schedule/generate', methods=['POST'])
-@admin_required
-def generate_schedule():
-    from scheduling_engine import generate_optimal_schedule
-    
-    try:
-        # Get all unassigned sessions
-        unassigned_sessions = Session.query.outerjoin(Assignment).filter(Assignment.id == None).all()
-        
-        if not unassigned_sessions:
-            flash('No unassigned sessions found!')
-            return redirect(url_for('admin.view_schedule'))
-        
-        # Generate schedule
-        assignments = generate_optimal_schedule(unassigned_sessions)
-        
-        # Save assignments to database
-        for assignment in assignments:
-            db.session.add(assignment)
-        
-        db.session.commit()
-        flash(f'Schedule generated successfully! {len(assignments)} assignments created.')
-        
-    except Exception as e:
-        flash(f'Error generating schedule: {str(e)}')
-    
-    return redirect(url_for('admin.view_schedule'))
+
 
 @admin_bp.route('/swaps')
 @admin_required
