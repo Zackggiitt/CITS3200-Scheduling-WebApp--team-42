@@ -454,11 +454,22 @@ function initCalendar() {
       const start = fmtLocalYYYYMMDDHHMM(selectionInfo.start);
       const end   = fmtLocalYYYYMMDDHHMM(selectionInfo.end);
 
-      try {
+        try {
         const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, uid), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-          body: JSON.stringify({ start, end, venue: '', session_name: '' })
+            method: 'POST',
+            headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF_TOKEN 
+            },
+            body: JSON.stringify({
+            start,
+            end,
+            venue: '',
+            session_name: '',
+            // staffing defaults
+            lead_required: DEFAULT_LEAD_REQUIRED,
+            support_required: DEFAULT_SUPPORT_REQUIRED
+            })
         });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create session');
@@ -501,27 +512,53 @@ function initCalendar() {
     },
 
     dateClick: async (info) => {
-      const d = new Date(info.dateStr);
-      if (isOutOfRange(d)) return;
+    const d = new Date(info.dateStr);
+    if (isOutOfRange(d)) return;
 
-      const start = fmtLocalYYYYMMDDHHMM(info.date);
-      const end   = fmtLocalYYYYMMDDHHMM(new Date(info.date.getTime() + 60 * 60 * 1000));
+    const start = fmtLocalYYYYMMDDHHMM(info.date);
+    const end   = fmtLocalYYYYMMDDHHMM(new Date(info.date.getTime() + 60 * 60 * 1000));
+    const uid = getUnitId();
 
-      const uid = getUnitId();
-      const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, uid), {
+    try {
+        const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, uid), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-        body: JSON.stringify({ start, end, venue: '', session_name: '' })
-      });
-      const data = await res.json();
-      if (!data.ok) { alert(data.error || 'Failed to create session'); return; }
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF_TOKEN
+        },
+        body: JSON.stringify({
+            start,
+            end,
+            venue: '',
+            session_name: '',
+            // NEW: staffing defaults for autoscheduler
+            lead_required: DEFAULT_LEAD_REQUIRED,
+            support_required: DEFAULT_SUPPORT_REQUIRED
+        })
+        });
 
-      await calendar.refetchEvents();
-      let ev = null;
-      if (data.session_id) ev = calendar.getEventById(String(data.session_id));
-      if (!ev) ev = calendar.getEvents().find(e => e.start && e.start.getTime() === new Date(start).getTime());
-      if (ev) openInspector(ev);
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create session');
+
+        await calendar.refetchEvents();
+
+        // Try to find the newly created event and open the inspector
+        let ev = null;
+        if (data.session_id) {
+        ev = calendar.getEventById(String(data.session_id));
+        }
+        if (!ev) {
+        ev = calendar.getEvents().find(e =>
+            e.start && e.start.getTime() === new Date(start).getTime()
+        );
+        }
+        if (ev) openInspector(ev);
+    } catch (err) {
+        console.error(err);
+        alert(String(err.message || 'Could not create session.'));
+    }
     },
+
 
     eventClick: (info) => { openInspector(info.event); }
   });
@@ -634,12 +671,29 @@ window.__venueCache = window.__venueCache || {};
 
 async function fetchVenuesForUnit(unitId) {
   if (window.__venueCache[unitId]) return window.__venueCache[unitId];
-  const res = await fetch(withUnitId(LIST_VENUES_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN } });
-  const data = await res.json();
-  const list = (res.ok && data.ok && Array.isArray(data.venues)) ? data.venues : [];
-  window.__venueCache[unitId] = list;
-  return list;
+
+  try {
+    if (!unitId) return []; // no draft yet
+    const res = await fetch(withUnitId(LIST_VENUES_TEMPLATE, unitId), {
+      headers: { 'X-CSRFToken': CSRF_TOKEN }
+    });
+
+    if (!res.ok) {
+      // don’t try to parse non-JSON error bodies
+      console.warn('list_venues not OK:', res.status);
+      return [];
+    }
+
+    const data = await res.json();
+    const list = (data && data.ok && Array.isArray(data.venues)) ? data.venues : [];
+    window.__venueCache[unitId] = list;
+    return list;
+  } catch (err) {
+    console.error('fetchVenuesForUnit error:', err);
+    return [];
+  }
 }
+
 
 function upgradeVenueInputToSelect() {
   const old = document.getElementById('inspVenue');
@@ -678,14 +732,21 @@ async function openInspector(ev) {
   const inspector = document.getElementById('calInspector');
   if (!ev || !inspector) return;
 
+  // Make panel visible immediately so errors don’t hide it
+  inspector.classList.remove('hidden');
+  requestAnimationFrame(() => inspector.classList.add('open'));
+
+  // keep a handle to the event being edited (for live preview)
   window.__editingEvent = ev;
 
-  const start = ev.start;
-  const end   = ev.end || new Date(start.getTime() + 60 * 60 * 1000);
+  // ---- safe times ----
+  const start = ev.start ? new Date(ev.start) : new Date();
+  const end   = ev.end   ? new Date(ev.end)   : new Date(start.getTime() + 60 * 60 * 1000);
 
   const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const mins = Math.max(0, Math.round((end - start) / 60000));
 
+  // Top bar subtitle + blue "Session Overview" card
   document.getElementById('inspSub').textContent =
     `${start.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(start)}–${fmt(end)}`;
   document.getElementById('inspDay').textContent  =
@@ -695,6 +756,7 @@ async function openInspector(ev) {
   document.getElementById('inspDate').textContent = start.toLocaleDateString();
   document.getElementById('inspDelete').classList.remove('hidden');
 
+  // ---- name field (supports multiple backends) ----
   const name = ev.extendedProps?.session_name
             || ev.extendedProps?.module_name
             || ev.title
@@ -703,23 +765,28 @@ async function openInspector(ev) {
   nameInput.placeholder = 'New Session';
   nameInput.value = name;
 
-  const sel = upgradeVenueInputToSelect();
-  const unitId = getUnitId();
-  const venues = await fetchVenuesForUnit(unitId);
-  const selectedId   = ev.extendedProps?.venue_id || null;
-  const selectedName = ev.extendedProps?.venue
-                    || ev.extendedProps?.location
-                    || ev.title
-                    || '';
-  populateVenueSelect(sel, venues, selectedId, selectedName);
+  // ---- venue select (fault-tolerant) ----
+  try {
+    const sel = upgradeVenueInputToSelect();
+    const unitId = getUnitId();
+    const venues = await fetchVenuesForUnit(unitId);
+    const selectedId   = ev.extendedProps?.venue_id || null;
+    const selectedName = ev.extendedProps?.venue
+                      || ev.extendedProps?.location
+                      || ev.title
+                      || '';
+    populateVenueSelect(sel, venues, selectedId, selectedName);
+  } catch (err) {
+    console.warn('Venue population failed (non-blocking):', err);
+  }
 
+  // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
   setTimesIntoPickers(start, end);
-
-  inspector.querySelectorAll('.insp-preset').forEach(btn => {
+  document.querySelectorAll('#calInspector .insp-preset').forEach(btn => {
     btn.onclick = () => {
       const range = btn.getAttribute('data-range');
-      const [s, e] = applyPresetTo(ev.start, range);
+      const [s, e] = applyPresetTo(start, range);
       setTimesIntoPickers(s, e);
       if (calendar && window.__editingEvent) {
         window.__editingEvent.setStart(s);
@@ -728,43 +795,47 @@ async function openInspector(ev) {
     };
   });
 
+  // ---- staffing (seed + buttons) ----
+  const leadReq    = ev.extendedProps?.lead_required ?? DEFAULT_LEAD_REQUIRED;
+  const supportReq = ev.extendedProps?.support_required ?? DEFAULT_SUPPORT_REQUIRED;
+  setStaffingInUI(leadReq, supportReq);
+  wireStaffingButtons();
+
+  // ---- actions ----
   wireInspectorButtons(ev);
 
+  // top-right
   document.getElementById('inspCloseBtn').onclick = closeInspector;
   document.getElementById('inspNextBtn').onclick  = () => {};
-
-  inspector.classList.remove('hidden');
-  requestAnimationFrame(() => inspector.classList.add('open'));
 }
 
-function closeInspector() {
-  const inspector = document.getElementById('calInspector');
-  if (!inspector) return;
-  window.__editingEvent = null;
-  inspector.classList.remove('open');
-  inspector.addEventListener('transitionend', function onEnd() {
-    inspector.classList.add('hidden');
-    inspector.removeEventListener('transitionend', onEnd);
-  });
-}
+
 
 function wireInspectorButtons(ev) {
   const inspector = document.getElementById('calInspector');
 
+  // Save
   document.getElementById('inspSave').onclick = async () => {
     const sel  = document.getElementById('inspVenue');
     const name = document.getElementById('inspName')?.value?.trim() || '';
 
+    // pull times from the timing controls
     const { start, end } = getPendingTimes();
     const startOut = fmtLocalYYYYMMDDHHMM(start || ev.start);
     const endOut   = fmtLocalYYYYMMDDHHMM(end   || ev.end || new Date(ev.start.getTime() + 60*60*1000));
+
+    // NEW: staffing
+    const { lead_required, support_required } = getStaffingFromUI();
 
     const payload = {
       start: startOut,
       end:   endOut,
       session_name: name,
       module_name:  name,
-      title:        name
+      title:        name,
+      // include staffing
+      lead_required,
+      support_required
     };
 
     if (sel && sel.tagName === 'SELECT' && sel.value) {
@@ -788,6 +859,7 @@ function wireInspectorButtons(ev) {
     }
   };
 
+  // Delete
   document.getElementById('inspDelete').onclick = async () => {
     if (!confirm('Delete this session?')) return;
     const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
@@ -803,18 +875,22 @@ function wireInspectorButtons(ev) {
     }
   };
 
+  // Cancel
   document.getElementById('inspCancel').onclick = closeInspector;
 
+  // ESC to close
   document.addEventListener('keydown', function esc(e){
     if (e.key === 'Escape') { closeInspector(); document.removeEventListener('keydown', esc); }
   }, { once:true });
 
+  // Click outside to close (inside calendar wrapper)
   const wrap = document.getElementById('calendar_wrap');
   function outside(e){
     if (!inspector.contains(e.target)) { closeInspector(); wrap.removeEventListener('mousedown', outside); }
   }
   wrap.addEventListener('mousedown', outside, { once:true });
 }
+
 
 function showCalendarIfReady() {
   const ready = document.getElementById('setup_complete')?.value === 'true';
@@ -932,3 +1008,52 @@ function closeCreateUnitModal() {
   modal.classList.remove("flex");
 }
 
+// ===== Staffing: defaults + helpers =========================================
+const DEFAULT_LEAD_REQUIRED = 1;
+const DEFAULT_SUPPORT_REQUIRED = 0;
+
+function setStaffingInUI(lead = DEFAULT_LEAD_REQUIRED, support = DEFAULT_SUPPORT_REQUIRED) {
+  const leadEl = document.getElementById('leadCount');
+  const supEl  = document.getElementById('supportCount');
+  const totalEl = document.getElementById('totalStaffText');
+
+  const safeLead = Math.max(0, Number.isFinite(+lead) ? +lead : DEFAULT_LEAD_REQUIRED);
+  const safeSup  = Math.max(0, Number.isFinite(+support) ? +support : DEFAULT_SUPPORT_REQUIRED);
+  const total = safeLead + safeSup;
+
+  if (leadEl) leadEl.textContent = String(safeLead);
+  if (supEl)  supEl.textContent  = String(safeSup);
+  if (totalEl) totalEl.textContent = `${total} ${total === 1 ? 'facilitator' : 'facilitators'}`;
+}
+
+function getStaffingFromUI() {
+  const lead = parseInt(document.getElementById('leadCount')?.textContent || DEFAULT_LEAD_REQUIRED, 10);
+  const support = parseInt(document.getElementById('supportCount')?.textContent || DEFAULT_SUPPORT_REQUIRED, 10);
+  return {
+    lead_required: Math.max(0, isNaN(lead) ? DEFAULT_LEAD_REQUIRED : lead),
+    support_required: Math.max(0, isNaN(support) ? DEFAULT_SUPPORT_REQUIRED : support)
+  };
+}
+
+function wireStaffingButtons() {
+  const leadMinus = document.getElementById('leadMinusBtn');
+  const leadPlus  = document.getElementById('leadPlusBtn');
+  const supMinus  = document.getElementById('supportMinusBtn');
+  const supPlus   = document.getElementById('supportPlusBtn');
+
+  const adjust = (id, delta, min = 0) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = parseInt(el.textContent || '0', 10) || 0;
+    const next = Math.max(min, cur + delta);
+    el.textContent = String(next);
+    // refresh total
+    const { lead_required, support_required } = getStaffingFromUI();
+    setStaffingInUI(lead_required, support_required);
+  };
+
+  if (leadMinus) leadMinus.onclick = () => adjust('leadCount', -1, 0);
+  if (leadPlus)  leadPlus.onclick  = () => adjust('leadCount', +1, 0);
+  if (supMinus)  supMinus.onclick  = () => adjust('supportCount', -1, 0);
+  if (supPlus)   supPlus.onclick   = () => adjust('supportCount', +1, 0);
+}
