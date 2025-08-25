@@ -39,6 +39,12 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "5
 # CSRF protection (protects all POST forms, incl. logout form)
 csrf = CSRFProtect(app)
 
+# Make csrf_token available in all templates
+@app.context_processor
+def inject_csrf_token():
+    from flask_wtf.csrf import generate_csrf
+    return dict(csrf_token=generate_csrf)
+
 # File uploads (CSV)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB cap
 # Ensure Flask‑WTF accepts header-style CSRF tokens sent by fetch()

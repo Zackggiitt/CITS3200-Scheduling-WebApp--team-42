@@ -1,128 +1,202 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Facilitator</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .skill-entry {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            gap: 10px;
-        }
-        .skill-entry input[type="text"] {
-            flex: 1;
-            min-width: 200px;
-        }
-        .skill-entry select {
-            min-width: 120px;
-        }
-        .add-skill-btn, .remove-skill-btn {
-            padding: 5px 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .add-skill-btn {
-            background-color: #28a745;
-            color: white;
-        }
-        .remove-skill-btn {
-            background-color: #dc3545;
-            color: white;
-        }
-        #skills-container {
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-    </style>
-</head>
-<body>
-    <div class="form-container">
-        <h1>Create New Facilitator</h1>
-        
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for message in messages %}
-                        <div class="flash-message">{{ message }}</div>
-                    {% endfor %}
+{% extends "base.html" %}
+
+{% block title %}Create New Facilitator{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">👤 Create New Facilitator</h2>
+                    <small>Add a new facilitator with complete profile information</small>
                 </div>
-            {% endif %}
-        {% endwith %}
+                <div class="card-body">
+                    
+                    {% with messages = get_flashed_messages() %}
+                        {% if messages %}
+                            <div class="alert alert-info">
+                                {% for message in messages %}
+                                    <div>{{ message }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endwith %}
 
-        <form method="POST" class="form">
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
-            </div>
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <h4 class="text-primary">📋 Basic Information</h4>
+                                <hr>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">First Name *</label>
+                                    <input type="text" name="first_name" class="form-control form-control-lg" required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Last Name *</label>
+                                    <input type="text" name="last_name" class="form-control form-control-lg" required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Email *</label>
+                                    <input type="email" name="email" class="form-control form-control-lg" required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Password *</label>
+                                    <input type="password" name="password" class="form-control form-control-lg" required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Min Hours per Week</label>
+                                    <input type="number" name="min_hours" class="form-control form-control-lg" value="0" min="0" max="40">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Max Hours per Week</label>
+                                    <input type="number" name="max_hours" class="form-control form-control-lg" value="20" min="0" max="40">
+                                </div>
+                            </div>
+                        </div>
 
-            <div class="form-group">
-                <label for="first_name">First Name:</label>
-                <input type="text" id="first_name" name="first_name" required>
-            </div>
+                        <!-- Module Skills -->
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <h4 class="text-success">🎯 Module Skills</h4>
+                                <p class="text-muted">Set skill levels for each module (optional - can be set later)</p>
+                                <hr>
+                                
+                                {% if modules %}
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead class="thead-light">
+                                                <tr>
+                                                    <th>Module</th>
+                                                    <th>Unit</th>
+                                                    <th>Skill Level</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for module in modules %}
+                                                <tr>
+                                                    <td class="font-weight-bold">{{ module.module_name }}</td>
+                                                    <td><span class="badge badge-secondary">{{ module.unit.unit_code if module.unit else 'N/A' }}</span></td>
+                                                    <td>
+                                                        <select name="skill_{{ module.id }}" class="form-control">
+                                                            <option value="">-- Not Set --</option>
+                                                            <option value="uninterested">⚪ Not Interested</option>
+                                                            <option value="interested">🟡 Interested</option>
+                                                            <option value="proficient">🟢 Proficient</option>
+                                                            <option value="leader">🔵 Leader/Done Before</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-warning">
+                                        No modules found. Skills can be set after creating the facilitator.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
 
-            <div class="form-group">
-                <label for="last_name">Last Name:</label>
-                <input type="text" id="last_name" name="last_name" required>
-            </div>
+                        <!-- Availability -->
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <h4 class="text-warning">📅 Availability Schedule</h4>
+                                <p class="text-muted">Set default availability (optional - can be set later)</p>
+                                <hr>
+                                
+                                <div class="availability-grid">
+                                    {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] %}
+                                    {% set hours = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'] %}
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm">
+                                            <thead class="thead-dark">
+                                                <tr>
+                                                    <th class="text-center">Time</th>
+                                                    {% for day in days %}
+                                                    <th class="text-center">{{ day }}</th>
+                                                    {% endfor %}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for hour in hours %}
+                                                <tr>
+                                                    <td class="text-center font-weight-bold bg-light">{{ hour }}</td>
+                                                    {% for day_idx in range(5) %}
+                                                    <td class="text-center availability-cell">
+                                                        <div class="custom-control custom-checkbox">
+                                                            <input type="checkbox" 
+                                                                   class="custom-control-input"
+                                                                   id="available_{{ day_idx }}_{{ hour.replace(':', '') }}"
+                                                                   name="available_{{ day_idx }}_{{ hour.replace(':', '') }}"
+                                                                   value="1">
+                                                            <label class="custom-control-label" for="available_{{ day_idx }}_{{ hour.replace(':', '') }}"></label>
+                                                        </div>
+                                                    </td>
+                                                    {% endfor %}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-
-            <div class="form-group">
-                <label>Skills with Levels:</label>
-                <div id="skills-container">
-                    <div class="skill-entry">
-                        <input type="text" name="skill_names[]" placeholder="Skill name (e.g., Python, JavaScript)">
-                        <select name="skill_levels[]">
-                            <option value="interested">Interested</option>
-                            <option value="proficient">Proficient</option>
-                            <option value="leader">Leader</option>
-                            <option value="uninterested">Uninterested</option>
-                        </select>
-                        <button type="button" class="add-skill-btn" onclick="addSkillEntry()">+</button>
-                    </div>
+                        <!-- Submit Buttons -->
+                        <div class="row">
+                            <div class="col-md-12 text-center">
+                                <button type="submit" class="btn btn-primary btn-lg mr-3">
+                                    ✅ Create Facilitator
+                                </button>
+                                <a href="{{ url_for('admin.manage_facilitators') }}" class="btn btn-secondary btn-lg">
+                                    ❌ Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Create Facilitator</button>
-                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancel</a>
-            </div>
-        </form>
+        </div>
     </div>
+</div>
 
-    <script>
-        function addSkillEntry() {
-            const container = document.getElementById('skills-container');
-            const newEntry = document.createElement('div');
-            newEntry.className = 'skill-entry';
-            newEntry.innerHTML = `
-                <input type="text" name="skill_names[]" placeholder="Skill name (e.g., Python, JavaScript)">
-                <select name="skill_levels[]">
-                    <option value="interested">Interested</option>
-                    <option value="proficient">Proficient</option>
-                    <option value="leader">Leader</option>
-                    <option value="uninterested">Uninterested</option>
-                </select>
-                <button type="button" class="remove-skill-btn" onclick="removeSkillEntry(this)">-</button>
-            `;
-            container.appendChild(newEntry);
-        }
-
-        function removeSkillEntry(button) {
-            const container = document.getElementById('skills-container');
-            if (container.children.length > 1) {
-                button.parentElement.remove();
-            }
-        }
-    </script>
-</body>
-</html>
+<style>
+.availability-cell {
+    width: 80px;
+    height: 50px;
+    vertical-align: middle;
+}
+.custom-control-label::before {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+.custom-control-label::after {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+</style>
+{% endblock %}

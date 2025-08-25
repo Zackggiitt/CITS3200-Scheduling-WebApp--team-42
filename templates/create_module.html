@@ -23,6 +23,7 @@
                     {% endwith %}
                     
                     <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="mb-3">
                             <label for="unit_id" class="form-label">Unit</label>
                             <select class="form-select" id="unit_id" name="unit_id" required>
