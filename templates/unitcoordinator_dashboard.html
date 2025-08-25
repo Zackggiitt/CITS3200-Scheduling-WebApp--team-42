@@ -523,10 +523,11 @@
     function toIsoDate(d) {
       return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
-    function formatUS(d) { // M/D/YYYY
-      return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    function formatUS(d) { // DD/MM/YYYY
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      return `${day}/${month}/${d.getFullYear()}`;
     }
-
     function updateDateSummary() {
       const startEl = document.querySelector('[name="start_date"]');
       const endEl = document.querySelector('[name="end_date"]');
