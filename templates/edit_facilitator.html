@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Facilitator - {{ facilitator.first_name }} {{ facilitator.last_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            
+            <!-- Header Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="text-white mb-0">{{ facilitator.first_name }} {{ facilitator.last_name }}</h2>
+                            <p class="text-light mb-0">{{ facilitator.email }}</p>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <span class="badge badge-light badge-lg">{{ current_skills|length }}/{{ modules|length }} Skills</span>
+                            <span class="badge badge-success badge-lg">{{ availability_slots|length }} Slots</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Basic Info Card -->
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">📊 Basic Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('admin.update_facilitator_basic', facilitator_id=facilitator.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold text-dark">Min Hours per Week:</label>
+                                    <input type="number" name="min_hours" class="form-control form-control-lg" 
+                                           value="{{ facilitator.min_hours or 0 }}" min="0" max="40">
+                                    <small class="form-text text-muted">Minimum hours this facilitator wants to work</small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold text-dark">Max Hours per Week:</label>
+                                    <input type="number" name="max_hours" class="form-control form-control-lg" 
+                                           value="{{ facilitator.max_hours or 20 }}" min="0" max="40">
+                                    <small class="form-text text-muted">Maximum hours this facilitator can work</small>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-info btn-block">Update Basic Info</button>
+                            </form>
+                            
+                            <!-- Quick Stats -->
+                            <hr>
+                            <div class="stats">
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <h4 class="text-primary">{{ current_skills|length }}</h4>
+                                        <small class="text-muted">Skills Set</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <h4 class="text-success">{{ availability_slots|length }}</h4>
+                                        <small class="text-muted">Time Slots</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Module Skills Card -->
+                <div class="col-md-8 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">🎯 Module Skills & Interest Levels</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('admin.update_facilitator_skills', facilitator_id=facilitator.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="thead-dark">
+                                            <tr>
+                                                <th>Module</th>
+                                                <th>Unit</th>
+                                                <th>Skill Level</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for module in modules %}
+                                            <tr>
+                                                <td class="font-weight-bold">{{ module.module_name }}</td>
+                                                <td><span class="badge badge-secondary">{{ module.unit.unit_code if module.unit else 'N/A' }}</span></td>
+                                                <td>
+                                                    <select name="skill_{{ module.id }}" class="form-control">
+                                                        <option value="">-- Select Level --</option>
+                                                        {% for skill_level in skill_levels %}
+                                                        <option value="{{ skill_level.value }}" 
+                                                                {% if current_skills.get(module.id) == skill_level %}selected{% endif %}>
+                                                            {% if skill_level.value == 'proficient' %}🟢 Proficient (1.0)
+                                                            {% elif skill_level.value == 'leader' %}🔵 Leader/Done Before (0.8)
+                                                            {% elif skill_level.value == 'interested' %}🟡 Interested (0.5)
+                                                            {% elif skill_level.value == 'uninterested' %}⚪ Not Interested (0.0)
+                                                            {% else %}{{ skill_level.value.title() }}
+                                                            {% endif %}
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-success btn-block btn-lg">Update Module Skills</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Availability Section -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">📅 Availability Schedule</h5>
+                            <small>Check the time slots when this facilitator is available to teach</small>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('admin.update_facilitator_availability', facilitator_id=facilitator.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                
+                                <div class="availability-grid">
+                                    {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] %}
+                                    {% set hours = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'] %}
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm">
+                                            <thead class="thead-dark">
+                                                <tr>
+                                                    <th class="text-center">Time</th>
+                                                    {% for day in days %}
+                                                    <th class="text-center">{{ day }}</th>
+                                                    {% endfor %}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for hour in hours %}
+                                                <tr>
+                                                    <td class="text-center font-weight-bold bg-light">{{ hour }}</td>
+                                                    {% for day_idx in range(5) %}
+                                                    <td class="text-center availability-cell">
+                                                        <div class="custom-control custom-checkbox">
+                                                            <input type="checkbox" 
+                                                                   class="custom-control-input"
+                                                                   id="available_{{ day_idx }}_{{ hour.replace(':', '') }}"
+                                                                   name="available_{{ day_idx }}_{{ hour.replace(':', '') }}"
+                                                                   value="1"
+                                                                   {% for slot in availability_slots %}
+                                                                   {% if slot.day_of_week == day_idx and slot.start_time.strftime('%H:%M') == hour and slot.is_available %}
+                                                                   checked
+                                                                   {% endif %}
+                                                                   {% endfor %}>
+                                                            <label class="custom-control-label" for="available_{{ day_idx }}_{{ hour.replace(':', '') }}"></label>
+                                                        </div>
+                                                    </td>
+                                                    {% endfor %}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-warning btn-block btn-lg">Update Availability</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('admin.manage_facilitators') }}" class="btn btn-secondary btn-lg mr-3">
+                                ← Back to Facilitators
+                            </a>
+                            <a href="{{ url_for('admin.generate_schedule') }}" class="btn btn-success btn-lg">
+                                🚀 Test in Schedule Generator
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+.availability-cell {
+    width: 80px;
+    height: 50px;
+    vertical-align: middle;
+}
+.custom-control-label::before {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+.custom-control-label::after {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+.badge-lg {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+}
+</style>
+{% endblock %}
