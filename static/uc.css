@@ -481,5 +481,8 @@
 /* placeholder state for select */
 .select-wrap select:invalid { color: #6b7280; }
 
+/* Timing presets look like small pills */
+.insp-preset { font-size: 12px; padding: 6px 10px; }
+.insp-preset:focus { outline: none; box-shadow: 0 0 0 3px rgba(17,24,39,.08); }
 
 
