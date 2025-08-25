@@ -523,10 +523,11 @@
     function toIsoDate(d) {
       return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
-    function formatUS(d) { // M/D/YYYY
-      return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    function formatUS(d) { // DD/MM/YYYY
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      return `${day}/${month}/${d.getFullYear()}`;
     }
-
     function updateDateSummary() {
       const startEl = document.querySelector('[name="start_date"]');
       const endEl = document.querySelector('[name="end_date"]');
@@ -670,13 +671,27 @@
       if (!basic.unit_code || !basic.unit_name || !basic.year || !basic.semester) {
         throw new Error('Missing unit basics');
       }
+
+      const sd = parseDMY(basic.start_date);
+      const ed = parseDMY(basic.end_date);
+      if (!sd || !ed) throw new Error('Invalid start/end date');
+
+      const startISO = toIsoDate(sd); // YYYY-MM-DD
+      const endISO   = toIsoDate(ed); // YYYY-MM-DD
+
       const form = new FormData();
       form.append('unit_code', basic.unit_code);
       form.append('unit_name', basic.unit_name);
-      form.append('year', basic.year);
-      form.append('semester', basic.semester);
-      form.append('start_date', basic.start_date);
-      form.append('end_date', basic.end_date);
+      form.append('year',      basic.year);
+      form.append('semester',  basic.semester);
+
+      // Primary (expected) field names
+      form.append('start_date', startISO);
+      form.append('end_date',   endISO);
+
+      // Defensive duplicates (covers slightly different backend expectations)
+      form.append('unit_start_date', startISO);
+      form.append('unit_end_date',   endISO);
 
       const res = await fetch("{{ url_for('unitcoordinator.create_or_get_draft') }}", {
         method: 'POST',
@@ -686,9 +701,28 @@
 
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create/fetch draft');
+
       document.getElementById('unit_id').value = data.unit_id;
+
+      // If your API echoes canonical dates back, sync the UI so everything agrees
+      if (data.start_date && data.end_date) {
+        // Expecting YYYY-MM-DD — reflect back into the hidden inputs the user sees
+        const [y1,m1,d1] = data.start_date.split('-').map(Number);
+        const [y2,m2,d2] = data.end_date.split('-').map(Number);
+        const start = new Date(y1, m1-1, d1);
+        const end   = new Date(y2, m2-1, d2);
+        // update flatpickr & hidden inputs
+        startPicker.setDate(start, true);
+        endPicker.setDate(end, true);
+        document.querySelector('[name="start_date"]').value = startPicker.formatDate(start, DATE_FMT);
+        document.querySelector('[name="end_date"]').value   = endPicker.formatDate(end, DATE_FMT);
+        updateDateSummary();
+      }
+
       return data.unit_id;
     }
+
+
 
     // --- CSV Upload (Step 3a) ---
     const uploadInput = document.getElementById('setup_csv');
@@ -796,9 +830,9 @@
     function initCalendar() {
       const calendarEl = document.getElementById('calGrid');
       const inspector  = document.getElementById('calInspector');
-      const unitId     = document.getElementById('unit_id').value;
-  
+
       calendar = new FullCalendar.Calendar(calendarEl, {
+        // Base view/config
         initialView: 'timeGridWeek',
         headerToolbar: false,
         firstDay: 1,
@@ -806,22 +840,30 @@
         slotDuration: '00:30:00',
         nowIndicator: true,
 
-        // (optional) shrink to teaching hours
+        // Teaching hours
         slotMinTime: '06:00:00',
         slotMaxTime: '21:00:00',
         scrollTime: '08:00:00',
 
-
-        // one-scroll layout
+        // Layout
         height: 'auto',
         contentHeight: 'auto',
         expandRows: true,
         handleWindowResize: true,
 
-        // fetch sessions for whatever week is visible
+        // Drag/resize + range select
+        editable: true,
+        eventStartEditable: true,
+        eventDurationEditable: true,
+        eventResizableFromStart: true,
+        selectable: true,
+        selectMirror: true,
+        selectOverlap: true,
+
+        // Fetch sessions for visible week
         events: async (fetchInfo, successCallback, failureCallback) => {
           try {
-            const uid = getUnitId();                 // ✅ live read
+            const uid = getUnitId(); // live read
             const weekStart = fetchInfo.startStr.split('T')[0];
             const res = await fetch(`${withUnitId(CAL_WEEK_TEMPLATE, uid)}?week_start=${weekStart}`, {
               headers: { 'X-CSRFToken': CSRF_TOKEN }
@@ -837,21 +879,14 @@
           }
         },
 
-
         datesSet: () => {
           updateToolbarTitle();
-          // Small delay to ensure header/body DOM is ready
-          setTimeout(() => {
-            // labelOutsideInHeader(); // no longer needed; handled by dayHeaderDidMount
-            stampOutsideOnBody();
-          }, 0);
+          setTimeout(() => { stampOutsideOnBody(); }, 0);
         },
 
-        // Add “Outside range” chip to day headers
+        // “Outside range” chip
         dayHeaderDidMount: (arg) => {
-          // arg.date is the Date for this header column
           const out = isOutOfRange(arg.date);
-          // remove any old chip if re-rendered
           const existing = arg.el.querySelector('.fc-outside-chip');
           if (existing) existing.remove();
           if (out) {
@@ -862,6 +897,69 @@
           }
         },
 
+        // Guard selects/drags against unit range
+        selectAllow: (sel) => {
+          return !isOutOfRange(sel.start) && !isOutOfRange(new Date(sel.end.getTime() - 1));
+        },
+        eventAllow: (dropInfo) => {
+          return !isOutOfRange(dropInfo.start) && !isOutOfRange(new Date(dropInfo.end.getTime() - 1));
+        },
+
+        // Create by dragging a range
+        select: async (selectionInfo) => {
+          const uid = getUnitId();
+          const start = fmtLocalYYYYMMDDHHMM(selectionInfo.start);
+          const end   = fmtLocalYYYYMMDDHHMM(selectionInfo.end);
+
+          try {
+            const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, uid), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+              body: JSON.stringify({ start, end, venue: '', session_name: '' })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create session');
+
+            await calendar.refetchEvents();
+
+            let ev = null;
+            if (data.session_id) ev = calendar.getEventById(String(data.session_id));
+            if (!ev) {
+              ev = calendar.getEvents().find(e =>
+                e.start && e.start.getTime() === selectionInfo.start.getTime() &&
+                e.end && e.end.getTime() === selectionInfo.end.getTime()
+              );
+            }
+            if (ev) openInspector(ev);
+          } catch (err) {
+            console.error(err);
+            alert(String(err.message || 'Could not create session.'));
+          } finally {
+            calendar.unselect();
+          }
+        },
+
+        // Move existing session
+        eventDrop: async (info) => {
+          try {
+            await updateEventTimesOnServer(info.event);
+          } catch (err) {
+            alert(String(err.message || 'Failed to update time'));
+            info.revert();
+          }
+        },
+
+        // Resize existing session
+        eventResize: async (info) => {
+          try {
+            await updateEventTimesOnServer(info.event);
+          } catch (err) {
+            alert(String(err.message || 'Failed to update time'));
+            info.revert();
+          }
+        },
+
+        // (Optional) single-click create 60min session — keep if you like
         dateClick: async (info) => {
           const d = new Date(info.dateStr);
           if (isOutOfRange(d)) return;
@@ -869,40 +967,28 @@
           const start = fmtLocalYYYYMMDDHHMM(info.date);
           const end   = fmtLocalYYYYMMDDHHMM(new Date(info.date.getTime() + 60 * 60 * 1000));
 
-          const uid = getUnitId();                   // ✅ live read
+          const uid = getUnitId();
           const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, uid), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
             body: JSON.stringify({ start, end, venue: '', session_name: '' })
           });
           const data = await res.json();
-          if (!data.ok) {
-            alert(data.error || 'Failed to create session');
-            return;
-          }
+          if (!data.ok) { alert(data.error || 'Failed to create session'); return; }
 
           await calendar.refetchEvents();
-
-          // Prefer an id returned by the API, fall back to matching by start time
           let ev = null;
-          if (data.session_id) {
-            ev = calendar.getEventById(String(data.session_id));
-          }
-          if (!ev) {
-            ev = calendar.getEvents().find(e => e.start && e.start.getTime() === new Date(start).getTime());
-          }
+          if (data.session_id) ev = calendar.getEventById(String(data.session_id));
+          if (!ev) ev = calendar.getEvents().find(e => e.start && e.start.getTime() === new Date(start).getTime());
           if (ev) openInspector(ev);
         },
 
-
-        eventClick: (info) => {
-          openInspector(info.event);
-        },  
+        eventClick: (info) => { openInspector(info.event); }
       });
 
       calendar.render();
 
-      // external toolbar controls
+      // External toolbar controls
       document.getElementById('prevWeek').onclick = () => calendar.prev();
       document.getElementById('nextWeek').onclick = () => calendar.next();
       document.getElementById('goToday').onclick  = () => calendar.today();
@@ -910,11 +996,19 @@
       refreshCalendarRange();
     }
 
-    // make sure inspector buttons are not treated as submit buttons
-    ['inspDelete','inspCancel','inspSave'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.type = 'button';
-    });
+async function updateEventTimesOnServer(ev) {
+  const startOut = fmtLocalYYYYMMDDHHMM(ev.start);
+  const endOut   = fmtLocalYYYYMMDDHHMM(ev.end || new Date(ev.start.getTime() + 60*60*1000));
+  const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+    body: JSON.stringify({ start: startOut, end: endOut })
+  });
+  const data = await res.json();
+  if (!res.ok || !data.ok) throw new Error(data.error || 'Server rejected update');
+}
+
+
 
 // --- Calendar helpers & globals ---
     let calendar;

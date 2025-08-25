@@ -69,11 +69,14 @@ def _iso(d: date) -> str:
 
 
 def _parse_dt(s: str):
-    """Parse 'YYYY-MM-DDTHH:MM' to datetime."""
-    try:
-        return datetime.strptime(s, "%Y-%m-%dT%H:%M")
-    except ValueError:
-        return None
+    """Parse 'YYYY-MM-DDTHH:MM' or 'YYYY-MM-DD HH:MM' to datetime."""
+    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"):
+        try:
+            return datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    return None
+
 
 
 def _get_or_create_default_module(unit: Unit) -> Module:
