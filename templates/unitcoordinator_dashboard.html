@@ -670,13 +670,27 @@
       if (!basic.unit_code || !basic.unit_name || !basic.year || !basic.semester) {
         throw new Error('Missing unit basics');
       }
+
+      const sd = parseDMY(basic.start_date);
+      const ed = parseDMY(basic.end_date);
+      if (!sd || !ed) throw new Error('Invalid start/end date');
+
+      const startISO = toIsoDate(sd); // YYYY-MM-DD
+      const endISO   = toIsoDate(ed); // YYYY-MM-DD
+
       const form = new FormData();
       form.append('unit_code', basic.unit_code);
       form.append('unit_name', basic.unit_name);
-      form.append('year', basic.year);
-      form.append('semester', basic.semester);
-      form.append('start_date', basic.start_date);
-      form.append('end_date', basic.end_date);
+      form.append('year',      basic.year);
+      form.append('semester',  basic.semester);
+
+      // Primary (expected) field names
+      form.append('start_date', startISO);
+      form.append('end_date',   endISO);
+
+      // Defensive duplicates (covers slightly different backend expectations)
+      form.append('unit_start_date', startISO);
+      form.append('unit_end_date',   endISO);
 
       const res = await fetch("{{ url_for('unitcoordinator.create_or_get_draft') }}", {
         method: 'POST',
@@ -686,9 +700,28 @@
 
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create/fetch draft');
+
       document.getElementById('unit_id').value = data.unit_id;
+
+      // If your API echoes canonical dates back, sync the UI so everything agrees
+      if (data.start_date && data.end_date) {
+        // Expecting YYYY-MM-DD — reflect back into the hidden inputs the user sees
+        const [y1,m1,d1] = data.start_date.split('-').map(Number);
+        const [y2,m2,d2] = data.end_date.split('-').map(Number);
+        const start = new Date(y1, m1-1, d1);
+        const end   = new Date(y2, m2-1, d2);
+        // update flatpickr & hidden inputs
+        startPicker.setDate(start, true);
+        endPicker.setDate(end, true);
+        document.querySelector('[name="start_date"]').value = startPicker.formatDate(start, DATE_FMT);
+        document.querySelector('[name="end_date"]').value   = endPicker.formatDate(end, DATE_FMT);
+        updateDateSummary();
+      }
+
       return data.unit_id;
     }
+
+
 
     // --- CSV Upload (Step 3a) ---
     const uploadInput = document.getElementById('setup_csv');
@@ -961,7 +994,7 @@
 
       refreshCalendarRange();
     }
-    
+
 async function updateEventTimesOnServer(ev) {
   const startOut = fmtLocalYYYYMMDDHHMM(ev.start);
   const endOut   = fmtLocalYYYYMMDDHHMM(ev.end || new Date(ev.start.getTime() + 60*60*1000));
