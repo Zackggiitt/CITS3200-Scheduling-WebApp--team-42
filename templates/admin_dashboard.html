@@ -23,6 +23,27 @@
         </header>
 
         <div class="dashboard-content">
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>Total Facilitators</h4>
+                    <div class="stat-number">{{ total_facilitators }}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Total Sessions</h4>
+                    <div class="stat-number">{{ total_sessions }}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Pending Swaps</h4>
+                    <div class="stat-number">{{ pending_swaps }}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Unassigned Sessions</h4>
+                    <div class="stat-number">{{ unassigned_sessions }}</div>
+                </div>
+            </div>
+
+            <!-- Management Cards -->
             <div class="dashboard-grid">
                 <!-- Facilitator Management -->
                 <div class="dashboard-card">
@@ -35,19 +56,12 @@
                 </div>
 
                 <!-- Module Management -->
-                <div class="action-card">
-                    <h3>Manage Modules</h3>
-                    <p>View and manage all modules within units</p>
-                    <a href="{{ url_for('admin.manage_modules') }}" class="btn-primary">Manage Modules</a>
-                    <a href="{{ url_for('admin.initialize_sample_modules') }}" class="btn-secondary" style="margin-top: 10px;">Initialize Sample Modules</a>
-                </div>
-
-                <!-- Facilitator Management -->
                 <div class="dashboard-card">
-                    <h3>Facilitator Management</h3>
-                    <p>Manage facilitator availability and module skills</p>
+                    <h3>Module Management</h3>
+                    <p>View and manage all modules within units</p>
                     <div class="card-actions">
-                        <a href="{{ url_for('admin.manage_facilitators') }}" class="btn btn-primary">Manage Facilitators</a>
+                        <a href="{{ url_for('admin.manage_modules') }}" class="btn btn-primary">Manage Modules</a>
+                        <a href="{{ url_for('admin.initialize_sample_modules') }}" class="btn btn-secondary">Initialize Sample Modules</a>
                     </div>
                 </div>
 
