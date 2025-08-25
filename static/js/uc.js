@@ -878,20 +878,47 @@ function wireInspectorButtons(ev) {
 
 
   // Delete
-  document.getElementById('inspDelete').onclick = async () => {
+    document.getElementById('inspDelete').onclick = async () => {
     if (!confirm('Delete this session?')) return;
-    const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
-      method: 'DELETE',
-      headers: { 'X-CSRFToken': CSRF_TOKEN }
-    });
-    const data = await res.json();
-    if (!data.ok) {
-      alert(data.error || 'Failed to delete');
-    } else {
-      closeInspector();
-      calendar.refetchEvents();
+
+    const btn = document.getElementById('inspDelete');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': CSRF_TOKEN }
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+        alert(data.error || 'Failed to delete');
+        btn.disabled = false;
+        return;
+        }
+
+        // 1) immediate UI removal
+        const eventId = String(ev.id);
+        const inst =
+        (window.__editingEvent && String(window.__editingEvent.id) === eventId)
+            ? window.__editingEvent
+            : calendar.getEventById(eventId);
+        if (inst) inst.remove();
+
+        // clear the editing handle so later updates don't touch a deleted event
+        window.__editingEvent = null;
+
+        // 2) close the inspector
+        closeInspector();
+
+        // 3) final sync with server (safe even if already removed)
+        calendar.refetchEvents();
+    } catch (err) {
+        alert(String(err?.message || err || 'Failed to delete'));
+        btn.disabled = false;
     }
-  };
+    };
+
 
   // Cancel
   document.getElementById('inspCancel').onclick = closeInspector;
@@ -1216,4 +1243,20 @@ function resetCreateUnitWizard() {
 
   // 8) Back to step 1
   setStep?.(1);
+}
+
+function closeInspector() {
+  const inspector = document.getElementById('calInspector');
+  if (!inspector) return;
+
+  // hide panel
+  inspector.classList.remove('open');
+  inspector.classList.add('hidden');
+
+  // clear any temporary edit state so later UI updates don't touch a deleted/old event
+  window.__editingEvent = null;
+
+  // clear pending time edits (safe if null)
+  _pendingStart = null;
+  _pendingEnd = null;
 }
