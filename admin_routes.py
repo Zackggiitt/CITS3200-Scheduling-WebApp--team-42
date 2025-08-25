@@ -50,77 +50,20 @@ def create_unit():
 @admin_bp.route('/initialize-sample-modules')
 @admin_required
 def initialize_sample_modules():
-    """Initialize sample modules for testing"""
+    """Initialize sample modules and sessions by running add_sample_sessions.py"""
     user = get_current_user()
     
     try:
-        # Create GENG2000 unit if it doesn't exist
-        geng2000 = Unit.query.filter_by(unit_code='GENG2000').first()
-        if not geng2000:
-            geng2000 = Unit(
-                unit_code='GENG2000', 
-                unit_name='Engineering Computing',
-                year=2024,
-                semester='Semester 1',
-                created_by=user.id
-            )
-            db.session.add(geng2000)
-            db.session.flush()
+        # Import and run the add_sample_sessions script
+        from add_sample_sessions import add_sample_sessions
         
-        # Create CITS3200 unit if it doesn't exist
-        cits3200 = Unit.query.filter_by(unit_code='CITS3200').first()
-        if not cits3200:
-            cits3200 = Unit(
-                unit_code='CITS3200', 
-                unit_name='Professional Computing',
-                year=2024,
-                semester='Semester 2',
-                created_by=user.id
-            )
-            db.session.add(cits3200)
-            db.session.flush()
+        # Run the function to add sample sessions
+        add_sample_sessions()
         
-        # Define modules to create
-        modules_to_create = [
-            # GENG2000 modules
-            {'unit': geng2000, 'name': 'Lab 1', 'type': 'lab'},
-            {'unit': geng2000, 'name': 'Lab 2', 'type': 'lab'},
-            {'unit': geng2000, 'name': 'Lab 3', 'type': 'lab'},
-            {'unit': geng2000, 'name': 'Tutorial A', 'type': 'tutorial'},
-            {'unit': geng2000, 'name': 'Tutorial B', 'type': 'tutorial'},
-            {'unit': geng2000, 'name': 'Workshop 1', 'type': 'workshop'},
-            {'unit': geng2000, 'name': 'Workshop 2', 'type': 'workshop'},
-            
-            # CITS3200 modules
-            {'unit': cits3200, 'name': 'Lab Session 1', 'type': 'lab'},
-            {'unit': cits3200, 'name': 'Lab Session 2', 'type': 'lab'},
-            {'unit': cits3200, 'name': 'Tutorial Session', 'type': 'tutorial'},
-            {'unit': cits3200, 'name': 'Project Workshop', 'type': 'workshop'},
-        ]
-        
-        created_count = 0
-        for module_data in modules_to_create:
-            # Check if module already exists
-            existing = Module.query.filter_by(
-                unit_id=module_data['unit'].id,
-                module_name=module_data['name']
-            ).first()
-            
-            if not existing:
-                module = Module(
-                    unit_id=module_data['unit'].id,
-                    module_name=module_data['name'],
-                    module_type=module_data['type']
-                )
-                db.session.add(module)
-                created_count += 1
-        
-        db.session.commit()
-        flash(f'Successfully created {created_count} modules! Now facilitators can set skills for Lab 1, Lab 2, Tutorial, etc.')
+        flash('Successfully initialized sample modules and sessions from add_sample_sessions.py! ')
         
     except Exception as e:
-        db.session.rollback()
-        flash(f'Error creating modules: {str(e)}')
+        flash(f'Error running add_sample_sessions.py: {str(e)}')
     
     return redirect(url_for('admin.manage_modules'))
 
