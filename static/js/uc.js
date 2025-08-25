@@ -19,19 +19,18 @@ function getUnitId() {
 
 // ===== Modal open/close =====
 function openCreateUnitModal() {
-  setStep(1);
-  document.getElementById('unit_id').value = '';
-  document.getElementById('setup_complete').value = 'false';
-
-  if (calendar) {
+    resetCreateUnitWizard();
+    setStep(1);
+    document.getElementById('unit_id').value = '';
+    document.getElementById('setup_complete').value = 'false';
+    if (calendar) {
     try { calendar.destroy(); } catch {}
     calendar = null;
-  }
-  window.__calendarInitRan = false;
-
-  const modal = document.getElementById("createUnitModal");
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
+    }
+    window.__calendarInitRan = false;
+    const modal = document.getElementById("createUnitModal");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
 }
 
 // ===== Custom select (Semester) =====
@@ -879,20 +878,47 @@ function wireInspectorButtons(ev) {
 
 
   // Delete
-  document.getElementById('inspDelete').onclick = async () => {
+    document.getElementById('inspDelete').onclick = async () => {
     if (!confirm('Delete this session?')) return;
-    const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
-      method: 'DELETE',
-      headers: { 'X-CSRFToken': CSRF_TOKEN }
-    });
-    const data = await res.json();
-    if (!data.ok) {
-      alert(data.error || 'Failed to delete');
-    } else {
-      closeInspector();
-      calendar.refetchEvents();
+
+    const btn = document.getElementById('inspDelete');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': CSRF_TOKEN }
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+        alert(data.error || 'Failed to delete');
+        btn.disabled = false;
+        return;
+        }
+
+        // 1) immediate UI removal
+        const eventId = String(ev.id);
+        const inst =
+        (window.__editingEvent && String(window.__editingEvent.id) === eventId)
+            ? window.__editingEvent
+            : calendar.getEventById(eventId);
+        if (inst) inst.remove();
+
+        // clear the editing handle so later updates don't touch a deleted event
+        window.__editingEvent = null;
+
+        // 2) close the inspector
+        closeInspector();
+
+        // 3) final sync with server (safe even if already removed)
+        calendar.refetchEvents();
+    } catch (err) {
+        alert(String(err?.message || err || 'Failed to delete'));
+        btn.disabled = false;
     }
-  };
+    };
+
 
   // Cancel
   document.getElementById('inspCancel').onclick = closeInspector;
@@ -1021,11 +1047,16 @@ function getPendingTimes() {
 }
 
 function closeCreateUnitModal() {
+  // reset all modal state
+  resetCreateUnitWizard();
+
+  // then hide
   const modal = document.getElementById("createUnitModal");
   if (!modal) return;
   modal.classList.add("hidden");
   modal.classList.remove("flex");
 }
+
 
 // ===== Staffing: defaults + helpers =========================================
 const DEFAULT_LEAD_REQUIRED = 1;
@@ -1132,3 +1163,100 @@ function updateRecurrencePreview(startDate, endDate) {
   box.classList.remove('hidden');
 }
 
+function resetCreateUnitWizard() {
+  // 1) Form fields
+  const form = document.getElementById('create-unit-form');
+  if (form) form.reset();
+
+  // Unit id + flags
+  const unitIdEl = document.getElementById('unit_id');
+  if (unitIdEl) unitIdEl.value = '';
+  const setupFlagEl = document.getElementById('setup_complete');
+  if (setupFlagEl) setupFlagEl.value = 'false';
+
+  // 2) Custom Semester select visuals
+  const semRoot = document.querySelector('.select[data-name="semester"]');
+  if (semRoot) {
+    const valueEl = semRoot.querySelector('.select-value');
+    const hidden  = semRoot.querySelector('input[type="hidden"]');
+    const options = [...semRoot.querySelectorAll('.option')];
+    options.forEach(o => o.classList.remove('selected'));
+    const first = options[0];
+    if (first) first.classList.add('selected');
+    if (valueEl && first) valueEl.textContent = first.getAttribute('data-value') || 'Semester 1';
+    if (hidden && first) hidden.value = first.getAttribute('data-value') || 'Semester 1';
+    semRoot.classList.remove('open');
+  }
+
+  // 3) Year default (optional: current year)
+  const yearEl = form?.querySelector('[name="year"]');
+  if (yearEl && !yearEl.value) yearEl.value = String(new Date().getFullYear());
+
+  // 4) Dates -> today
+  const today = new Date();
+  if (typeof startPicker !== 'undefined' && startPicker) {
+    startPicker.setDate(today, true);
+  }
+  if (typeof endPicker !== 'undefined' && endPicker) {
+    endPicker.setDate(today, true);
+  }
+  const startInput = document.getElementById('start_date_input');
+  const endInput   = document.getElementById('end_date_input');
+  if (startInput && startPicker) startInput.value = startPicker.formatDate(today, DATE_FMT);
+  if (endInput && endPicker)     endInput.value   = endPicker.formatDate(today, DATE_FMT);
+  updateDateSummary?.();
+
+  // 5) CSV upload area reset
+  const uploadInput = document.getElementById('setup_csv');
+  const fileNameEl  = document.getElementById('file_name');
+  const statusBox   = document.getElementById('upload_status');
+  if (uploadInput) uploadInput.value = '';
+  if (fileNameEl) fileNameEl.textContent = 'No file selected';
+  if (statusBox) {
+    statusBox.classList.add('hidden');
+    statusBox.classList.remove('success', 'error');
+    statusBox.textContent = '';
+  }
+
+  // 6) Hide calendar section & destroy calendar
+  const wrapUpload = document.getElementById('setup_wrap');
+  const wrapCal    = document.getElementById('calendar_wrap');
+  wrapCal?.classList.add('hidden');
+  wrapUpload?.classList.remove('hidden');
+
+  if (typeof calendar !== 'undefined' && calendar) {
+    try { calendar.destroy(); } catch {}
+  }
+  window.__calendarInitRan = false;
+  window.__venueCache = {}; // clear cached venues
+
+  // 7) Inspector/staffing/recurrence small resets (safe no-ops if missing)
+  setStaffingInUI?.(1, 0);
+  const recOccurs = document.getElementById('recOccurs');
+  const recCount  = document.getElementById('recCount');
+  const recUntil  = document.getElementById('recUntil');
+  const recPreview= document.getElementById('recPreview');
+  if (recOccurs) recOccurs.value = 'none';
+  if (recCount)  recCount.value  = '12';
+  if (recUntil)  recUntil.value  = '';
+  recPreview?.classList.add('hidden');
+
+  // 8) Back to step 1
+  setStep?.(1);
+}
+
+function closeInspector() {
+  const inspector = document.getElementById('calInspector');
+  if (!inspector) return;
+
+  // hide panel
+  inspector.classList.remove('open');
+  inspector.classList.add('hidden');
+
+  // clear any temporary edit state so later UI updates don't touch a deleted/old event
+  window.__editingEvent = null;
+
+  // clear pending time edits (safe if null)
+  _pendingStart = null;
+  _pendingEnd = null;
+}
