@@ -468,7 +468,9 @@ function initCalendar() {
             session_name: '',
             // staffing defaults
             lead_required: DEFAULT_LEAD_REQUIRED,
-            support_required: DEFAULT_SUPPORT_REQUIRED
+            support_required: DEFAULT_SUPPORT_REQUIRED,
+            // recurrence default
+            recurrence: { occurs: 'none' }
             })
         });
         const data = await res.json();
@@ -527,15 +529,18 @@ function initCalendar() {
             'X-CSRFToken': CSRF_TOKEN
         },
         body: JSON.stringify({
-            start,
-            end,
-            venue: '',
-            session_name: '',
-            // NEW: staffing defaults for autoscheduler
-            lead_required: DEFAULT_LEAD_REQUIRED,
-            support_required: DEFAULT_SUPPORT_REQUIRED
+        start,
+        end,
+        venue: '',
+        session_name: '',
+        // staffing defaults
+        lead_required: DEFAULT_LEAD_REQUIRED,
+        support_required: DEFAULT_SUPPORT_REQUIRED,
+        // recurrence default
+        recurrence: { occurs: 'none' }
         })
         });
+
 
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create session');
@@ -783,6 +788,12 @@ async function openInspector(ev) {
   // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
   setTimesIntoPickers(start, end);
+    ensureRecurrencePickers();
+    document.getElementById('recOccurs').onchange = () => updateRecurrencePreview(start, end);
+    document.getElementById('recCount').oninput   = () => updateRecurrencePreview(start, end);
+    document.getElementById('recUntil').oninput   = () => updateRecurrencePreview(start, end);
+    updateRecurrencePreview(start, end);
+
   document.querySelectorAll('#calInspector .insp-preset').forEach(btn => {
     btn.onclick = () => {
       const range = btn.getAttribute('data-range');
@@ -815,49 +826,57 @@ function wireInspectorButtons(ev) {
   const inspector = document.getElementById('calInspector');
 
   // Save
-  document.getElementById('inspSave').onclick = async () => {
+    document.getElementById('inspSave').onclick = async () => {
     const sel  = document.getElementById('inspVenue');
     const name = document.getElementById('inspName')?.value?.trim() || '';
 
     // pull times from the timing controls
-    const { start, end } = getPendingTimes();
-    const startOut = fmtLocalYYYYMMDDHHMM(start || ev.start);
-    const endOut   = fmtLocalYYYYMMDDHHMM(end   || ev.end || new Date(ev.start.getTime() + 60*60*1000));
+    const times   = getPendingTimes();
+    const pStart  = times.start || ev.start;
+    const pEnd    = times.end   || ev.end || new Date(ev.start.getTime() + 60*60*1000);
+    const startOut = fmtLocalYYYYMMDDHHMM(pStart);
+    const endOut   = fmtLocalYYYYMMDDHHMM(pEnd);
 
-    // NEW: staffing
+    // staffing
     const { lead_required, support_required } = getStaffingFromUI();
 
     const payload = {
-      start: startOut,
-      end:   endOut,
-      session_name: name,
-      module_name:  name,
-      title:        name,
-      // include staffing
-      lead_required,
-      support_required
+        start: startOut,
+        end:   endOut,
+        session_name: name,
+        module_name:  name,
+        title:        name,
+        // include staffing
+        lead_required,
+        support_required
     };
 
+    // recurrence from inspector UI
+    payload.recurrence = readRecurrenceFromUI(pStart, pEnd);
+    payload.apply_to   = 'series';
+
+    // venue
     if (sel && sel.tagName === 'SELECT' && sel.value) {
-      payload.venue_id = Number(sel.value);
+        payload.venue_id = Number(sel.value);
     } else {
-      payload.venue = (sel?.value || '').trim();
+        payload.venue = (sel?.value || '').trim();
     }
 
     const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-      body: JSON.stringify(payload)
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+        body: JSON.stringify(payload)
     });
 
     const data = await res.json();
     if (!data.ok) {
-      alert(data.error || 'Failed to update');
+        alert(data.error || 'Failed to update');
     } else {
-      closeInspector();
-      calendar.refetchEvents();
+        closeInspector();
+        calendar.refetchEvents();
     }
-  };
+    };
+
 
   // Delete
   document.getElementById('inspDelete').onclick = async () => {
@@ -1057,3 +1076,59 @@ function wireStaffingButtons() {
   if (supMinus)  supMinus.onclick  = () => adjust('supportCount', -1, 0);
   if (supPlus)   supPlus.onclick   = () => adjust('supportCount', +1, 0);
 }
+
+// ==== Recurrence UI helpers ===============================================
+let _recUntilPicker = null;
+
+function ensureRecurrencePickers() {
+  const untilEl = document.getElementById('recUntil');
+  if (untilEl && !_recUntilPicker) {
+    _recUntilPicker = flatpickr(untilEl, {
+      dateFormat: DATE_FMT,
+      allowInput: true
+    });
+  }
+}
+
+function readRecurrenceFromUI(startDate, endDate) {
+  const occurs = document.getElementById('recOccurs')?.value || 'none';
+  if (occurs !== 'weekly') return { occurs: 'none' };
+
+  const count = Math.max(1, parseInt(document.getElementById('recCount')?.value || '12', 10));
+  const untilStr = (document.getElementById('recUntil')?.value || '').trim();
+  const u = untilStr ? parseDMY(untilStr) : null;
+  const until = u ? toIsoDate(u) : null;
+
+  const weekday = startDate.getDay(); // 0=Sun ... 6=Sat
+
+  return {
+    occurs: 'weekly',
+    interval: 1,
+    byweekday: [weekday],
+    count,
+    until, // ISO yyyy-mm-dd or null
+  };
+}
+
+function updateRecurrencePreview(startDate, endDate) {
+  const occurs = document.getElementById('recOccurs')?.value || 'none';
+  const box = document.getElementById('recPreview');
+  if (!box) return;
+
+  if (occurs !== 'weekly') { box.classList.add('hidden'); return; }
+
+  const count = Math.max(1, parseInt(document.getElementById('recCount')?.value || '12', 10));
+  const untilStr = (document.getElementById('recUntil')?.value || '').trim();
+  const firstDate = startDate;
+  document.getElementById('recPatternText').textContent =
+    `${firstDate.toLocaleDateString(undefined, { weekday: 'long' })} ` +
+    `${firstDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}–` +
+    `${endDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}, weekly`;
+
+  document.getElementById('recFirst').textContent =
+    firstDate.toLocaleDateString();
+
+  document.getElementById('recTotal').textContent = String(count);
+  box.classList.remove('hidden');
+}
+

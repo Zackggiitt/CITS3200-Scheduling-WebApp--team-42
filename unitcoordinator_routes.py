@@ -122,6 +122,96 @@ def _get_or_create_module_by_name(unit: Unit, name: str) -> Module:
     return m
 
 
+# --- Recurrence helpers -------------------------------------------------------
+
+def _parse_recurrence(d: dict):
+    """
+    Expect shape like:
+      {"occurs":"weekly", "interval":1, "byweekday":[0-6], "count":N, "until":"YYYY-MM-DD" | None}
+    Return a normalized dict or {"occurs":"none"}.
+    """
+    if not isinstance(d, dict):
+        return {"occurs": "none"}
+    occurs = (d.get("occurs") or "none").lower()
+    if occurs != "weekly":
+        return {"occurs": "none"}
+    interval = int(d.get("interval") or 1)
+    if interval < 1:
+        interval = 1
+    # UI sends weekday of the first start date; we just step weekly from start, so this is informational.
+    byweekday = d.get("byweekday") if isinstance(d.get("byweekday"), list) else None
+
+    count = d.get("count")
+    try:
+        count = int(count) if count is not None else None
+    except (TypeError, ValueError):
+        count = None
+    if count is not None and count < 1:
+        count = 1
+
+    until_raw = (d.get("until") or "").strip()
+    until_date = _parse_date_multi(until_raw) if until_raw else None
+
+    return {
+        "occurs": "weekly",
+        "interval": interval,
+        "byweekday": byweekday,
+        "count": count,
+        "until": until_date,  # Python date or None
+    }
+
+
+def _within_unit_range(unit: Unit, dt: datetime) -> bool:
+    """Check datetime against unit.start_date/end_date (if set)."""
+    d = dt.date()
+    if unit.start_date and d < unit.start_date:
+        return False
+    if unit.end_date and d > unit.end_date:
+        return False
+    return True
+
+
+def _iter_weekly_occurrences(unit: Unit, start_dt: datetime, end_dt: datetime, rec: dict):
+    """
+    Yield (s,e) pairs for a weekly rule starting at (start_dt,end_dt), inclusive.
+    Bounds:
+      - stop when 'count' reached, OR
+      - stop after 'until' (date), OR
+      - stop when we step beyond unit.end_date.
+    Always includes the first occurrence.
+    """
+    interval = rec.get("interval", 1) or 1
+    count    = rec.get("count")
+    until_d  = rec.get("until")  # date | None
+
+    made = 0
+    cur_s = start_dt
+    cur_e = end_dt
+    while True:
+        # Stop conditions before yielding if outside range
+        if not _within_unit_range(unit, cur_s) or not _within_unit_range(unit, cur_e):
+            # If the first one is out of range we still don't yield it.
+            pass
+        else:
+            yield (cur_s, cur_e)
+            made += 1
+            if count is not None and made >= count:
+                break
+
+        # compute next
+        cur_s = cur_s + timedelta(weeks=interval)
+        cur_e = cur_e + timedelta(weeks=interval)
+
+        # if until is set, next start after 'until' should stop
+        if until_d and cur_s.date() > until_d:
+            break
+
+        # unit end bound
+        if unit.end_date and cur_s.date() > unit.end_date:
+            break
+
+
+
 # ------------------------------------------------------------------------------
 # Views
 # ------------------------------------------------------------------------------
@@ -493,7 +583,7 @@ def calendar_week(unit_id: int):
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def create_session(unit_id: int):
-    """Create a simple session (uses/creates a module named by session_name/module_name/title)."""
+    """Create a session or a weekly series (based on 'recurrence')."""
     user = get_current_user()
     unit = _get_user_unit_or_404(user, unit_id)
     if not unit:
@@ -511,6 +601,9 @@ def create_session(unit_id: int):
     venue_name_in = (data.get("venue") or "").strip()
     venue_id_in = data.get("venue_id")
 
+    # NEW: recurrence (optional)
+    rec = _parse_recurrence(data.get("recurrence"))
+
     # Validate datetime inputs
     start_dt = _parse_dt(start_raw)
     end_dt = _parse_dt(end_raw)
@@ -519,11 +612,9 @@ def create_session(unit_id: int):
     if end_dt <= start_dt:
         return jsonify({"ok": False, "error": "End time must be after start time"}), 400
 
-    # Range guard
-    if unit.start_date and start_dt.date() < unit.start_date:
-        return jsonify({"ok": False, "error": "Session start date is before unit start date"}), 400
-    if unit.end_date and end_dt.date() > unit.end_date:
-        return jsonify({"ok": False, "error": "Session end date is after unit end date"}), 400
+    # Range guard for the first
+    if not _within_unit_range(unit, start_dt) or not _within_unit_range(unit, end_dt):
+        return jsonify({"ok": False, "error": "Session outside unit date range"}), 400
 
     # Determine and validate venue; we store the venue NAME in `location`
     chosen_name = None
@@ -549,35 +640,74 @@ def create_session(unit_id: int):
     # Pick/create module by name (falls back to 'General' if empty)
     mod = _get_or_create_module_by_name(unit, name_in)
 
-    # Create session
-    session = Session(
-        module_id=mod.id,
-        session_type="general",
-        start_time=start_dt,
-        end_time=end_dt,
-        day_of_week=start_dt.weekday(),
-        location=chosen_name,
-        required_skills=None,
-        max_facilitators=1,
-    )
-    db.session.add(session)
+    created_ids = []
     try:
+        if rec.get("occurs") == "weekly":
+            # Fan out occurrences
+            for s_dt, e_dt in _iter_weekly_occurrences(unit, start_dt, end_dt, rec):
+                # Skip exact duplicates (same module + start_time) to be defensive
+                exists = (
+                    Session.query
+                    .join(Module)
+                    .filter(
+                        Module.unit_id == unit.id,
+                        Session.start_time == s_dt,
+                        Session.end_time == e_dt,
+                        Session.module_id == mod.id,
+                    )
+                    .first()
+                )
+                if exists:
+                    continue
+
+                sess = Session(
+                    module_id=mod.id,
+                    session_type="general",
+                    start_time=s_dt,
+                    end_time=e_dt,
+                    day_of_week=s_dt.weekday(),
+                    location=chosen_name,
+                    required_skills=None,
+                    max_facilitators=1,
+                )
+                db.session.add(sess)
+                db.session.flush()
+                created_ids.append(sess.id)
+        else:
+            # Single
+            session = Session(
+                module_id=mod.id,
+                session_type="general",
+                start_time=start_dt,
+                end_time=end_dt,
+                day_of_week=start_dt.weekday(),
+                location=chosen_name,
+                required_skills=None,
+                max_facilitators=1,
+            )
+            db.session.add(session)
+            db.session.flush()
+            created_ids.append(session.id)
+
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
-    # Include venue_id in response (when resolvable)
+    # Build mapping for serializer (venue_id resolution)
     venues_by_name = {}
     if chosen_name:
-            v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == chosen_name.lower()).scalar()
-            if v_id:
-                venues_by_name[chosen_name.lower()] = v_id
+        v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == chosen_name.lower()).scalar()
+        if v_id:
+            venues_by_name[chosen_name.lower()] = v_id
 
+    # Serialize the *first* (for FE to select) + include all IDs
+    first = Session.query.get(created_ids[0])
     return jsonify({
         "ok": True,
-        "session_id": session.id,   
-        "session": _serialize_session(session, venues_by_name)
+        "session_id": created_ids[0],
+        "created_session_ids": created_ids,
+        "session": _serialize_session(first, venues_by_name),
     }), 201
 
 
@@ -587,7 +717,7 @@ def create_session(unit_id: int):
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def update_session(session_id: int):
-    """Move/resize, update venue, or rename session (via module) for an existing session."""
+    """Move/resize, update venue, or rename session; optional weekly fan-out when apply_to='series'."""
     user = get_current_user()
     session = Session.query.get(session_id)
     if not session or session.module.unit.created_by != user.id:
@@ -603,6 +733,8 @@ def update_session(session_id: int):
     if name_in:
         new_mod = _get_or_create_module_by_name(unit, name_in)
         session.module_id = new_mod.id
+    else:
+        new_mod = session.module  # use current for fan-out below
 
     # --- Validate and update start/end times ---
     if "start" in data:
@@ -657,6 +789,54 @@ def update_session(session_id: int):
     if session.end_time <= session.start_time:
         return jsonify({"ok": False, "error": "End time must be after start time"}), 400
 
+    created_ids = []
+
+    # --- NEW: recurrence fan-out when saving with apply_to='series' ---
+    rec = _parse_recurrence(data.get("recurrence"))
+    apply_to = (data.get("apply_to") or "").lower()
+    if rec.get("occurs") == "weekly" and apply_to == "series":
+        # Use the *current* (possibly edited) times as the pattern seed
+        seed_s = session.start_time
+        seed_e = session.end_time
+        chosen_name = session.location  # normalized earlier if set
+        mod_for_series = new_mod
+
+        try:
+            for s_dt, e_dt in _iter_weekly_occurrences(unit, seed_s, seed_e, rec):
+                # Skip the seed itself (already updated above)
+                if s_dt == seed_s and e_dt == seed_e:
+                    continue
+                # Avoid exact duplicates for this module
+                exists = (
+                    Session.query
+                    .join(Module)
+                    .filter(
+                        Module.unit_id == unit.id,
+                        Session.start_time == s_dt,
+                        Session.end_time == e_dt,
+                        Session.module_id == mod_for_series.id,
+                    )
+                    .first()
+                )
+                if exists:
+                    continue
+                new_sess = Session(
+                    module_id=mod_for_series.id,
+                    session_type="general",
+                    start_time=s_dt,
+                    end_time=e_dt,
+                    day_of_week=s_dt.weekday(),
+                    location=chosen_name,
+                    required_skills=None,
+                    max_facilitators=1,
+                )
+                db.session.add(new_sess)
+                db.session.flush()
+                created_ids.append(new_sess.id)
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"ok": False, "error": f"Database error while expanding series: {str(e)}"}), 500
+
     # --- Commit changes ---
     try:
         db.session.commit()
@@ -667,11 +847,17 @@ def update_session(session_id: int):
     # --- Include venue_id in response (when resolvable) ---
     venues_by_name = {}
     if session.location:
-            v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == session.location.lower()).scalar()
-            if v_id:
-                venues_by_name[session.location.lower()] = v_id
+        v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == session.location.lower()).scalar()
+        if v_id:
+            venues_by_name[session.location.lower()] = v_id
 
-    return jsonify({"ok": True, "session": _serialize_session(session, venues_by_name)})
+    resp = {
+        "ok": True,
+        "session": _serialize_session(session, venues_by_name)
+    }
+    if created_ids:
+        resp["created_session_ids"] = created_ids
+    return jsonify(resp)
 
 
 @unitcoordinator_bp.delete("/sessions/<int:session_id>")
