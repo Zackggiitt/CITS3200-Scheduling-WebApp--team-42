@@ -408,6 +408,60 @@
                     </div>
                   </div>
                 </section>
+                <!-- RECURRENCE -->
+                <section class="insp-section">
+                  <header class="insp-section__hdr">
+                    <span class="material-icons">repeat</span>
+                    <h4>Recurrence Pattern</h4>
+                  </header>
+
+                  <div class="space-y-3">
+
+                    <!-- Occurs -->
+                    <label class="insp-field">
+                      <span class="insp-field__label">
+                        <span class="material-icons">event_repeat</span>
+                        Occurs
+                      </span>
+                      <select id="recOccurs" class="cal-input cal-input--soft">
+                        <option value="none">Does not repeat</option>
+                        <option value="weekly">Weekly</option>
+                      </select>
+                    </label>
+
+                    <!-- Preview -->
+                    <div id="recPreview" class="rounded-xl bg-purple-50 border border-purple-200 p-3 text-purple-900 hidden">
+                      <div class="font-medium">Pattern: <span id="recPatternText"></span></div>
+                      <div class="text-xs mt-1">
+                        <div>First occurrence: <span id="recFirst"></span></div>
+                        <div>Estimated total sessions: <span id="recTotal"></span></div>
+                      </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label class="insp-field">
+                        <span class="insp-field__label">
+                          <span class="material-icons">format_list_numbered</span>
+                          Number of Sessions
+                        </span>
+                        <input id="recCount" type="number" min="1" class="cal-input cal-input--soft" value="12" />
+                      </label>
+
+                      <label class="insp-field">
+                        <span class="insp-field__label">
+                          <span class="material-icons">event</span>
+                          End Date (Optional)
+                        </span>
+                        <input id="recUntil" type="text" class="cal-input cal-input--soft" placeholder="dd/mm/yyyy" />
+                      </label>
+                    </div>
+                    <p class="text-xs text-gray-500">
+                      Sessions will repeat weekly until the number of sessions is reached or the end date (if set), whichever comes first.
+                    </p>
+                  </div>
+                </section>
+
                 <!-- STAFFING REQUIREMENTS -->
                 <section class="insp-section">
                   <header class="insp-section__hdr">
