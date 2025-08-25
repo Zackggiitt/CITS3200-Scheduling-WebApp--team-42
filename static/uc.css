@@ -485,4 +485,107 @@
 .insp-preset { font-size: 12px; padding: 6px 10px; }
 .insp-preset:focus { outline: none; box-shadow: 0 0 0 3px rgba(17,24,39,.08); }
 
+/* ===============================
+   Staffing Requirements – polish
+   (works with your existing IDs)
+=================================*/
+
+/* Give both rows a soft elevation and tighter layout */
+.insp-section .space-y-3 > div {
+  box-shadow: 0 2px 6px rgba(0,0,0,.04);
+  padding: 14px 16px;
+  align-items: center;
+  min-height: 64px;
+}
+
+/* Lead row */
+.insp-section .space-y-3 > div:nth-child(1) {
+  background: #ecfdf5;                 /* subtle green */
+  border-color: #bbf7d0;               /* green-200 */
+}
+
+/* Support row */
+.insp-section .space-y-3 > div:nth-child(2) {
+  background: #eff6ff;                 /* subtle blue */
+  border-color: #bfdbfe;               /* blue-200 */
+}
+
+/* Title + subtext spacing & colors */
+.insp-section .space-y-3 > div > div:first-child .font-medium {
+  font-weight: 700;
+  color: #0f172a;                      /* slate-900 */
+}
+.insp-section .space-y-3 > div > div:first-child .text-xs {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+/* Count typography matches screenshot */
+#leadCount, #supportCount {
+  width: 1.75rem;                      /* 28px */
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #111827;
+}
+
+/* +/- buttons: soft, round, tactile */
+#leadMinusBtn, #leadPlusBtn,
+#supportMinusBtn, #supportPlusBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  line-height: 1;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, transform .05s, border-color .15s;
+}
+#leadMinusBtn:hover, #leadPlusBtn:hover,
+#supportMinusBtn:hover, #supportPlusBtn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+#leadMinusBtn:active, #leadPlusBtn:active,
+#supportMinusBtn:active, #supportPlusBtn:active {
+  transform: translateY(1px);
+}
+
+/* Give lead/support their accent hover borders (subtle) */
+#leadMinusBtn:hover, #leadPlusBtn:hover {
+  border-color: #86efac;               /* green-300 */
+}
+#supportMinusBtn:hover, #supportPlusBtn:hover {
+  border-color: #93c5fd;               /* blue-300 */
+}
+
+/* Total bar style to match the pill look */
+#totalStaffText {
+  font-weight: 700;
+  color: #111827;
+}
+.insp-section .rounded-xl.bg-gray-100 {
+  background: #f3f4f6;                 /* slightly darker to match screenshot */
+  border: 1px solid #e5e7eb;
+}
+
+/* Small icon circle (optional, if you add a leading icon later) */
+.insp-section .space-y-3 > div .icon-circle {
+  width: 32px; height: 32px;
+  border-radius: 9999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-right: 10px;
+  background: rgba(16,185,129,.12);    /* green tint default */
+  color: #059669;
+  font-size: 18px;
+}
+.insp-section .space-y-3 > div:nth-child(2) .icon-circle {
+  background: rgba(59,130,246,.12);    /* blue tint for support */
+  color: #2563eb;
+}
+
+
 
