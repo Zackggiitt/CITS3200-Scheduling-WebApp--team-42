@@ -259,12 +259,29 @@
 .fc .fc-timegrid-body{ overflow:visible!important; }
 
 /* Inspector */
-.cal-inspector{
-  position:fixed; right:24px; top:90px; width:320px; background:#fff; border:1px solid var(--c-line);
-  border-radius:12px; box-shadow:0 10px 24px rgba(0,0,0,.08); display:flex; flex-direction:column;
+.cal-inspector {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 360px;
+  background: #fff;
+  border-left: 1px solid var(--c-line);
+  box-shadow: -10px 0 24px rgba(0,0,0,.08);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .25s ease;
+  z-index: 60;
+  min-height: 500px; /* ADD THIS - ensure minimum height */
 }
 .cal-inspector__header{ padding:12px 14px; border-bottom:1px solid var(--c-line); font-weight:700; }
-.cal-inspector__body{ padding:12px 14px; font-size:14px; }
+.cal-inspector__body {
+  padding: 14px;
+  font-size: 14px;
+  overflow: auto;
+  flex: 1; /* MAKE SURE BODY TAKES AVAILABLE SPACE */
+}
 .cal-inspector__body .row{ display:flex; justify-content:space-between; margin-bottom:6px; color:#374151; }
 .cal-input{ width:100%; border:1px solid #d1d5db; border-radius:8px; padding:8px; }
 .cal-inspector__footer{ display:flex; gap:8px; justify-content:flex-end; padding:10px 14px; border-top:1px solid var(--c-line); }
@@ -408,12 +425,50 @@
 .insp-top-actions .icon-btn .material-icons{font-size:20px}
 
 /* Blue overview card */
-.insp-card{margin:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px}
-.insp-card__hdr{display:flex;align-items:center;gap:8px;font-weight:700;color:#1e40af;margin-bottom:8px}
-.insp-kv{display:grid;grid-template-columns:1fr;gap:6px;color:#1d4ed8}
-.kv-row{display:flex;justify-content:space-between}
-.kv-row dt{color:#1f2937}
-.kv-row dd{font-weight:600}
+.insp-card {
+  margin: 12px 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 140px; /* ADD THIS - ensure enough height for all rows */
+}
+
+.insp-card__hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #1e40af;
+  margin-bottom: 8px;
+}
+
+.insp-kv {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  color: #1d4ed8;
+  /* Remove any height restrictions */
+  height: auto;
+  overflow: visible;
+}
+
+.kv-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0; /* ADD SOME PADDING */
+}
+
+.kv-row dt {
+  color: #1f2937;
+}
+
+.kv-row dd {
+  font-weight: 600;
+  margin: 0; /* ENSURE NO MARGIN ISSUES */
+}
+
+
 .form-block{margin:12px 14px}
 
 /* ------ Inspector > Basic Information card ------ */
@@ -587,5 +642,84 @@
   color: #2563eb;
 }
 
+/* =========================================
+   Calendar Event Styling with Icons
+========================================= */
 
+.fc-event-title {
+  line-height: 1.2;
+  white-space: pre-line;
+  position: relative;
+  font-size: 11px;
+}
 
+/* Events with detailed info (session name + time + optional venue) */
+.fc-event.has-detailed-info .fc-event-title {
+  position: relative;
+  padding-left: 14px; /* Make room for icons */
+}
+
+/* Session name icon (book) - first line */
+.fc-event.has-detailed-info .fc-event-title::before {
+  content: "menu_book";
+  font-family: "Material Icons";
+  font-size: 10px;
+  color: white;
+  position: absolute;
+  left: 0;
+  top: 0;
+  line-height: 1.2;
+  font-weight: normal;
+  font-style: normal;
+  text-rendering: optimizeLegibility;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+}
+
+/* Time icon (clock) - second line */
+.fc-event.has-detailed-info .fc-event-title::after {
+  content: "schedule";
+  font-family: "Material Icons";
+  font-size: 10px;
+  color: white;
+  position: absolute;
+  left: 0;
+  top: 12px; /* Position for second line */
+  line-height: 1.2;
+  font-weight: normal;
+  font-style: normal;
+  text-rendering: optimizeLegibility;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+}
+
+/* Venue icon (location) - third line if venue exists */
+.fc-event.has-venue.has-detailed-info .fc-event-title {
+  position: relative;
+}
+
+.fc-event.has-venue.has-detailed-info .fc-event-title::after {
+  content: "schedule\A location_on";
+  white-space: pre;
+  font-family: "Material Icons";
+  font-size: 10px;
+  color: white;
+  position: absolute;
+  left: 0;
+  top: 12px;
+  line-height: 12px;
+  font-weight: normal;
+  font-style: normal;
+  text-rendering: optimizeLegibility;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+}
+
+/* Adjust event height to accommodate multiple lines */
+.fc-event.has-detailed-info {
+  min-height: 36px;
+}
+
+.fc-event.has-venue.has-detailed-info {
+  min-height: 48px;
+}

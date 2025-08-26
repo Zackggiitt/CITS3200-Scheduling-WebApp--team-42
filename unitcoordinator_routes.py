@@ -901,3 +901,23 @@ def list_venues(unit_id: int):
         "ok": True,
         "venues": [{"id": v.id, "name": v.name} for v in venues]
     })
+
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/facilitators")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def list_facilitators(unit_id: int):
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    facs = (
+        db.session.query(User.email)
+        .join(UnitFacilitator, UnitFacilitator.user_id == User.id)
+        .filter(UnitFacilitator.unit_id == unit.id)
+        .order_by(User.email.asc())
+        .all()
+    )
+    emails = [e for (e,) in facs]
+    return jsonify({"ok": True, "facilitators": emails})

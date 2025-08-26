@@ -6,6 +6,7 @@ const {
   UPDATE_SESS_TEMPLATE,
   DELETE_SESS_TEMPLATE,
   LIST_VENUES_TEMPLATE,
+  LIST_FACILITATORS_TEMPLATE,
   CREATE_OR_GET_DRAFT,
   UPLOAD_SETUP_CSV
 } = window.FLASK_ROUTES || {};
@@ -512,58 +513,6 @@ function initCalendar() {
       }
     },
 
-    dateClick: async (info) => {
-    const d = new Date(info.dateStr);
-    if (isOutOfRange(d)) return;
-
-    const start = fmtLocalYYYYMMDDHHMM(info.date);
-    const end   = fmtLocalYYYYMMDDHHMM(new Date(info.date.getTime() + 60 * 60 * 1000));
-    const uid = getUnitId();
-
-    try {
-        const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, uid), {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': CSRF_TOKEN
-        },
-        body: JSON.stringify({
-        start,
-        end,
-        venue: '',
-        session_name: '',
-        // staffing defaults
-        lead_required: DEFAULT_LEAD_REQUIRED,
-        support_required: DEFAULT_SUPPORT_REQUIRED,
-        // recurrence default
-        recurrence: { occurs: 'none' }
-        })
-        });
-
-
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create session');
-
-        await calendar.refetchEvents();
-
-        // Try to find the newly created event and open the inspector
-        let ev = null;
-        if (data.session_id) {
-        ev = calendar.getEventById(String(data.session_id));
-        }
-        if (!ev) {
-        ev = calendar.getEvents().find(e =>
-            e.start && e.start.getTime() === new Date(start).getTime()
-        );
-        }
-        if (ev) openInspector(ev);
-    } catch (err) {
-        console.error(err);
-        alert(String(err.message || 'Could not create session.'));
-    }
-    },
-
-
     eventClick: (info) => { openInspector(info.event); }
   });
 
@@ -736,7 +685,7 @@ async function openInspector(ev) {
   const inspector = document.getElementById('calInspector');
   if (!ev || !inspector) return;
 
-  // Make panel visible immediately so errors don’t hide it
+  // Make panel visible immediately so errors don't hide it
   inspector.classList.remove('hidden');
   requestAnimationFrame(() => inspector.classList.add('open'));
 
@@ -750,6 +699,14 @@ async function openInspector(ev) {
   const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const mins = Math.max(0, Math.round((end - start) / 60000));
 
+  // Format date as DD/MM/YYYY
+  const formatDateDDMMYYYY = (d) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   // Top bar subtitle + blue "Session Overview" card
   document.getElementById('inspSub').textContent =
     `${start.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(start)}–${fmt(end)}`;
@@ -757,7 +714,7 @@ async function openInspector(ev) {
     start.toLocaleDateString('en-US', { weekday: 'long' });
   document.getElementById('inspTime').textContent = `${fmt(start)}–${fmt(end)}`;
   document.getElementById('inspDur').textContent  = `${mins} minutes`;
-  document.getElementById('inspDate').textContent = start.toLocaleDateString();
+  document.getElementById('inspDate').textContent = formatDateDDMMYYYY(start);
   document.getElementById('inspDelete').classList.remove('hidden');
 
   // ---- name field (supports multiple backends) ----
@@ -768,6 +725,11 @@ async function openInspector(ev) {
   const nameInput = document.getElementById('inspName');
   nameInput.placeholder = 'New Session';
   nameInput.value = name;
+
+  // Real-time update of session overview
+  nameInput.addEventListener('input', function() {
+    updateSessionOverview();
+  });
 
   // ---- venue select (fault-tolerant) ----
   try {
@@ -780,9 +742,15 @@ async function openInspector(ev) {
                       || ev.title
                       || '';
     populateVenueSelect(sel, venues, selectedId, selectedName);
+  
+    sel.addEventListener('change', function() {
+      updateSessionOverview();
+    });
   } catch (err) {
     console.warn('Venue population failed (non-blocking):', err);
   }
+
+  
 
   // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
@@ -818,7 +786,6 @@ async function openInspector(ev) {
   document.getElementById('inspCloseBtn').onclick = closeInspector;
   document.getElementById('inspNextBtn').onclick  = () => {};
 }
-
 
 
 function wireInspectorButtons(ev) {
@@ -1023,8 +990,18 @@ function updateInspectorTimeOverview() {
   if (!_pendingStart || !_pendingEnd) return;
   const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const mins = Math.max(0, Math.round((_pendingEnd - _pendingStart)/60000));
+  
+  // Format date as DD/MM/YYYY
+  const formatDateDDMMYYYY = (d) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+  
   document.getElementById('inspTime').textContent = `${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
   document.getElementById('inspDur').textContent  = `${mins} minutes`;
+  document.getElementById('inspDate').textContent = formatDateDDMMYYYY(_pendingStart);
   document.getElementById('inspSub').textContent  =
     `${_pendingStart.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
 }
@@ -1259,4 +1236,163 @@ function closeInspector() {
   // clear pending time edits (safe if null)
   _pendingStart = null;
   _pendingEnd = null;
+}
+
+async function populateReview() {
+  const { unit_name, unit_code, semester, year, start_date, end_date } = readUnitBasics();
+
+  // Fill Unit Details
+  document.getElementById('rv_name').textContent = unit_name || '—';
+  document.getElementById('rv_code').textContent = unit_code || '—';
+  document.getElementById('rv_sem').textContent  = `${semester || ''} ${year || ''}`.trim();
+
+  document.getElementById('rv_start').textContent = start_date || '—';
+  document.getElementById('rv_end').textContent   = end_date || '—';
+
+  // Duration (weeks, rounded up)
+  const toDate = (s) => {
+    const [d,m,y] = (s || '').split('/').map(Number);
+    return (y && m && d) ? new Date(y, m-1, d) : null;
+  };
+  const sd = toDate(start_date), ed = toDate(end_date);
+  if (sd && ed) {
+    const days = Math.max(1, Math.round((ed - sd) / 86400000) + 1);
+    const weeks = Math.ceil(days / 7);
+    document.getElementById('rv_weeks').textContent = `${weeks} week${weeks>1?'s':''}`;
+  } else {
+    document.getElementById('rv_weeks').textContent = '—';
+  }
+
+  const unitId = document.getElementById('unit_id').value;
+
+  // Facilitators
+  try {
+    if (LIST_FACILITATORS_TEMPLATE) {
+      const resF = await fetch(withUnitId(LIST_FACILITATORS_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+      const dataF = await resF.json();
+      const ulF = document.getElementById('rv_facilitators');
+      ulF.innerHTML = '';
+      if (dataF.ok) {
+        dataF.facilitators.forEach(email => {
+          const li = document.createElement('li'); li.textContent = email; ulF.appendChild(li);
+        });
+        document.getElementById('rv_fac_count').textContent = dataF.facilitators.length;
+      }
+    } else {
+      // No facilitators route available yet
+      document.getElementById('rv_fac_count').textContent = 0;
+      document.getElementById('rv_facilitators').innerHTML = '<li>No facilitators data available</li>';
+    }
+  } catch (err) {
+    console.warn('Failed to load facilitators:', err);
+    document.getElementById('rv_fac_count').textContent = 0;
+    document.getElementById('rv_facilitators').innerHTML = '<li>Error loading facilitators</li>';
+  }
+
+  // Venues
+  try {
+    const resV = await fetch(withUnitId(LIST_VENUES_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+    const dataV = await resV.json();
+    const ulV = document.getElementById('rv_venues');
+    ulV.innerHTML = '';
+    if (dataV.ok) {
+      (dataV.venues || []).forEach(v => {
+        const li = document.createElement('li'); li.textContent = v.name || v; ulV.appendChild(li);
+      });
+      document.getElementById('rv_ven_count').textContent = (dataV.venues || []).length;
+    }
+  } catch {}
+
+  // Sessions: sweep weeks from start->end using your week API
+  async function fetchAllSessions(unitId, startISO, endISO) {
+    const uniq = new Map();
+    const start = new Date(startISO), end = new Date(endISO);
+    if (!(start && end)) return [];
+    // align to Monday for weekly stepping
+    const day = start.getDay(); // 0 Sun … 6 Sat
+    const monday = new Date(start);
+    monday.setDate(start.getDate() - ((day + 6) % 7));
+    for (let d = new Date(monday); d <= end; d.setDate(d.getDate()+7)) {
+      const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+      const weekStart = `${y}-${m}-${dd}`;
+      const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
+      try {
+        const r = await fetch(url, { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+        const j = await r.json();
+        if (j.ok && Array.isArray(j.sessions)) {
+          j.sessions.forEach(s => uniq.set(String(s.id), s));
+        }
+      } catch {}
+    }
+    return Array.from(uniq.values());
+  }
+
+  const toISO = (s) => {
+    const [d,m,y] = (s || '').split('/').map(Number);
+    return (y && m && d) ? `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
+  };
+
+  const sessions = (sd && ed)
+    ? await fetchAllSessions(unitId, toISO(start_date), toISO(end_date))
+    : (calendar ? calendar.getEvents().map(e => ({
+        id: e.id, start: e.start.toISOString(), end: e.end.toISOString(), extendedProps: e.extendedProps || {}
+      })) : []);
+
+  // Render sessions like the screenshot
+  const ulS = document.getElementById('rv_sessions');
+  ulS.innerHTML = '';
+  const dayName = (d) => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d];
+  const timeHM = (dt) => dt.toTimeString().slice(0,5);
+  sessions.sort((a,b)=> a.start.localeCompare(b.start)).forEach(s => {
+    const st = new Date(s.start), en = new Date(s.end);
+    const li = document.createElement('li');
+    li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
+    li.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block"></span>
+        <div>
+          <div class="font-medium">New Session</div>
+          <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • Starting ${st.toLocaleDateString()}</div>
+        </div>
+      </div>
+      <div class="text-sm text-gray-500">1 staff</div>
+    `;
+    ulS.appendChild(li);
+  });
+  document.getElementById('rv_sess_count').textContent = sessions.length;
+}
+
+// Hook into step changes
+const __origSetStep = setStep;
+setStep = function(n){
+  __origSetStep(n);
+  if (n === 4) { populateReview(); }
+};
+
+// Update the blue Session Overview card
+function updateSessionOverview() {
+  const nameInput = document.getElementById('inspName');
+  const venueSelect = document.getElementById('inspVenue');
+  
+  if (!nameInput || !venueSelect) return;
+  
+  // Get current values
+  const sessionName = nameInput.value.trim() || 'New Session';
+  let venueName = '';
+  
+  if (venueSelect.tagName === 'SELECT') {
+    const selectedOption = venueSelect.options[venueSelect.selectedIndex];
+    venueName = selectedOption ? selectedOption.textContent : '';
+  } else {
+    venueName = venueSelect.value.trim();
+  }
+  
+  // Update the calendar event title immediately
+  if (window.__editingEvent) {
+    let displayTitle = sessionName;
+    if (venueName && venueName !== 'Select a venue' && venueName !== '— Select a venue —') {
+      displayTitle = `${sessionName}\n${venueName}`;
+    }
+    window.__editingEvent.setProp('title', displayTitle);
+  }
 }
