@@ -692,20 +692,24 @@ async function openInspector(ev) {
   // keep a handle to the event being edited (for live preview)
   window.__editingEvent = ev;
 
-  // ---- safe times ----
+  // ---- safe times ---- FIX: Ensure we get the correct times
   const start = ev.start ? new Date(ev.start) : new Date();
   const end   = ev.end   ? new Date(ev.end)   : new Date(start.getTime() + 60 * 60 * 1000);
+
+  // IMPORTANT: Set the pending times BEFORE any UI updates
+  _pendingStart = new Date(start);
+  _pendingEnd = new Date(end);
 
   console.log('Event times:', {
     originalStart: ev.start,
     originalEnd: ev.end,
-    calculatedStart: start,
-    calculatedEnd: end,
-    duration: (end - start) / (1000 * 60) + ' minutes'
+    pendingStart: _pendingStart,
+    pendingEnd: _pendingEnd,
+    duration: (_pendingEnd - _pendingStart) / (1000 * 60) + ' minutes'
   });
 
   const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const mins = Math.max(0, Math.round((end - start) / 60000));
+  const mins = Math.max(0, Math.round((_pendingEnd - _pendingStart) / 60000));
 
   // Format date as DD/MM/YYYY
   const formatDateDDMMYYYY = (d) => {
@@ -714,10 +718,6 @@ async function openInspector(ev) {
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
   };
-
-  // IMPORTANT: Set the pending times BEFORE updating the overview
-  _pendingStart = new Date(start);
-  _pendingEnd = new Date(end);
 
   // Top bar subtitle + blue "Session Overview" card - USE PENDING TIMES
   document.getElementById('inspSub').textContent =
@@ -767,22 +767,22 @@ async function openInspector(ev) {
 
   // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
-  setTimesIntoPickers(start, end); // This will also call updateInspectorTimeOverview()
+  // DON'T call setTimesIntoPickers here as it might override our pending times
+  // Just set the time pickers to show the correct times
+  _startTP.setDate(_pendingStart, false); // false = don't trigger onChange
+  _endTP.setDate(_pendingEnd, false);     // false = don't trigger onChange
+
   ensureRecurrencePickers();
-  document.getElementById('recOccurs').onchange = () => updateRecurrencePreview(start, end);
-  document.getElementById('recCount').oninput   = () => updateRecurrencePreview(start, end);
-  document.getElementById('recUntil').oninput   = () => updateRecurrencePreview(start, end);
-  updateRecurrencePreview(start, end);
+  document.getElementById('recOccurs').onchange = () => updateRecurrencePreview(_pendingStart, _pendingEnd);
+  document.getElementById('recCount').oninput   = () => updateRecurrencePreview(_pendingStart, _pendingEnd);
+  document.getElementById('recUntil').oninput   = () => updateRecurrencePreview(_pendingStart, _pendingEnd);
+  updateRecurrencePreview(_pendingStart, _pendingEnd);
 
   document.querySelectorAll('#calInspector .insp-preset').forEach(btn => {
     btn.onclick = () => {
       const range = btn.getAttribute('data-range');
-      const [s, e] = applyPresetTo(start, range);
+      const [s, e] = applyPresetTo(_pendingStart, range);
       setTimesIntoPickers(s, e);
-      if (calendar && window.__editingEvent) {
-        window.__editingEvent.setStart(s);
-        window.__editingEvent.setEnd(e);
-      }
     };
   });
 
@@ -980,7 +980,7 @@ function setTimesIntoPickers(startDate, endDate) {
   _pendingEnd   = new Date(endDate);
   _startTP.setDate(_pendingStart, true);
   _endTP.setDate(_pendingEnd, true);
-  updateInspectorTimeOverview();
+  updateInspectorTimeOverview(); // This should update the Session Overview display
 }
 
 function onTimeChange() {
