@@ -513,6 +513,61 @@
 
           </div>
         </section>
+        <!-- STEP 4: Review -->
+        <section class="wizard-step hidden" data-step="4" aria-labelledby="review-title">
+          <h2 id="review-title">Review &amp; Create</h2>
+          <p class="subtext">Confirm details before creating your unit</p>
+
+          <div class="bg-white border border-gray-200 rounded-xl p-5 space-y-6">
+            <!-- Unit Details -->
+            <div>
+              <h3 class="text-base font-semibold mb-3">Unit Details</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <dl class="space-y-2">
+                  <div class="flex justify-between">
+                    <dt class="text-gray-500">Name:</dt><dd id="rv_name" class="font-medium">—</dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-gray-500">Code:</dt><dd id="rv_code" class="font-medium">—</dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-gray-500">Semester:</dt><dd id="rv_sem" class="font-medium">—</dd>
+                  </div>
+                </dl>
+                <dl class="space-y-2">
+                  <div class="flex justify-between">
+                    <dt class="text-gray-500">Start Date:</dt><dd id="rv_start" class="font-medium">—</dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-gray-500">End Date:</dt><dd id="rv_end" class="font-medium">—</dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-gray-500">Duration:</dt><dd id="rv_weeks" class="font-medium">—</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            <!-- Sessions -->
+            <div>
+              <h3 class="text-base font-semibold mb-3">Sessions (<span id="rv_sess_count">0</span>)</h3>
+              <ul id="rv_sessions" class="space-y-2"></ul>
+            </div>
+
+            <!-- Facilitators & Venues -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 class="text-base font-semibold mb-2">Facilitators (<span id="rv_fac_count">0</span>)</h3>
+                <ul id="rv_facilitators" class="list-disc pl-5 text-sm text-gray-800"></ul>
+              </div>
+              <div>
+                <h3 class="text-base font-semibold mb-2">Venues (<span id="rv_ven_count">0</span>)</h3>
+                <ul id="rv_venues" class="list-disc pl-5 text-sm text-gray-800"></ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </form>
       <div class="modal-footer">
         <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
@@ -535,7 +590,9 @@
     DELETE_SESS_TEMPLATE: "{{ url_for('unitcoordinator.delete_session', session_id=0) }}",
     LIST_VENUES_TEMPLATE: "{{ url_for('unitcoordinator.list_venues',   unit_id=0) }}",
     CREATE_OR_GET_DRAFT: "{{ url_for('unitcoordinator.create_or_get_draft') }}",
-    UPLOAD_SETUP_CSV: "{{ url_for('unitcoordinator.upload_setup_csv') }}"
+    UPLOAD_SETUP_CSV: "{{ url_for('unitcoordinator.upload_setup_csv') }}",
+    LIST_VENUES_TEMPLATE: "{{ url_for('unitcoordinator.list_venues',   unit_id=0) }}",
+    LIST_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.list_facilitators', unit_id=0) }}"
   };
   window.CSRF_TOKEN = "{{ csrf_token() }}";
 </script>

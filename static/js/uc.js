@@ -1260,3 +1260,124 @@ function closeInspector() {
   _pendingStart = null;
   _pendingEnd = null;
 }
+
+async function populateReview() {
+  const { unit_name, unit_code, semester, year, start_date, end_date } = readUnitBasics();
+
+  // Fill Unit Details
+  document.getElementById('rv_name').textContent = unit_name || '—';
+  document.getElementById('rv_code').textContent = unit_code || '—';
+  document.getElementById('rv_sem').textContent  = `${semester || ''} ${year || ''}`.trim();
+
+  document.getElementById('rv_start').textContent = start_date || '—';
+  document.getElementById('rv_end').textContent   = end_date || '—';
+
+  // Duration (weeks, rounded up)
+  const toDate = (s) => {
+    const [d,m,y] = (s || '').split('/').map(Number);
+    return (y && m && d) ? new Date(y, m-1, d) : null;
+  };
+  const sd = toDate(start_date), ed = toDate(end_date);
+  if (sd && ed) {
+    const days = Math.max(1, Math.round((ed - sd) / 86400000) + 1);
+    const weeks = Math.ceil(days / 7);
+    document.getElementById('rv_weeks').textContent = `${weeks} week${weeks>1?'s':''}`;
+  } else {
+    document.getElementById('rv_weeks').textContent = '—';
+  }
+
+  const unitId = document.getElementById('unit_id').value;
+
+  // Facilitators
+  try {
+    const resF = await fetch(withUnitId(LIST_FACILITATORS_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+    const dataF = await resF.json();
+    const ulF = document.getElementById('rv_facilitators');
+    ulF.innerHTML = '';
+    if (dataF.ok) {
+      dataF.facilitators.forEach(email => {
+        const li = document.createElement('li'); li.textContent = email; ulF.appendChild(li);
+      });
+      document.getElementById('rv_fac_count').textContent = dataF.facilitators.length;
+    }
+  } catch {}
+
+  // Venues
+  try {
+    const resV = await fetch(withUnitId(LIST_VENUES_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+    const dataV = await resV.json();
+    const ulV = document.getElementById('rv_venues');
+    ulV.innerHTML = '';
+    if (dataV.ok) {
+      (dataV.venues || []).forEach(v => {
+        const li = document.createElement('li'); li.textContent = v.name || v; ulV.appendChild(li);
+      });
+      document.getElementById('rv_ven_count').textContent = (dataV.venues || []).length;
+    }
+  } catch {}
+
+  // Sessions: sweep weeks from start->end using your week API
+  async function fetchAllSessions(unitId, startISO, endISO) {
+    const uniq = new Map();
+    const start = new Date(startISO), end = new Date(endISO);
+    if (!(start && end)) return [];
+    // align to Monday for weekly stepping
+    const day = start.getDay(); // 0 Sun … 6 Sat
+    const monday = new Date(start);
+    monday.setDate(start.getDate() - ((day + 6) % 7));
+    for (let d = new Date(monday); d <= end; d.setDate(d.getDate()+7)) {
+      const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+      const weekStart = `${y}-${m}-${dd}`;
+      const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
+      try {
+        const r = await fetch(url, { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+        const j = await r.json();
+        if (j.ok && Array.isArray(j.sessions)) {
+          j.sessions.forEach(s => uniq.set(String(s.id), s));
+        }
+      } catch {}
+    }
+    return Array.from(uniq.values());
+  }
+
+  const toISO = (s) => {
+    const [d,m,y] = (s || '').split('/').map(Number);
+    return (y && m && d) ? `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
+  };
+
+  const sessions = (sd && ed)
+    ? await fetchAllSessions(unitId, toISO(start_date), toISO(end_date))
+    : (calendar ? calendar.getEvents().map(e => ({
+        id: e.id, start: e.start.toISOString(), end: e.end.toISOString(), extendedProps: e.extendedProps || {}
+      })) : []);
+
+  // Render sessions like the screenshot
+  const ulS = document.getElementById('rv_sessions');
+  ulS.innerHTML = '';
+  const dayName = (d) => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d];
+  const timeHM = (dt) => dt.toTimeString().slice(0,5);
+  sessions.sort((a,b)=> a.start.localeCompare(b.start)).forEach(s => {
+    const st = new Date(s.start), en = new Date(s.end);
+    const li = document.createElement('li');
+    li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
+    li.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block"></span>
+        <div>
+          <div class="font-medium">New Session</div>
+          <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • Starting ${st.toLocaleDateString()}</div>
+        </div>
+      </div>
+      <div class="text-sm text-gray-500">1 staff</div>
+    `;
+    ulS.appendChild(li);
+  });
+  document.getElementById('rv_sess_count').textContent = sessions.length;
+}
+
+// Hook into step changes
+const __origSetStep = setStep;
+setStep = function(n){
+  __origSetStep(n);
+  if (n === 4) { populateReview(); }
+};
