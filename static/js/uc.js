@@ -25,14 +25,50 @@ function openCreateUnitModal() {
     document.getElementById('unit_id').value = '';
     document.getElementById('setup_complete').value = 'false';
     if (calendar) {
-    try { calendar.destroy(); } catch {}
-    calendar = null;
+        try { calendar.destroy(); } catch {}
+        calendar = null;
     }
     window.__calendarInitRan = false;
     const modal = document.getElementById("createUnitModal");
     modal.classList.remove("hidden");
     modal.classList.add("flex");
+    
+    // Wire the close button (X) to show warning
+    const closeBtn = modal.querySelector('.modal-close');
+    if (closeBtn) {
+        // Remove existing event listeners by replacing the element
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        
+        // Add the new event listener
+        newCloseBtn.onclick = handleCloseUnitModal;
+        console.log('Close button wired to handleCloseUnitModal');
+    }
+    
+    // Also handle ESC key
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        handleCloseUnitModal();
+      }
+    };
+    
+    // Remove existing ESC listeners and add new one
+    document.removeEventListener('keydown', handleEscKey);
+    document.addEventListener('keydown', handleEscKey);
 }
+
+// Also add this to handle clicking outside the modal
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById("createUnitModal");
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      // Check if the click was on the modal backdrop (not the modal content)
+      if (e.target === modal) {
+        handleCloseUnitModal();
+      }
+    });
+  }
+});
 
 // ===== Custom select (Semester) =====
 document.querySelectorAll('.select').forEach(initSelect);
@@ -847,7 +883,7 @@ function wireInspectorButtons(ev) {
   const inspector = document.getElementById('calInspector');
 
   // Save
-    document.getElementById('inspSave').onclick = async () => {
+  document.getElementById('inspSave').onclick = async () => {
     const sel  = document.getElementById('inspVenue');
     const name = document.getElementById('inspName')?.value?.trim() || '';
 
@@ -877,10 +913,15 @@ function wireInspectorButtons(ev) {
     payload.apply_to   = 'series';
 
     // venue
+    let selectedVenueName = '';
     if (sel && sel.tagName === 'SELECT' && sel.value) {
         payload.venue_id = Number(sel.value);
+        // Get the venue name from the selected option
+        const selectedOption = sel.options[sel.selectedIndex];
+        selectedVenueName = selectedOption ? selectedOption.textContent.trim() : '';
     } else {
         payload.venue = (sel?.value || '').trim();
+        selectedVenueName = payload.venue;
     }
 
     const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
@@ -893,54 +934,110 @@ function wireInspectorButtons(ev) {
     if (!data.ok) {
         alert(data.error || 'Failed to update');
     } else {
+        // Update the current event with the new data
+        if (window.__editingEvent) {
+          // Update the event properties
+          window.__editingEvent.setStart(pStart);
+          window.__editingEvent.setEnd(pEnd);
+          window.__editingEvent.setExtendedProp('session_name', name);
+          window.__editingEvent.setExtendedProp('venue', selectedVenueName);
+          window.__editingEvent.setExtendedProp('venue_id', payload.venue_id || null);
+          window.__editingEvent.setExtendedProp('lead_required', lead_required);
+          window.__editingEvent.setExtendedProp('support_required', support_required);
+          
+          // Update the title with proper formatting
+          let displayTitle = name;
+          if (selectedVenueName && 
+              selectedVenueName !== 'Select a venue' && 
+              selectedVenueName !== '— Select a venue —' && 
+              selectedVenueName !== '') {
+            displayTitle = `${name}\n${selectedVenueName}`;
+          }
+          window.__editingEvent.setProp('title', displayTitle);
+          
+          console.log('Updated event locally:', {
+            id: window.__editingEvent.id,
+            title: displayTitle,
+            venue: selectedVenueName
+          });
+        }
+        
         closeInspector();
-        calendar.refetchEvents();
     }
-    };
+  };
 
+  // Delete - FIXED APPROACH: Use a unique handler for each session
+  const deleteBtn = document.getElementById('inspDelete');
+  if (deleteBtn) {
+    // Remove ALL existing event listeners by cloning without them
+    const newDeleteBtn = deleteBtn.cloneNode(true);
+    deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+    
+    // Create a unique delete handler for this specific session
+    const deleteHandler = async () => {
+      console.log('Delete button clicked for session:', ev.id);
+      
+      if (!confirm('Delete this session?')) {
+        console.log('Delete cancelled by user');
+        return;
+      }
 
-  // Delete
-    document.getElementById('inspDelete').onclick = async () => {
-    if (!confirm('Delete this session?')) return;
+      newDeleteBtn.disabled = true;
+      console.log('Starting delete process for session:', ev.id);
 
-    const btn = document.getElementById('inspDelete');
-    btn.disabled = true;
-
-    try {
+      try {
         const res = await fetch(withSessionId(DELETE_SESS_TEMPLATE, ev.id), {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': CSRF_TOKEN }
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': CSRF_TOKEN }
         });
+        
+        console.log('Delete response status:', res.status);
+        
         const data = await res.json();
+        console.log('Delete response data:', data);
 
         if (!data.ok) {
-        alert(data.error || 'Failed to delete');
-        btn.disabled = false;
-        return;
+          console.error('Delete failed on server:', data.error);
+          alert(data.error || 'Failed to delete');
+          newDeleteBtn.disabled = false;
+          return;
         }
 
-        // 1) immediate UI removal
-        const eventId = String(ev.id);
-        const inst =
-        (window.__editingEvent && String(window.__editingEvent.id) === eventId)
-            ? window.__editingEvent
-            : calendar.getEventById(eventId);
-        if (inst) inst.remove();
+        console.log('Session deleted successfully on server');
 
-        // clear the editing handle so later updates don't touch a deleted event
+        // Remove the event from the calendar immediately
+        const eventId = String(ev.id);
+        const eventToDelete = calendar.getEventById(eventId);
+        if (eventToDelete) {
+          eventToDelete.remove();
+          console.log('Event removed from calendar:', eventId);
+        } else {
+          console.warn('Could not find event in calendar to remove:', eventId);
+        }
+
+        // Clear the editing handle
         window.__editingEvent = null;
 
-        // 2) close the inspector
+        // Close the inspector
         closeInspector();
 
-        // 3) final sync with server (safe even if already removed)
-        calendar.refetchEvents();
-    } catch (err) {
+        console.log('Delete operation completed successfully for:', eventId);
+
+      } catch (err) {
+        console.error('Delete error:', err);
         alert(String(err?.message || err || 'Failed to delete'));
-        btn.disabled = false;
-    }
+        newDeleteBtn.disabled = false;
+      }
     };
 
+    // Attach the handler
+    newDeleteBtn.onclick = deleteHandler;
+    
+    // Also add via addEventListener as backup
+    newDeleteBtn.addEventListener('click', (e) => {
+      console.log('Delete button addEventListener triggered for:', ev.id);
+    });
+  }
 
   // Cancel
   document.getElementById('inspCancel').onclick = closeInspector;
@@ -1083,16 +1180,216 @@ function getPendingTimes() {
 }
 
 function closeCreateUnitModal() {
-  // reset all modal state
+  console.log('Closing modal and resetting all data');
+  
+  // Reset all modal state
   resetCreateUnitWizard();
 
-  // then hide
+  // Clear any server-side draft data by clearing the unit ID
+  const unitIdEl = document.getElementById('unit_id');
+  if (unitIdEl) {
+    const oldUnitId = unitIdEl.value;
+    unitIdEl.value = '';
+    console.log('Cleared unit ID:', oldUnitId);
+  }
+
+  // Clear setup completion flag
+  const setupFlagEl = document.getElementById('setup_complete');
+  if (setupFlagEl) {
+    setupFlagEl.value = 'false';
+  }
+
+  // Destroy calendar completely
+  if (calendar) {
+    try { 
+      calendar.destroy(); 
+      console.log('Calendar destroyed');
+    } catch (e) {
+      console.warn('Error destroying calendar:', e);
+    }
+    calendar = null;
+  }
+  window.__calendarInitRan = false;
+
+  // Clear venue cache
+  window.__venueCache = {};
+
+  // Clear any editing state
+  window.__editingEvent = null;
+  _pendingStart = null;
+  _pendingEnd = null;
+
+  // Clear time pickers
+  if (_startTP) {
+    try { _startTP.destroy(); } catch (e) {}
+    _startTP = null;
+  }
+  if (_endTP) {
+    try { _endTP.destroy(); } catch (e) {}
+    _endTP = null;
+  }
+  if (_recUntilPicker) {
+    try { _recUntilPicker.destroy(); } catch (e) {}
+    _recUntilPicker = null;
+  }
+
+  // Hide the modal
   const modal = document.getElementById("createUnitModal");
-  if (!modal) return;
-  modal.classList.add("hidden");
-  modal.classList.remove("flex");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+    console.log('Modal hidden');
+  }
+  
+  console.log('Modal completely closed and reset');
 }
 
+// Update the existing closeCreateUnitModal function to be more thorough
+function closeCreateUnitModal() {
+  console.log('Closing modal and resetting all data');
+  
+  // Reset all modal state
+  resetCreateUnitWizard();
+
+  // Clear any server-side draft data by clearing the unit ID
+  const unitIdEl = document.getElementById('unit_id');
+  if (unitIdEl) {
+    const oldUnitId = unitIdEl.value;
+    unitIdEl.value = '';
+    console.log('Cleared unit ID:', oldUnitId);
+  }
+
+  // Clear setup completion flag
+  const setupFlagEl = document.getElementById('setup_complete');
+  if (setupFlagEl) {
+    setupFlagEl.value = 'false';
+  }
+
+  // Destroy calendar completely
+  if (calendar) {
+    try { 
+      calendar.destroy(); 
+      console.log('Calendar destroyed');
+    } catch (e) {
+      console.warn('Error destroying calendar:', e);
+    }
+    calendar = null;
+  }
+  window.__calendarInitRan = false;
+
+  // Clear venue cache
+  window.__venueCache = {};
+
+  // Clear any editing state
+  window.__editingEvent = null;
+  _pendingStart = null;
+  _pendingEnd = null;
+
+  // Clear time pickers
+  if (_startTP) {
+    try { _startTP.destroy(); } catch (e) {}
+    _startTP = null;
+  }
+  if (_endTP) {
+    try { _endTP.destroy(); } catch (e) {}
+    _endTP = null;
+  }
+  if (_recUntilPicker) {
+    try { _recUntilPicker.destroy(); } catch (e) {}
+    _recUntilPicker = null;
+  }
+
+  // Hide the modal
+  const modal = document.getElementById("createUnitModal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+    console.log('Modal hidden');
+  }
+  
+  console.log('Modal completely closed and reset');
+}
+
+// Add this function to handle the close button with warning
+// Replace the handleCloseUnitModal function in your uc.js file
+function handleCloseUnitModal() {
+  // Check if user has entered any data
+  const form = document.getElementById('create-unit-form');
+  const unitName = form?.querySelector('[name="unit_name"]')?.value?.trim() || '';
+  const unitCode = form?.querySelector('[name="unit_code"]')?.value?.trim() || '';
+  const year = form?.querySelector('[name="year"]')?.value?.trim() || '';
+  const startDate = form?.querySelector('[name="start_date"]')?.value?.trim() || '';
+  const endDate = form?.querySelector('[name="end_date"]')?.value?.trim() || '';
+  const setupComplete = document.getElementById('setup_complete')?.value === 'true';
+  
+  // Check if there are any sessions in the calendar
+  const hasCalendarSessions = calendar && calendar.getEvents && calendar.getEvents().length > 0;
+  
+  // Check if any significant data has been entered
+  const hasData = unitName || unitCode || year || startDate || endDate || setupComplete || hasCalendarSessions;
+  
+  if (hasData) {
+    showCloseConfirmationPopup();
+  } else {
+    // No data to lose, close immediately
+    closeCreateUnitModal();
+  }
+}
+
+// Add this new function to show the popup
+function showCloseConfirmationPopup() {
+  // Create popup HTML
+  const popup = document.createElement('div');
+  popup.className = 'simple-popup';
+  popup.innerHTML = `
+    <div class="popup-content">
+      <div class="popup-title">Unsaved Changes</div>
+      <div class="popup-message">
+        Are you sure you want to close? All unsaved changes will be lost.
+      </div>
+      <div class="popup-buttons">
+        <button class="popup-btn popup-btn-cancel" onclick="closeConfirmationPopup()">
+          Cancel
+        </button>
+        <button class="popup-btn popup-btn-confirm" onclick="confirmCloseModal()">
+          Close & Lose Changes
+        </button>
+      </div>
+    </div>
+  `;
+  
+  // Add to body
+  document.body.appendChild(popup);
+  
+  // Close on backdrop click
+  popup.addEventListener('click', (e) => {
+    if (e.target === popup) {
+      closeConfirmationPopup();
+    }
+  });
+  
+  // Close on ESC key
+  const handleEscKey = (e) => {
+    if (e.key === 'Escape') {
+      closeConfirmationPopup();
+      document.removeEventListener('keydown', handleEscKey);
+    }
+  };
+  document.addEventListener('keydown', handleEscKey);
+}
+
+// Add these helper functions
+function closeConfirmationPopup() {
+  const popup = document.querySelector('.simple-popup');
+  if (popup) {
+    popup.remove();
+  }
+}
+
+function confirmCloseModal() {
+  closeConfirmationPopup();
+  closeCreateUnitModal();
+}
 
 // ===== Staffing: defaults + helpers =========================================
 const DEFAULT_LEAD_REQUIRED = 1;
@@ -1364,59 +1661,84 @@ async function populateReview() {
     }
   } catch {}
 
-  // Sessions: sweep weeks from start->end using your week API
-  async function fetchAllSessions(unitId, startISO, endISO) {
-    const uniq = new Map();
-    const start = new Date(startISO), end = new Date(endISO);
-    if (!(start && end)) return [];
-    // align to Monday for weekly stepping
-    const day = start.getDay(); // 0 Sun … 6 Sat
-    const monday = new Date(start);
-    monday.setDate(start.getDate() - ((day + 6) % 7));
-    for (let d = new Date(monday); d <= end; d.setDate(d.getDate()+7)) {
-      const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
-      const weekStart = `${y}-${m}-${dd}`;
-      const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
-      try {
-        const r = await fetch(url, { headers: { 'X-CSRFToken': CSRF_TOKEN }});
-        const j = await r.json();
-        if (j.ok && Array.isArray(j.sessions)) {
-          j.sessions.forEach(s => uniq.set(String(s.id), s));
-        }
-      } catch {}
+  // Sessions: PRIORITIZE CALENDAR FIRST, then try API as fallback
+  let sessions = [];
+
+  if (calendar && calendar.getEvents) {
+    // Get sessions from the current calendar instance (they exist in memory)
+    const calendarEvents = calendar.getEvents();
+    console.log('Getting sessions from calendar:', calendarEvents.length, 'events found');
+    
+    sessions = calendarEvents.map(e => ({
+      id: e.id, 
+      start: e.start.toISOString(), 
+      end: e.end.toISOString(), 
+      title: e.title,
+      extendedProps: e.extendedProps || {}
+    }));
+  } else if (sd && ed && unitId) {
+    // Fallback to API if calendar not available
+    console.log('Calendar not available, trying API fetch');
+    
+    async function fetchAllSessions(unitId, startISO, endISO) {
+      const uniq = new Map();
+      const start = new Date(startISO), end = new Date(endISO);
+      if (!(start && end)) return [];
+      // align to Monday for weekly stepping
+      const day = start.getDay(); // 0 Sun … 6 Sat
+      const monday = new Date(start);
+      monday.setDate(start.getDate() - ((day + 6) % 7));
+      for (let d = new Date(monday); d <= end; d.setDate(d.getDate()+7)) {
+        const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+        const weekStart = `${y}-${m}-${dd}`;
+        const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
+        try {
+          const r = await fetch(url, { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+          const j = await r.json();
+          if (j.ok && Array.isArray(j.sessions)) {
+            j.sessions.forEach(s => uniq.set(String(s.id), s));
+          }
+        } catch {}
+      }
+      return Array.from(uniq.values());
     }
-    return Array.from(uniq.values());
+
+    const toISO = (s) => {
+      const [d,m,y] = (s || '').split('/').map(Number);
+      return (y && m && d) ? `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
+    };
+
+    sessions = await fetchAllSessions(unitId, toISO(start_date), toISO(end_date));
+  } else {
+    console.log('No calendar and no valid date range, sessions will be empty');
+    sessions = [];
   }
 
-  const toISO = (s) => {
-    const [d,m,y] = (s || '').split('/').map(Number);
-    return (y && m && d) ? `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
-  };
-
-  const sessions = (sd && ed)
-    ? await fetchAllSessions(unitId, toISO(start_date), toISO(end_date))
-    : (calendar ? calendar.getEvents().map(e => ({
-        id: e.id, start: e.start.toISOString(), end: e.end.toISOString(), extendedProps: e.extendedProps || {}
-      })) : []);
+  console.log('Final sessions count for review:', sessions.length);
 
   // Render sessions like the screenshot
   const ulS = document.getElementById('rv_sessions');
   ulS.innerHTML = '';
   const dayName = (d) => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d];
   const timeHM = (dt) => dt.toTimeString().slice(0,5);
+  
   sessions.sort((a,b)=> a.start.localeCompare(b.start)).forEach(s => {
     const st = new Date(s.start), en = new Date(s.end);
+    const sessionName = s.extendedProps?.session_name || s.title?.split('\n')[0] || 'New Session';
+    const venueName = s.extendedProps?.venue || (s.title?.includes('\n') ? s.title.split('\n')[1] : '');
+    const staffCount = (s.extendedProps?.lead_required || 1) + (s.extendedProps?.support_required || 0);
+    
     const li = document.createElement('li');
     li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
     li.innerHTML = `
       <div class="flex items-center gap-3">
         <span class="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block"></span>
         <div>
-          <div class="font-medium">New Session</div>
-          <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • Starting ${st.toLocaleDateString()}</div>
+          <div class="font-medium">${sessionName}</div>
+          <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • Starting ${st.toLocaleDateString()}${venueName ? ' • ' + venueName : ''}</div>
         </div>
       </div>
-      <div class="text-sm text-gray-500">1 staff</div>
+      <div class="text-sm text-gray-500">${staffCount} staff</div>
     `;
     ulS.appendChild(li);
   });
