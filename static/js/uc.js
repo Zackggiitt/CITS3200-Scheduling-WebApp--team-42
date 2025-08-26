@@ -725,6 +725,11 @@ async function openInspector(ev) {
   nameInput.placeholder = 'New Session';
   nameInput.value = name;
 
+  // Real-time update of session overview
+  nameInput.addEventListener('input', function() {
+    updateSessionOverview();
+  });
+
   // ---- venue select (fault-tolerant) ----
   try {
     const sel = upgradeVenueInputToSelect();
@@ -736,9 +741,15 @@ async function openInspector(ev) {
                       || ev.title
                       || '';
     populateVenueSelect(sel, venues, selectedId, selectedName);
+  
+    sel.addEventListener('change', function() {
+      updateSessionOverview();
+    });
   } catch (err) {
     console.warn('Venue population failed (non-blocking):', err);
   }
+
+  
 
   // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
@@ -774,7 +785,6 @@ async function openInspector(ev) {
   document.getElementById('inspCloseBtn').onclick = closeInspector;
   document.getElementById('inspNextBtn').onclick  = () => {};
 }
-
 
 
 function wireInspectorButtons(ev) {
@@ -1347,3 +1357,31 @@ setStep = function(n){
   __origSetStep(n);
   if (n === 4) { populateReview(); }
 };
+
+// Update the blue Session Overview card
+function updateSessionOverview() {
+  const nameInput = document.getElementById('inspName');
+  const venueSelect = document.getElementById('inspVenue');
+  
+  if (!nameInput || !venueSelect) return;
+  
+  // Get current values
+  const sessionName = nameInput.value.trim() || 'New Session';
+  let venueName = '';
+  
+  if (venueSelect.tagName === 'SELECT') {
+    const selectedOption = venueSelect.options[venueSelect.selectedIndex];
+    venueName = selectedOption ? selectedOption.textContent : '';
+  } else {
+    venueName = venueSelect.value.trim();
+  }
+  
+  // Update the calendar event title immediately
+  if (window.__editingEvent) {
+    let displayTitle = sessionName;
+    if (venueName && venueName !== 'Select a venue' && venueName !== '— Select a venue —') {
+      displayTitle = `${sessionName}\n${venueName}`;
+    }
+    window.__editingEvent.setProp('title', displayTitle);
+  }
+}
