@@ -512,58 +512,6 @@ function initCalendar() {
       }
     },
 
-    dateClick: async (info) => {
-    const d = new Date(info.dateStr);
-    if (isOutOfRange(d)) return;
-
-    const start = fmtLocalYYYYMMDDHHMM(info.date);
-    const end   = fmtLocalYYYYMMDDHHMM(new Date(info.date.getTime() + 60 * 60 * 1000));
-    const uid = getUnitId();
-
-    try {
-        const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, uid), {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': CSRF_TOKEN
-        },
-        body: JSON.stringify({
-        start,
-        end,
-        venue: '',
-        session_name: '',
-        // staffing defaults
-        lead_required: DEFAULT_LEAD_REQUIRED,
-        support_required: DEFAULT_SUPPORT_REQUIRED,
-        // recurrence default
-        recurrence: { occurs: 'none' }
-        })
-        });
-
-
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create session');
-
-        await calendar.refetchEvents();
-
-        // Try to find the newly created event and open the inspector
-        let ev = null;
-        if (data.session_id) {
-        ev = calendar.getEventById(String(data.session_id));
-        }
-        if (!ev) {
-        ev = calendar.getEvents().find(e =>
-            e.start && e.start.getTime() === new Date(start).getTime()
-        );
-        }
-        if (ev) openInspector(ev);
-    } catch (err) {
-        console.error(err);
-        alert(String(err.message || 'Could not create session.'));
-    }
-    },
-
-
     eventClick: (info) => { openInspector(info.event); }
   });
 
