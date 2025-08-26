@@ -6,6 +6,7 @@ const {
   UPDATE_SESS_TEMPLATE,
   DELETE_SESS_TEMPLATE,
   LIST_VENUES_TEMPLATE,
+  LIST_FACILITATORS_TEMPLATE,
   CREATE_OR_GET_DRAFT,
   UPLOAD_SETUP_CSV
 } = window.FLASK_ROUTES || {};
@@ -1266,17 +1267,27 @@ async function populateReview() {
 
   // Facilitators
   try {
-    const resF = await fetch(withUnitId(LIST_FACILITATORS_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
-    const dataF = await resF.json();
-    const ulF = document.getElementById('rv_facilitators');
-    ulF.innerHTML = '';
-    if (dataF.ok) {
-      dataF.facilitators.forEach(email => {
-        const li = document.createElement('li'); li.textContent = email; ulF.appendChild(li);
-      });
-      document.getElementById('rv_fac_count').textContent = dataF.facilitators.length;
+    if (LIST_FACILITATORS_TEMPLATE) {
+      const resF = await fetch(withUnitId(LIST_FACILITATORS_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+      const dataF = await resF.json();
+      const ulF = document.getElementById('rv_facilitators');
+      ulF.innerHTML = '';
+      if (dataF.ok) {
+        dataF.facilitators.forEach(email => {
+          const li = document.createElement('li'); li.textContent = email; ulF.appendChild(li);
+        });
+        document.getElementById('rv_fac_count').textContent = dataF.facilitators.length;
+      }
+    } else {
+      // No facilitators route available yet
+      document.getElementById('rv_fac_count').textContent = 0;
+      document.getElementById('rv_facilitators').innerHTML = '<li>No facilitators data available</li>';
     }
-  } catch {}
+  } catch (err) {
+    console.warn('Failed to load facilitators:', err);
+    document.getElementById('rv_fac_count').textContent = 0;
+    document.getElementById('rv_facilitators').innerHTML = '<li>Error loading facilitators</li>';
+  }
 
   // Venues
   try {
