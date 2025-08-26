@@ -736,7 +736,7 @@ async function openInspector(ev) {
   const inspector = document.getElementById('calInspector');
   if (!ev || !inspector) return;
 
-  // Make panel visible immediately so errors don’t hide it
+  // Make panel visible immediately so errors don't hide it
   inspector.classList.remove('hidden');
   requestAnimationFrame(() => inspector.classList.add('open'));
 
@@ -750,6 +750,14 @@ async function openInspector(ev) {
   const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const mins = Math.max(0, Math.round((end - start) / 60000));
 
+  // Format date as DD/MM/YYYY
+  const formatDateDDMMYYYY = (d) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   // Top bar subtitle + blue "Session Overview" card
   document.getElementById('inspSub').textContent =
     `${start.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(start)}–${fmt(end)}`;
@@ -757,7 +765,7 @@ async function openInspector(ev) {
     start.toLocaleDateString('en-US', { weekday: 'long' });
   document.getElementById('inspTime').textContent = `${fmt(start)}–${fmt(end)}`;
   document.getElementById('inspDur').textContent  = `${mins} minutes`;
-  document.getElementById('inspDate').textContent = start.toLocaleDateString();
+  document.getElementById('inspDate').textContent = formatDateDDMMYYYY(start);
   document.getElementById('inspDelete').classList.remove('hidden');
 
   // ---- name field (supports multiple backends) ----
@@ -1023,8 +1031,18 @@ function updateInspectorTimeOverview() {
   if (!_pendingStart || !_pendingEnd) return;
   const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const mins = Math.max(0, Math.round((_pendingEnd - _pendingStart)/60000));
+  
+  // Format date as DD/MM/YYYY
+  const formatDateDDMMYYYY = (d) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+  
   document.getElementById('inspTime').textContent = `${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
   document.getElementById('inspDur').textContent  = `${mins} minutes`;
+  document.getElementById('inspDate').textContent = formatDateDDMMYYYY(_pendingStart);
   document.getElementById('inspSub').textContent  =
     `${_pendingStart.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
 }
