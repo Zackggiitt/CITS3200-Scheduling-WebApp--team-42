@@ -454,14 +454,16 @@ function initCalendar() {
       const start = fmtLocalYYYYMMDDHHMM(selectionInfo.start);
       const end   = fmtLocalYYYYMMDDHHMM(selectionInfo.end);
 
-        try {
+      console.log('Creating new session:', { start, end });
+
+      try {
         const res = await fetch(withUnitId(CREATE_SESS_TEMPLATE, uid), {
-            method: 'POST',
-            headers: { 
+          method: 'POST',
+          headers: { 
             'Content-Type': 'application/json',
             'X-CSRFToken': CSRF_TOKEN 
-            },
-            body: JSON.stringify({
+          },
+          body: JSON.stringify({
             start,
             end,
             venue: '',
@@ -471,22 +473,37 @@ function initCalendar() {
             support_required: DEFAULT_SUPPORT_REQUIRED,
             // recurrence default
             recurrence: { occurs: 'none' }
-            })
+          })
         });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create session');
 
-        await calendar.refetchEvents();
+        console.log('Session created successfully:', data);
+        
+        const newEvent = {
+          id: String(data.session_id),
+          title: 'New Session',
+          start: selectionInfo.start,
+          end: selectionInfo.end,
+          extendedProps: {
+            session_name: '',
+            venue: '',
+            venue_id: null,
+            lead_required: DEFAULT_LEAD_REQUIRED,
+            support_required: DEFAULT_SUPPORT_REQUIRED
+          }
+        };
 
-        let ev = null;
-        if (data.session_id) ev = calendar.getEventById(String(data.session_id));
-        if (!ev) {
-          ev = calendar.getEvents().find(e =>
-            e.start && e.start.getTime() === selectionInfo.start.getTime() &&
-            e.end && e.end.getTime() === selectionInfo.end.getTime()
-          );
+        calendar.addEvent(newEvent);
+        const ev = calendar.getEventById(String(data.session_id));
+        
+        
+        if (ev) {
+          console.log('Opening inspector for event:', ev.id, 'with title:', ev.title);
+          openInspector(ev);
+        } else {
+          console.warn('Could not find the newly created event');
         }
-        if (ev) openInspector(ev);
       } catch (err) {
         console.error(err);
         alert(String(err.message || 'Could not create session.'));
@@ -696,8 +713,19 @@ async function openInspector(ev) {
   const start = ev.start ? new Date(ev.start) : new Date();
   const end   = ev.end   ? new Date(ev.end)   : new Date(start.getTime() + 60 * 60 * 1000);
 
+  // IMPORTANT: Set the pending times BEFORE any UI updates
+  _pendingStart = new Date(start);
+  _pendingEnd = new Date(end);
+
+  console.log('Opening inspector for event:', ev.id, {
+    title: ev.title,
+    sessionName: ev.extendedProps?.session_name,
+    venue: ev.extendedProps?.venue,
+    venueId: ev.extendedProps?.venue_id
+  });
+
   const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const mins = Math.max(0, Math.round((end - start) / 60000));
+  const mins = Math.max(0, Math.round((_pendingEnd - _pendingStart) / 60000));
 
   // Format date as DD/MM/YYYY
   const formatDateDDMMYYYY = (d) => {
@@ -707,29 +735,39 @@ async function openInspector(ev) {
     return `${day}/${month}/${year}`;
   };
 
-  // Top bar subtitle + blue "Session Overview" card
+  // Top bar subtitle + blue "Session Overview" card - USE PENDING TIMES
   document.getElementById('inspSub').textContent =
-    `${start.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(start)}–${fmt(end)}`;
+    `${_pendingStart.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
   document.getElementById('inspDay').textContent  =
-    start.toLocaleDateString('en-US', { weekday: 'long' });
-  document.getElementById('inspTime').textContent = `${fmt(start)}–${fmt(end)}`;
+    _pendingStart.toLocaleDateString('en-US', { weekday: 'long' });
+  document.getElementById('inspTime').textContent = `${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
   document.getElementById('inspDur').textContent  = `${mins} minutes`;
-  document.getElementById('inspDate').textContent = formatDateDDMMYYYY(start);
+  document.getElementById('inspDate').textContent = formatDateDDMMYYYY(_pendingStart);
   document.getElementById('inspDelete').classList.remove('hidden');
 
-  // ---- name field (supports multiple backends) ----
-  const name = ev.extendedProps?.session_name
-            || ev.extendedProps?.module_name
-            || ev.title
-            || '';
+  // ---- name field - FIX: Extract ONLY the session name, not venue ----
+  let sessionName = ev.extendedProps?.session_name || ev.extendedProps?.module_name || '';
+  
+  // If no session name in extendedProps, try to extract from title (but remove venue)
+  if (!sessionName && ev.title) {
+    // If title contains newline, take only the first part (session name)
+    sessionName = ev.title.split('\n')[0].trim();
+  }
+  
+  // Default to 'New Session' if still empty
+  if (!sessionName) {
+    sessionName = 'New Session';
+  }
+  
+  console.log('Extracted session name:', sessionName, 'from event:', ev.id);
+  
   const nameInput = document.getElementById('inspName');
   nameInput.placeholder = 'New Session';
-  nameInput.value = name;
+  nameInput.value = sessionName; // Use the extracted session name only
 
-  // Real-time update of session overview
-  nameInput.addEventListener('input', function() {
-    updateSessionOverview();
-  });
+  // Remove existing event listeners and add new ones
+  nameInput.removeEventListener('input', updateSessionOverview);
+  nameInput.addEventListener('input', updateSessionOverview);
 
   // ---- venue select (fault-tolerant) ----
   try {
@@ -739,37 +777,54 @@ async function openInspector(ev) {
     const selectedId   = ev.extendedProps?.venue_id || null;
     const selectedName = ev.extendedProps?.venue
                       || ev.extendedProps?.location
-                      || ev.title
                       || '';
+    
+    // If no venue in extendedProps but title has venue, try to extract it
+    if (!selectedName && ev.title && ev.title.includes('\n')) {
+      const titleParts = ev.title.split('\n');
+      if (titleParts.length > 1) {
+        const potentialVenue = titleParts[1].trim();
+        // Check if this venue exists in our venues list
+        const venueMatch = venues.find(v => v.name === potentialVenue);
+        if (venueMatch) {
+          console.log('Extracted venue from title:', potentialVenue);
+          // Don't set selectedName here, let populateVenueSelect handle it
+        }
+      }
+    }
+    
+    console.log('Setting up venue:', { selectedId, selectedName, venues: venues.length });
+    
     populateVenueSelect(sel, venues, selectedId, selectedName);
   
-    sel.addEventListener('change', function() {
-      updateSessionOverview();
-    });
+    // Remove existing event listeners and add new ones
+    sel.removeEventListener('change', updateSessionOverview);
+    sel.addEventListener('change', updateSessionOverview);
+
+    // DON'T call updateSessionOverview automatically AT ALL
+    // It will only be called when user changes name or venue
+    console.log('NOT calling updateSessionOverview - preserving all existing session data');
+    
   } catch (err) {
     console.warn('Venue population failed (non-blocking):', err);
   }
 
-  
-
   // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
-  setTimesIntoPickers(start, end);
-    ensureRecurrencePickers();
-    document.getElementById('recOccurs').onchange = () => updateRecurrencePreview(start, end);
-    document.getElementById('recCount').oninput   = () => updateRecurrencePreview(start, end);
-    document.getElementById('recUntil').oninput   = () => updateRecurrencePreview(start, end);
-    updateRecurrencePreview(start, end);
+  _startTP.setDate(_pendingStart, false); // false = don't trigger onChange
+  _endTP.setDate(_pendingEnd, false);     // false = don't trigger onChange
+
+  ensureRecurrencePickers();
+  document.getElementById('recOccurs').onchange = () => updateRecurrencePreview(_pendingStart, _pendingEnd);
+  document.getElementById('recCount').oninput   = () => updateRecurrencePreview(_pendingStart, _pendingEnd);
+  document.getElementById('recUntil').oninput   = () => updateRecurrencePreview(_pendingStart, _pendingEnd);
+  updateRecurrencePreview(_pendingStart, _pendingEnd);
 
   document.querySelectorAll('#calInspector .insp-preset').forEach(btn => {
     btn.onclick = () => {
       const range = btn.getAttribute('data-range');
-      const [s, e] = applyPresetTo(start, range);
+      const [s, e] = applyPresetTo(_pendingStart, range);
       setTimesIntoPickers(s, e);
-      if (calendar && window.__editingEvent) {
-        window.__editingEvent.setStart(s);
-        window.__editingEvent.setEnd(e);
-      }
     };
   });
 
@@ -967,7 +1022,7 @@ function setTimesIntoPickers(startDate, endDate) {
   _pendingEnd   = new Date(endDate);
   _startTP.setDate(_pendingStart, true);
   _endTP.setDate(_pendingEnd, true);
-  updateInspectorTimeOverview();
+  updateInspectorTimeOverview(); // This should update the Session Overview display
 }
 
 function onTimeChange() {
@@ -980,14 +1035,18 @@ function onTimeChange() {
     if (t) { _pendingEnd.setHours(t.getHours(), t.getMinutes(), 0, 0); }
   }
   updateInspectorTimeOverview();
-  if (calendar && window.__editingEvent) {
-    window.__editingEvent.setStart(_pendingStart);
-    window.__editingEvent.setEnd(_pendingEnd);
-  }
 }
 
 function updateInspectorTimeOverview() {
   if (!_pendingStart || !_pendingEnd) return;
+  
+  // ADD DEBUGGING
+  console.log('Updating time overview:', {
+    pendingStart: _pendingStart,
+    pendingEnd: _pendingEnd,
+    duration: (_pendingEnd - _pendingStart) / (1000 * 60) + ' minutes'
+  });
+  
   const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const mins = Math.max(0, Math.round((_pendingEnd - _pendingStart)/60000));
   
@@ -1226,11 +1285,13 @@ function closeInspector() {
   const inspector = document.getElementById('calInspector');
   if (!inspector) return;
 
+  console.log('Closing inspector for event:', window.__editingEvent?.id);
+
   // hide panel
   inspector.classList.remove('open');
   inspector.classList.add('hidden');
 
-  // clear any temporary edit state so later UI updates don't touch a deleted/old event
+  // IMPORTANT: Clear the editing event reference
   window.__editingEvent = null;
 
   // clear pending time edits (safe if null)
@@ -1374,7 +1435,10 @@ function updateSessionOverview() {
   const nameInput = document.getElementById('inspName');
   const venueSelect = document.getElementById('inspVenue');
   
-  if (!nameInput || !venueSelect) return;
+  if (!nameInput || !venueSelect || !window.__editingEvent) {
+    console.warn('updateSessionOverview: missing elements or no editing event');
+    return;
+  }
   
   // Get current values
   const sessionName = nameInput.value.trim() || 'New Session';
@@ -1382,17 +1446,31 @@ function updateSessionOverview() {
   
   if (venueSelect.tagName === 'SELECT') {
     const selectedOption = venueSelect.options[venueSelect.selectedIndex];
-    venueName = selectedOption ? selectedOption.textContent : '';
+    venueName = selectedOption ? selectedOption.textContent.trim() : '';
   } else {
     venueName = venueSelect.value.trim();
   }
   
-  // Update the calendar event title immediately
+  console.log('updateSessionOverview called for event:', window.__editingEvent.id, {
+    sessionName,
+    venueName,
+    currentTitle: window.__editingEvent.title
+  });
+  
+  // ONLY update if this is the currently edited event
   if (window.__editingEvent) {
     let displayTitle = sessionName;
-    if (venueName && venueName !== 'Select a venue' && venueName !== '— Select a venue —') {
+    if (venueName && 
+        venueName !== 'Select a venue' && 
+        venueName !== '— Select a venue —' && 
+        venueName !== '' &&
+        venueName !== 'Select a venue') {
       displayTitle = `${sessionName}\n${venueName}`;
     }
+    
+    console.log('Setting title for event', window.__editingEvent.id, 'from:', window.__editingEvent.title, 'to:', displayTitle);
+    
+    // Update ONLY the specific event being edited
     window.__editingEvent.setProp('title', displayTitle);
   }
 }
