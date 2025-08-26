@@ -696,6 +696,14 @@ async function openInspector(ev) {
   const start = ev.start ? new Date(ev.start) : new Date();
   const end   = ev.end   ? new Date(ev.end)   : new Date(start.getTime() + 60 * 60 * 1000);
 
+  console.log('Event times:', {
+    originalStart: ev.start,
+    originalEnd: ev.end,
+    calculatedStart: start,
+    calculatedEnd: end,
+    duration: (end - start) / (1000 * 60) + ' minutes'
+  });
+
   const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const mins = Math.max(0, Math.round((end - start) / 60000));
 
@@ -707,14 +715,18 @@ async function openInspector(ev) {
     return `${day}/${month}/${year}`;
   };
 
-  // Top bar subtitle + blue "Session Overview" card
+  // IMPORTANT: Set the pending times BEFORE updating the overview
+  _pendingStart = new Date(start);
+  _pendingEnd = new Date(end);
+
+  // Top bar subtitle + blue "Session Overview" card - USE PENDING TIMES
   document.getElementById('inspSub').textContent =
-    `${start.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(start)}–${fmt(end)}`;
+    `${_pendingStart.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
   document.getElementById('inspDay').textContent  =
-    start.toLocaleDateString('en-US', { weekday: 'long' });
-  document.getElementById('inspTime').textContent = `${fmt(start)}–${fmt(end)}`;
+    _pendingStart.toLocaleDateString('en-US', { weekday: 'long' });
+  document.getElementById('inspTime').textContent = `${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
   document.getElementById('inspDur').textContent  = `${mins} minutes`;
-  document.getElementById('inspDate').textContent = formatDateDDMMYYYY(start);
+  document.getElementById('inspDate').textContent = formatDateDDMMYYYY(_pendingStart);
   document.getElementById('inspDelete').classList.remove('hidden');
 
   // ---- name field (supports multiple backends) ----
@@ -726,10 +738,9 @@ async function openInspector(ev) {
   nameInput.placeholder = 'New Session';
   nameInput.value = name;
 
-  // Real-time update of session overview
-  nameInput.addEventListener('input', function() {
-    updateSessionOverview();
-  });
+  // Remove existing event listeners and add new ones
+  nameInput.removeEventListener('input', updateSessionOverview);
+  nameInput.addEventListener('input', updateSessionOverview);
 
   // ---- venue select (fault-tolerant) ----
   try {
@@ -739,27 +750,29 @@ async function openInspector(ev) {
     const selectedId   = ev.extendedProps?.venue_id || null;
     const selectedName = ev.extendedProps?.venue
                       || ev.extendedProps?.location
-                      || ev.title
                       || '';
     populateVenueSelect(sel, venues, selectedId, selectedName);
   
-    sel.addEventListener('change', function() {
+    // Remove existing event listeners and add new ones
+    sel.removeEventListener('change', updateSessionOverview);
+    sel.addEventListener('change', updateSessionOverview);
+
+    // Call updateSessionOverview after venue is populated
+    setTimeout(() => {
       updateSessionOverview();
-    });
+    }, 100);
   } catch (err) {
     console.warn('Venue population failed (non-blocking):', err);
   }
 
-  
-
   // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
-  setTimesIntoPickers(start, end);
-    ensureRecurrencePickers();
-    document.getElementById('recOccurs').onchange = () => updateRecurrencePreview(start, end);
-    document.getElementById('recCount').oninput   = () => updateRecurrencePreview(start, end);
-    document.getElementById('recUntil').oninput   = () => updateRecurrencePreview(start, end);
-    updateRecurrencePreview(start, end);
+  setTimesIntoPickers(start, end); // This will also call updateInspectorTimeOverview()
+  ensureRecurrencePickers();
+  document.getElementById('recOccurs').onchange = () => updateRecurrencePreview(start, end);
+  document.getElementById('recCount').oninput   = () => updateRecurrencePreview(start, end);
+  document.getElementById('recUntil').oninput   = () => updateRecurrencePreview(start, end);
+  updateRecurrencePreview(start, end);
 
   document.querySelectorAll('#calInspector .insp-preset').forEach(btn => {
     btn.onclick = () => {
@@ -980,14 +993,18 @@ function onTimeChange() {
     if (t) { _pendingEnd.setHours(t.getHours(), t.getMinutes(), 0, 0); }
   }
   updateInspectorTimeOverview();
-  if (calendar && window.__editingEvent) {
-    window.__editingEvent.setStart(_pendingStart);
-    window.__editingEvent.setEnd(_pendingEnd);
-  }
 }
 
 function updateInspectorTimeOverview() {
   if (!_pendingStart || !_pendingEnd) return;
+  
+  // ADD DEBUGGING
+  console.log('Updating time overview:', {
+    pendingStart: _pendingStart,
+    pendingEnd: _pendingEnd,
+    duration: (_pendingEnd - _pendingStart) / (1000 * 60) + ' minutes'
+  });
+  
   const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const mins = Math.max(0, Math.round((_pendingEnd - _pendingStart)/60000));
   
