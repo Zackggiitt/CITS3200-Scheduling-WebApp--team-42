@@ -15,6 +15,7 @@
 <body>
     <div class="wrapper">
         <form action="{{ url_for('signup') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <h1>Register</h1>
 
             <!-- Flash messages -->

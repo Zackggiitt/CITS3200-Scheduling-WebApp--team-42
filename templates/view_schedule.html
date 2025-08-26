@@ -17,10 +17,8 @@
         <div class="actions mb-4">
             <div class="action-card">
                 <h3>Generate Schedule</h3>
-                <p>Automatically assign facilitators to sessions</p>
-                <form action="{{ url_for('admin.generate_schedule') }}" method="POST" style="display: inline;">
-                    <button type="submit" class="btn-primary">Generate Schedule</button>
-                </form>
+                <p>Automatically assign facilitators to modules</p>
+
             </div>
         </div>
         {% endif %}
@@ -32,8 +30,8 @@
                     <thead>
                         <tr style="background: #f8f9fa;">
                             <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Facilitator</th>
-                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Module</th>
-                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Session Type</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Module Code</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Module Type</th>
                             <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Time</th>
                             <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Location</th>
                         </tr>
@@ -43,7 +41,7 @@
                         <tr>
                             <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.facilitator.first_name }} {{ assignment.facilitator.last_name }}</td>
                             <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.session.module_code }}</td>
-                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.session.session_type }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.session.module_type }}</td>
                             <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.session.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ assignment.session.location }}</td>
                         </tr>

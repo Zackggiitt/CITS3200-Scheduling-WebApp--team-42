@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unit Coordinator Portal</title>
+
+  <!-- Tailwind (utility only) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+  <!-- Material Icons (filled) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+
+  <!-- Flatpickr (date picker) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+
+  <!-- FullCalendar -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}" />
+  <style>
+    /* small helper styles for “Outside range” label on day headers */
+    .fc-daygrid-day.out-of-range,
+    .fc-timegrid-col.out-of-range {
+      opacity: .5;
+      pointer-events: none;
+      background-image: repeating-linear-gradient(
+        -45deg, rgba(229,231,235,.8), rgba(229,231,235,.8) 6px, transparent 6px, transparent 12px
+      );
+    }
+    .fc-col-header-cell .fc-outside-chip {
+      display: inline-block;
+      font-size: 10px;
+      color: #6b7280;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 9999px;
+      padding: 2px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container">
+      <div class="left" aria-label="Application">
+        <span class="material-icons icon-school" aria-hidden="true">school</span>
+        <h1 class="title">Unit Coordinator Portal</h1>
+      </div>
+
+      <div class="right">
+        <button class="create-unit-btn" type="button" aria-label="Create Unit" onclick="openCreateUnitModal()">
+          <span class="material-icons icon-add" aria-hidden="true">add</span>
+          <span>Create Unit</span>
+        </button>
+
+        <div class="notification-container">
+          <button class="icon-btn notification-btn" type="button" aria-label="Notifications">
+            <span class="material-icons" aria-hidden="true">notifications</span>
+          </button>
+          {% if notifications and notifications > 0 %}
+            <span class="notification-badge" aria-label="{{ notifications }} unread notifications">
+              {{ notifications }}
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="user" aria-label="Current user">
+          <span class="material-icons icon-account" aria-hidden="true">account_circle</span>
+          <span class="user-name">{{ user.full_name }}</span>
+        </div>
+
+        <span class="role-badge">
+          {{ user.role.value.replace('_', ' ') | title }}
+        </span>
+
+        <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="logout-btn" type="submit" aria-label="Logout">
+            <span class="material-icons icon-logout" aria-hidden="true">logout</span>
+            <span>Logout</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex justify-center mt-10">
+    {% if not units %}
+      <div class="bg-white shadow rounded-xl p-6 w-full max-w-md text-center">
+        <span class="material-icons text-gray-700 text-5xl mb-3">apartment</span>
+        <h2 class="text-lg font-semibold mb-2">Create Your First Unit</h2>
+        <p class="text-gray-600 text-sm mb-4">
+          Get started by creating your first unit. You’ll be able to manage facilitators, schedules, and approvals for each unit you create.
+        </p>
+        <button onclick="openCreateUnitModal()" class="w-full py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 flex items-center justify-center gap-2">
+          <span class="material-icons text-sm">add</span>
+          Create Unit
+        </button>
+      </div>
+    {% else %}
+      <div class="w-full max-w-4xl">
+        <h2 class="text-lg font-bold mb-4">Your Units</h2>
+        <ul class="space-y-2">
+          {% for unit in units %}
+            <li class="p-3 bg-white shadow rounded-md flex justify-between">
+              <div>
+                <span class="font-medium">{{ unit.unit_code }}</span> - {{ unit.unit_name }}
+                ({{ unit.semester }} {{ unit.year }})
+              </div>
+              <a href="#" class="text-blue-600 hover:underline">Manage</a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </main>
+
+  <!-- MODAL -->
+  <div id="createUnitModal" class="modal-overlay hidden">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="create-unit-title">
+      <button onclick="closeCreateUnitModal()" class="modal-close" aria-label="Close">✕</button>
+
+      <div class="modal-top">
+        <div class="modal-title">
+          <h1 id="create-unit-title">Create New Unit</h1>
+          <p>Set up a new teaching unit with sessions and schedule</p>
+        </div>
+      </div>
+
+      <div class="modal-steps">
+        <div class="step active"><span>1</span> Unit Information</div>
+        <div class="step"><span>2</span> Date Range</div>
+        <div class="step"><span>3</span> Sessions</div>
+        <div class="step"><span>4</span> Review</div>
+      </div>
+
+      <form method="POST" action="{{ url_for('unitcoordinator.create_unit') }}" class="modal-form" id="create-unit-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="unit_id" id="unit_id" value="">
+
+        <!-- STEP 1 -->
+        <section class="wizard-step" data-step="1">
+          <h2>Unit Information</h2>
+          <p class="subtext">Enter the basic details for your teaching unit</p>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Unit Name *</label>
+              <input type="text" name="unit_name" required placeholder="e.g. Engineering Design"/>
+            </div>
+            <div class="form-group">
+              <label>Unit Code *</label>
+              <input type="text" name="unit_code" required placeholder="e.g. GENG2000"/>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Semester *</label>
+              <div class="select" data-name="semester">
+                <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="select-value">Semester 1</span>
+                  <span class="material-icons select-caret" aria-hidden="true">expand_more</span>
+                </button>
+                <ul class="select-list" role="listbox">
+                  <li class="option selected" role="option" aria-selected="true" data-value="Semester 1"><span>Semester 1</span><span class="material-icons check">check</span></li>
+                  <li class="option" role="option" data-value="Semester 2"><span>Semester 2</span><span class="material-icons check">check</span></li>
+                  <li class="option" role="option" data-value="Summer"><span>Summer</span><span class="material-icons check">check</span></li>
+                  <li class="option" role="option" data-value="Winter"><span>Winter</span><span class="material-icons check">check</span></li>
+                </ul>
+                <input type="hidden" name="semester" value="Semester 1">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Year *</label>
+              <input type="number" name="year" required value="2025"/>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Description (optional)</label>
+            <textarea name="description" rows="3" placeholder="Brief description..."></textarea>
+          </div>
+        </section>
+
+        <!-- STEP 2: Date Range (INLINE CALENDARS) -->
+        <section class="wizard-step hidden" data-step="2" aria-labelledby="date-range-title">
+          <h2 id="date-range-title">When does this unit run?</h2>
+          <p class="subtext">Select the start and end dates for your unit</p>
+
+          <div class="date-grid">
+            <!-- Start Date -->
+            <div class="date-card">
+              <label for="start_date_input">Start Date *</label>
+              <!-- Screen-reader-only form value for Flask -->
+              <input
+                type="text"
+                id="start_date_input"
+                name="start_date"
+                required
+                class="sr-only"
+                aria-describedby="start-calendar-desc"
+              />
+              <!-- Inline calendar -->
+              <div id="start_calendar" aria-label="Start date calendar" aria-describedby="start-calendar-desc"></div>
+              <span id="start-calendar-desc" class="sr-only">Use the calendar to pick a start date.</span>
+            </div>
+
+            <!-- End Date -->
+            <div class="date-card">
+              <label for="end_date_input">End Date *</label>
+              <!-- Screen-reader-only form value for Flask -->
+              <input
+                type="text"
+                id="end_date_input"
+                name="end_date"
+                required
+                class="sr-only"
+                aria-describedby="end-calendar-desc"
+              />
+              <!-- Inline calendar -->
+              <div id="end_calendar" aria-label="End date calendar" aria-describedby="end-calendar-desc"></div>
+              <span id="end-calendar-desc" class="sr-only">Use the calendar to pick an end date.</span>
+            </div>
+          </div>
+
+          <!-- Summary (appears after both dates picked) -->
+          <div id="date-summary" class="summary-card hidden mt-4" aria-live="polite">
+            <span class="material-icons summary-icon" aria-hidden="true">event</span>
+            <span id="date-summary-text"></span>
+          </div>
+        </section>
+
+        <!-- STEP 3: Sessions -->
+        <section class="wizard-step hidden" data-step="3" aria-labelledby="sessions-setup-title">
+          <!-- Upload CSV wrapper (now has an id so we can hide it after success) -->
+          <div id="setup_wrap" class="setup-card">
+            <div class="setup-card__header">
+              <span class="material-icons">cloud_upload</span>
+              <div>
+                <h3 class="setup-card__title">Setup Required</h3>
+                <p class="setup-card__hint">
+                  Before creating sessions, please upload facilitators and venues using the CSV template.
+                </p>
+              </div>
+            </div>
+
+            <div class="upload-row">
+              <!-- Left: Download template -->
+              <div class="upload-col">
+                <div class="hint-title">CSV Template</div>
+                <p class="hint-sub">Use this file for correct column names.</p>
+                <a class="btn-outline w-full sm:w-auto"
+                  href="{{ url_for('unitcoordinator.download_setup_csv_template') }}"
+                  target="_blank" rel="noopener">
+                  <span class="material-icons" style="font-size:18px">download</span>
+                  Download CSV Template
+                </a>
+              </div>
+
+              <!-- Right: Upload CSV -->
+              <div class="upload-col">
+                <div class="hint-title">Upload CSV</div>
+                <p class="hint-sub">Facilitator emails and venue names (2 columns).</p>
+
+                <div class="filepicker">
+                  <input id="setup_csv" name="setup_csv" type="file" accept=".csv" class="filepicker-input" />
+                  <label for="setup_csv" class="filepicker-btn">
+                    <span class="material-icons">upload_file</span>
+                    Choose File
+                  </label>
+                  <span id="file_name" class="filepicker-name" aria-live="polite">No file selected</span>
+                </div>
+
+                <!-- Status -->
+                <div id="upload_status" class="upload-status hidden" role="status" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+
+          <input type="hidden" name="setup_complete" id="setup_complete" value="false"/>
+
+          <!-- STEP 3B: Calendar -->
+          <div id="calendar_wrap" class="mt-4 hidden">
+            <div class="cal-toolbar">
+              <button type="button" class="cal-btn" id="prevWeek">‹ Previous Week</button>
+              <button type="button" class="cal-btn" id="nextWeek">Next Week ›</button>
+              <button type="button" class="cal-btn" id="goToday">Today</button>
+
+              <div class="cal-title">
+                <div id="calWeekTitle" class="font-semibold"></div>
+                <div id="calWeekRange" class="text-xs text-gray-500"></div>
+              </div>
+
+              <label class="ml-auto text-sm flex items-center gap-2">
+                <input id="toggleHolidays" type="checkbox" class="cal-checkbox" />
+                Show holidays
+              </label>
+            </div>
+
+
+            <div id="calGrid" class="mt-2" aria-label="Session Schedule"></div>
+
+            <!-- Right-side inspector -->
+            <aside id="calInspector" class="cal-inspector hidden" aria-live="polite">
+              <!-- Title bar -->
+              <div class="insp-top">
+                <div class="insp-top-left">
+                  <span class="material-icons insp-top-icon" aria-hidden="true">edit</span>
+                  <div>
+                    <div class="insp-title">Edit Session</div>
+                    <div id="inspSub" class="insp-sub">Tuesday • 10:30–14:00</div>
+                  </div>
+                </div>
+                <div class="insp-top-actions">
+                  <button type="button" id="inspNextBtn" class="icon-btn" title="Next"><span class="material-icons">chevron_right</span></button>
+                  <button type="button" id="inspCloseBtn" class="icon-btn" title="Close"><span class="material-icons">close</span></button>
+                </div>
+              </div>
+
+              <!-- Blue card -->
+              <div class="insp-card">
+                <div class="insp-card__hdr">
+                  <span class="material-icons" aria-hidden="true">event_note</span>
+                  <span>Session Overview</span>
+                </div>
+
+                <dl class="insp-kv">
+                  <div class="kv-row"><dt>Day:</dt>       <dd id="inspDay"></dd></div>
+                  <div class="kv-row"><dt>Time:</dt>      <dd id="inspTime"></dd></div>
+                  <div class="kv-row"><dt>Duration:</dt>  <dd id="inspDur"></dd></div>
+                  <div class="kv-row"><dt>Start Date:</dt><dd id="inspDate"></dd></div>
+                </dl>
+              </div>
+
+              <div class="cal-inspector__body">
+                <!-- BASIC INFORMATION CARD -->
+                <section class="insp-section">
+                  <header class="insp-section__hdr">
+                    <span class="material-icons">menu_book</span>
+                    <h4>Basic Information</h4>
+                  </header>
+
+                  <!-- Session Name -->
+                  <label class="insp-field">
+                    <span class="insp-field__label">
+                      <span class="material-icons">edit</span>
+                      Session Name
+                    </span>
+                    <input id="inspName" class="cal-input cal-input--soft" placeholder="New Session" />
+                  </label>
+
+                  <!-- Venue -->
+                  <label class="insp-field">
+                    <span class="insp-field__label">
+                      <span class="material-icons">place</span>
+                      Venue
+                    </span>
+
+                    <!-- we still upgrade this to a native <select> in JS -->
+                    <div class="select-wrap">
+                      <input id="inspVenue" class="cal-input cal-input--soft" placeholder="Select a venue" />
+                    </div>
+                  </label>
+                </section>
+                <!-- SESSION TIMING -->
+                <section class="insp-section">
+                  <header class="insp-section__hdr">
+                    <span class="material-icons">schedule</span>
+                    <h4>Session Timing</h4>
+                  </header>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="insp-field">
+                      <span class="insp-field__label">
+                        <span class="material-icons">access_time</span>
+                        Start Time
+                      </span>
+                      <!-- we upgrade these to Flatpickr time pickers in JS -->
+                      <input id="inspStartTime" class="cal-input cal-input--soft" placeholder="10:30 AM" />
+                    </label>
+
+                    <label class="insp-field">
+                      <span class="insp-field__label">
+                        <span class="material-icons">schedule</span>
+                        End Time
+                      </span>
+                      <input id="inspEndTime" class="cal-input cal-input--soft" placeholder="01:15 PM" />
+                    </label>
+                  </div>
+
+                  <div class="mt-2">
+                    <div class="text-xs text-gray-500 mb-2">
+                      Quick Presets
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <button type="button" class="cal-btn insp-preset" data-range="09:00-12:00">09:00–12:00</button>
+                      <button type="button" class="cal-btn insp-preset" data-range="13:00-16:00">13:00–16:00</button>
+                      <button type="button" class="cal-btn insp-preset" data-range="09:00-17:00">09:00–17:00</button>
+                    </div>
+                  </div>
+                </section>
+                <!-- RECURRENCE -->
+                <section class="insp-section">
+                  <header class="insp-section__hdr">
+                    <span class="material-icons">repeat</span>
+                    <h4>Recurrence Pattern</h4>
+                  </header>
+
+                  <div class="space-y-3">
+
+                    <!-- Occurs -->
+                    <label class="insp-field">
+                      <span class="insp-field__label">
+                        <span class="material-icons">event_repeat</span>
+                        Occurs
+                      </span>
+                      <select id="recOccurs" class="cal-input cal-input--soft">
+                        <option value="none">Does not repeat</option>
+                        <option value="weekly">Weekly</option>
+                      </select>
+                    </label>
+
+                    <!-- Preview -->
+                    <div id="recPreview" class="rounded-xl bg-purple-50 border border-purple-200 p-3 text-purple-900 hidden">
+                      <div class="font-medium">Pattern: <span id="recPatternText"></span></div>
+                      <div class="text-xs mt-1">
+                        <div>First occurrence: <span id="recFirst"></span></div>
+                        <div>Estimated total sessions: <span id="recTotal"></span></div>
+                      </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label class="insp-field">
+                        <span class="insp-field__label">
+                          <span class="material-icons">format_list_numbered</span>
+                          Number of Sessions
+                        </span>
+                        <input id="recCount" type="number" min="1" class="cal-input cal-input--soft" value="12" />
+                      </label>
+
+                      <label class="insp-field">
+                        <span class="insp-field__label">
+                          <span class="material-icons">event</span>
+                          End Date (Optional)
+                        </span>
+                        <input id="recUntil" type="text" class="cal-input cal-input--soft" placeholder="dd/mm/yyyy" />
+                      </label>
+                    </div>
+                    <p class="text-xs text-gray-500">
+                      Sessions will repeat weekly until the number of sessions is reached or the end date (if set), whichever comes first.
+                    </p>
+                  </div>
+                </section>
+
+                <!-- STAFFING REQUIREMENTS -->
+                <section class="insp-section">
+                  <header class="insp-section__hdr">
+                    <span class="material-icons">groups</span>
+                    <h4>Staffing Requirements</h4>
+                  </header>
+
+                  <div class="space-y-3">
+                    <!-- Lead -->
+                    <div class="rounded-2xl border border-green-200 bg-green-50 p-3 flex items-center justify-between">
+                      <div>
+                        <div class="font-medium">Lead Facilitators</div>
+                        <div class="text-xs text-green-700">Required • Primary responsibility</div>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <button type="button" id="leadMinusBtn" class="cal-btn" aria-label="Decrease lead">−</button>
+                        <div id="leadCount" class="w-6 text-center font-semibold">1</div>
+                        <button type="button" id="leadPlusBtn" class="cal-btn" aria-label="Increase lead">+</button>
+                      </div>
+                    </div>
+
+                    <!-- Support -->
+                    <div class="rounded-2xl border border-blue-200 bg-blue-50 p-3 flex items-center justify-between">
+                      <div>
+                        <div class="font-medium">Support Facilitators</div>
+                        <div class="text-xs text-blue-700">Optional • Additional support</div>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <button type="button" id="supportMinusBtn" class="cal-btn" aria-label="Decrease support">−</button>
+                        <div id="supportCount" class="w-6 text-center font-semibold">0</div>
+                        <button type="button" id="supportPlusBtn" class="cal-btn" aria-label="Increase support">+</button>
+                      </div>
+                    </div>
+
+                    <!-- Total -->
+                    <div class="rounded-xl bg-gray-100 text-gray-700 px-3 py-2 text-sm">
+                      Total Staff Required: <span id="totalStaffText" class="font-semibold">1 facilitator</span>
+                    </div>
+                  </div>
+                </section>
+
+              </div>
+              <div class="cal-inspector__footer">
+                <button type="button" id="inspDelete" class="cal-btn danger hidden">Delete</button>
+                <button type="button" id="inspCancel" class="cal-btn">Cancel</button>
+                <button type="button" id="inspSave" class="cal-btn primary">Save</button>
+              </div>
+            </aside>
+
+          </div>
+        </section>
+      </form>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
+        <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
+
+        <!-- submit still links to the form via id -->
+        <button type="submit" class="btn-primary hidden" id="submit-btn" form="create-unit-form">
+          Create Unit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flask-injected values -->
+<script>
+  window.FLASK_ROUTES = {
+    CAL_WEEK_TEMPLATE: "{{ url_for('unitcoordinator.calendar_week',  unit_id=0) }}",
+    CREATE_SESS_TEMPLATE: "{{ url_for('unitcoordinator.create_session', unit_id=0) }}",
+    UPDATE_SESS_TEMPLATE: "{{ url_for('unitcoordinator.update_session', session_id=0) }}",
+    DELETE_SESS_TEMPLATE: "{{ url_for('unitcoordinator.delete_session', session_id=0) }}",
+    LIST_VENUES_TEMPLATE: "{{ url_for('unitcoordinator.list_venues',   unit_id=0) }}",
+    CREATE_OR_GET_DRAFT: "{{ url_for('unitcoordinator.create_or_get_draft') }}",
+    UPLOAD_SETUP_CSV: "{{ url_for('unitcoordinator.upload_setup_csv') }}"
+  };
+  window.CSRF_TOKEN = "{{ csrf_token() }}";
+</script>
+
+<!-- External JS -->
+<script src="{{ url_for('static', filename='js/uc.js') }}"></script>
+
+
+
+</body>
+</html>

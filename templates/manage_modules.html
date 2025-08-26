@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Modules{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="text-white">Manage Modules</h2>
+        <a href="{{ url_for('admin.create_module') }}" class="btn btn-primary">Create Module</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th class="text-white">Unit Code</th>
+                <th class="text-white">Module Name</th>
+                <th class="text-white">Module Type</th>
+                <th class="text-white">Timing Details</th>
+                <th class="text-white">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for module in modules %}
+            <tr>
+                <td class="text-white">{{ module.unit.unit_code }}</td>
+                <td class="text-white">{{ module.module_name }}</td>
+                <td class="text-white">{{ module.module_type.title() }}</td>
+                <td class="text-white">
+                    {% if module.sessions %}
+                        {% for session in module.sessions %}
+                            <div>
+                                {% if session.day_of_week is not none %}
+                                    {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                    {{ days[session.day_of_week] }} 
+                                {% else %}
+                                    {{ session.start_time.strftime('%A') }}
+                                {% endif %}
+                                {{ session.start_time.strftime('%H:%M') }} - {{ session.end_time.strftime('%H:%M') }}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div>No timing details</div>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('admin.edit_module', module_id=module.id) }}" class="btn btn-sm btn-secondary mr-2">Edit</a>
+                    <a href="{{ url_for('admin.module_details', module_id=module.id) }}" class="btn btn-sm btn-info mr-2">Details</a>
+                    <form method="POST" action="{{ url_for('admin.delete_module', module_id=module.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this module? This will also delete all associated module details and facilitator skills.')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
