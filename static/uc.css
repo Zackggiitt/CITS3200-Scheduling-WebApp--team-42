@@ -723,3 +723,72 @@
 .fc-event.has-venue.has-detailed-info {
   min-height: 48px;
 }
+
+/* Simple popup styles */
+.simple-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.popup-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.popup-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #dc2626;
+}
+
+.popup-message {
+  color: #374151;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.popup-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.popup-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.popup-btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.popup-btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.popup-btn-confirm {
+  background: #dc2626;
+  color: white;
+}
+
+.popup-btn-confirm:hover {
+  background: #b91c1c;
+}
