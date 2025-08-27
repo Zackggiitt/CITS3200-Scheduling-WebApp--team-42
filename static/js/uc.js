@@ -760,8 +760,27 @@ async function openInspector(ev) {
     venueId: ev.extendedProps?.venue_id
   });
 
-  const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const mins = Math.max(0, Math.round((_pendingEnd - _pendingStart) / 60000));
+  const fmt = (d) => d.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    hour12: true 
+  }).replace(/am|pm/gi, (match) => match.toUpperCase());
+  const totalMins = Math.max(0, Math.round((_pendingEnd - _pendingStart) / 60000));
+
+
+  // Convert minutes to hours and minutes
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+
+  // Format duration as "2 hours 30 minutes", "1 hour", "30 minutes", etc.
+  let durationText = '';
+  if (hours > 0 && mins > 0) {
+    durationText = `${hours} hour${hours !== 1 ? 's' : ''} ${mins} minute${mins !== 1 ? 's' : ''}`;
+  } else if (hours > 0) {
+    durationText = `${hours} hour${hours !== 1 ? 's' : ''}`;
+  } else {
+    durationText = `${mins} minute${mins !== 1 ? 's' : ''}`;
+  }
 
   // Format date as DD/MM/YYYY
   const formatDateDDMMYYYY = (d) => {
@@ -777,7 +796,7 @@ async function openInspector(ev) {
   document.getElementById('inspDay').textContent  =
     _pendingStart.toLocaleDateString('en-US', { weekday: 'long' });
   document.getElementById('inspTime').textContent = `${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
-  document.getElementById('inspDur').textContent  = `${mins} minutes`;
+  document.getElementById('inspDur').textContent  = durationText;
   document.getElementById('inspDate').textContent = formatDateDDMMYYYY(_pendingStart);
   document.getElementById('inspDelete').classList.remove('hidden');
 
@@ -1137,15 +1156,34 @@ function onTimeChange() {
 function updateInspectorTimeOverview() {
   if (!_pendingStart || !_pendingEnd) return;
   
-  // ADD DEBUGGING
   console.log('Updating time overview:', {
     pendingStart: _pendingStart,
     pendingEnd: _pendingEnd,
     duration: (_pendingEnd - _pendingStart) / (1000 * 60) + ' minutes'
   });
   
-  const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const mins = Math.max(0, Math.round((_pendingEnd - _pendingStart)/60000));
+  // Use 12-hour format with AM/PM 
+  const fmt = (d) => d.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  }).replace(/am|pm/gi, (match) => match.toUpperCase());
+  
+  const totalMins = Math.max(0, Math.round((_pendingEnd - _pendingStart)/60000));
+  
+  // Convert minutes to hours and minutes
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  
+  // Format duration as "2 hours 30 minutes", "1 hour", "30 minutes", etc.
+  let durationText = '';
+  if (hours > 0 && mins > 0) {
+    durationText = `${hours} hour${hours !== 1 ? 's' : ''} ${mins} minute${mins !== 1 ? 's' : ''}`;
+  } else if (hours > 0) {
+    durationText = `${hours} hour${hours !== 1 ? 's' : ''}`;
+  } else {
+    durationText = `${mins} minute${mins !== 1 ? 's' : ''}`;
+  }
   
   // Format date as DD/MM/YYYY
   const formatDateDDMMYYYY = (d) => {
@@ -1156,9 +1194,9 @@ function updateInspectorTimeOverview() {
   };
   
   document.getElementById('inspTime').textContent = `${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
-  document.getElementById('inspDur').textContent  = `${mins} minutes`;
+  document.getElementById('inspDur').textContent = durationText;
   document.getElementById('inspDate').textContent = formatDateDDMMYYYY(_pendingStart);
-  document.getElementById('inspSub').textContent  =
+  document.getElementById('inspSub').textContent =
     `${_pendingStart.toLocaleDateString('en-US', { weekday: 'long' })} • ${fmt(_pendingStart)}–${fmt(_pendingEnd)}`;
 }
 
@@ -1244,74 +1282,7 @@ function closeCreateUnitModal() {
   console.log('Modal completely closed and reset');
 }
 
-// Update the existing closeCreateUnitModal function to be more thorough
-function closeCreateUnitModal() {
-  console.log('Closing modal and resetting all data');
-  
-  // Reset all modal state
-  resetCreateUnitWizard();
 
-  // Clear any server-side draft data by clearing the unit ID
-  const unitIdEl = document.getElementById('unit_id');
-  if (unitIdEl) {
-    const oldUnitId = unitIdEl.value;
-    unitIdEl.value = '';
-    console.log('Cleared unit ID:', oldUnitId);
-  }
-
-  // Clear setup completion flag
-  const setupFlagEl = document.getElementById('setup_complete');
-  if (setupFlagEl) {
-    setupFlagEl.value = 'false';
-  }
-
-  // Destroy calendar completely
-  if (calendar) {
-    try { 
-      calendar.destroy(); 
-      console.log('Calendar destroyed');
-    } catch (e) {
-      console.warn('Error destroying calendar:', e);
-    }
-    calendar = null;
-  }
-  window.__calendarInitRan = false;
-
-  // Clear venue cache
-  window.__venueCache = {};
-
-  // Clear any editing state
-  window.__editingEvent = null;
-  _pendingStart = null;
-  _pendingEnd = null;
-
-  // Clear time pickers
-  if (_startTP) {
-    try { _startTP.destroy(); } catch (e) {}
-    _startTP = null;
-  }
-  if (_endTP) {
-    try { _endTP.destroy(); } catch (e) {}
-    _endTP = null;
-  }
-  if (_recUntilPicker) {
-    try { _recUntilPicker.destroy(); } catch (e) {}
-    _recUntilPicker = null;
-  }
-
-  // Hide the modal
-  const modal = document.getElementById("createUnitModal");
-  if (modal) {
-    modal.classList.add("hidden");
-    modal.classList.remove("flex");
-    console.log('Modal hidden');
-  }
-  
-  console.log('Modal completely closed and reset');
-}
-
-// Add this function to handle the close button with warning
-// Replace the handleCloseUnitModal function in your uc.js file
 function handleCloseUnitModal() {
   // Check if user has entered any data
   const form = document.getElementById('create-unit-form');
