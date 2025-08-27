@@ -28,7 +28,6 @@ unitcoordinator_bp = Blueprint(
 # CSV columns for the combined facilitators/venues file
 CSV_HEADERS = [
     "facilitator_email",   # optional per row
-    "venue_name",          # optional per row
 ]
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -383,10 +382,8 @@ def create_or_get_draft():
 @role_required(UserRole.UNIT_COORDINATOR)
 def download_setup_csv_template():
     """
-    Returns a CSV with two columns:
+    Returns a CSV with one column:
       - facilitator_email
-      - venue_name
-    Rows may have either or both. Blank cells are ignored.
     """
     sio = StringIO()
     writer = csv.DictWriter(sio, fieldnames=CSV_HEADERS, extrasaction="ignore")
@@ -398,22 +395,23 @@ def download_setup_csv_template():
         mem,
         mimetype="text/csv",
         as_attachment=True,
-        download_name="facilitators_venues_template.csv",
+        download_name="facilitators_template.csv",
     )
 
 
+# --------------------------------------------------------------------------
+# Upload Facilitators CSV
+# --------------------------------------------------------------------------
 @unitcoordinator_bp.post("/upload-setup-csv")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def upload_setup_csv():
     """
-    Accepts a 2-column CSV:
+    Accepts a 1-column CSV:
       - facilitator_email
-      - venue_name
 
     For each row:
       - If facilitator_email is present: ensure a User(role=FACILITATOR) exists; link to the Unit
-      - If venue_name is present: upsert a Venue by name (name only); link to the Unit
     Returns counts + errors.
     """
     user = get_current_user()
@@ -438,98 +436,51 @@ def upload_setup_csv():
 
     # Validate headers
     fns = [fn.strip().lower() for fn in (reader.fieldnames or [])]
-    required = {"facilitator_email", "venue_name"}
+    required = {"facilitator_email"}
     if not required.issubset(set(fns)):
         return jsonify({
             "ok": False,
-            "error": f"CSV must include headers: {', '.join(sorted(required))}"
+            "error": "CSV must include header: facilitator_email"
         }), 400
 
     # Counters
     created_users = 0
     linked_facilitators = 0
-    created_venues = 0
-    linked_venues = 0
     errors = []
 
-    for idx, row in enumerate(reader, start=2):  # start=2 for human-friendly row numbers
-        fac_email = (row.get("facilitator_email") or "").strip()
-        venue_name = (row.get("venue_name") or "").strip()
+    for idx, row in enumerate(reader, start=2):  # start=2 because header is row 1
+        email = (row.get("facilitator_email") or "").strip().lower()
+        if not email:
+            continue
+        if not _valid_email(email):
+            errors.append(f"Row {idx}: invalid facilitator_email '{email}'")
+            continue
 
-        # Process facilitator email if present
-        if fac_email:
-            if not _valid_email(fac_email):
-                errors.append(f"Row {idx}: invalid facilitator_email '{fac_email}'")
-            else:
-                user_rec = User.query.filter_by(email=fac_email).first()
-                if not user_rec:
-                    user_rec = User(email=fac_email, role=UserRole.FACILITATOR)
-                    db.session.add(user_rec)
-                    created_users += 1
+        # Ensure facilitator user exists
+        user_obj = User.query.filter_by(email=email).first()
+        if not user_obj:
+            user_obj = User(email=email, role=UserRole.FACILITATOR)
+            db.session.add(user_obj)
+            db.session.flush()  # <-- ensure user_obj.id is available
+            created_users += 1
 
-                exists = UnitFacilitator.query.filter_by(unit_id=unit.id, user_id=user_rec.id).first()
-                if not exists:
-                    db.session.add(UnitFacilitator(unit_id=unit.id, user_id=user_rec.id))
-                    linked_facilitators += 1
+        # Ensure link to unit exists
+        link = UnitFacilitator.query.filter_by(unit_id=unit.id, user_id=user_obj.id).first()
+        if not link:
+            link = UnitFacilitator(unit_id=unit.id, user_id=user_obj.id)
+            db.session.add(link)
+            linked_facilitators += 1
 
-        # Process venue name if present
-        if venue_name:
-            # Normalize venue name
-            venue_name = " ".join(venue_name.lstrip(",").strip().split())
 
-            # Case-insensitive lookup to prevent duplicates
-            venue = db.session.query(Venue).filter(func.lower(Venue.name) == venue_name.lower()).first()
 
-            # Upsert global catalog
-            if not venue:
-                venue = Venue(name=venue_name)
-                db.session.add(venue)
-                created_venues += 1  # Newly cataloged venue
-
-            # Ensure per-unit link
-            link = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first()
-            if not link:
-                db.session.add(UnitVenue(unit_id=unit.id, venue_id=venue.id))
-                linked_venues += 1
-
-        # If a row is entirely blank, silently ignore it (no error)
-
-    # Commit all changes at once
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        errors.append(f"Database error: {str(e)}")
-        return jsonify({
-            "ok": False,
-            "created_users": created_users,
-            "linked_facilitators": linked_facilitators,
-            "created_venues": created_venues,
-            "linked_venues": linked_venues,
-            "updated_venues": 0,  # Keep for UI compatibility
-            "errors": errors[:20],
-        }), 400
-
-    if errors:
-        return jsonify({
-            "ok": False,
-            "created_users": created_users,
-            "linked_facilitators": linked_facilitators,
-            "created_venues": created_venues,
-            "linked_venues": linked_venues,
-            "updated_venues": 0,  # Keep for UI compatibility
-            "errors": errors[:20],
-        }), 400
+    db.session.commit()
 
     return jsonify({
         "ok": True,
         "created_users": created_users,
         "linked_facilitators": linked_facilitators,
-        "created_venues": created_venues,
-        "linked_venues": linked_venues,
-        "updated_venues": 0,  # Keep for UI compatibility
+        "errors": errors[:20],  # show up to 20 issues
     }), 200
-
 
 # ---------- Step 3B: Calendar / Sessions ----------
 @unitcoordinator_bp.get("/units/<int:unit_id>/calendar")
