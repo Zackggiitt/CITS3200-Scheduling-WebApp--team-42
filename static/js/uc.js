@@ -1335,28 +1335,37 @@ function closeCreateUnitModal() {
 
 
 function handleCloseUnitModal() {
-  // Check if user has entered any data
-  const form = document.getElementById('create-unit-form');
-  const unitName = form?.querySelector('[name="unit_name"]')?.value?.trim() || '';
-  const unitCode = form?.querySelector('[name="unit_code"]')?.value?.trim() || '';
-  const year = form?.querySelector('[name="year"]')?.value?.trim() || '';
-  const startDate = form?.querySelector('[name="start_date"]')?.value?.trim() || '';
-  const endDate = form?.querySelector('[name="end_date"]')?.value?.trim() || '';
-  const setupComplete = document.getElementById('setup_complete')?.value === 'true';
-  
-  // Check if there are any sessions in the calendar
-  const hasCalendarSessions = calendar && calendar.getEvents && calendar.getEvents().length > 0;
-  
-  // Check if any significant data has been entered
-  const hasData = unitName || unitCode || year || startDate || endDate || setupComplete || hasCalendarSessions;
-  
-  if (hasData) {
-    showCloseConfirmationPopup();
-  } else {
-    // No data to lose, close immediately
-    closeCreateUnitModal();
+  const modal = document.getElementById("createUnitModal");
+
+  // Reset wizard fields (unit info, date pickers, etc.)
+  resetCreateUnitWizard();
+  document.getElementById('unit_id').value = '';
+  document.getElementById('setup_complete').value = 'false';
+
+  // Reset date inputs + summary
+  if (startPicker) startPicker.clear();
+  if (endPicker) endPicker.clear();
+  document.getElementById('start_date_input').value = '';
+  document.getElementById('end_date_input').value = '';
+  document.getElementById('date-summary').classList.add('hidden');
+
+  // 🔹 Reset / destroy the session calendar
+  if (calendar) {
+    try { calendar.destroy(); } catch (err) { console.warn('Error destroying calendar', err); }
+    calendar = null;
   }
+  window.__calendarInitRan = false;
+
+  // Hide the modal
+  modal.classList.remove("flex");
+  modal.classList.add("hidden");
+
+  // Reset step navigation to step 1
+  setStep(1);
+
+  console.log("Create Unit modal closed and state reset.");
 }
+
 
 // Add this new function to show the popup
 function showCloseConfirmationPopup() {
