@@ -188,6 +188,58 @@ startInput.value = startPicker.formatDate(startPicker.selectedDates[0] || today,
 endInput.value = endPicker.formatDate(endPicker.selectedDates[0] || today, DATE_FMT);
 updateDateSummary();
 
+// --- Shade “in between” dates on the two inline calendars ---
+function refreshMiniRangeShading() {
+  const start = parseDMY(document.getElementById('start_date_input').value || '');
+  const end   = parseDMY(document.getElementById('end_date_input').value || '');
+
+  [startPicker, endPicker].forEach(fp => {
+    if (!fp || !fp.calendarContainer) return;
+    const days = fp.calendarContainer.querySelectorAll('.flatpickr-day');
+    days.forEach(el => {
+      // flatpickr attaches a Date object to each day element
+      const d = el.dateObj;
+      if (!d) return;
+
+      // strictly between start & end → shade
+      const inBetween = start && end && d > start && d < end;
+      el.classList.toggle('inRange', !!inBetween);
+
+      // optional: mark endpoints for nice rounded pills
+      const isStart = start && d.getTime() === start.getTime();
+      const isEnd   = end   && d.getTime() === end.getTime();
+      el.classList.toggle('startRange', !!isStart);
+      el.classList.toggle('endRange',   !!isEnd);
+    });
+  });
+}
+
+// Hook it up to all the moments the view or value can change
+[startPicker, endPicker].forEach(fp => {
+  if (!fp) return;
+  fp.config.onDayCreate = (sel, d, fpInstance, dayElem) => { /* keep default */ };
+  fp.config.onMonthChange = [...(fp.config.onMonthChange || []), refreshMiniRangeShading];
+  fp.config.onYearChange  = [...(fp.config.onYearChange  || []), refreshMiniRangeShading];
+  fp.config.onReady       = [...(fp.config.onReady       || []), refreshMiniRangeShading];
+});
+
+// Also call after either picker changes value (you already set inputs here)
+const _origStartOnChange = startPicker.config.onChange;
+startPicker.set('onChange', [
+  ...(_origStartOnChange || []),
+  () => { updateDateSummary(); refreshMiniRangeShading(); }
+]);
+
+const _origEndOnChange = endPicker.config.onChange;
+endPicker.set('onChange', [
+  ...(_origEndOnChange || []),
+  () => { updateDateSummary(); refreshMiniRangeShading(); }
+]);
+
+// Paint once on load
+refreshMiniRangeShading();
+
+
 // ===== Step navigation =====
 let currentStep = 1;
 const TOTAL_STEPS = 4;

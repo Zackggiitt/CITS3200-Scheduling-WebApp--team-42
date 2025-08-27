@@ -792,3 +792,20 @@
 .popup-btn-confirm:hover {
   background: #b91c1c;
 }
+
+#start_calendar .flatpickr-day.startRange,
+#end_calendar .flatpickr-day.startRange,
+#start_calendar .flatpickr-day.endRange,
+#end_calendar .flatpickr-day.endRange {
+  border-radius: 50% !important;
+  background: #2563eb !important; /* stronger blue */
+  color: #fff !important;
+}
+
+/* Shade dates between start and end ONLY on the mini inline calendars */
+#start_calendar .flatpickr-day.inRange,
+#end_calendar .flatpickr-day.inRange {
+  background: #dbeafeb0 !important;   /* light blue */
+  color: #315cd2 !important;        /* dark blue text */
+  border-color: #93c5fd !important;
+}
