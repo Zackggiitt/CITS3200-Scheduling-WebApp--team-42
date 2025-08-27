@@ -894,7 +894,6 @@ async function openInspector(ev) {
 
   // top-right
   document.getElementById('inspCloseBtn').onclick = closeInspector;
-  document.getElementById('inspNextBtn').onclick  = () => {};
 }
 
 
