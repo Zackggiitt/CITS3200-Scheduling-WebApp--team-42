@@ -1349,7 +1349,7 @@ function handleCloseUnitModal() {
   document.getElementById('end_date_input').value = '';
   document.getElementById('date-summary').classList.add('hidden');
 
-  // 🔹 Reset / destroy the session calendar
+  // Reset / destroy the session calendar
   if (calendar) {
     try { calendar.destroy(); } catch (err) { console.warn('Error destroying calendar', err); }
     calendar = null;
