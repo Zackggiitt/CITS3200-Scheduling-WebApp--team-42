@@ -8,7 +8,8 @@ const {
   LIST_VENUES_TEMPLATE,
   LIST_FACILITATORS_TEMPLATE,
   CREATE_OR_GET_DRAFT,
-  UPLOAD_SETUP_CSV
+  UPLOAD_SETUP_CSV,
+  UPLOAD_SESSIONS_TEMPLATE
 } = window.FLASK_ROUTES || {};
 
 // ===== Helpers to inject ids into route templates =====
@@ -432,8 +433,7 @@ if (uploadInput) {
       statusBox.innerHTML = `
         <div class="font-semibold">Upload successful</div>
         <div class="text-sm mt-1">
-          Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}<br/>
-          Venues created: ${data.created_venues} · Linked: ${data.linked_venues} · Updated: ${data.updated_venues}
+          Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
         </div>`;
       setupFlagEl.value = "true";
       fileNameEl.textContent = file.name;
@@ -462,6 +462,80 @@ if (uploadInput) {
     fileNameEl.textContent = f ? f.name : 'No file selected';
   });
 }
+
+// ===== Sessions CSV Upload (Step 3b) =====
+const sessionsInput = document.getElementById('sessions_csv');
+const sessionsFileName = document.getElementById('sessions_file_name');
+const sessionsStatus = document.getElementById('sessions_upload_status');
+const uploadSessionsBtn = document.getElementById('uploadSessionsBtn');
+
+if (sessionsInput) {
+  sessionsInput.addEventListener('change', () => {
+    sessionsFileName.textContent = sessionsInput.files?.[0]?.name || 'No file selected';
+  });
+}
+
+async function uploadSessionsCsv() {
+  const unitId = document.getElementById('unit_id').value;
+  if (!unitId) {
+    sessionsStatus.className = 'upload-status error';
+    sessionsStatus.classList.remove('hidden');
+    sessionsStatus.textContent = 'Please complete Step 1 (Unit Information) first.';
+    return;
+  }
+  if (!sessionsInput.files?.length) {
+    sessionsStatus.className = 'upload-status error';
+    sessionsStatus.classList.remove('hidden');
+    sessionsStatus.textContent = 'Choose a CSV file to upload.';
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('sessions_csv', sessionsInput.files[0]);
+
+  sessionsStatus.className = 'upload-status';
+  sessionsStatus.classList.remove('hidden');
+  sessionsStatus.textContent = 'Uploading…';
+
+  const url = withUnitId(window.FLASK_ROUTES.UPLOAD_SESSIONS_TEMPLATE, unitId);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-CSRFToken': CSRF_TOKEN }
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      const errs = (data.errors || [data.error]).filter(Boolean);
+      sessionsStatus.className = 'upload-status error';
+      sessionsStatus.innerHTML = `
+        <div class="font-semibold">Upload failed</div>
+        <ul class="list-disc list-inside text-sm">
+          ${errs.map((x) => `<li>${x}</li>`).join("")}
+        </ul>`;
+      return;
+    }
+
+    sessionsStatus.className = 'upload-status success';
+    sessionsStatus.innerHTML = `
+      <div class="font-semibold">Upload successful</div>
+      <div class="text-sm mt-1">Sessions created: ${data.created || 0}, Skipped: ${data.skipped || 0}</div>`;
+
+    // Refresh calendar so new sessions appear
+    if (window.calendar) {
+      window.calendar.refetchEvents?.();
+    }
+  } catch (err) {
+    sessionsStatus.className = 'upload-status error';
+    sessionsStatus.textContent = String(err.message || 'Unexpected error during upload.');
+  }
+}
+
+if (uploadSessionsBtn) {
+  uploadSessionsBtn.addEventListener('click', uploadSessionsCsv);
+}
+
 
 // ===== Calendar =====
 let calendar;

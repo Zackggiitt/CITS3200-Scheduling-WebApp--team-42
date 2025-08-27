@@ -285,6 +285,51 @@
             </div>
           </div>
 
+          <!-- NEW: Upload Sessions CSV -->
+          <div class="setup-card mt-4">
+            <div class="setup-card__header">
+              <span class="material-icons">calendar_month</span>
+              <div>
+                <h3 class="setup-card__title">Upload Sessions CSV</h3>
+                <p class="setup-card__hint">
+                  Columns: <code>Venue, Activity, Session, Date, Time</code>. Date: <code>DD/MM/YYYY</code> or <code>YYYY-MM-DD</code>. Time: <code>HH:MM-HH:MM</code>.
+                </p>
+              </div>
+            </div>
+
+            <div class="upload-row">
+              <div class="upload-col">
+                <div class="hint-title">Example</div>
+                <pre class="hint-sub whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded">
+          Venue,Activity,Session,Date,Time
+          EZONE 1.24,Workshop,Week 1 – Intro,27/08/2025,09:00-11:30
+          EZONE 1.24,Tutorial,Tutorial A,28/08/2025,12:30-16:00
+          EZONE 1.24,Lab,Lab 1 – Setup,30/08/2025,09:00-16:00
+                </pre>
+              </div>
+
+              <div class="upload-col">
+                <div class="hint-title">Upload CSV</div>
+                <p class="hint-sub">We’ll sanitise and create sessions automatically.</p>
+
+                <div class="filepicker">
+                  <input id="sessions_csv" name="sessions_csv" type="file" accept=".csv" class="filepicker-input" />
+                  <label for="sessions_csv" class="filepicker-btn">
+                    <span class="material-icons">upload_file</span>
+                    Choose File
+                  </label>
+                  <span id="sessions_file_name" class="filepicker-name" aria-live="polite">No file selected</span>
+                </div>
+
+                <button type="button" id="uploadSessionsBtn" class="cal-btn primary mt-3">Upload Sessions</button>
+
+                <div id="sessions_upload_status" class="upload-status hidden mt-2" role="status" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+
+
+
           <input type="hidden" name="setup_complete" id="setup_complete" value="false"/>
 
           <!-- STEP 3B: Calendar -->
@@ -579,7 +624,6 @@
     </div>
   </div>
 
-  <!-- Flask-injected values -->
 <script>
   window.FLASK_ROUTES = {
     CAL_WEEK_TEMPLATE: "{{ url_for('unitcoordinator.calendar_week',  unit_id=0) }}",
@@ -588,10 +632,12 @@
     DELETE_SESS_TEMPLATE: "{{ url_for('unitcoordinator.delete_session', session_id=0) }}",
     CREATE_OR_GET_DRAFT: "{{ url_for('unitcoordinator.create_or_get_draft') }}",
     UPLOAD_SETUP_CSV: "{{ url_for('unitcoordinator.upload_setup_csv') }}",
+    UPLOAD_SESSIONS_TEMPLATE: "{{ url_for('unitcoordinator.upload_sessions_csv', unit_id=0) }}",
     LIST_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.list_facilitators', unit_id=0) }}"
   };
   window.CSRF_TOKEN = "{{ csrf_token() }}";
 </script>
+
 
 <!-- External JS -->
 <script src="{{ url_for('static', filename='js/uc.js') }}"></script>

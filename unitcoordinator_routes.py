@@ -121,6 +121,31 @@ def _get_or_create_module_by_name(unit: Unit, name: str) -> Module:
     return m
 
 
+ACTIVITY_ALLOWED = {"workshop", "tutorial", "lab"}
+
+def _coerce_activity_type(s: str) -> str:
+    v = (s or "").strip().lower()
+    return v if v in ACTIVITY_ALLOWED else "other"
+
+TIME_RANGE_RE = re.compile(
+    r"^\s*(\d{1,2})[:\.](\d{2})\s*[-–—]\s*(\d{1,2})[:\.](\d{2})\s*$"
+)
+
+def _parse_time_range(s: str):
+    """
+    Accepts '09:00-11:30', '9.00 – 11.30', etc.
+    Returns (start_h, start_m, end_h, end_m) or None.
+    """
+    if not s: return None
+    m = TIME_RANGE_RE.match(s)
+    if not m: return None
+    h1, m1, h2, m2 = map(int, m.groups())
+    if not (0 <= h1 <= 23 and 0 <= h2 <= 23 and 0 <= m1 <= 59 and 0 <= m2 <= 59):
+        return None
+    return h1, m1, h2, m2
+
+
+
 # --- Recurrence helpers -------------------------------------------------------
 
 def _parse_recurrence(d: dict):
@@ -528,8 +553,7 @@ def calendar_week(unit_id: int):
         },
         "sessions": [_serialize_session(s, venues_by_name) for s in sessions],
     })
-
-
+    
 @unitcoordinator_bp.post("/units/<int:unit_id>/sessions")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
@@ -552,7 +576,7 @@ def create_session(unit_id: int):
     venue_name_in = (data.get("venue") or "").strip()
     venue_id_in = data.get("venue_id")
 
-    # NEW: recurrence (optional)
+    # Optional recurrence
     rec = _parse_recurrence(data.get("recurrence"))
 
     # Validate datetime inputs
@@ -567,7 +591,7 @@ def create_session(unit_id: int):
     if not _within_unit_range(unit, start_dt) or not _within_unit_range(unit, end_dt):
         return jsonify({"ok": False, "error": "Session outside unit date range"}), 400
 
-    # Determine and validate venue; we store the venue NAME in `location`
+    # Determine/validate venue; we store the venue NAME in `location`
     chosen_name = None
     if venue_id_in:
         link = (
@@ -596,7 +620,7 @@ def create_session(unit_id: int):
         if rec.get("occurs") == "weekly":
             # Fan out occurrences
             for s_dt, e_dt in _iter_weekly_occurrences(unit, start_dt, end_dt, rec):
-                # Skip exact duplicates (same module + start_time) to be defensive
+                # Skip exact duplicates (same module + start_time)
                 exists = (
                     Session.query
                     .join(Module)
@@ -652,7 +676,7 @@ def create_session(unit_id: int):
         if v_id:
             venues_by_name[chosen_name.lower()] = v_id
 
-    # Serialize the *first* (for FE to select) + include all IDs
+    # Serialize the first + include all IDs
     first = Session.query.get(created_ids[0])
     return jsonify({
         "ok": True,
@@ -661,6 +685,170 @@ def create_session(unit_id: int):
         "session": _serialize_session(first, venues_by_name),
     }), 201
 
+
+
+@unitcoordinator_bp.post("/units/<int:unit_id>/upload_sessions_csv")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def upload_sessions_csv(unit_id: int):
+    """
+    Accept CSV with headers: Venue, Activity, Session, Date, Time
+      - Activity: workshop|tutorial|lab|other (case-insensitive; others→'other')
+      - Date: DD/MM/YYYY or YYYY-MM-DD
+      - Time: 'HH:MM-HH:MM' (accepts '.' as separator and en-dash)
+    Creates sessions inside the unit's date range. Dedupes within-file and against existing.
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    file = request.files.get("sessions_csv")
+    if not file:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+
+    try:
+        text = file.read().decode("utf-8", errors="replace")
+        reader = csv.DictReader(StringIO(text))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Failed to read CSV: {e}"}), 400
+
+    # Header check
+    fns = [fn.strip().lower() for fn in (reader.fieldnames or [])]
+    needed = {"venue", "activity", "session", "date", "time"}
+    if not needed.issubset(set(fns)):
+        return jsonify({"ok": False, "error": "CSV must include headers: Venue, Activity, Session, Date, Time"}), 400
+
+    created = 0
+    skipped = 0
+    errors = []
+    seen = set()   # within-file dedupe key
+    created_ids = []
+
+    # Preload/collect existing venues for fast lookup
+    name_to_venue = {v.name.strip().lower(): v for v in Venue.query.all()}
+
+    # Helper to get or create venue + link to unit
+    def ensure_unit_venue(venue_name: str) -> Venue:
+        vkey = (venue_name or "").strip().lower()
+        if not vkey:
+            return None
+        venue = name_to_venue.get(vkey)
+        if not venue:
+            venue = Venue(name=venue_name.strip())
+            db.session.add(venue)
+            db.session.flush()
+            name_to_venue[vkey] = venue
+        # ensure UnitVenue link
+        if not UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first():
+            db.session.add(UnitVenue(unit_id=unit.id, venue_id=venue.id))
+        return venue
+
+    # Process rows
+    MAX_ROWS = 2000
+    for idx, row in enumerate(reader, start=2):
+        if idx - 1 > MAX_ROWS:
+            errors.append(f"Row {idx}: skipped due to row limit ({MAX_ROWS}).")
+            skipped += 1
+            continue
+
+        venue_in   = (row.get("venue") or "").strip()
+        activity_in= _coerce_activity_type(row.get("activity"))
+        session_in = (row.get("session") or "").strip()
+        date_in    = (row.get("date") or "").strip()
+        time_in    = (row.get("time") or "").strip()
+
+        if not (venue_in and activity_in and session_in and date_in and time_in):
+            skipped += 1
+            errors.append(f"Row {idx}: missing required fields.")
+            continue
+
+        d = _parse_date_multi(date_in)
+        tr = _parse_time_range(time_in)
+        if not d:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid date '{date_in}'.")
+            continue
+        if not tr:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid time range '{time_in}'.")
+            continue
+
+        h1, m1, h2, m2 = tr
+        start_dt = datetime(d.year, d.month, d.day, h1, m1)
+        end_dt   = datetime(d.year, d.month, d.day, h2, m2)
+        if end_dt <= start_dt:
+            skipped += 1
+            errors.append(f"Row {idx}: end time must be after start time.")
+            continue
+
+        # Range guard
+        if not _within_unit_range(unit, start_dt) or not _within_unit_range(unit, end_dt):
+            skipped += 1
+            errors.append(f"Row {idx}: outside unit date range.")
+            continue
+
+        # File-level dedupe
+        dedupe_key = (venue_in.strip().lower(), activity_in, session_in.strip().lower(), start_dt, end_dt)
+        if dedupe_key in seen:
+            skipped += 1
+            continue
+        seen.add(dedupe_key)
+
+        # Ensure venue + link to unit
+        venue_obj = ensure_unit_venue(venue_in)
+
+        # Module: name = Session (title), type = Activity
+        mod = _get_or_create_module_by_name(unit, session_in)
+        mod.module_type = activity_in  # set/update to activity type
+
+        # DB-level dedupe: same module + start + end
+        exists = (
+            Session.query
+            .filter(
+                Session.module_id == mod.id,
+                Session.start_time == start_dt,
+                Session.end_time == end_dt,
+            )
+            .first()
+        )
+        if exists:
+            skipped += 1
+            continue
+
+        try:
+            s = Session(
+                module_id=mod.id,
+                session_type="general",
+                start_time=start_dt,
+                end_time=end_dt,
+                day_of_week=start_dt.weekday(),
+                location=venue_obj.name if venue_obj else None,
+                required_skills=None,
+                max_facilitators=1,
+            )
+            db.session.add(s)
+            db.session.flush()
+            created_ids.append(s.id)
+            created += 1
+        except Exception as e:
+            db.session.rollback()
+            errors.append(f"Row {idx}: database error: {e}")
+            continue
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Commit failed: {e}"}), 500
+
+    return jsonify({
+        "ok": True,
+        "created": created,
+        "skipped": skipped,
+        "errors": errors[:30],
+        "created_session_ids": created_ids,
+    })
 
 
 
@@ -872,3 +1060,4 @@ def list_facilitators(unit_id: int):
     )
     emails = [e for (e,) in facs]
     return jsonify({"ok": True, "facilitators": emails})
+
