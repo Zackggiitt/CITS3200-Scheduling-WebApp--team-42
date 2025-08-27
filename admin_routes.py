@@ -116,11 +116,16 @@ def create_facilitator():
                 for hour in hours:
                     field_name = f'available_{day_idx}_{hour.replace(":", "")}'
                     if request.form.get(field_name):
+                        # Create 1-hour availability slots
+                        start_time = datetime.strptime(hour, '%H:%M').time()
+                        end_hour = int(hour.split(':')[0]) + 1
+                        end_time = datetime.strptime(f'{end_hour:02d}:00', '%H:%M').time()
+                        
                         availability = Availability(
                             user_id=facilitator.id,
                             day_of_week=day_idx,
-                            start_time=datetime.strptime(hour, '%H:%M').time(),
-                            end_time=datetime.strptime(hour, '%H:%M').time(),
+                            start_time=start_time,
+                            end_time=end_time,
                             is_available=True
                         )
                         db.session.add(availability)
@@ -664,9 +669,10 @@ def update_facilitator_availability(facilitator_id):
         for hour in hours:
             checkbox_name = f'available_{day_idx}_{hour.replace(":", "")}'
             if request.form.get(checkbox_name):
-                # Create availability slot
+                # Create 1-hour availability slot
                 start_time = datetime.strptime(hour, '%H:%M').time()
-                end_time = datetime.strptime(f'{int(hour[:2])+1:02d}:00', '%H:%M').time()
+                end_hour = int(hour.split(':')[0]) + 1
+                end_time = datetime.strptime(f'{end_hour:02d}:00', '%H:%M').time()
                 
                 availability = Availability(
                     user_id=facilitator_id,

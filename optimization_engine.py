@@ -39,6 +39,7 @@ def get_real_sessions():
         
         sessions_data.append({
             'id': session.id,
+            'module_id': session.module_id,  # Add module_id for skill checking
             'module_name': f"{session.module.unit.unit_code} - {session.module.module_name}",
             'day_of_week': session.day_of_week if session.day_of_week is not None else 0,
             'start_time': session.start_time.time(),
@@ -104,12 +105,30 @@ def check_availability(facilitator, session):
     if day not in facilitator['availability']:
         return 0.0
     
-    for avail_slot in facilitator['availability'][day]:
-        if (avail_slot['is_available'] and 
-            avail_slot['start_time'] <= session_start and 
-            avail_slot['end_time'] >= session_end):
+    # Get all available slots for this day, sorted by start time
+    available_slots = [slot for slot in facilitator['availability'][day] if slot['is_available']]
+    available_slots.sort(key=lambda x: x['start_time'])
+    
+    # Check if we can cover the entire session with consecutive available slots
+    current_time = session_start
+    
+    for slot in available_slots:
+        # Skip slots that end before our current position
+        if slot['end_time'] <= current_time:
+            continue
+            
+        # If there's a gap between current time and this slot, we can't cover the session
+        if slot['start_time'] > current_time:
+            return 0.0
+            
+        # Update current time to the end of this slot
+        current_time = max(current_time, slot['end_time'])
+        
+        # If we've covered the entire session, we're good
+        if current_time >= session_end:
             return 1.0
     
+    # If we get here, we couldn't cover the entire session
     return 0.0
 
 def get_skill_score(facilitator, session):
@@ -117,22 +136,13 @@ def get_skill_score(facilitator, session):
     Get skill score for facilitator-session match
     Uses the SKILL_SCORES mapping
     """
-    # For dummy sessions, we'll use a generic skill check
-    # In real implementation, this would check facilitator['skills'][session['module_id']]
+    # Check if facilitator has skills for this session's module
+    if 'skills' in facilitator and session.get('module_id') in facilitator['skills']:
+        skill_level = facilitator['skills'][session['module_id']]
+        return SKILL_SCORES.get(skill_level, 0.0)
     
-    # For now, simulate some skill levels for testing
-    facilitator_id = facilitator['id']
-    session_id = session['id']
-    
-    # Simple simulation: alternate skill levels based on IDs
-    if (facilitator_id + session_id) % 4 == 0:
-        return SKILL_SCORES[SkillLevel.PROFICIENT]
-    elif (facilitator_id + session_id) % 4 == 1:
-        return SKILL_SCORES[SkillLevel.LEADER]
-    elif (facilitator_id + session_id) % 4 == 2:
-        return SKILL_SCORES[SkillLevel.INTERESTED]
-    else:
-        return SKILL_SCORES[SkillLevel.UNINTERESTED]
+    # If no specific skill recorded, return default interested level
+    return SKILL_SCORES[SkillLevel.INTERESTED]
 
 def get_assigned_hours(facilitator, current_assignments):
     """
