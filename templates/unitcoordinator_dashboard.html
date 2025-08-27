@@ -248,7 +248,7 @@
               <div>
                 <h3 class="setup-card__title">Setup Required</h3>
                 <p class="setup-card__hint">
-                  Before creating sessions, please upload facilitators and venues using the CSV template.
+                  Before creating sessions, upload your facilitators list (CSV with a single header: <code>facilitator_email</code>).
                 </p>
               </div>
             </div>
@@ -262,15 +262,14 @@
                   href="{{ url_for('unitcoordinator.download_setup_csv_template') }}"
                   target="_blank" rel="noopener">
                   <span class="material-icons" style="font-size:18px">download</span>
-                  Download CSV Template
+                  Download Facilitators CSV Template
                 </a>
               </div>
 
               <!-- Right: Upload CSV -->
               <div class="upload-col">
                 <div class="hint-title">Upload CSV</div>
-                <p class="hint-sub">Facilitator emails and venue names (2 columns).</p>
-
+                <p class="hint-sub">CSV must include a single header: <code>facilitator_email</code>.</p>
                 <div class="filepicker">
                   <input id="setup_csv" name="setup_csv" type="file" accept=".csv" class="filepicker-input" />
                   <label for="setup_csv" class="filepicker-btn">
@@ -587,10 +586,8 @@
     CREATE_SESS_TEMPLATE: "{{ url_for('unitcoordinator.create_session', unit_id=0) }}",
     UPDATE_SESS_TEMPLATE: "{{ url_for('unitcoordinator.update_session', session_id=0) }}",
     DELETE_SESS_TEMPLATE: "{{ url_for('unitcoordinator.delete_session', session_id=0) }}",
-    LIST_VENUES_TEMPLATE: "{{ url_for('unitcoordinator.list_venues',   unit_id=0) }}",
     CREATE_OR_GET_DRAFT: "{{ url_for('unitcoordinator.create_or_get_draft') }}",
     UPLOAD_SETUP_CSV: "{{ url_for('unitcoordinator.upload_setup_csv') }}",
-    LIST_VENUES_TEMPLATE: "{{ url_for('unitcoordinator.list_venues',   unit_id=0) }}",
     LIST_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.list_facilitators', unit_id=0) }}"
   };
   window.CSRF_TOKEN = "{{ csrf_token() }}";
