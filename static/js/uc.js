@@ -314,6 +314,7 @@ function readUnitBasics() {
   };
 }
 
+
 async function ensureDraftAndSetUnitId() {
   const basic = readUnitBasics();
   if (!basic.unit_code || !basic.unit_name || !basic.year || !basic.semester) {
@@ -336,6 +337,9 @@ async function ensureDraftAndSetUnitId() {
   form.append('end_date',   endISO);
   form.append('unit_start_date', startISO);
   form.append('unit_end_date',   endISO);
+
+  form.append('force_new', 'true');
+  form.append('timestamp', Date.now().toString());
 
   const res = await fetch(CREATE_OR_GET_DRAFT, {
     method: 'POST',
@@ -1415,12 +1419,66 @@ function closeCreateUnitModal() {
   }
 
   // Hide the modal
+  const form = document.getElementById('create-unit-form');
+  if (form) {
+    form.reset();
+    
+    // Reset custom semester dropdown to default
+    const semesterHidden = form.querySelector('[name="semester"]');
+    const semesterValue = form.querySelector('.select-value');
+    if (semesterHidden) semesterHidden.value = 'Semester 1';
+    if (semesterValue) semesterValue.textContent = 'Semester 1';
+  }
+
+  const setupCsv = document.getElementById('setup_csv');
+  const sessionsInput = document.getElementById('sessions_csv');
+  const fileName = document.getElementById('file_name');
+  const sessionsFileName = document.getElementById('sessions_file_name');
+
+  if (setupCsv) setupCsv.value = '';
+  if (sessionsInput) sessionsInput.value = '';
+  if (fileName) fileName.textContent = 'No file selected';
+  if (sessionsFileName) sessionsFileName.textContent = 'No file selected';
+  
+  // Hide all status messages
+  const uploadStatus = document.getElementById('upload_status');
+  const sessionsStatus = document.getElementById('sessions_upload_status');
+  if (uploadStatus) {
+    uploadStatus.classList.add('hidden');
+    uploadStatus.classList.remove('success', 'error');
+    uploadStatus.textContent = '';
+  }
+  if (sessionsStatus) {
+    sessionsStatus.classList.add('hidden');
+    sessionsStatus.classList.remove('success', 'error');
+    sessionsStatus.textContent = '';
+  }
+
+  // Reset date pickers to today
+  const today = new Date();
+  if (startPicker) {
+    startPicker.setDate(today, true);
+    document.getElementById('start_date_input').value = startPicker.formatDate(today, DATE_FMT);
+  }
+  if (endPicker) {
+    endPicker.setDate(today, true);
+    document.getElementById('end_date_input').value = endPicker.formatDate(today, DATE_FMT);
+  }
+  
+  // Hide date summary
+  const dateSummary = document.getElementById('date-summary');
+  if (dateSummary) dateSummary.classList.add('hidden');
+
+  // Hide the modal
   const modal = document.getElementById("createUnitModal");
   if (modal) {
     modal.classList.add("hidden");
     modal.classList.remove("flex");
     console.log('Modal hidden');
   }
+
+  // Reset to step 1
+  setStep(1);
   
   console.log('Modal completely closed and reset');
 }
@@ -1509,8 +1567,32 @@ function closeConfirmationPopup() {
   }
 }
 
-function confirmCloseModal() {
+async function confirmCloseModal() {
   closeConfirmationPopup();
+  
+  // IMPORTANT: Delete the draft unit from server before closing
+  const unitId = document.getElementById('unit_id').value;
+  if (unitId) {
+    try {
+      console.log('Deleting draft unit from server:', unitId);
+      
+      // Call an endpoint to delete the draft unit
+      const response = await fetch(withUnitId(CREATE_OR_GET_DRAFT, unitId), {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': CSRF_TOKEN }
+      });
+      
+      if (response.ok) {
+        console.log('Draft unit deleted successfully');
+      } else {
+        console.warn('Failed to delete draft unit, but continuing with close');
+      }
+    } catch (error) {
+      console.error('Error deleting draft unit:', error);
+      // Continue with close even if delete fails
+    }
+  }
+  
   closeCreateUnitModal();
 }
 
