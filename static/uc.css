@@ -784,12 +784,12 @@
   background: #e5e7eb;
 }
 
-.popup-btn-confirm {
+.popup-btn-confirm-close {
   background: #dc2626;
   color: white;
 }
 
-.popup-btn-confirm:hover {
+.popup-btn-confirm-close:hover {
   background: #b91c1c;
 }
 
@@ -809,3 +809,13 @@
   color: #315cd2 !important;        /* dark blue text */
   border-color: #93c5fd !important;
 }
+
+.popup-btn-confirm {
+  background: #059669;
+  color: white;
+}
+
+.popup-btn-confirm:hover {
+  background: #047857;
+}
+

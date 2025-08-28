@@ -21,10 +21,24 @@ function getUnitId() {
 
 // ===== Modal open/close =====
 function openCreateUnitModal() {
-    resetCreateUnitWizard();
-    setStep(1);
-    document.getElementById('unit_id').value = '';
-    document.getElementById('setup_complete').value = 'false';
+    
+  window.__venueCache = {};
+  window.__editingEvent = null;
+  _pendingStart = null;
+  _pendingEnd = null;
+  if (calendar) {
+    calendar.removeAllEvents();
+    calendar.destroy();
+    calendar = null;
+  }
+  window.__calendarInitRan = false;
+
+  resetCreateUnitWizard();
+  setStep(1);
+  document.getElementById('unit_id').value = '';
+  document.getElementById('setup_complete').value = 'false';
+
+
     if (calendar) {
         try { calendar.destroy(); } catch {}
         calendar = null;
@@ -37,19 +51,18 @@ function openCreateUnitModal() {
     // Wire the close button (X) to show warning
     const closeBtn = modal.querySelector('.modal-close');
     if (closeBtn) {
-        // Remove existing event listeners by replacing the element
         const newCloseBtn = closeBtn.cloneNode(true);
         closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
         
         // Add the new event listener
-        newCloseBtn.onclick = handleCloseUnitModal;
-        console.log('Close button wired to handleCloseUnitModal');
+        newCloseBtn.onclick = showCloseConfirmationPopup;
+        console.log('Close button wired to showCloseConfirmationPopup');
     }
     
     // Also handle ESC key
     const handleEscKey = (e) => {
       if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-        handleCloseUnitModal();
+        showCloseConfirmationPopup();
       }
     };
     
@@ -65,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.addEventListener('click', (e) => {
       // Check if the click was on the modal backdrop (not the modal content)
       if (e.target === modal) {
-        handleCloseUnitModal();
+        showCloseConfirmationPopup();
       }
     });
   }
@@ -315,6 +328,7 @@ function readUnitBasics() {
   };
 }
 
+
 async function ensureDraftAndSetUnitId() {
   const basic = readUnitBasics();
   if (!basic.unit_code || !basic.unit_name || !basic.year || !basic.semester) {
@@ -337,6 +351,9 @@ async function ensureDraftAndSetUnitId() {
   form.append('end_date',   endISO);
   form.append('unit_start_date', startISO);
   form.append('unit_end_date',   endISO);
+
+  form.append('force_new', 'true');
+  form.append('timestamp', Date.now().toString());
 
   const res = await fetch(CREATE_OR_GET_DRAFT, {
     method: 'POST',
@@ -1110,23 +1127,33 @@ function wireInspectorButtons(ev) {
     }
   };
 
-  // Delete - FIXED APPROACH: Use a unique handler for each session
+  // Delete 
   const deleteBtn = document.getElementById('inspDelete');
   if (deleteBtn) {
-    // Remove ALL existing event listeners by cloning without them
+    // Clear all existing event handlers completely
+    deleteBtn.onclick = null;
+    deleteBtn.removeAttribute('onclick');
+    
+    // Remove any existing event listeners
     const newDeleteBtn = deleteBtn.cloneNode(true);
     deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
     
-    // Create a unique delete handler for this specific session
-    const deleteHandler = async () => {
-      console.log('Delete button clicked for session:', ev.id);
+    // Create a fresh delete handler for this specific session
+    let isDeleting = false; 
+
+    const deleteHandler = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       
-      if (!confirm('Delete this session?')) {
-        console.log('Delete cancelled by user');
+      if (isDeleting) {
+        console.log('Delete already in progress, ignoring click');
         return;
       }
+      
+      console.log('Delete button clicked for session:', ev.id)
 
       newDeleteBtn.disabled = true;
+      newDeleteBtn.textContent = 'Deleting...';
       console.log('Starting delete process for session:', ev.id);
 
       try {
@@ -1143,7 +1170,10 @@ function wireInspectorButtons(ev) {
         if (!data.ok) {
           console.error('Delete failed on server:', data.error);
           alert(data.error || 'Failed to delete');
+          // Re-enable button on error
+          isDeleting = false;
           newDeleteBtn.disabled = false;
+          newDeleteBtn.textContent = 'Delete';
           return;
         }
 
@@ -1159,28 +1189,29 @@ function wireInspectorButtons(ev) {
           console.warn('Could not find event in calendar to remove:', eventId);
         }
 
-        // Clear the editing handle
+        // Clear the editing handle IMMEDIATELY
         window.__editingEvent = null;
 
-        // Close the inspector
+        // Close the inspector IMMEDIATELY
         closeInspector();
 
         console.log('Delete operation completed successfully for:', eventId);
 
       } catch (err) {
         console.error('Delete error:', err);
-        alert(String(err?.message || err || 'Failed to delete'));
+        alert(`Failed to delete: ${err.message}`);
+        
+        // Re-enable button on error
+        isDeleting = false;
         newDeleteBtn.disabled = false;
+        newDeleteBtn.textContent = 'Delete';
       }
     };
 
-    // Attach the handler
-    newDeleteBtn.onclick = deleteHandler;
+    // Attach the handler to the NEW button
+    newDeleteBtn.addEventListener('click', deleteHandler, { once: false });
     
-    // Also add via addEventListener as backup
-    newDeleteBtn.addEventListener('click', (e) => {
-      console.log('Delete button addEventListener triggered for:', ev.id);
-    });
+    console.log('Delete button wired for session:', ev.id);
   }
 
   // Cancel
@@ -1188,17 +1219,22 @@ function wireInspectorButtons(ev) {
 
   // ESC to close
   document.addEventListener('keydown', function esc(e){
-    if (e.key === 'Escape') { closeInspector(); document.removeEventListener('keydown', esc); }
-  }, { once:true });
+    if (e.key === 'Escape') { 
+      closeInspector(); 
+      document.removeEventListener('keydown', esc); 
+    }
+  }, { once: true });
 
-  // Click outside to close (inside calendar wrapper)
+  // Click outside to close
   const wrap = document.getElementById('calendar_wrap');
   function outside(e){
-    if (!inspector.contains(e.target)) { closeInspector(); wrap.removeEventListener('mousedown', outside); }
+    if (!inspector.contains(e.target)) { 
+      closeInspector(); 
+      wrap.removeEventListener('mousedown', outside); 
+    }
   }
-  wrap.addEventListener('mousedown', outside, { once:true });
+  wrap.addEventListener('mousedown', outside, { once: true });
 }
-
 
 function showCalendarIfReady() {
   const ready = document.getElementById('setup_complete')?.value === 'true';
@@ -1351,9 +1387,7 @@ function closeCreateUnitModal() {
   // Clear any server-side draft data by clearing the unit ID
   const unitIdEl = document.getElementById('unit_id');
   if (unitIdEl) {
-    const oldUnitId = unitIdEl.value;
     unitIdEl.value = '';
-    console.log('Cleared unit ID:', oldUnitId);
   }
 
   // Clear setup completion flag
@@ -1362,47 +1396,82 @@ function closeCreateUnitModal() {
     setupFlagEl.value = 'false';
   }
 
-  // Destroy calendar completely
+  // Destroy calendar completely and clear its events
   if (calendar) {
-    try { 
-      calendar.destroy(); 
-      console.log('Calendar destroyed');
-    } catch (e) {
-      console.warn('Error destroying calendar:', e);
-    }
+    calendar.removeAllEvents(); // Clear all events to prevent double-ups
+    calendar.destroy();
     calendar = null;
   }
   window.__calendarInitRan = false;
 
-  // Clear venue cache
+  // Clear venue cache and any other global caches
   window.__venueCache = {};
+  window.__editingEvent = null; // Ensure no lingering edit state
 
   // Clear any editing state
-  window.__editingEvent = null;
   _pendingStart = null;
   _pendingEnd = null;
 
   // Clear time pickers
   if (_startTP) {
-    try { _startTP.destroy(); } catch (e) {}
+    _startTP.destroy();
     _startTP = null;
   }
   if (_endTP) {
-    try { _endTP.destroy(); } catch (e) {}
+    _endTP.destroy();
     _endTP = null;
   }
   if (_recUntilPicker) {
-    try { _recUntilPicker.destroy(); } catch (e) {}
+    _recUntilPicker.destroy();
     _recUntilPicker = null;
   }
 
   // Hide the modal
+  const form = document.getElementById('create-unit-form');
+  if (form) {
+    form.reset(); // Fully reset the form to clear all inputs
+  }
+
+  const setupCsv = document.getElementById('setup_csv');
+  const sessionsInput = document.getElementById('sessions_csv');
+  const fileName = document.getElementById('file_name');
+  const sessionsFileName = document.getElementById('sessions_file_name');
+
+  if (setupCsv) setupCsv.value = '';
+  if (sessionsInput) sessionsInput.value = '';
+  if (fileName) fileName.textContent = '';
+  if (sessionsFileName) sessionsFileName.textContent = '';
+  
+  // Hide all status messages
+  const uploadStatus = document.getElementById('upload_status');
+  const sessionsStatus = document.getElementById('sessions_upload_status');
+  if (uploadStatus) uploadStatus.classList.add('hidden');
+  if (sessionsStatus) sessionsStatus.classList.add('hidden');
+
+  // Reset date pickers to today
+  const today = new Date();
+  if (startPicker) {
+    startPicker.setDate(today);
+    startInput.value = startPicker.formatDate(today, DATE_FMT);
+  }
+  if (endPicker) {
+    endPicker.setDate(today);
+    endInput.value = endPicker.formatDate(today, DATE_FMT);
+  }
+  
+  // Hide date summary
+  const dateSummary = document.getElementById('date-summary');
+  if (dateSummary) dateSummary.classList.add('hidden');
+
+  // Hide the modal
   const modal = document.getElementById("createUnitModal");
   if (modal) {
-    modal.classList.add("hidden");
     modal.classList.remove("flex");
-    console.log('Modal hidden');
+    modal.classList.add("hidden");
   }
+
+  // Reset to step 1
+  setStep(1);
   
   console.log('Modal completely closed and reset');
 }
@@ -1456,7 +1525,7 @@ function showCloseConfirmationPopup() {
         <button class="popup-btn popup-btn-cancel" onclick="closeConfirmationPopup()">
           Cancel
         </button>
-        <button class="popup-btn popup-btn-confirm" onclick="confirmCloseModal()">
+        <button class="popup-btn popup-btn-confirm-close" onclick="confirmCloseModal()">
           Close & Lose Changes
         </button>
       </div>
@@ -1491,10 +1560,206 @@ function closeConfirmationPopup() {
   }
 }
 
-function confirmCloseModal() {
+async function confirmCloseModal() {
   closeConfirmationPopup();
+  
+  // Mark draft as cancelled instead of trying to delete
+  const unitId = document.getElementById('unit_id').value;
+  if (unitId) {
+    try {
+      console.log('Marking draft as cancelled on backend:', unitId);
+      
+      const form = new FormData();
+      form.append('unit_id', unitId);
+      form.append('action', 'cancel_draft');
+      form.append('cancelled', 'true');
+      
+      const response = await fetch(CREATE_OR_GET_DRAFT, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+        body: form
+      });
+      
+      if (response.ok) {
+        console.log('Draft successfully marked as cancelled');
+      } else {
+        console.warn('Failed to cancel draft on backend, but continuing with close');
+      }
+    } catch (error) {
+      console.error('Error cancelling draft:', error);
+      // Continue with close even if backend call fails
+    }
+  }
+  
   closeCreateUnitModal();
 }
+
+async function createUnit() {
+  // Validate required fields first
+  const { unit_name, unit_code, semester, year, start_date, end_date } = readUnitBasics();
+  const unitId = document.getElementById('unit_id').value;
+  
+  if (!unitId) {
+    alert('No unit ID found. Please go back and complete the previous steps.');
+    return;
+  }
+  
+  if (!unit_name || !unit_code || !semester || !year || !start_date || !end_date) {
+    alert('Please complete all required fields before creating the unit.');
+    return;
+  }
+  
+  // Call createUnitFinal directly 
+  createUnitFinal();
+}
+
+async function createUnitFinal() {
+  const createBtn = document.getElementById('submit-btn');
+  
+  if (createBtn) {
+    createBtn.disabled = true;
+    createBtn.textContent = 'Creating Unit...';
+  }
+
+  try {
+    const unitId = document.getElementById('unit_id').value;
+    
+    if (!unitId) {
+      throw new Error('No unit ID found. Please go back and complete the previous steps.');
+    }
+
+    console.log('Finalizing unit with ID:', unitId);
+
+    // Since the unit draft already exists and sessions are created,
+    // we just need to mark it as complete
+    document.getElementById('setup_complete').value = 'true';
+    
+    // Simulate a brief delay to show the "Creating..." state
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    console.log('Unit creation process completed');
+
+    // MAKE SURE THIS LINE IS HERE:
+    showUnitCreatedSuccessPopup();
+
+  } catch (error) {
+    console.error('Error creating unit:', error);
+    alert(`Failed to create unit: ${error.message}`);
+    
+    // Re-enable button on error
+    if (createBtn) {
+      createBtn.disabled = false;
+      createBtn.textContent = 'Create Unit';
+    }
+  }
+}
+
+// Wire up the Create Unit button when the DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  const createUnitBtn = document.getElementById('submit-btn');
+  if (createUnitBtn) {
+    createUnitBtn.onclick = createUnit;
+    console.log('Create Unit button wired successfully');
+  } else {
+    console.warn('Create Unit button not found');
+  }
+});
+
+// Add this function to show the success popup
+function showUnitCreatedSuccessPopup() {
+  // Create popup HTML
+  const popup = document.createElement('div');
+  popup.className = 'simple-popup';
+  popup.innerHTML = `
+    <div class="popup-content">
+      <div class="popup-title" style="color: #059669;">Success</div>
+      <div class="popup-message">
+        Unit created successfully!
+      </div>
+      <div class="popup-buttons">
+        <button class="popup-btn popup-btn-confirm" onclick="closeSuccessPopup()">
+          OK
+        </button>
+      </div>
+    </div>
+  `;
+  
+  // Add to body
+  document.body.appendChild(popup);
+  
+  // Close on backdrop click
+  popup.addEventListener('click', (e) => {
+    if (e.target === popup) {
+      closeSuccessPopup();
+    }
+  });
+  
+  // Close on ESC key
+  const handleEscKey = (e) => {
+    if (e.key === 'Escape') {
+      closeSuccessPopup();
+      document.removeEventListener('keydown', handleEscKey);
+    }
+  };
+  document.addEventListener('keydown', handleEscKey);
+}
+
+// Add helper function to close success popup
+function closeSuccessPopup() {
+  const popup = document.querySelector('.simple-popup');
+  if (popup) {
+    popup.remove();
+  }
+  
+  // Close the modal and refresh after popup is closed
+  closeCreateUnitModal();
+  window.location.reload();
+}
+
+// Update your createUnitFinal function around line 1170
+async function createUnitFinal() {
+  const createBtn = document.getElementById('submit-btn');
+  
+  if (createBtn) {
+    createBtn.disabled = true;
+    createBtn.textContent = 'Creating Unit...';
+  }
+
+  try {
+    const unitId = document.getElementById('unit_id').value;
+    
+    if (!unitId) {
+      throw new Error('No unit ID found. Please go back and complete the previous steps.');
+    }
+
+    console.log('Finalizing unit with ID:', unitId);
+
+    // Since the unit draft already exists and sessions are created,
+    // we just need to mark it as complete
+    document.getElementById('setup_complete').value = 'true';
+    
+    // Simulate a brief delay to show the "Creating..." state
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    console.log('Unit creation process completed');
+
+    // Show success popup instead of closing immediately
+    showUnitCreatedSuccessPopup();
+
+  } catch (error) {
+    console.error('Error creating unit:', error);
+    alert(`Failed to create unit: ${error.message}`);
+    
+    // Re-enable button on error
+    if (createBtn) {
+      createBtn.disabled = false;
+      createBtn.textContent = 'Create Unit';
+    }
+  }
+}
+
+
+
 
 // ===== Staffing: defaults + helpers =========================================
 const DEFAULT_LEAD_REQUIRED = 1;
@@ -1689,16 +1954,31 @@ function closeInspector() {
 
   console.log('Closing inspector for event:', window.__editingEvent?.id);
 
-  // hide panel
+  // Clean up delete button completely - find the current delete button
+  const deleteBtn = document.getElementById('inspDelete');
+  if (deleteBtn) {
+    // Clone to remove ALL event listeners
+    const cleanDeleteBtn = deleteBtn.cloneNode(true);
+    deleteBtn.parentNode.replaceChild(cleanDeleteBtn, deleteBtn);
+    
+    // Reset button state
+    cleanDeleteBtn.disabled = false;
+    cleanDeleteBtn.textContent = 'Delete';
+    cleanDeleteBtn.onclick = null;
+  }
+
+  // Hide panel
   inspector.classList.remove('open');
   inspector.classList.add('hidden');
-
-  // IMPORTANT: Clear the editing event reference
+  
+  // Clear the editing event reference
   window.__editingEvent = null;
 
-  // clear pending time edits (safe if null)
+  // Clear pending time edits
   _pendingStart = null;
   _pendingEnd = null;
+  
+  console.log('Inspector closed and cleaned up');
 }
 
 async function populateReview() {
