@@ -37,19 +37,18 @@ function openCreateUnitModal() {
     // Wire the close button (X) to show warning
     const closeBtn = modal.querySelector('.modal-close');
     if (closeBtn) {
-        // Remove existing event listeners by replacing the element
         const newCloseBtn = closeBtn.cloneNode(true);
         closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
         
         // Add the new event listener
-        newCloseBtn.onclick = handleCloseUnitModal;
-        console.log('Close button wired to handleCloseUnitModal');
+        newCloseBtn.onclick = showCloseConfirmationPopup;
+        console.log('Close button wired to showCloseConfirmationPopup');
     }
     
     // Also handle ESC key
     const handleEscKey = (e) => {
       if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-        handleCloseUnitModal();
+        showCloseConfirmationPopup();
       }
     };
     
@@ -65,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.addEventListener('click', (e) => {
       // Check if the click was on the modal backdrop (not the modal content)
       if (e.target === modal) {
-        handleCloseUnitModal();
+        showCloseConfirmationPopup();
       }
     });
   }
@@ -1456,7 +1455,7 @@ function showCloseConfirmationPopup() {
         <button class="popup-btn popup-btn-cancel" onclick="closeConfirmationPopup()">
           Cancel
         </button>
-        <button class="popup-btn popup-btn-confirm" onclick="confirmCloseModal()">
+        <button class="popup-btn popup-btn-confirm-close" onclick="confirmCloseModal()">
           Close & Lose Changes
         </button>
       </div>
@@ -1495,6 +1494,173 @@ function confirmCloseModal() {
   closeConfirmationPopup();
   closeCreateUnitModal();
 }
+
+async function createUnit() {
+  // Validate required fields first
+  const { unit_name, unit_code, semester, year, start_date, end_date } = readUnitBasics();
+  const unitId = document.getElementById('unit_id').value;
+  
+  if (!unitId) {
+    alert('No unit ID found. Please go back and complete the previous steps.');
+    return;
+  }
+  
+  if (!unit_name || !unit_code || !semester || !year || !start_date || !end_date) {
+    alert('Please complete all required fields before creating the unit.');
+    return;
+  }
+  
+  // Call createUnitFinal directly 
+  createUnitFinal();
+}
+
+async function createUnitFinal() {
+  const createBtn = document.getElementById('submit-btn');
+  
+  if (createBtn) {
+    createBtn.disabled = true;
+    createBtn.textContent = 'Creating Unit...';
+  }
+
+  try {
+    const unitId = document.getElementById('unit_id').value;
+    
+    if (!unitId) {
+      throw new Error('No unit ID found. Please go back and complete the previous steps.');
+    }
+
+    console.log('Finalizing unit with ID:', unitId);
+
+    // Since the unit draft already exists and sessions are created,
+    // we just need to mark it as complete
+    document.getElementById('setup_complete').value = 'true';
+    
+    // Simulate a brief delay to show the "Creating..." state
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    console.log('Unit creation process completed');
+
+    // MAKE SURE THIS LINE IS HERE:
+    showUnitCreatedSuccessPopup();
+
+  } catch (error) {
+    console.error('Error creating unit:', error);
+    alert(`Failed to create unit: ${error.message}`);
+    
+    // Re-enable button on error
+    if (createBtn) {
+      createBtn.disabled = false;
+      createBtn.textContent = 'Create Unit';
+    }
+  }
+}
+
+// Wire up the Create Unit button when the DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  const createUnitBtn = document.getElementById('submit-btn');
+  if (createUnitBtn) {
+    createUnitBtn.onclick = createUnit;
+    console.log('Create Unit button wired successfully');
+  } else {
+    console.warn('Create Unit button not found');
+  }
+});
+
+// Add this function to show the success popup
+function showUnitCreatedSuccessPopup() {
+  // Create popup HTML
+  const popup = document.createElement('div');
+  popup.className = 'simple-popup';
+  popup.innerHTML = `
+    <div class="popup-content">
+      <div class="popup-title" style="color: #059669;">Success</div>
+      <div class="popup-message">
+        Unit created successfully!
+      </div>
+      <div class="popup-buttons">
+        <button class="popup-btn popup-btn-confirm" onclick="closeSuccessPopup()">
+          OK
+        </button>
+      </div>
+    </div>
+  `;
+  
+  // Add to body
+  document.body.appendChild(popup);
+  
+  // Close on backdrop click
+  popup.addEventListener('click', (e) => {
+    if (e.target === popup) {
+      closeSuccessPopup();
+    }
+  });
+  
+  // Close on ESC key
+  const handleEscKey = (e) => {
+    if (e.key === 'Escape') {
+      closeSuccessPopup();
+      document.removeEventListener('keydown', handleEscKey);
+    }
+  };
+  document.addEventListener('keydown', handleEscKey);
+}
+
+// Add helper function to close success popup
+function closeSuccessPopup() {
+  const popup = document.querySelector('.simple-popup');
+  if (popup) {
+    popup.remove();
+  }
+  
+  // Close the modal and refresh after popup is closed
+  closeCreateUnitModal();
+  window.location.reload();
+}
+
+// Update your createUnitFinal function around line 1170
+async function createUnitFinal() {
+  const createBtn = document.getElementById('submit-btn');
+  
+  if (createBtn) {
+    createBtn.disabled = true;
+    createBtn.textContent = 'Creating Unit...';
+  }
+
+  try {
+    const unitId = document.getElementById('unit_id').value;
+    
+    if (!unitId) {
+      throw new Error('No unit ID found. Please go back and complete the previous steps.');
+    }
+
+    console.log('Finalizing unit with ID:', unitId);
+
+    // Since the unit draft already exists and sessions are created,
+    // we just need to mark it as complete
+    document.getElementById('setup_complete').value = 'true';
+    
+    // Simulate a brief delay to show the "Creating..." state
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    console.log('Unit creation process completed');
+
+    // Show success popup instead of closing immediately
+    showUnitCreatedSuccessPopup();
+
+  } catch (error) {
+    console.error('Error creating unit:', error);
+    alert(`Failed to create unit: ${error.message}`);
+    
+    // Re-enable button on error
+    if (createBtn) {
+      createBtn.disabled = false;
+      createBtn.textContent = 'Create Unit';
+    }
+  }
+}
+
+
+
 
 // ===== Staffing: defaults + helpers =========================================
 const DEFAULT_LEAD_REQUIRED = 1;
