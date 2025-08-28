@@ -355,12 +355,51 @@ def create_unit():
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def create_or_get_draft():
-    """
-    Idempotently returns an existing Unit for this UC+code+year+semester,
-    or creates it if absent. Useful for attaching CSV uploads in Step 3.
-    """
     user = get_current_user()
+    
+    # CHECK FOR CANCEL ACTION FIRST
+    action = request.form.get('action', '').strip()
+    if action == 'cancel_draft':
+        unit_id = request.form.get('unit_id', '').strip()
+        if unit_id:
+            try:
+                unit_id = int(unit_id)
+                unit = Unit.query.get(unit_id)
+                if unit and unit.created_by == user.id:
+                    # Delete all sessions for this unit
+                    sessions = db.session.query(Session).join(Module).filter(Module.unit_id == unit.id).all()
+                    for session in sessions:
+                        db.session.delete(session)
+                    
+                    # Delete all modules for this unit
+                    modules = Module.query.filter_by(unit_id=unit.id).all()
+                    for module in modules:
+                        db.session.delete(module)
+                    
+                    # Delete unit facilitator links
+                    UnitFacilitator.query.filter_by(unit_id=unit.id).delete()
+                    
+                    # Delete unit venue links
+                    UnitVenue.query.filter_by(unit_id=unit.id).delete()
+                    
+                    # Delete the unit itself
+                    db.session.delete(unit)
+                    db.session.commit()
+                    
+                    logger.info(f"Cancelled and deleted draft unit {unit_id} for user {user.id}")
+                    return jsonify({"ok": True, "message": "Draft cancelled successfully"})
+                else:
+                    return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+            except ValueError:
+                return jsonify({"ok": False, "error": "Invalid unit ID"}), 400
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Error cancelling draft: {e}")
+                return jsonify({"ok": False, "error": "Failed to cancel draft"}), 500
+        
+        return jsonify({"ok": True, "message": "No unit to cancel"})
 
+    # EXISTING CREATE/GET LOGIC
     unit_code = (request.form.get("unit_code") or "").strip()
     unit_name = (request.form.get("unit_name") or "").strip()
     year_raw = (request.form.get("year") or "").strip()
