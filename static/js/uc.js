@@ -8,7 +8,8 @@ const {
   LIST_VENUES_TEMPLATE,
   LIST_FACILITATORS_TEMPLATE,
   CREATE_OR_GET_DRAFT,
-  UPLOAD_SETUP_CSV
+  UPLOAD_SETUP_CSV,
+  UPLOAD_SESSIONS_TEMPLATE
 } = window.FLASK_ROUTES || {};
 
 // ===== Helpers to inject ids into route templates =====
@@ -187,6 +188,58 @@ const endPicker = flatpickr("#end_calendar", {
 startInput.value = startPicker.formatDate(startPicker.selectedDates[0] || today, DATE_FMT);
 endInput.value = endPicker.formatDate(endPicker.selectedDates[0] || today, DATE_FMT);
 updateDateSummary();
+
+// --- Shade “in between” dates on the two inline calendars ---
+function refreshMiniRangeShading() {
+  const start = parseDMY(document.getElementById('start_date_input').value || '');
+  const end   = parseDMY(document.getElementById('end_date_input').value || '');
+
+  [startPicker, endPicker].forEach(fp => {
+    if (!fp || !fp.calendarContainer) return;
+    const days = fp.calendarContainer.querySelectorAll('.flatpickr-day');
+    days.forEach(el => {
+      // flatpickr attaches a Date object to each day element
+      const d = el.dateObj;
+      if (!d) return;
+
+      // strictly between start & end → shade
+      const inBetween = start && end && d > start && d < end;
+      el.classList.toggle('inRange', !!inBetween);
+
+      // optional: mark endpoints for nice rounded pills
+      const isStart = start && d.getTime() === start.getTime();
+      const isEnd   = end   && d.getTime() === end.getTime();
+      el.classList.toggle('startRange', !!isStart);
+      el.classList.toggle('endRange',   !!isEnd);
+    });
+  });
+}
+
+// Hook it up to all the moments the view or value can change
+[startPicker, endPicker].forEach(fp => {
+  if (!fp) return;
+  fp.config.onDayCreate = (sel, d, fpInstance, dayElem) => { /* keep default */ };
+  fp.config.onMonthChange = [...(fp.config.onMonthChange || []), refreshMiniRangeShading];
+  fp.config.onYearChange  = [...(fp.config.onYearChange  || []), refreshMiniRangeShading];
+  fp.config.onReady       = [...(fp.config.onReady       || []), refreshMiniRangeShading];
+});
+
+// Also call after either picker changes value (you already set inputs here)
+const _origStartOnChange = startPicker.config.onChange;
+startPicker.set('onChange', [
+  ...(_origStartOnChange || []),
+  () => { updateDateSummary(); refreshMiniRangeShading(); }
+]);
+
+const _origEndOnChange = endPicker.config.onChange;
+endPicker.set('onChange', [
+  ...(_origEndOnChange || []),
+  () => { updateDateSummary(); refreshMiniRangeShading(); }
+]);
+
+// Paint once on load
+refreshMiniRangeShading();
+
 
 // ===== Step navigation =====
 let currentStep = 1;
@@ -380,8 +433,7 @@ if (uploadInput) {
       statusBox.innerHTML = `
         <div class="font-semibold">Upload successful</div>
         <div class="text-sm mt-1">
-          Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}<br/>
-          Venues created: ${data.created_venues} · Linked: ${data.linked_venues} · Updated: ${data.updated_venues}
+          Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
         </div>`;
       setupFlagEl.value = "true";
       fileNameEl.textContent = file.name;
@@ -410,6 +462,80 @@ if (uploadInput) {
     fileNameEl.textContent = f ? f.name : 'No file selected';
   });
 }
+
+// ===== Sessions CSV Upload (Step 3b) =====
+const sessionsInput = document.getElementById('sessions_csv');
+const sessionsFileName = document.getElementById('sessions_file_name');
+const sessionsStatus = document.getElementById('sessions_upload_status');
+const uploadSessionsBtn = document.getElementById('uploadSessionsBtn');
+
+if (sessionsInput) {
+  sessionsInput.addEventListener('change', () => {
+    sessionsFileName.textContent = sessionsInput.files?.[0]?.name || 'No file selected';
+  });
+}
+
+async function uploadSessionsCsv() {
+  const unitId = document.getElementById('unit_id').value;
+  if (!unitId) {
+    sessionsStatus.className = 'upload-status error';
+    sessionsStatus.classList.remove('hidden');
+    sessionsStatus.textContent = 'Please complete Step 1 (Unit Information) first.';
+    return;
+  }
+  if (!sessionsInput.files?.length) {
+    sessionsStatus.className = 'upload-status error';
+    sessionsStatus.classList.remove('hidden');
+    sessionsStatus.textContent = 'Choose a CSV file to upload.';
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('sessions_csv', sessionsInput.files[0]);
+
+  sessionsStatus.className = 'upload-status';
+  sessionsStatus.classList.remove('hidden');
+  sessionsStatus.textContent = 'Uploading…';
+
+  const url = withUnitId(window.FLASK_ROUTES.UPLOAD_SESSIONS_TEMPLATE, unitId);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-CSRFToken': CSRF_TOKEN }
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      const errs = (data.errors || [data.error]).filter(Boolean);
+      sessionsStatus.className = 'upload-status error';
+      sessionsStatus.innerHTML = `
+        <div class="font-semibold">Upload failed</div>
+        <ul class="list-disc list-inside text-sm">
+          ${errs.map((x) => `<li>${x}</li>`).join("")}
+        </ul>`;
+      return;
+    }
+
+    sessionsStatus.className = 'upload-status success';
+    sessionsStatus.innerHTML = `
+      <div class="font-semibold">Upload successful</div>
+      <div class="text-sm mt-1">Sessions created: ${data.created || 0}, Skipped: ${data.skipped || 0}</div>`;
+
+    // Refresh calendar so new sessions appear
+    if (window.calendar) {
+      window.calendar.refetchEvents?.();
+    }
+  } catch (err) {
+    sessionsStatus.className = 'upload-status error';
+    sessionsStatus.textContent = String(err.message || 'Unexpected error during upload.');
+  }
+}
+
+if (uploadSessionsBtn) {
+  uploadSessionsBtn.addEventListener('click', uploadSessionsCsv);
+}
+
 
 // ===== Calendar =====
 let calendar;
@@ -1283,28 +1409,37 @@ function closeCreateUnitModal() {
 
 
 function handleCloseUnitModal() {
-  // Check if user has entered any data
-  const form = document.getElementById('create-unit-form');
-  const unitName = form?.querySelector('[name="unit_name"]')?.value?.trim() || '';
-  const unitCode = form?.querySelector('[name="unit_code"]')?.value?.trim() || '';
-  const year = form?.querySelector('[name="year"]')?.value?.trim() || '';
-  const startDate = form?.querySelector('[name="start_date"]')?.value?.trim() || '';
-  const endDate = form?.querySelector('[name="end_date"]')?.value?.trim() || '';
-  const setupComplete = document.getElementById('setup_complete')?.value === 'true';
-  
-  // Check if there are any sessions in the calendar
-  const hasCalendarSessions = calendar && calendar.getEvents && calendar.getEvents().length > 0;
-  
-  // Check if any significant data has been entered
-  const hasData = unitName || unitCode || year || startDate || endDate || setupComplete || hasCalendarSessions;
-  
-  if (hasData) {
-    showCloseConfirmationPopup();
-  } else {
-    // No data to lose, close immediately
-    closeCreateUnitModal();
+  const modal = document.getElementById("createUnitModal");
+
+  // Reset wizard fields (unit info, date pickers, etc.)
+  resetCreateUnitWizard();
+  document.getElementById('unit_id').value = '';
+  document.getElementById('setup_complete').value = 'false';
+
+  // Reset date inputs + summary
+  if (startPicker) startPicker.clear();
+  if (endPicker) endPicker.clear();
+  document.getElementById('start_date_input').value = '';
+  document.getElementById('end_date_input').value = '';
+  document.getElementById('date-summary').classList.add('hidden');
+
+  // Reset / destroy the session calendar
+  if (calendar) {
+    try { calendar.destroy(); } catch (err) { console.warn('Error destroying calendar', err); }
+    calendar = null;
   }
+  window.__calendarInitRan = false;
+
+  // Hide the modal
+  modal.classList.remove("flex");
+  modal.classList.add("hidden");
+
+  // Reset step navigation to step 1
+  setStep(1);
+
+  console.log("Create Unit modal closed and state reset.");
 }
+
 
 // Add this new function to show the popup
 function showCloseConfirmationPopup() {
