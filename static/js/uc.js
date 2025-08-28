@@ -21,10 +21,24 @@ function getUnitId() {
 
 // ===== Modal open/close =====
 function openCreateUnitModal() {
-    resetCreateUnitWizard();
-    setStep(1);
-    document.getElementById('unit_id').value = '';
-    document.getElementById('setup_complete').value = 'false';
+    
+  window.__venueCache = {};
+  window.__editingEvent = null;
+  _pendingStart = null;
+  _pendingEnd = null;
+  if (calendar) {
+    calendar.removeAllEvents();
+    calendar.destroy();
+    calendar = null;
+  }
+  window.__calendarInitRan = false;
+
+  resetCreateUnitWizard();
+  setStep(1);
+  document.getElementById('unit_id').value = '';
+  document.getElementById('setup_complete').value = 'false';
+
+
     if (calendar) {
         try { calendar.destroy(); } catch {}
         calendar = null;
@@ -1373,9 +1387,7 @@ function closeCreateUnitModal() {
   // Clear any server-side draft data by clearing the unit ID
   const unitIdEl = document.getElementById('unit_id');
   if (unitIdEl) {
-    const oldUnitId = unitIdEl.value;
     unitIdEl.value = '';
-    console.log('Cleared unit ID:', oldUnitId);
   }
 
   // Clear setup completion flag
@@ -1384,50 +1396,40 @@ function closeCreateUnitModal() {
     setupFlagEl.value = 'false';
   }
 
-  // Destroy calendar completely
+  // Destroy calendar completely and clear its events
   if (calendar) {
-    try { 
-      calendar.destroy(); 
-      console.log('Calendar destroyed');
-    } catch (e) {
-      console.warn('Error destroying calendar:', e);
-    }
+    calendar.removeAllEvents(); // Clear all events to prevent double-ups
+    calendar.destroy();
     calendar = null;
   }
   window.__calendarInitRan = false;
 
-  // Clear venue cache
+  // Clear venue cache and any other global caches
   window.__venueCache = {};
+  window.__editingEvent = null; // Ensure no lingering edit state
 
   // Clear any editing state
-  window.__editingEvent = null;
   _pendingStart = null;
   _pendingEnd = null;
 
   // Clear time pickers
   if (_startTP) {
-    try { _startTP.destroy(); } catch (e) {}
+    _startTP.destroy();
     _startTP = null;
   }
   if (_endTP) {
-    try { _endTP.destroy(); } catch (e) {}
+    _endTP.destroy();
     _endTP = null;
   }
   if (_recUntilPicker) {
-    try { _recUntilPicker.destroy(); } catch (e) {}
+    _recUntilPicker.destroy();
     _recUntilPicker = null;
   }
 
   // Hide the modal
   const form = document.getElementById('create-unit-form');
   if (form) {
-    form.reset();
-    
-    // Reset custom semester dropdown to default
-    const semesterHidden = form.querySelector('[name="semester"]');
-    const semesterValue = form.querySelector('.select-value');
-    if (semesterHidden) semesterHidden.value = 'Semester 1';
-    if (semesterValue) semesterValue.textContent = 'Semester 1';
+    form.reset(); // Fully reset the form to clear all inputs
   }
 
   const setupCsv = document.getElementById('setup_csv');
@@ -1437,32 +1439,24 @@ function closeCreateUnitModal() {
 
   if (setupCsv) setupCsv.value = '';
   if (sessionsInput) sessionsInput.value = '';
-  if (fileName) fileName.textContent = 'No file selected';
-  if (sessionsFileName) sessionsFileName.textContent = 'No file selected';
+  if (fileName) fileName.textContent = '';
+  if (sessionsFileName) sessionsFileName.textContent = '';
   
   // Hide all status messages
   const uploadStatus = document.getElementById('upload_status');
   const sessionsStatus = document.getElementById('sessions_upload_status');
-  if (uploadStatus) {
-    uploadStatus.classList.add('hidden');
-    uploadStatus.classList.remove('success', 'error');
-    uploadStatus.textContent = '';
-  }
-  if (sessionsStatus) {
-    sessionsStatus.classList.add('hidden');
-    sessionsStatus.classList.remove('success', 'error');
-    sessionsStatus.textContent = '';
-  }
+  if (uploadStatus) uploadStatus.classList.add('hidden');
+  if (sessionsStatus) sessionsStatus.classList.add('hidden');
 
   // Reset date pickers to today
   const today = new Date();
   if (startPicker) {
-    startPicker.setDate(today, true);
-    document.getElementById('start_date_input').value = startPicker.formatDate(today, DATE_FMT);
+    startPicker.setDate(today);
+    startInput.value = startPicker.formatDate(today, DATE_FMT);
   }
   if (endPicker) {
-    endPicker.setDate(today, true);
-    document.getElementById('end_date_input').value = endPicker.formatDate(today, DATE_FMT);
+    endPicker.setDate(today);
+    endInput.value = endPicker.formatDate(today, DATE_FMT);
   }
   
   // Hide date summary
@@ -1472,9 +1466,8 @@ function closeCreateUnitModal() {
   // Hide the modal
   const modal = document.getElementById("createUnitModal");
   if (modal) {
-    modal.classList.add("hidden");
     modal.classList.remove("flex");
-    console.log('Modal hidden');
+    modal.classList.add("hidden");
   }
 
   // Reset to step 1
@@ -1570,26 +1563,31 @@ function closeConfirmationPopup() {
 async function confirmCloseModal() {
   closeConfirmationPopup();
   
-  // IMPORTANT: Delete the draft unit from server before closing
+  // Mark draft as cancelled instead of trying to delete
   const unitId = document.getElementById('unit_id').value;
   if (unitId) {
     try {
-      console.log('Deleting draft unit from server:', unitId);
+      console.log('Marking draft as cancelled on backend:', unitId);
       
-      // Call an endpoint to delete the draft unit
-      const response = await fetch(withUnitId(CREATE_OR_GET_DRAFT, unitId), {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': CSRF_TOKEN }
+      const form = new FormData();
+      form.append('unit_id', unitId);
+      form.append('action', 'cancel_draft');
+      form.append('cancelled', 'true');
+      
+      const response = await fetch(CREATE_OR_GET_DRAFT, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+        body: form
       });
       
       if (response.ok) {
-        console.log('Draft unit deleted successfully');
+        console.log('Draft successfully marked as cancelled');
       } else {
-        console.warn('Failed to delete draft unit, but continuing with close');
+        console.warn('Failed to cancel draft on backend, but continuing with close');
       }
     } catch (error) {
-      console.error('Error deleting draft unit:', error);
-      // Continue with close even if delete fails
+      console.error('Error cancelling draft:', error);
+      // Continue with close even if backend call fails
     }
   }
   
