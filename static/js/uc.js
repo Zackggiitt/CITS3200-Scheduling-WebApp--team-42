@@ -1109,23 +1109,33 @@ function wireInspectorButtons(ev) {
     }
   };
 
-  // Delete - FIXED APPROACH: Use a unique handler for each session
+  // Delete 
   const deleteBtn = document.getElementById('inspDelete');
   if (deleteBtn) {
-    // Remove ALL existing event listeners by cloning without them
+    // Clear all existing event handlers completely
+    deleteBtn.onclick = null;
+    deleteBtn.removeAttribute('onclick');
+    
+    // Remove any existing event listeners
     const newDeleteBtn = deleteBtn.cloneNode(true);
     deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
     
-    // Create a unique delete handler for this specific session
-    const deleteHandler = async () => {
-      console.log('Delete button clicked for session:', ev.id);
+    // Create a fresh delete handler for this specific session
+    let isDeleting = false; 
+
+    const deleteHandler = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       
-      if (!confirm('Delete this session?')) {
-        console.log('Delete cancelled by user');
+      if (isDeleting) {
+        console.log('Delete already in progress, ignoring click');
         return;
       }
+      
+      console.log('Delete button clicked for session:', ev.id)
 
       newDeleteBtn.disabled = true;
+      newDeleteBtn.textContent = 'Deleting...';
       console.log('Starting delete process for session:', ev.id);
 
       try {
@@ -1142,7 +1152,10 @@ function wireInspectorButtons(ev) {
         if (!data.ok) {
           console.error('Delete failed on server:', data.error);
           alert(data.error || 'Failed to delete');
+          // Re-enable button on error
+          isDeleting = false;
           newDeleteBtn.disabled = false;
+          newDeleteBtn.textContent = 'Delete';
           return;
         }
 
@@ -1158,28 +1171,29 @@ function wireInspectorButtons(ev) {
           console.warn('Could not find event in calendar to remove:', eventId);
         }
 
-        // Clear the editing handle
+        // Clear the editing handle IMMEDIATELY
         window.__editingEvent = null;
 
-        // Close the inspector
+        // Close the inspector IMMEDIATELY
         closeInspector();
 
         console.log('Delete operation completed successfully for:', eventId);
 
       } catch (err) {
         console.error('Delete error:', err);
-        alert(String(err?.message || err || 'Failed to delete'));
+        alert(`Failed to delete: ${err.message}`);
+        
+        // Re-enable button on error
+        isDeleting = false;
         newDeleteBtn.disabled = false;
+        newDeleteBtn.textContent = 'Delete';
       }
     };
 
-    // Attach the handler
-    newDeleteBtn.onclick = deleteHandler;
+    // Attach the handler to the NEW button
+    newDeleteBtn.addEventListener('click', deleteHandler, { once: false });
     
-    // Also add via addEventListener as backup
-    newDeleteBtn.addEventListener('click', (e) => {
-      console.log('Delete button addEventListener triggered for:', ev.id);
-    });
+    console.log('Delete button wired for session:', ev.id);
   }
 
   // Cancel
@@ -1187,17 +1201,22 @@ function wireInspectorButtons(ev) {
 
   // ESC to close
   document.addEventListener('keydown', function esc(e){
-    if (e.key === 'Escape') { closeInspector(); document.removeEventListener('keydown', esc); }
-  }, { once:true });
+    if (e.key === 'Escape') { 
+      closeInspector(); 
+      document.removeEventListener('keydown', esc); 
+    }
+  }, { once: true });
 
-  // Click outside to close (inside calendar wrapper)
+  // Click outside to close
   const wrap = document.getElementById('calendar_wrap');
   function outside(e){
-    if (!inspector.contains(e.target)) { closeInspector(); wrap.removeEventListener('mousedown', outside); }
+    if (!inspector.contains(e.target)) { 
+      closeInspector(); 
+      wrap.removeEventListener('mousedown', outside); 
+    }
   }
-  wrap.addEventListener('mousedown', outside, { once:true });
+  wrap.addEventListener('mousedown', outside, { once: true });
 }
-
 
 function showCalendarIfReady() {
   const ready = document.getElementById('setup_complete')?.value === 'true';
@@ -1855,16 +1874,31 @@ function closeInspector() {
 
   console.log('Closing inspector for event:', window.__editingEvent?.id);
 
-  // hide panel
+  // Clean up delete button completely - find the current delete button
+  const deleteBtn = document.getElementById('inspDelete');
+  if (deleteBtn) {
+    // Clone to remove ALL event listeners
+    const cleanDeleteBtn = deleteBtn.cloneNode(true);
+    deleteBtn.parentNode.replaceChild(cleanDeleteBtn, deleteBtn);
+    
+    // Reset button state
+    cleanDeleteBtn.disabled = false;
+    cleanDeleteBtn.textContent = 'Delete';
+    cleanDeleteBtn.onclick = null;
+  }
+
+  // Hide panel
   inspector.classList.remove('open');
   inspector.classList.add('hidden');
-
-  // IMPORTANT: Clear the editing event reference
+  
+  // Clear the editing event reference
   window.__editingEvent = null;
 
-  // clear pending time edits (safe if null)
+  // Clear pending time edits
   _pendingStart = null;
   _pendingEnd = null;
+  
+  console.log('Inspector closed and cleaned up');
 }
 
 async function populateReview() {
