@@ -93,6 +93,7 @@
   <!-- MAIN CONTENT -->
   <main class="flex justify-center mt-10">
     {% if not units %}
+      <!-- Empty state -->
       <div class="bg-white shadow rounded-xl p-6 w-full max-w-md text-center">
         <span class="material-icons text-gray-700 text-5xl mb-3">apartment</span>
         <h2 class="text-lg font-semibold mb-2">Create Your First Unit</h2>
@@ -104,11 +105,13 @@
           Create Unit
         </button>
       </div>
+
     {% else %}
       {% set unit = current_unit or (units|first) %}
       <div class="w-full max-w-5xl">
+
+        <!-- UNIT CARD -->
         <article class="unit-card bg-white border rounded-xl p-6 shadow-sm flex items-start justify-between mb-4">
-          <!-- Left: unit meta -->
           <div>
             <div class="flex items-center gap-3 meta-row">
               <h2 class="text-2xl font-bold tracking-tight">{{ unit.unit_code }}</h2>
@@ -117,7 +120,6 @@
                 {{ unit.semester }}, {{ unit.year }}
               </span>
 
-              {# Status chip (Completed/Active) #}
               {% set end = unit.end_date %}
               {% set is_completed = end and (end if end is string else end) < today %}
               {% if is_completed %}
@@ -145,9 +147,9 @@
             </p>
           </div>
 
-          <!-- Right: actions -->
+          <!-- Actions -->
           <div class="flex items-center gap-3">
-            <!-- All Units dropdown -->
+            <!-- All Units -->
             <div class="relative card-actions all-units">
               <details class="group">
                 <summary class="list-none inline-flex items-center gap-2">
@@ -185,7 +187,7 @@
             </div>
 
             {% if units|length > 1 %}
-            <!-- Switch Unit dropdown -->
+            <!-- Switch Unit -->
             <div class="relative card-actions">
               <details class="group">
                 <summary class="list-none inline-flex items-center gap-2">
@@ -208,7 +210,7 @@
           </div>
         </article>
 
-        {# COMPLETED BANNER (dismissible) #}
+        <!-- COMPLETED BANNER -->
         {% set end = unit.end_date %}
         {% set is_completed = end and (end if end is string else end) < today %}
         {% if is_completed %}
@@ -228,7 +230,7 @@
         </div>
         {% endif %}
 
-        <!-- UNIT TABS (now correctly inside the else block) -->
+        <!-- TABS -->
         <div class="mt-6 uc-tabs-wrap">
           <nav class="uc-tabs uc-tabs--spread" role="tablist" aria-label="Unit sections" data-unit-id="{{ unit.id }}">
             <button type="button" role="tab" id="tab-dashboard" class="uc-tab is-active"
@@ -259,16 +261,37 @@
             </button>
           </nav>
 
-          <!-- PANELS (unchanged) -->
+          <!-- DASHBOARD PANEL (stats) -->
           <section id="panel-dashboard" class="uc-panel is-active" role="tabpanel" aria-labelledby="tab-dashboard">
-            <div class="uc-panel-empty">Dashboard content goes here.</div>
+            <div class="uc-stats">
+              <div class="uc-stat">
+                <div class="uc-stat__value uc-stat__value--blue">{{ stats.total }}</div>
+                <div class="uc-stat__label">Total Sessions</div>
+              </div>
+              <div class="uc-stat">
+                <div class="uc-stat__value uc-stat__value--green">{{ stats.fully }}</div>
+                <div class="uc-stat__label">Fully Staffed</div>
+              </div>
+              <div class="uc-stat">
+                <div class="uc-stat__value uc-stat__value--orange">{{ stats.needs_lead }}</div>
+                <div class="uc-stat__label">Needs Lead</div>
+              </div>
+              <div class="uc-stat">
+                <div class="uc-stat__value uc-stat__value--red">{{ stats.unstaffed }}</div>
+                <div class="uc-stat__label">Unstaffed</div>
+              </div>
+            </div>
           </section>
+
+          <!-- Other panels (placeholders for now) -->
           <section id="panel-schedule" class="uc-panel" role="tabpanel" aria-labelledby="tab-schedule" hidden>
             <div class="uc-panel-empty">Schedule content goes here.</div>
           </section>
+
           <section id="panel-staffing" class="uc-panel" role="tabpanel" aria-labelledby="tab-staffing" hidden>
             <div class="uc-panel-empty">Staffing content goes here.</div>
           </section>
+
           <section id="panel-team" class="uc-panel" role="tabpanel" aria-labelledby="tab-team" hidden>
             <div class="uc-panel-empty">Team &amp; approvals content goes here.</div>
           </section>
@@ -276,6 +299,7 @@
       </div>
     {% endif %}
   </main>
+
 
   <!-- MODAL -->
   <div id="createUnitModal" class="modal-overlay hidden">

@@ -16,7 +16,7 @@ from flask import (
 from auth import login_required, get_current_user
 from utils import role_required
 from models import db
-from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session
+from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment 
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -256,6 +256,7 @@ from sqlalchemy import func
 def dashboard():
     user = get_current_user()
 
+    # All units for this UC + session counts for the All Units menu
     rows = (
         db.session.query(Unit, func.count(Session.id))
         .outerjoin(Module, Module.unit_id == Unit.id)
@@ -270,8 +271,53 @@ def dashboard():
         setattr(u, "session_count", int(cnt or 0))
         units.append(u)
 
+    # Select which unit to show (single card)
     selected_id = request.args.get("unit", type=int)
     current_unit = next((u for u in units if u.id == selected_id), None) if selected_id else (units[0] if units else None)
+
+    # --- Stats row for the selected unit ---
+    stats = {"total": 0, "fully": 0, "needs_lead": 0, "unstaffed": 0}
+    if current_unit:
+        # per-session assignment counts
+        assign_counts = (
+            db.session.query(
+                Assignment.session_id.label("sid"),
+                func.count(Assignment.id).label("acnt")
+            )
+            .group_by(Assignment.session_id)
+            .subquery()
+        )
+
+        # sessions in this unit + assignment count + capacity
+        base = (
+            db.session.query(
+                Session.id.label("sid"),
+                Session.max_facilitators.label("cap"),
+                func.coalesce(assign_counts.c.acnt, 0).label("acnt")
+            )
+            .join(Module, Module.id == Session.module_id)
+            .outerjoin(assign_counts, assign_counts.c.sid == Session.id)
+            .filter(Module.unit_id == current_unit.id)
+            .subquery()
+        )
+
+        total = db.session.query(func.count(base.c.sid)).scalar() or 0
+        fully = (
+            db.session.query(func.count())
+            .select_from(base)
+            .filter(base.c.acnt >= base.c.cap)
+            .scalar() or 0
+        )
+        unstaffed = (
+            db.session.query(func.count())
+            .select_from(base)
+            .filter(base.c.acnt == 0)
+            .scalar() or 0
+        )
+        # until you add role-aware logic, "Needs Lead" = partially staffed
+        needs_lead = max(total - fully - unstaffed, 0)
+
+        stats.update(total=total, fully=fully, needs_lead=needs_lead, unstaffed=unstaffed)
 
     return render_template(
         "unitcoordinator_dashboard.html",
@@ -279,6 +325,7 @@ def dashboard():
         units=units,                # for dropdowns
         current_unit=current_unit,  # the single card to render
         today=date.today(),
+        stats=stats                 # dashboard stats
     )
 
 
