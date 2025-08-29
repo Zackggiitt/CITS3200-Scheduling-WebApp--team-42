@@ -819,3 +819,113 @@
   background: #047857;
 }
 
+
+/* --- Unit card polish to match your reference --- */
+.unit-card,
+article.bg-white.rounded-xl.p-6.shadow-sm {
+  border: 1px solid #e5e7eb;               /* subtle divider */
+  border-radius: 14px;
+  box-shadow: 0 2px 4px rgba(16,24,40,.04);
+  background: #fff;
+}
+
+/* Title weight/spacing */
+.meta-row h2 {
+  font-weight: 800;                         /* heavier than Tailwind's default */
+  letter-spacing: -0.01em;
+}
+
+/* Generic chip + variants (semester, status) */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .35rem .65rem;
+  border-radius: 9999px;
+  font-size: .82rem;
+  line-height: 1;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip .material-icons {
+  font-size: 16px;
+  margin-left: -2px;                        /* optical centering */
+}
+
+.chip--neutral {
+  color: #374151;                           /* gray-700 */
+  background: #ffffff;
+  border: 1px solid #e5e7eb;                /* gray-200 */
+}
+
+.chip--active {
+  color: #1d4ed8;                           /* blue-700 */
+  background: #eef2ff;                      /* indigo-50 */
+  border: 1px solid #c7d2fe;                /* indigo-200 */
+}
+
+.chip--completed {
+  color: #15803d;                           /* green-700 */
+  background: #ecfdf5;                      /* green-50 */
+  border: 1px solid #bbf7d0;                /* green-200 */
+}
+
+/* Calendar row icon alignment */
+.text-gray-500 .material-icons,
+.material-icons.text-base {
+  vertical-align: -3px;
+}
+
+/* --- Action buttons (All Units / Switch Unit) --- */
+.card-actions summary {
+  border: 1px solid #d1d5db;                /* gray-300 */
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .9rem;
+  user-select: none;
+}
+.card-actions summary:hover { background: #f9fafb; } /* gray-50 */
+.card-actions .material-icons { font-size: 18px; }
+
+/* Dropdown panel */
+.card-actions .menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 18rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 14px 30px rgba(16,24,40,.12);
+  overflow: hidden;
+  z-index: 50;
+}
+
+.card-actions .menu a,
+.card-actions .menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  text-align: left;
+}
+.card-actions .menu a:hover,
+.card-actions .menu button:hover { background: #f9fafb; }
+
+/* Make chips inside the dropdown small and tidy */
+.card-actions .menu .chip {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-width: 1px;
+}
+
+/* Match reference: All Units shows no visible caret */
+.all-units summary .material-icons:last-child { display: none; }
+
+

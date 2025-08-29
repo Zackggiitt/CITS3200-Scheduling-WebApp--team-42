@@ -105,22 +105,32 @@
         </button>
       </div>
     {% else %}
-      {% set unit = current_unit %}
+      {% set unit = current_unit or (units|first) %}
       <div class="w-full max-w-5xl">
-        <article class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex items-start justify-between mb-4">
+        <article class="unit-card bg-white border rounded-xl p-6 shadow-sm flex items-start justify-between mb-4">
           <!-- Left: unit meta -->
           <div>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 meta-row">
               <h2 class="text-2xl font-bold tracking-tight">{{ unit.unit_code }}</h2>
-              <span class="inline-flex items-center rounded-full border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-700">
+
+              <span class="chip chip--neutral">
                 {{ unit.semester }}, {{ unit.year }}
               </span>
+
+              {# Status chip (Completed/Active) #}
               {% set end = unit.end_date %}
               {% set is_completed = end and (end if end is string else end) < today %}
-              <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
-                {{ 'bg-green-50 text-green-700' if is_completed else 'bg-blue-50 text-blue-700' }}">
-                {{ 'Completed' if is_completed else 'Active' }}
-              </span>
+              {% if is_completed %}
+                <span class="chip chip--completed">
+                  <span class="material-icons">check_circle</span>
+                  Completed
+                </span>
+              {% else %}
+                <span class="chip chip--active">
+                  <span class="material-icons">schedule</span>
+                  Active
+                </span>
+              {% endif %}
             </div>
 
             <p class="mt-2 text-gray-800 font-medium">{{ unit.unit_name }}</p>
@@ -128,6 +138,8 @@
             <p class="mt-2 text-gray-500 text-sm flex items-center gap-2">
               <span class="material-icons text-base">event</span>
               {% if unit.session_count is defined %}{{ unit.session_count }} sessions • {% endif %}
+
+              {# Safe date rendering (string or date/datetime objects) #}
               {% set start = unit.start_date %}
               {% if start %}{{ start if start is string else start.strftime("%m/%d/%Y") }}{% endif %}
               {% if start and end %} - {% endif %}
@@ -136,16 +148,17 @@
           </div>
 
           <!-- Right: actions -->
-          <div class="flex items-center gap-2">
-            <!-- All Units dropdown: switches selected card -->
-            <div class="relative">
+          <div class="flex items-center gap-3">
+
+            {# All Units dropdown (styled, no visible caret) #}
+            <div class="relative card-actions all-units">
               <details class="group">
-                <summary class="list-none inline-flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
+                <summary class="list-none inline-flex items-center gap-2">
                   <span class="material-icons text-base">view_list</span>
                   All Units
                   <span class="material-icons text-base">expand_more</span>
                 </summary>
-                <ul class="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow overflow-hidden z-10">
+                <ul class="menu">
                   {% for u in units %}
                     {% set uend = u.end_date %}
                     {% set ucompleted = uend and (uend if uend is string else uend) < today %}
@@ -154,8 +167,8 @@
                         class="block px-3 py-2 hover:bg-gray-50">
                         <div class="flex items-center gap-2">
                           <div class="font-semibold">{{ u.unit_code }}</div>
-                          <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold
-                            {{ 'bg-green-50 text-green-700' if ucompleted else 'bg-blue-50 text-blue-700' }}">
+                          <span class="chip {{ 'chip--completed' if ucompleted else 'chip--active' }}">
+                            <span class="material-icons">{{ 'check_circle' if ucompleted else 'schedule' }}</span>
                             {{ 'Completed' if ucompleted else 'Active' }}
                           </span>
                         </div>
@@ -174,15 +187,15 @@
               </details>
             </div>
 
+            {# Optional: Switch Unit (simple list of others) #}
             {% if units|length > 1 %}
-            <!-- Optional “Switch Unit” list of others only -->
-            <div class="relative">
+            <div class="relative card-actions">
               <details class="group">
-                <summary class="list-none inline-flex items-center gap-1 border border-gray-300 rounded-md px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
+                <summary class="list-none inline-flex items-center gap-2">
                   Switch Unit
                   <span class="material-icons text-base">expand_more</span>
                 </summary>
-                <ul class="absolute right-0 mt-2 w-60 bg-white border border-gray-200 rounded-lg shadow overflow-hidden z-10">
+                <ul class="menu">
                   {% for other in units if other.id != unit.id %}
                     <li>
                       <a href="{{ url_for('unitcoordinator.dashboard', unit=other.id) }}"
@@ -200,6 +213,7 @@
       </div>
     {% endif %}
   </main>
+
 
   <!-- MODAL -->
   <div id="createUnitModal" class="modal-overlay hidden">
