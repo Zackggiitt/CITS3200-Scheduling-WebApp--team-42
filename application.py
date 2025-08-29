@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from models import db, User, UserRole
+from models import db, User, UserRole, Facilitator
 from auth import login_required, is_safe_url, get_current_user
 from authlib.integrations.flask_client import OAuth
 from flask_limiter import Limiter
@@ -38,6 +38,85 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "5
 
 # CSRF protection (protects all POST forms, incl. logout form)
 csrf = CSRFProtect(app)
+
+
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "POST":
+        first = request.form["first_name"].strip()
+        last = request.form["last_name"].strip()
+        phone = request.form["phone"].strip()
+        staff_number = request.form["staff_number"].strip()
+        email = request.form["email"].strip().lower()
+        password = request.form["password"]
+
+        # Validation
+        if not all([first, last, phone, staff_number, email, password]):
+            flash("All fields are required!")
+            return render_template("signup.html")
+
+        # Check if email already exists in User table
+        if User.query.filter_by(email=email).first():
+            flash("Email already exists!")
+            return render_template("signup.html")
+        
+        # Check if email already exists in Facilitator table
+        if Facilitator.query.filter_by(email=email).first():
+            flash("Email already exists!")
+            return render_template("signup.html")
+        
+        # Check if staff number already exists in Facilitator table
+        if Facilitator.query.filter_by(staff_number=staff_number).first():
+            flash("Staff number already exists!")
+            return render_template("signup.html")
+        
+        # Optional: Add phone validation
+        if len(phone) < 10:
+            flash("Please enter a valid phone number!")
+            return render_template("signup.html")
+        
+        # Password validation
+        if len(password) < 6:
+            flash("Password must be at least 6 characters!")
+            return render_template("signup.html")
+
+        try:
+            # Create facilitator record
+            facilitator = Facilitator(
+                first_name=first,
+                last_name=last,
+                phone=phone,
+                staff_number=staff_number,
+                email=email,
+                password_hash=generate_password_hash(password)
+            )
+            
+            # Also create user record for authentication
+            user = User(
+                first_name=first,
+                last_name=last,
+                email=email,
+                password_hash=generate_password_hash(password),
+                role=UserRole.FACILITATOR
+            )
+            
+            db.session.add(facilitator)
+            db.session.add(user)
+            db.session.commit()
+            
+            flash("Facilitator account created successfully! Please log in.")
+            return redirect(url_for("login"))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash("Registration failed. Please try again.")
+            return render_template("signup.html")
+    
+    return render_template("signup.html")
+
+
+
 
 # Make csrf_token available in all templates
 @app.context_processor
@@ -206,36 +285,3 @@ def google_callback():
     flash('Google login failed')
     return redirect(url_for('login'))
 
-@app.route("/signup", methods=["GET", "POST"])
-def signup():
-    if request.method == "POST":
-        first = request.form["first_name"].strip()
-        last = request.form["last_name"].strip()
-        email = request.form["email"].strip().lower()
-        password = request.form["password"]
-
-        if User.query.filter_by(email=email).first():
-            flash("Email already exists!")
-        else:
-            user = User(
-                first_name=first,
-                last_name=last,
-                email=email,
-                password_hash=generate_password_hash(password),
-                role=UserRole.FACILITATOR
-            )
-            db.session.add(user)
-            db.session.commit()
-            flash("Account created! Please log in.")
-            return redirect(url_for("login"))
-    return render_template("signup.html")
-
-# NOTE: Removed the old GET /logout route. Use POST /logout via auth blueprint.
-
-@app.errorhandler(429)
-def ratelimit_handler(e):
-    flash("Too many login attempts. Please try again in a few minutes.")
-    return render_template("login.html"), 429
-
-if __name__ == "__main__":
-    app.run(debug=True)
