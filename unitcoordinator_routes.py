@@ -282,32 +282,36 @@ def dashboard():
         else (units[0] if units else None)
     )
 
-    # ----- Staffing tiles (placeholders until CSV/sessions are wired) -----
-    session_rows = (
-        db.session.query(
-            Session.id.label("sid"),
-            func.coalesce(Session.max_facilitators, 1).label("maxf"),
-            func.count(Assignment.id).label("assigned"),
+# ----- Staffing tiles (safe if no current_unit) -----
+    stats = {"total": 0, "fully": 0, "needs_lead": 0, "unstaffed": 0}
+
+    if current_unit:
+        session_rows = (
+            db.session.query(
+                Session.id.label("sid"),
+                func.coalesce(Session.max_facilitators, 1).label("maxf"),
+                func.count(Assignment.id).label("assigned"),
+            )
+            .join(Module, Module.id == Session.module_id)
+            .outerjoin(Assignment, Assignment.session_id == Session.id)
+            .filter(Module.unit_id == current_unit.id)
+            .group_by(Session.id, Session.max_facilitators)
+            .all()
         )
-        .join(Module, Module.id == Session.module_id)
-        .outerjoin(Assignment, Assignment.session_id == Session.id)
-        .filter(Module.unit_id == current_unit.id)
-        .group_by(Session.id, Session.max_facilitators)
-        .all()
-    )
 
-    total_sessions = len(session_rows)
-    fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
-    unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
-    # Inclusive definition: anything not fully staffed (this will include unstaffed)
-    needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
+        total_sessions = len(session_rows)
+        fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
+        unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
+        # Inclusive: anything not fully staffed (includes unstaffed)
+        needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
 
-    stats = {
-        "total": total_sessions,
-        "fully": fully_staffed,
-        "needs_lead": needs_lead,
-        "unstaffed": unstaffed,
-    }
+        stats = {
+            "total": total_sessions,
+            "fully": fully_staffed,
+            "needs_lead": needs_lead,
+            "unstaffed": unstaffed,
+        }
+
 
     # ----- Facilitator Setup Progress + Details -----
     fac_progress = {"total": 0, "account": 0, "availability": 0, "ready": 0}
