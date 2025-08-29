@@ -16,7 +16,7 @@ from flask import (
 from auth import login_required, get_current_user
 from utils import role_required
 from models import db
-from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment 
+from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Availability
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -250,85 +250,121 @@ from datetime import date
 from sqlalchemy import func
 # ...other imports incl. request...
 
-@unitcoordinator_bp.route("/dashboard")
+@unitcoordinator_bp.get("/")
+@unitcoordinator_bp.get("/dashboard")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def dashboard():
+    """Unit coordinator landing page with single active card + stats."""
     user = get_current_user()
 
-    # All units for this UC + session counts for the All Units menu
-    rows = (
-        db.session.query(Unit, func.count(Session.id))
-        .outerjoin(Module, Module.unit_id == Unit.id)
-        .outerjoin(Session, Session.module_id == Module.id)
-        .filter(Unit.created_by == user.id)
-        .group_by(Unit.id)
-        .order_by(Unit.unit_code.asc())
+    # --- All units owned by this UC
+    units = (
+        Unit.query
+        .filter_by(created_by=user.id)
+        .order_by(Unit.created_at.desc())
         .all()
     )
-    units = []
-    for u, cnt in rows:
-        setattr(u, "session_count", int(cnt or 0))
-        units.append(u)
 
-    # Select which unit to show (single card)
-    selected_id = request.args.get("unit", type=int)
-    current_unit = next((u for u in units if u.id == selected_id), None) if selected_id else (units[0] if units else None)
+    # --- Which unit is selected?
+    current_unit = None
+    q_unit_id = request.args.get("unit", type=int)
+    if q_unit_id:
+        current_unit = next((u for u in units if u.id == q_unit_id), None)
+    if not current_unit and units:
+        current_unit = units[0]
 
-    # --- Stats row for the selected unit ---
-    stats = {"total": 0, "fully": 0, "needs_lead": 0, "unstaffed": 0}
+    today = date.today()
+
+    # --- Session staffing stats (for the selected unit)
+    stats = {
+        "total_sessions": 0,
+        "fully_staffed": 0,
+        "needs_lead": 0,   # interpreted as "partially staffed"
+        "unstaffed": 0,
+    }
     if current_unit:
-        # per-session assignment counts
-        assign_counts = (
-            db.session.query(
-                Assignment.session_id.label("sid"),
-                func.count(Assignment.id).label("acnt")
-            )
-            .group_by(Assignment.session_id)
-            .subquery()
-        )
-
-        # sessions in this unit + assignment count + capacity
-        base = (
-            db.session.query(
-                Session.id.label("sid"),
-                Session.max_facilitators.label("cap"),
-                func.coalesce(assign_counts.c.acnt, 0).label("acnt")
-            )
-            .join(Module, Module.id == Session.module_id)
-            .outerjoin(assign_counts, assign_counts.c.sid == Session.id)
+        # pull sessions for this unit
+        sessions = (
+            Session.query.join(Module)
             .filter(Module.unit_id == current_unit.id)
-            .subquery()
+            .order_by(Session.start_time.asc())
+            .all()
         )
+        stats["total_sessions"] = len(sessions)
 
-        total = db.session.query(func.count(base.c.sid)).scalar() or 0
-        fully = (
-            db.session.query(func.count())
-            .select_from(base)
-            .filter(base.c.acnt >= base.c.cap)
-            .scalar() or 0
-        )
-        unstaffed = (
-            db.session.query(func.count())
-            .select_from(base)
-            .filter(base.c.acnt == 0)
-            .scalar() or 0
-        )
-        # until you add role-aware logic, "Needs Lead" = partially staffed
-        needs_lead = max(total - fully - unstaffed, 0)
+        # tally staffing
+        for s in sessions:
+            assigned = len(s.assignments or [])
+            cap = s.max_facilitators or 1
+            if assigned == 0:
+                stats["unstaffed"] += 1
+            elif assigned >= cap:
+                stats["fully_staffed"] += 1
+            else:
+                stats["needs_lead"] += 1
 
-        stats.update(total=total, fully=fully, needs_lead=needs_lead, unstaffed=unstaffed)
+    # --- Facilitator setup progress (for the selected unit)
+    fac_progress = {
+        "total": 0,
+        "account": 0,
+        "availability": 0,
+        "ready": 0,
+        "need_account": 0,
+        "need_availability": 0,
+    }
+
+    if current_unit:
+        fac_users = (
+            db.session.query(User)
+            .join(UnitFacilitator, UnitFacilitator.user_id == User.id)
+            .filter(UnitFacilitator.unit_id == current_unit.id)
+            .all()
+        )
+        fac_progress["total"] = len(fac_users)
+
+        # who has availability rows?
+        if fac_users:
+            fac_ids = [u.id for u in fac_users]
+            avail_user_ids = {
+                a.user_id
+                for a in Availability.query.filter(Availability.user_id.in_(fac_ids)).all()
+            }
+        else:
+            avail_user_ids = set()
+
+        # define "account setup complete"
+        def has_profile(u: User) -> bool:
+            # basic: has any name and any auth (password or oauth)
+            return bool((u.first_name or u.last_name) and (u.password_hash or u.oauth_id))
+
+        for u in fac_users:
+            if has_profile(u):
+                fac_progress["account"] += 1
+            if u.id in avail_user_ids:
+                fac_progress["availability"] += 1
+
+        fac_progress["ready"] = sum(
+            1 for u in fac_users if has_profile(u) and (u.id in avail_user_ids)
+        )
+        fac_progress["need_account"] = fac_progress["total"] - fac_progress["account"]
+        fac_progress["need_availability"] = fac_progress["total"] - fac_progress["availability"]
+
+    # badge counts (safe defaults)
+    approvals_count = 0
+    notifications = 0
 
     return render_template(
         "unitcoordinator_dashboard.html",
         user=user,
-        units=units,                # for dropdowns
-        current_unit=current_unit,  # the single card to render
-        today=date.today(),
-        stats=stats                 # dashboard stats
+        units=units,
+        current_unit=current_unit,
+        today=today,
+        stats=stats,
+        fac_progress=fac_progress,
+        approvals_count=approvals_count,
+        notifications=notifications,
     )
-
-
 
 @unitcoordinator_bp.route("/create_unit", methods=["POST"])
 @login_required

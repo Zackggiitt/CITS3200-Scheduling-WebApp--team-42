@@ -261,8 +261,9 @@
             </button>
           </nav>
 
-          <!-- DASHBOARD PANEL (stats) -->
-          <section id="panel-dashboard" class="uc-panel is-active" role="tabpanel" aria-labelledby="tab-dashboard">
+                    <!-- Other panels (placeholders for now) -->
+          <section id="panel-staffing" class="uc-panel" role="tabpanel" aria-labelledby="tab-staffing" hidden>
+            {# --- Session staffing stats row --- #}
             <div class="uc-stats">
               <div class="uc-stat">
                 <div class="uc-stat__value uc-stat__value--blue">{{ stats.total }}</div>
@@ -281,15 +282,83 @@
                 <div class="uc-stat__label">Unstaffed</div>
               </div>
             </div>
-          </section>
 
-          <!-- Other panels (placeholders for now) -->
-          <section id="panel-schedule" class="uc-panel" role="tabpanel" aria-labelledby="tab-schedule" hidden>
-            <div class="uc-panel-empty">Schedule content goes here.</div>
-          </section>
+            {# --- Facilitator Setup Progress --- #}
+            {% set fp = fac_progress or {} %}
+            {% set total = fp.total or 0 %}
+            {% set acct_pct = (fp.account * 100 // total) if total else 0 %}
+            {% set avail_pct = (fp.availability * 100 // total) if total else 0 %}
+            {% set ready_pct = (fp.ready * 100 // total) if total else 0 %}
 
-          <section id="panel-staffing" class="uc-panel" role="tabpanel" aria-labelledby="tab-staffing" hidden>
-            <div class="uc-panel-empty">Staffing content goes here.</div>
+            <div class="mt-6 bg-gray-50 border rounded-2xl p-5">
+              <header class="flex items-center gap-2 mb-2">
+                <span class="material-icons text-gray-700">group</span>
+                <h3 class="font-semibold text-gray-900">Facilitator Setup Progress</h3>
+              </header>
+              <p class="text-sm text-gray-600 mb-5">
+                Track how many facilitators have completed their account setup and availability configuration.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <!-- Total -->
+                <div class="text-center">
+                  <div class="text-3xl font-semibold text-blue-600">{{ total }}</div>
+                  <div class="text-sm text-gray-600 mt-1">Total Facilitators</div>
+                </div>
+
+                <!-- Account setup -->
+                <div>
+                  <div class="text-center">
+                    <div class="text-3xl font-semibold text-green-600">{{ fp.account }}</div>
+                    <div class="text-sm text-gray-600 mt-1">Account Setup</div>
+                  </div>
+                  <div class="mt-2 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-2 bg-gray-900 rounded-full" style="width: {{ acct_pct }}%"></div>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">{{ acct_pct }}% complete</div>
+                </div>
+
+                <!-- Availability set -->
+                <div>
+                  <div class="text-center">
+                    <div class="text-3xl font-semibold" style="color:#7c3aed">{{ fp.availability }}</div>
+                    <div class="text-sm text-gray-600 mt-1">Availability Set</div>
+                  </div>
+                  <div class="mt-2 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-2 bg-gray-900 rounded-full" style="width: {{ avail_pct }}%"></div>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">{{ avail_pct }}% complete</div>
+                </div>
+
+                <!-- Fully ready -->
+                <div>
+                  <div class="text-center">
+                    <div class="text-3xl font-semibold text-emerald-600">{{ fp.ready }}</div>
+                    <div class="text-sm text-gray-600 mt-1">Fully Ready</div>
+                  </div>
+                  <div class="mt-2 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-2 bg-gray-900 rounded-full" style="width: {{ ready_pct }}%"></div>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">{{ ready_pct }}% complete</div>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="mt-5 flex flex-wrap gap-3">
+                <button type="button" class="inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm">
+                  <span class="material-icons text-base">mail</span>
+                  Send Setup Reminders ({{ fp.need_account }})
+                </button>
+                <button type="button" class="inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm">
+                  <span class="material-icons text-base">event_available</span>
+                  Remind Availability Setup ({{ fp.need_availability }})
+                </button>
+                <button type="button" class="inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm">
+                  <span class="material-icons text-base">visibility</span>
+                  View Detailed Report
+                </button>
+              </div>
+            </div>
           </section>
 
           <section id="panel-team" class="uc-panel" role="tabpanel" aria-labelledby="tab-team" hidden>
