@@ -4,6 +4,9 @@ import re
 from io import StringIO, BytesIO
 from datetime import datetime, date, timedelta
 from sqlalchemy import and_, func
+# from sqlalchemy import func
+# from models import Unit, Module, Session
+from datetime import date
 
 from flask import (
     Blueprint, render_template, redirect, url_for, flash, request,
@@ -239,13 +242,30 @@ def _iter_weekly_occurrences(unit: Unit, start_dt: datetime, end_dt: datetime, r
 # ------------------------------------------------------------------------------
 # Views
 # ------------------------------------------------------------------------------
+# in unitcoordinator_route.py
+
+
 @unitcoordinator_bp.route("/dashboard")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def dashboard():
     user = get_current_user()
-    units = Unit.query.filter_by(created_by=user.id).all()
-    return render_template("unitcoordinator_dashboard.html", user=user, units=units)
+
+    rows = (
+        db.session.query(Unit, func.count(Session.id))
+        .outerjoin(Module, Module.unit_id == Unit.id)
+        .outerjoin(Session, Session.module_id == Module.id)
+        .filter(Unit.created_by == user.id)
+        .group_by(Unit.id)
+        .all()
+    )
+    units = []
+    for u, cnt in rows:
+        setattr(u, "session_count", int(cnt or 0))
+        units.append(u)
+
+    return render_template("unitcoordinator_dashboard.html", user=user, units=units, today=date.today())
+
 
 
 @unitcoordinator_bp.route("/create_unit", methods=["POST"])
