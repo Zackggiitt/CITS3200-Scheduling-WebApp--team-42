@@ -2212,3 +2212,67 @@ function initCompletedUnitBanners() {
 
 // Run after DOM is ready (safe even if script is at the end)
 document.addEventListener('DOMContentLoaded', initCompletedUnitBanners);
+
+// --- Unit Tabs (switch panels, remember per unit) ---
+function initUnitTabs() {
+  const tabsRail = document.querySelector('.uc-tabs');
+  if (!tabsRail) return;
+
+  const unitId = tabsRail.getAttribute('data-unit-id') || '0';
+  const tabs = Array.from(tabsRail.querySelectorAll('.uc-tab'));
+  const panels = {
+    dashboard: document.getElementById('panel-dashboard'),
+    schedule:  document.getElementById('panel-schedule'),
+    staffing:  document.getElementById('panel-staffing'),
+    team:      document.getElementById('panel-team')
+  };
+
+  function showTab(key, focus = false) {
+    tabs.forEach(tab => {
+      const active = tab.dataset.tab === key;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      tab.tabIndex = active ? 0 : -1;
+      if (active && focus) tab.focus();
+    });
+
+    Object.entries(panels).forEach(([k, el]) => {
+      if (!el) return;
+      if (k === key) el.removeAttribute('hidden'); else el.setAttribute('hidden', '');
+    });
+
+    try { localStorage.setItem(`uc_tab_${unitId}`, key); } catch (e) {}
+  }
+
+  // Click to activate
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => showTab(tab.dataset.tab, false));
+  });
+
+  // Keyboard: arrows/Home/End
+  tabsRail.addEventListener('keydown', (e) => {
+    const idx = tabs.findIndex(t => t.classList.contains('is-active'));
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const dir = e.key === 'ArrowRight' ? 1 : -1;
+      const next = (idx + dir + tabs.length) % tabs.length;
+      showTab(tabs[next].dataset.tab, true);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      showTab(tabs[0].dataset.tab, true);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      showTab(tabs[tabs.length - 1].dataset.tab, true);
+    }
+  });
+
+  // Initial tab: last chosen for this unit, else Dashboard
+  let initial = 'dashboard';
+  try {
+    const saved = localStorage.getItem(`uc_tab_${unitId}`);
+    if (saved && panels[saved]) initial = saved;
+  } catch (e) {}
+  showTab(initial, false);
+}
+
+document.addEventListener('DOMContentLoaded', initUnitTabs);
