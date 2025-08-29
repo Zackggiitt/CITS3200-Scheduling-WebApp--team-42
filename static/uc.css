@@ -928,4 +928,20 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
 /* Match reference: All Units shows no visible caret */
 .all-units summary .material-icons:last-child { display: none; }
 
-
+/* Dismissible success banner (completed unit) */
+.uc-banner {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 16px; margin-top: 12px;
+  border-radius: 12px; border: 1px solid #bbf7d0; /* green-200 */
+  background: #ecfdf5; /* green-50 */
+  color: #065f46; /* green-800 */
+}
+.uc-banner__icon .material-icons { font-size: 20px; margin-top: 2px; }
+.uc-banner__title { font-weight: 600; margin-bottom: 2px; }
+.uc-banner__text { font-size: 0.9rem; }
+.uc-banner__close {
+  margin-left: auto; border: 0; background: transparent; color: #065f46;
+  padding: 2px; border-radius: 8px; display: flex; align-items: center;
+}
+.uc-banner__close .material-icons { font-size: 20px; }
+.uc-banner__close:hover { background: #d1fae5; } /* green-100 */

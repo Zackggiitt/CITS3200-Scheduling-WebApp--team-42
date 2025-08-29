@@ -2181,3 +2181,34 @@ function updateSessionOverview() {
     window.__editingEvent.setProp('title', displayTitle);
   }
 }
+
+// --- Completed Unit banner: dismiss + remember (per unit) ---
+function initCompletedUnitBanners() {
+  const banners = document.querySelectorAll('[id^="unit-complete-"]');
+  if (!banners.length) return;
+
+  banners.forEach((banner) => {
+    const id = banner.id;
+    const key = `uc_notice_dismissed_${id}`;
+
+    // If previously dismissed, hide it immediately
+    try {
+      if (localStorage.getItem(key) === '1') {
+        banner.style.display = 'none';
+        return;
+      }
+    } catch (e) { /* ignore storage errors */ }
+
+    // Wire the close button
+    const closeBtn = banner.querySelector('.uc-banner__close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        banner.remove();
+        try { localStorage.setItem(key, '1'); } catch (e) { /* ignore */ }
+      });
+    }
+  });
+}
+
+// Run after DOM is ready (safe even if script is at the end)
+document.addEventListener('DOMContentLoaded', initCompletedUnitBanners);
