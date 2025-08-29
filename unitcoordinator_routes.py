@@ -16,7 +16,7 @@ from flask import (
 from auth import login_required, get_current_user
 from utils import role_required
 from models import db
-from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Availability
+from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Availability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -461,6 +461,93 @@ def create_unit():
 
     flash("Unit created successfully!", "success")
     return redirect(url_for("unitcoordinator.dashboard"))
+
+
+@unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/profile')
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def facilitator_profile(facilitator_id):
+    """View a specific facilitator's profile"""
+    user = get_current_user()
+    
+    # Get facilitator from Facilitator table
+    facilitator = Facilitator.query.get_or_404(facilitator_id)
+    
+    # Get corresponding User record
+    facilitator_user = User.query.filter_by(email=facilitator.email).first()
+    
+    # Calculate stats
+    stats = {
+        'units_assigned': 0,
+        'pending_approvals': 0,
+        'total_sessions': 0,
+        'skills_count': 0,
+        'availability_status': 'Not Set'
+    }
+    
+    if facilitator_user:
+        try:
+            # Count units assigned to this facilitator
+            stats['units_assigned'] = db.session.query(UnitFacilitator).filter_by(user_id=facilitator_user.id).count()
+            
+            # Count pending swap requests
+            stats['pending_approvals'] = SwapRequest.query.filter_by(
+                requested_by=facilitator_user.id, 
+                status=SwapStatus.PENDING
+            ).count()
+            
+            # Count total sessions assigned
+            stats['total_sessions'] = Assignment.query.filter_by(facilitator_id=facilitator_user.id).count()
+            
+            # Count skills registered
+            stats['skills_count'] = FacilitatorSkill.query.filter_by(user_id=facilitator_user.id).count()
+            
+            # Check availability status
+            has_availability = Availability.query.filter_by(user_id=facilitator_user.id).first()
+            stats['availability_status'] = 'Available' if has_availability else 'Not Set'
+            
+        except Exception as e:
+            print(f"Error calculating stats: {e}")
+    
+    return render_template('unitcoordinator/facilitator_profile.html', 
+                         facilitator=facilitator,
+                         facilitator_user=facilitator_user,
+                         stats=stats)
+
+@unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/edit', methods=['GET', 'POST'])
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def edit_facilitator_profile(facilitator_id):
+    """Edit a facilitator's profile"""
+    user = get_current_user()
+    facilitator = Facilitator.query.get_or_404(facilitator_id)
+    facilitator_user = User.query.filter_by(email=facilitator.email).first()
+    
+    if request.method == 'POST':
+        try:
+            # Update facilitator data
+            facilitator.first_name = request.form.get('first_name', '').strip()
+            facilitator.last_name = request.form.get('last_name', '').strip()
+            facilitator.phone = request.form.get('phone', '').strip()
+            facilitator.staff_number = request.form.get('staff_number', '').strip()
+            
+            # Update user data if exists
+            if facilitator_user:
+                facilitator_user.first_name = facilitator.first_name
+                facilitator_user.last_name = facilitator.last_name
+            
+            db.session.commit()
+            flash('Facilitator profile updated successfully!', 'success')
+            return redirect(url_for('unitcoordinator.facilitator_profile', facilitator_id=facilitator_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating profile: {str(e)}', 'error')
+    
+    return render_template('unitcoordinator/edit_facilitator_profile.html', 
+                         facilitator=facilitator,
+                         facilitator_user=facilitator_user)
+
 
 
 @unitcoordinator_bp.post("/create_or_get_draft")
