@@ -16,7 +16,7 @@ from flask import (
 from auth import login_required, get_current_user
 from utils import role_required
 from models import db
-from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment 
+from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Availability
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -250,13 +250,16 @@ from datetime import date
 from sqlalchemy import func
 # ...other imports incl. request...
 
+# unitcoordinator_route.py (dashboard)
 @unitcoordinator_bp.route("/dashboard")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def dashboard():
+    from sqlalchemy import func
+
     user = get_current_user()
 
-    # All units for this UC + session counts for the All Units menu
+    # Build list of units this UC owns + session counts (for the single-card header)
     rows = (
         db.session.query(Unit, func.count(Session.id))
         .outerjoin(Module, Module.unit_id == Unit.id)
@@ -271,64 +274,91 @@ def dashboard():
         setattr(u, "session_count", int(cnt or 0))
         units.append(u)
 
-    # Select which unit to show (single card)
+    # Which unit is selected (via ?unit=) — otherwise first
     selected_id = request.args.get("unit", type=int)
-    current_unit = next((u for u in units if u.id == selected_id), None) if selected_id else (units[0] if units else None)
+    current_unit = (
+        next((u for u in units if u.id == selected_id), None)
+        if selected_id
+        else (units[0] if units else None)
+    )
 
-    # --- Stats row for the selected unit ---
-    stats = {"total": 0, "fully": 0, "needs_lead": 0, "unstaffed": 0}
+    # ----- Staffing tiles (placeholders until CSV/sessions are wired) -----
+    stats = {
+        "total": 0,
+        "fully": 0,
+        "needs_lead": 0,
+        "unstaffed": 0,
+    }
+
+    # ----- Facilitator Setup Progress + Details -----
+    fac_progress = {"total": 0, "account": 0, "availability": 0, "ready": 0}
+    facilitators = []
+
     if current_unit:
-        # per-session assignment counts
-        assign_counts = (
-            db.session.query(
-                Assignment.session_id.label("sid"),
-                func.count(Assignment.id).label("acnt")
+        # All facilitator links for this unit
+        links = (
+            db.session.query(UnitFacilitator, User)
+            .join(User, UnitFacilitator.user_id == User.id)
+            .filter(UnitFacilitator.unit_id == current_unit.id)
+            .order_by(User.last_name.asc().nulls_last(), User.first_name.asc().nulls_last())
+            .all()
+        )
+
+        fac_progress["total"] = len(links)
+
+        for _, f in links:
+            # "Account setup" heuristic: any profile fields present
+            has_profile = bool(
+                (getattr(f, "first_name", None) or getattr(f, "last_name", None))
+                or getattr(f, "phone", None)
+                or getattr(f, "staff_number", None)
+                or getattr(f, "avatar_url", None)
             )
-            .group_by(Assignment.session_id)
-            .subquery()
-        )
 
-        # sessions in this unit + assignment count + capacity
-        base = (
-            db.session.query(
-                Session.id.label("sid"),
-                Session.max_facilitators.label("cap"),
-                func.coalesce(assign_counts.c.acnt, 0).label("acnt")
+            # Availability: current model is *global*, not unit-scoped — will be
+            # rerouted once unit-specific availability is in place (TODO noted below)
+            has_avail = (
+                db.session.query(Availability.id)
+                .filter(Availability.user_id == f.id)
+                .limit(1)
+                .first()
+                is not None
             )
-            .join(Module, Module.id == Session.module_id)
-            .outerjoin(assign_counts, assign_counts.c.sid == Session.id)
-            .filter(Module.unit_id == current_unit.id)
-            .subquery()
-        )
 
-        total = db.session.query(func.count(base.c.sid)).scalar() or 0
-        fully = (
-            db.session.query(func.count())
-            .select_from(base)
-            .filter(base.c.acnt >= base.c.cap)
-            .scalar() or 0
-        )
-        unstaffed = (
-            db.session.query(func.count())
-            .select_from(base)
-            .filter(base.c.acnt == 0)
-            .scalar() or 0
-        )
-        # until you add role-aware logic, "Needs Lead" = partially staffed
-        needs_lead = max(total - fully - unstaffed, 0)
+            is_ready = has_profile and has_avail
+            fac_progress["account"] += 1 if has_profile else 0
+            fac_progress["availability"] += 1 if has_avail else 0
+            fac_progress["ready"] += 1 if is_ready else 0
 
-        stats.update(total=total, fully=fully, needs_lead=needs_lead, unstaffed=unstaffed)
+            facilitators.append(
+                {
+                    "id": f.id,
+                    "name": getattr(f, "full_name", None) or f.email,
+                    "email": f.email,
+                    "phone": getattr(f, "phone", None),
+                    "staff_number": getattr(f, "staff_number", None),
+                    # Display-only placeholders — wire these to Assignments/Sessions when ready.
+                    "experience_years": None,         # TODO: reroute when experience field exists
+                    "upcoming_sessions": None,        # TODO: reroute using Session/Assignment join
+                    "total_hours": None,              # TODO: reroute using Assignment durations
+                    "last_login": getattr(f, "last_login", None),  # if your User has it
+                    # Status flags
+                    "has_profile": has_profile,
+                    "has_availability": has_avail,
+                    "is_ready": is_ready,
+                }
+            )
 
     return render_template(
         "unitcoordinator_dashboard.html",
         user=user,
-        units=units,                # for dropdowns
-        current_unit=current_unit,  # the single card to render
+        units=units,
+        current_unit=current_unit,
         today=date.today(),
-        stats=stats                 # dashboard stats
+        stats=stats,
+        fac_progress=fac_progress,
+        facilitators=facilitators,
     )
-
-
 
 @unitcoordinator_bp.route("/create_unit", methods=["POST"])
 @login_required
