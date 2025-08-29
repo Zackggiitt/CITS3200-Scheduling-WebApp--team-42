@@ -17,6 +17,8 @@
   --c-pill-bg: #dbeafe;
   --c-pill-text: #3b82f6;
   --c-danger: #ef4444;
+  --uc-accent: #2563eb;          /* same blue you’re using */
+  --uc-accent-thickness: 6px;    /* match Facilitator progress bar */
 }
 
 /* =========================================
@@ -744,10 +746,32 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
   text-align:center;
   box-shadow:0 1px 2px rgba(16,24,40,.06);
 }
-.uc-stat__value{ font-weight:800; font-size:28px; line-height:1.1; margin-bottom:6px; }
+.uc-stat__value{ font-weight:600; font-size:28px; line-height:1.1; margin-bottom:6px; }
 .uc-stat__label{ color:#6b7280; font-weight:600; font-size:14px; }
 
 .uc-stat__value--blue   { color:#2563eb; }
 .uc-stat__value--green  { color:#059669; }
 .uc-stat__value--orange { color:#ea580c; }
 .uc-stat__value--red    { color:#ef4444; }
+
+/* === Make active-tab underline match progress bar thickness === */
+:root{
+  --uc-accent: #2563eb;          /* same blue you’re using */
+  --uc-accent-thickness: 6px;    /* match Facilitator progress bar */
+}
+
+/* give the rail a little room for the thicker underline */
+.uc-tabs-wrap { padding-bottom: 10px; }
+
+/* thicker, rounded underline for the active tab */
+.uc-tab.is-active::after{
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: -8px;
+  height: var(--uc-accent-thickness);
+  background: var(--uc-accent);
+  border-radius: 9999px;
+  box-shadow: 0 2px 4px rgba(37,99,235,.18);
+}

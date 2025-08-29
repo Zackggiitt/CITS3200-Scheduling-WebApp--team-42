@@ -4,7 +4,7 @@ import re
 from io import StringIO, BytesIO
 from datetime import datetime, date, timedelta
 from sqlalchemy import and_, func
-# from sqlalchemy import func
+from sqlalchemy import func
 # from models import Unit, Module, Session
 from datetime import date
 
@@ -16,7 +16,7 @@ from flask import (
 from auth import login_required, get_current_user
 from utils import role_required
 from models import db
-from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Availability
+from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Availability, SkillLevel
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -283,11 +283,30 @@ def dashboard():
     )
 
     # ----- Staffing tiles (placeholders until CSV/sessions are wired) -----
+    session_rows = (
+        db.session.query(
+            Session.id.label("sid"),
+            func.coalesce(Session.max_facilitators, 1).label("maxf"),
+            func.count(Assignment.id).label("assigned"),
+        )
+        .join(Module, Module.id == Session.module_id)
+        .outerjoin(Assignment, Assignment.session_id == Session.id)
+        .filter(Module.unit_id == current_unit.id)
+        .group_by(Session.id, Session.max_facilitators)
+        .all()
+    )
+
+    total_sessions = len(session_rows)
+    fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
+    unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
+    # Inclusive definition: anything not fully staffed (this will include unstaffed)
+    needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
+
     stats = {
-        "total": 0,
-        "fully": 0,
-        "needs_lead": 0,
-        "unstaffed": 0,
+        "total": total_sessions,
+        "fully": fully_staffed,
+        "needs_lead": needs_lead,
+        "unstaffed": unstaffed,
     }
 
     # ----- Facilitator Setup Progress + Details -----
