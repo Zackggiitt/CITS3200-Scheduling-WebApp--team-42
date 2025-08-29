@@ -261,7 +261,7 @@
             </button>
           </nav>
 
-                    <!-- Other panels (placeholders for now) -->
+          <!-- Other panels (placeholders for now) -->
           <section id="panel-staffing" class="uc-panel" role="tabpanel" aria-labelledby="tab-staffing" hidden>
             {# --- Session staffing stats row --- #}
             <div class="uc-stats">
@@ -300,13 +300,11 @@
               </p>
 
               <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <!-- Total -->
                 <div class="text-center">
                   <div class="text-3xl font-semibold text-blue-600">{{ total }}</div>
                   <div class="text-sm text-gray-600 mt-1">Total Facilitators</div>
                 </div>
 
-                <!-- Account setup -->
                 <div>
                   <div class="text-center">
                     <div class="text-3xl font-semibold text-green-600">{{ fp.account }}</div>
@@ -318,7 +316,6 @@
                   <div class="text-xs text-gray-500 mt-1">{{ acct_pct }}% complete</div>
                 </div>
 
-                <!-- Availability set -->
                 <div>
                   <div class="text-center">
                     <div class="text-3xl font-semibold" style="color:#7c3aed">{{ fp.availability }}</div>
@@ -330,7 +327,6 @@
                   <div class="text-xs text-gray-500 mt-1">{{ avail_pct }}% complete</div>
                 </div>
 
-                <!-- Fully ready -->
                 <div>
                   <div class="text-center">
                     <div class="text-3xl font-semibold text-emerald-600">{{ fp.ready }}</div>
@@ -342,28 +338,150 @@
                   <div class="text-xs text-gray-500 mt-1">{{ ready_pct }}% complete</div>
                 </div>
               </div>
+            </div>
 
-              <!-- Actions -->
-              <div class="mt-5 flex flex-wrap gap-3">
-                <button type="button" class="inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm">
-                  <span class="material-icons text-base">mail</span>
-                  Send Setup Reminders ({{ fp.need_account }})
-                </button>
-                <button type="button" class="inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm">
-                  <span class="material-icons text-base">event_available</span>
-                  Remind Availability Setup ({{ fp.need_availability }})
-                </button>
-                <button type="button" class="inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm">
-                  <span class="material-icons text-base">visibility</span>
-                  View Detailed Report
-                </button>
-              </div>
+            {# --- Facilitator Details (SKILLS, not experience) --- #}
+            <div class="mt-6 bg-white border rounded-2xl p-5">
+              <header class="flex items-center justify-between gap-3 mb-4">
+                <div class="flex items-center gap-2">
+                  <span class="material-icons text-gray-700">manage_accounts</span>
+                  <h3 class="font-semibold text-gray-900">Facilitator Details</h3>
+                  <span class="ml-2 text-xs text-gray-500">{{ facilitators|length }} of {{ fac_progress.total }}</span>
+                </div>
+
+                <!-- search/filter placeholders -->
+                <div class="flex items-center gap-2">
+                  <label class="relative">
+                    <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-base">search</span>
+                    <input type="search" class="pl-8 pr-3 py-1.5 border rounded-lg text-sm focus:outline-none"
+                          placeholder="Search facilitators…" aria-label="Search facilitators">
+                  </label>
+                  <details class="relative">
+                    <summary class="list-none inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm cursor-pointer">
+                      All Status <span class="material-icons text-base">expand_more</span>
+                    </summary>
+                    <ul class="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow text-sm">
+                      <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">All Status</button></li>
+                      <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Ready</button></li>
+                      <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Needs Availability</button></li>
+                      <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Pending Setup</button></li>
+                    </ul>
+                  </details>
+                </div>
+              </header>
+
+              {% if facilitators %}
+                {% for f in facilitators %}
+                  <article class="border rounded-xl p-4 mb-3">
+                    <div class="flex items-start justify-between gap-6">
+                      <!-- Left: identity + contact -->
+                      <div>
+                        <div class="flex items-center gap-3">
+                          <h4 class="font-semibold text-gray-900">{{ f.name }}</h4>
+
+                          {% if f.is_ready %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-green-50 text-green-700 border border-green-200">
+                              <span class="material-icons text-sm">check_circle</span> Ready
+                            </span>
+                          {% elif f.has_profile %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+                              <span class="material-icons text-sm">hourglass_bottom</span> Pending
+                            </span>
+                          {% else %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-gray-50 text-gray-700 border border-gray-200">
+                              <span class="material-icons text-sm">person_outline</span> New
+                            </span>
+                          {% endif %}
+                        </div>
+
+                        <div class="mt-2 space-y-1 text-sm text-gray-800">
+                          <div class="flex items-center gap-2">
+                            <span class="material-icons text-base text-gray-500">email</span>
+                            <a href="mailto:{{ f.email }}" class="text-blue-700 hover:underline">{{ f.email }}</a>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <span class="material-icons text-base text-gray-500">call</span>
+                            <span>{{ f.phone or '—' }}</span>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <span class="material-icons text-base text-gray-500">badge</span>
+                            <span>{{ f.staff_number or '—' }}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Right: skills + placeholders -->
+                      <div class="min-w-[420px]">
+                        <div class="text-sm text-gray-500 mb-1">Skills</div>
+                        {% if f.skills and f.skills|length %}
+                          <div class="flex flex-wrap gap-2 mb-3">
+                            {% for s in f.skills %}
+                              <span class="inline-flex items-center rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-700">
+                                {{ s.module }} — {{ s.level|replace('_',' ')|title }}
+                              </span>
+                            {% endfor %}
+                          </div>
+                        {% else %}
+                          <div class="text-sm text-gray-400 mb-3">—</div>
+                        {% endif %}
+
+                        <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-2 text-sm">
+                          <div>
+                            <dt class="text-gray-500">Upcoming Sessions</dt>
+                            <dd class="font-medium">{{ f.upcoming_sessions or '—' }}</dd>
+                          </div>
+                          <div>
+                            <dt class="text-gray-500">Total Hours</dt>
+                            <dd class="font-medium">{{ f.total_hours or '—' }}</dd>
+                          </div>
+                          <div>
+                            <dt class="text-gray-500">Last Login</dt>
+                            <dd class="font-medium">
+                              {% if f.last_login %}{{ f.last_login.strftime("%-m/%-d/%Y") }}{% else %}—{% endif %}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                    </div>
+
+                    <!-- Status row -->
+                    <div class="mt-3 pt-3 border-t flex items-center justify-between gap-4">
+                      <div class="flex flex-wrap items-center gap-3 text-sm">
+                        <span class="inline-flex items-center gap-2">
+                          {% if f.has_profile %}
+                            <span class="material-icons text-green-600">task_alt</span> Account Setup
+                          {% else %}
+                            <span class="material-icons text-gray-500">radio_button_unchecked</span> Account Setup
+                          {% endif %}
+                        </span>
+                        <span class="inline-flex items-center gap-2">
+                          {% if f.has_availability %}
+                            <span class="material-icons text-green-600">task_alt</span> Availability Set
+                          {% else %}
+                            <span class="material-icons text-amber-600">error_outline</span> Needs Availability
+                          {% endif %}
+                        </span>
+                      </div>
+
+                      <div class="flex items-center gap-2">
+                        <a href="#" class="inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50">
+                          <span class="material-icons text-base">visibility</span> View Profile
+                        </a>
+                        {% if not f.is_ready %}
+                          <button type="button" class="inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50">
+                            <span class="material-icons text-base">notifications_active</span> Remind Setup
+                          </button>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </article>
+                {% endfor %}
+              {% else %}
+                <div class="text-sm text-gray-600">No facilitators linked to this unit yet.</div>
+              {% endif %}
             </div>
           </section>
 
-          <section id="panel-team" class="uc-panel" role="tabpanel" aria-labelledby="tab-team" hidden>
-            <div class="uc-panel-empty">Team &amp; approvals content goes here.</div>
-          </section>
         </div>
       </div>
     {% endif %}
