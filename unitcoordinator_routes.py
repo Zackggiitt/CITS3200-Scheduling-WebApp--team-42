@@ -245,6 +245,11 @@ def _iter_weekly_occurrences(unit: Unit, start_dt: datetime, end_dt: datetime, r
 # in unitcoordinator_route.py
 
 
+# unitcoordinator_routes.py
+from datetime import date
+from sqlalchemy import func
+# ...other imports incl. request...
+
 @unitcoordinator_bp.route("/dashboard")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
@@ -257,6 +262,7 @@ def dashboard():
         .outerjoin(Session, Session.module_id == Module.id)
         .filter(Unit.created_by == user.id)
         .group_by(Unit.id)
+        .order_by(Unit.unit_code.asc())
         .all()
     )
     units = []
@@ -264,7 +270,16 @@ def dashboard():
         setattr(u, "session_count", int(cnt or 0))
         units.append(u)
 
-    return render_template("unitcoordinator_dashboard.html", user=user, units=units, today=date.today())
+    selected_id = request.args.get("unit", type=int)
+    current_unit = next((u for u in units if u.id == selected_id), None) if selected_id else (units[0] if units else None)
+
+    return render_template(
+        "unitcoordinator_dashboard.html",
+        user=user,
+        units=units,                # for dropdowns
+        current_unit=current_unit,  # the single card to render
+        today=date.today(),
+    )
 
 
 
