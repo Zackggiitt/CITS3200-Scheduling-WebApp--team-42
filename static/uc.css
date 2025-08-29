@@ -17,6 +17,8 @@
   --c-pill-bg: #dbeafe;
   --c-pill-text: #3b82f6;
   --c-danger: #ef4444;
+  --uc-accent: #2563eb;          /* same blue you’re using */
+  --uc-accent-thickness: 6px;    /* match Facilitator progress bar */
 }
 
 /* =========================================
@@ -60,6 +62,23 @@
   display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 9999px;
   background: var(--c-pill-bg); color: var(--c-pill-text); font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap;
 }
+
+/* Status badges (match role-badge sizing/shape) */
+.status-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  height:22px; padding:0 10px; border-radius:9999px;
+  font-size:12px; font-weight:600; line-height:1; white-space:nowrap;
+  border:1px solid transparent;
+}
+.status-badge .material-icons{ font-size:16px; line-height:1; }
+
+/* Variants (blue = same palette as role-badge) */
+.status-badge--blue  { background: var(--c-pill-bg); color: var(--c-pill-text); border-color: rgba(59,130,246,.35); }
+.status-badge--green { background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
+.status-badge--amber { background:#fef3c7; color:#b45309; border-color:#fcd34d; }
+.status-badge--rose  { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }
+.status-badge--gray  { background:#f3f4f6; color:#374151; border-color:#e5e7eb; }
+
 
 .logout-form { margin: 0; display: inline-flex; }
 .logout-btn{
@@ -744,10 +763,209 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
   text-align:center;
   box-shadow:0 1px 2px rgba(16,24,40,.06);
 }
-.uc-stat__value{ font-weight:800; font-size:28px; line-height:1.1; margin-bottom:6px; }
+.uc-stat__value{ font-weight:600; font-size:28px; line-height:1.1; margin-bottom:6px; }
 .uc-stat__label{ color:#6b7280; font-weight:600; font-size:14px; }
 
 .uc-stat__value--blue   { color:#2563eb; }
 .uc-stat__value--green  { color:#059669; }
 .uc-stat__value--orange { color:#ea580c; }
 .uc-stat__value--red    { color:#ef4444; }
+
+/* === Make active-tab underline match progress bar thickness === */
+:root{
+  --uc-accent: #2563eb;          /* same blue you’re using */
+  --uc-accent-thickness: 6px;    /* match Facilitator progress bar */
+}
+
+/* give the rail a little room for the thicker underline */
+.uc-tabs-wrap { padding-bottom: 10px; }
+
+/* thicker, rounded underline for the active tab */
+.uc-tab.is-active::after{
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: -8px;
+  height: var(--uc-accent-thickness);
+  background: var(--uc-accent);
+  border-radius: 9999px;
+  box-shadow: 0 2px 4px rgba(37,99,235,.18);
+}
+
+/* ===============================
+   Facilitator Details (scoped)
+   =============================== */
+.fac-list { --fac-line: var(--c-line); }
+
+.fac-list > header {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--fac-line);
+  margin-bottom: 12px;
+}
+
+/* search + filter controls */
+.fac-list input[type="search"]{
+  height: 36px; border-radius: 10px; border: 1px solid var(--fac-line);
+  background: #fff; padding-left: 34px; font-size: 14px;
+}
+.fac-list details > summary{
+  height: 36px; border-radius: 10px; border: 1px solid var(--fac-line);
+  background: #fff; padding: 6px 10px; font-size: 14px;
+}
+
+/* cards */
+.fac-list article{
+  border: 1px solid var(--fac-line);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(16,24,40,.06);
+  background: #fff;
+}
+.fac-list article + article{ margin-top: 12px; }
+
+/* name + status chips */
+.fac-list h4{ font-size: 1.05rem; font-weight: 700; color: #111827; }
+
+.fac-list .badge{ /* optional utility if you ever add plain badges */
+  display:inline-flex;align-items:center;gap:6px;padding:.25rem .5rem;
+  border-radius:9999px;border:1px solid #e5e7eb;font-size:.75rem;font-weight:600;
+}
+
+/* left column contact rows */
+.fac-list .text-sm.text-gray-800 > .flex{
+  line-height: 1.25rem;
+}
+.fac-list .text-sm .material-icons{
+  font-size: 18px; color: #6b7280;
+}
+
+/* right column: “Skills” label and metrics */
+.fac-list .min-w-\[420px\] .text-sm.text-gray-500{ font-weight: 600; }
+.fac-list dl { column-gap: 2rem; row-gap: .35rem; }
+.fac-list dt{ color:#6b7280; }
+.fac-list dd{ color:#111827; font-weight:600; }
+
+/* divider + footer row (Account/Availability + buttons) */
+.fac-list .mt-3.pt-3.border-t{
+  border-top: 1px solid var(--fac-line) !important;
+}
+.fac-list .mt-3 .material-icons{
+  font-size: 18px; vertical-align: -3px;
+}
+.fac-list a[role], .fac-list a.inline-flex, .fac-list button.inline-flex{
+  border: 1px solid var(--fac-line);
+  border-radius: 10px;
+  background:#fff;
+}
+.fac-list a[role]:hover,
+.fac-list a.inline-flex:hover,
+.fac-list button.inline-flex:hover{
+  background:#f9fafb;
+}
+
+/* ================================
+   Facilitator Details — compact chips
+   (paste near bottom of uc.css)
+===================================*/
+
+/* Name row spacing */
+.fac-card .fac-title-row {        /* wrapper that holds the name + chips */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Chip base (small, consistent) */
+.fac-card .fac-chip,
+.fac-card .chip {                  /* fallback if your template still uses .chip */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.fac-card .fac-chip .material-icons,
+.fac-card .chip .material-icons {
+  font-size: 16px;
+  line-height: 1;
+  opacity: .9;
+}
+
+/* Variants */
+.fac-card .fac-chip--ready,
+.fac-card .chip--ready {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #065f46;
+}
+
+.fac-card .fac-chip--active,
+.fac-card .chip--active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #1e3a8a;
+}
+
+.fac-card .fac-chip--pending,
+.fac-card .chip--pending {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.fac-card .fac-chip--needs,
+.fac-card .chip--needs {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #c2410c;
+}
+
+.fac-card .fac-chip--setup,
+.fac-card .chip--setup {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.fac-card .fac-chip--inactive,
+.fac-card .chip--inactive {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #374151;
+}
+
+.fac-card .fac-chip--email,
+.fac-card .chip--email {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+/* Subtle hover so they feel clickable if you use them as filters later */
+.fac-card .fac-chip:hover,
+.fac-card .chip:hover { filter: brightness(0.98); }
+
+/* Tighten top section so chips don’t look “floaty” */
+.fac-card .fac-head {
+  display: grid;
+  grid-template-columns: 1fr auto;   /* left info  | actions on the right */
+  gap: 12px;
+  align-items: start;
+}
+
+/* Action buttons on the right stay compact */
+.fac-card .fac-actions .btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 13px;
+}
