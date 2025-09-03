@@ -1,0 +1,160 @@
+activity_group_code,day_of_week,start_time,weeks,duration,location
+Workshop-01_Practical_Safety-01,Mon,9:00,30-Sep,210,"EZONENTH: [ 109] Learning Studio (30/6), EZONENTH: [ 110] Learning Studio (30/6), EZONENTH: [ 111] Learning Studio (30/6)"
+Workshop-01_Practical_Safety-01,Mon,13:30,30-Sep,210,"EZONENTH: [ 109] Learning Studio (30/6), EZONENTH: [ 110] Learning Studio (30/6), EZONENTH: [ 111] Learning Studio (30/6)"
+Workshop-01_Practical_Safety-01,Mon,9:00,7-Oct,210,"EZONENTH: [ 109] Learning Studio (7/7), EZONENTH: [ 110] Learning Studio (7/7), EZONENTH: [ 111] Learning Studio (7/7)"
+Workshop-01_Practical_Safety-01,Mon,13:30,7-Oct,210,"EZONENTH: [ 109] Learning Studio (7/7), EZONENTH: [ 110] Learning Studio (7/7), EZONENTH: [ 111] Learning Studio (7/7)"
+Workshop-01_Practical_Safety-01,Mon,9:00,14-Oct,210,"EZONENTH: [ 109] Learning Studio (14/7), EZONENTH: [ 110] Learning Studio (14/7), EZONENTH: [ 111] Learning Studio (14/7)"
+Workshop-01_Practical_Safety-01,Mon,13:30,14-Oct,210,"EZONENTH: [ 109] Learning Studio (14/7), EZONENTH: [ 110] Learning Studio (14/7), EZONENTH: [ 111] Learning Studio (14/7)"
+Workshop-02_Computer_Aided_Design-02,Mon,9:00,30-Sep,210,ENCM: [ 210] Civil Computer Room
+Workshop-02_Computer_Aided_Design-02,Mon,13:30,30-Sep,210,ENCM: [ 210] Civil Computer Room
+Workshop-02_Computer_Aided_Design-02,Mon,9:00,7-Oct,210,ENCM: [ 210] Civil Computer Room
+Workshop-02_Computer_Aided_Design-02,Mon,13:30,7-Oct,210,ENCM: [ 210] Civil Computer Room
+Workshop-02_Computer_Aided_Design-02,Mon,9:00,14-Oct,210,ENCM: [ 210] Civil Computer Room
+Workshop-02_Computer_Aided_Design-02,Mon,13:30,14-Oct,210,ENCM: [ 210] Civil Computer Room
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Tue,9:00,1-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Tue,13:30,1-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Wed,9:00,2-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Wed,13:30,2-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Thu,9:00,3-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Thu,13:30,3-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Fri,9:00,4-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Tue,9:00,8-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Tue,13:30,8-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Wed,9:00,9-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Wed,13:30,9-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Thu,9:00,10-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Thu,13:30,10-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Fri,9:00,11-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Tue,9:00,15-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Tue,13:30,15-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Wed,9:00,16-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Wed,13:30,16-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Thu,9:00,17-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Thu,13:30,17-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-03_Computer_Teardown_and_File_Recovery-03,Fri,9:00,18-Oct,210,CSSE: [ 201] Computer Lab
+Workshop-04_Measurement_and_Instrumentation-04,Tue,9:00,1-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Tue,13:30,1-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Wed,9:00,2-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Wed,13:30,2-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Thu,9:00,3-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Thu,13:30,3-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Fri,9:00,4-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Tue,9:00,8-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Tue,13:30,8-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Wed,9:00,9-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Wed,13:30,9-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Thu,9:00,10-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Thu,13:30,10-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Fri,9:00,11-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Tue,9:00,15-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Tue,13:30,15-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Wed,9:00,16-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Wed,13:30,16-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Thu,9:00,17-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Thu,13:30,17-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-04_Measurement_and_Instrumentation-04,Fri,9:00,18-Oct,210,EZONECENT: [  G05] Materials Testing Lab
+Workshop-05_Pipeworks_and_Tour-05,Tue,9:00,1-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Tue,13:30,1-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Wed,9:00,2-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Wed,13:30,2-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Thu,9:00,3-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Thu,13:30,3-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Fri,9:00,4-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Tue,9:00,8-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Tue,13:30,8-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Wed,9:00,9-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Wed,13:30,9-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Thu,9:00,10-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Thu,13:30,10-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Fri,9:00,11-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Tue,9:00,15-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Tue,13:30,15-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Wed,9:00,16-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Wed,13:30,16-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Thu,9:00,17-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Thu,13:30,17-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-05_Pipeworks_and_Tour-05,Fri,9:00,18-Oct,210,MATH: [ 151] Monadelphous EECE Lab
+Workshop-06_Data_Collection_Mapping-06,Tue,9:00,1-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Tue,13:30,1-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Wed,9:00,2-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Wed,13:30,2-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Thu,9:00,3-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Thu,13:30,3-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Fri,9:00,4-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Tue,9:00,8-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Tue,13:30,8-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Wed,9:00,9-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Wed,13:30,9-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Thu,9:00,10-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Thu,13:30,10-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Fri,9:00,11-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Tue,9:00,15-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Tue,13:30,15-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Wed,9:00,16-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Wed,13:30,16-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Thu,9:00,17-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Thu,13:30,17-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-06_Data_Collection_Mapping-06,Fri,9:00,18-Oct,210,EZONENTH: [ 109] Learning Studio
+Workshop-10_Hands_on_Tool_Training-10,Tue,9:00,1-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Tue,13:30,1-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Wed,9:00,2-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Wed,13:30,2-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Thu,9:00,3-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Thu,13:30,3-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Fri,9:00,4-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Tue,9:00,8-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Tue,13:30,8-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Wed,9:00,9-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Wed,13:30,9-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Thu,9:00,10-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Thu,13:30,10-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Fri,9:00,11-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Tue,9:00,15-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Tue,13:30,15-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Wed,9:00,16-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Wed,13:30,16-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Thu,9:00,17-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Thu,13:30,17-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-10_Hands_on_Tool_Training-10,Fri,9:00,18-Oct,210,ENCM: [  G13] Lecture Room
+Workshop-08_Mechanical_Reverse_Engineering-08,Tue,9:00,1-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Tue,13:30,1-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Wed,9:00,2-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Wed,13:30,2-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Thu,9:00,3-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Thu,13:30,3-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Fri,9:00,4-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Tue,9:00,8-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Tue,13:30,8-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Wed,9:00,9-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Wed,13:30,9-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Thu,9:00,10-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Thu,13:30,10-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Fri,9:00,11-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Tue,9:00,15-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Tue,13:30,15-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Wed,9:00,16-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Wed,13:30,16-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Thu,9:00,17-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Thu,13:30,17-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-08_Mechanical_Reverse_Engineering-08,Fri,9:00,18-Oct,210,MATH: [ 152] Monadelphous EECE Lab
+Workshop-09_Soldering_and_Circuit-09,Tue,9:00,1-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Tue,13:30,1-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Wed,9:00,2-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Wed,13:30,2-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Thu,9:00,3-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Thu,13:30,3-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Fri,9:00,4-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Tue,9:00,8-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Tue,13:30,8-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Wed,9:00,9-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Wed,13:30,9-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Thu,9:00,10-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Thu,13:30,10-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Fri,9:00,11-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Tue,9:00,15-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Tue,13:30,15-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Wed,9:00,16-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Wed,13:30,16-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Thu,9:00,17-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Thu,13:30,17-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab
+Workshop-09_Soldering_and_Circuit-09,Fri,9:00,18-Oct,210,MATH: [  G52] Monadelphous Integrated Learning Centre Lab

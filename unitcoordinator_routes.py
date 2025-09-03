@@ -190,10 +190,11 @@ def _parse_recurrence(d: dict):
 
 
 def _within_unit_range(unit: Unit, dt: datetime) -> bool:
-    """Check datetime against unit.start_date/end_date (if set)."""
+    """Check datetime against unit.start_date/end_date (if set). Only start_date is required."""
     d = dt.date()
     if unit.start_date and d < unit.start_date:
         return False
+    # Only check end_date if it's actually set
     if unit.end_date and d > unit.end_date:
         return False
     return True
@@ -769,24 +770,274 @@ def upload_setup_csv():
         "errors": errors[:20],  # show up to 20 issues
     }), 200
 
-# ---------- Step 3B: Calendar / Sessions ----------
-@unitcoordinator_bp.get("/units/<int:unit_id>/calendar")
+@unitcoordinator_bp.route("/units/<int:unit_id>/upload_sessions_csv", methods=["POST"])
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
-def calendar_week(unit_id: int):
-    """Return sessions that intersect the visible week."""
+def upload_sessions_csv(unit_id: int):
+    """
+    Accept CSV with headers: activity_group_code, day_of_week, start_time, weeks, duration, location
+    Creates sessions for GENG2000 format.
+    """
     user = get_current_user()
     unit = _get_user_unit_or_404(user, unit_id)
     if not unit:
         return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
 
-    week_start_raw = (request.args.get("week_start") or "").strip()  # YYYY-MM-DD
+    file = request.files.get("sessions_csv")
+    if not file:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+
+    try:
+        text = file.read().decode("utf-8", errors="replace")
+        # Add debug logging
+        logger.info(f"CSV content first 500 chars: {text[:500]}")
+        reader = csv.DictReader(StringIO(text))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Failed to read CSV: {e}"}), 400
+
+    # Header check for GENG format
+    fns = [fn.strip().lower() for fn in (reader.fieldnames or [])]
+    logger.info(f"CSV headers found: {fns}")
+    needed = {"activity_group_code", "day_of_week", "start_time", "weeks", "duration", "location"}
+    if not needed.issubset(set(fns)):
+        return jsonify({"ok": False, "error": f"CSV must include headers: {needed}. Found: {set(fns)}"}), 400
+
+    created = 0
+    skipped = 0
+    errors = []
+    seen = set()
+    created_ids = []
+
+    # Helper to parse week date format "30/6" or "7/7"
+    def parse_week_date(week_str, year=2025):
+        try:
+            if '/' in week_str:
+                day, month = week_str.split('/')
+                return datetime(year, int(month), int(day)).date()
+        except Exception as e:
+            logger.error(f"Failed to parse week date '{week_str}': {e}")
+        return None
+
+    # Helper to convert day name to date
+    def get_date_from_day_and_week(day_name, week_date):
+        days = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3, 'friday': 4, 'saturday': 5, 'sunday': 6}
+        day_short = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
+        
+        day_num = days.get(day_name.lower()) or day_short.get(day_name.lower()[:3])
+        if day_num is None:
+            return None
+            
+        # Find the date for that day in the week containing week_date
+        days_diff = day_num - week_date.weekday()
+        return week_date + timedelta(days=days_diff)
+
+    # Helper to parse multiple venues from location field
+    def parse_venues(location_str):
+        """Extract venue names from location string like 'EZONENTH: [ 109] Learning Studio (30/6), EZONENTH: [ 110] Learning Studio (30/6)'"""
+        venues = []
+        # Split by comma and clean up each venue
+        for venue_part in location_str.split(','):
+            venue_part = venue_part.strip()
+            if venue_part:
+                # Remove date suffix like "(30/6)" if present
+                if '(' in venue_part and ')' in venue_part:
+                    venue_part = venue_part.split('(')[0].strip()
+                # Clean up the venue name
+                if ':' in venue_part:
+                    # Extract building name before colon
+                    building = venue_part.split(':')[0].strip()
+                    venues.append(building)
+                else:
+                    venues.append(venue_part)
+        return venues if venues else [location_str.strip()]
+
+    # Preload/collect existing venues for fast lookup
+    name_to_venue = {v.name.strip().lower(): v for v in Venue.query.all()}
+
+    def ensure_unit_venue(venue_name: str) -> Venue:
+        # Clean venue name
+        clean_name = venue_name.strip()
+        
+        vkey = clean_name.lower()
+        venue = name_to_venue.get(vkey)
+        if not venue:
+            venue = Venue(name=clean_name)
+            db.session.add(venue)
+            db.session.flush()
+            name_to_venue[vkey] = venue
+        
+        # ensure UnitVenue link
+        if not UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first():
+            db.session.add(UnitVenue(unit_id=unit.id, venue_id=venue.id))
+        return venue
+
+    # Process rows
+    MAX_ROWS = 2000
+    row_count = 0
+    for idx, row in enumerate(reader, start=2):
+        row_count += 1
+        logger.info(f"Processing row {idx}: {row}")
+        
+        if row_count > MAX_ROWS:
+            errors.append(f"Row {idx}: skipped due to row limit ({MAX_ROWS}).")
+            skipped += 1
+            continue
+
+        activity_code = (row.get("activity_group_code") or "").strip()
+        day_of_week = (row.get("day_of_week") or "").strip()
+        start_time_str = (row.get("start_time") or "").strip()
+        weeks_str = (row.get("weeks") or "").strip()
+        duration_str = (row.get("duration") or "").strip()
+        location = (row.get("location") or "").strip()
+
+        logger.info(f"Row {idx} parsed: activity={activity_code}, day={day_of_week}, time={start_time_str}, weeks={weeks_str}, duration={duration_str}, location={location}")
+
+        if not all([activity_code, day_of_week, start_time_str, weeks_str, duration_str, location]):
+            skipped += 1
+            errors.append(f"Row {idx}: missing required fields. Got: activity={activity_code}, day={day_of_week}, time={start_time_str}, weeks={weeks_str}, duration={duration_str}, location={location}")
+            continue
+
+        # Parse week date
+        week_date = parse_week_date(weeks_str)
+        if not week_date:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid week format '{weeks_str}'.")
+            continue
+
+        # Get actual date for this day of week
+        session_date = get_date_from_day_and_week(day_of_week, week_date)
+        if not session_date:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid day of week '{day_of_week}'.")
+            continue
+
+        # Parse start time
+        try:
+            hour, minute = map(int, start_time_str.split(':'))
+            start_dt = datetime.combine(session_date, datetime.min.time().replace(hour=hour, minute=minute))
+        except Exception as e:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid start time '{start_time_str}': {e}")
+            continue
+
+        # Calculate end time from duration (in minutes)
+        try:
+            duration_minutes = int(duration_str)
+            end_dt = start_dt + timedelta(minutes=duration_minutes)
+        except Exception as e:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid duration '{duration_str}': {e}")
+            continue
+
+        # Range guard
+        # if not _within_unit_range(unit, start_dt) or not _within_unit_range(unit, end_dt):
+        #     skipped += 1
+        #     errors.append(f"Row {idx}: outside unit date range. Unit range: {unit.start_date} to {unit.end_date}, Session: {start_dt.date()}")
+        #     continue
+
+        # Parse venues from location
+        venue_names = parse_venues(location)
+        
+        # Create sessions for each venue
+        for venue_name in venue_names:
+            # File-level dedupe
+            dedupe_key = (activity_code.lower(), session_date, start_dt.time(), end_dt.time(), venue_name.lower())
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+
+            # Ensure venue + link to unit
+            venue_obj = ensure_unit_venue(venue_name)
+
+            # Extract session name from activity code
+            session_name = activity_code.replace('_', ' ').replace('-', ' - ')
+            
+            # Determine activity type
+            activity_type = "workshop"  # Default for GENG2000
+            if "practical" in activity_code.lower():
+                activity_type = "lab"
+            elif "tutorial" in activity_code.lower():
+                activity_type = "tutorial"
+
+            # Module: name = session name, type = activity type
+            mod = _get_or_create_module_by_name(unit, session_name)
+            mod.module_type = activity_type
+
+            # DB-level dedupe: same module + start + end + venue
+            exists = (
+                Session.query
+                .filter(
+                    Session.module_id == mod.id,
+                    Session.start_time == start_dt,
+                    Session.end_time == end_dt,
+                    Session.location == venue_obj.name,
+                )
+                .first()
+            )
+            if exists:
+                skipped += 1
+                continue
+
+            try:
+                s = Session(
+                    module_id=mod.id,
+                    session_type="general",
+                    start_time=start_dt,
+                    end_time=end_dt,
+                    day_of_week=start_dt.weekday(),
+                    location=venue_obj.name,
+                    required_skills=None,
+                    max_facilitators=1,
+                )
+                db.session.add(s)
+                db.session.flush()
+                created_ids.append(s.id)
+                created += 1
+                logger.info(f"Created session: {session_name} at {venue_obj.name} on {start_dt}")
+            except Exception as e:
+                db.session.rollback()
+                errors.append(f"Row {idx}, venue {venue_name}: database error: {e}")
+                logger.error(f"Database error creating session: {e}")
+                continue
+
+    logger.info(f"Upload summary: {row_count} rows processed, {created} created, {skipped} skipped")
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Commit failed: {e}"}), 500
+
+    return jsonify({
+        "ok": True,
+        "created": created,
+        "skipped": skipped,
+        "errors": errors[:30],
+        "created_session_ids": created_ids,
+        "processed_rows": row_count,
+    })
+
+# ---------- Step 3B: Calendar / Sessions ----------
+@unitcoordinator_bp.get("/units/<int:unit_id>/calendar")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def calendar_week(unit_id: int):
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    week_start_raw = (request.args.get("week_start") or "").strip()
+    logger.info(f"Calendar requesting week_start: {week_start_raw}")
+    
     try:
         week_start = datetime.strptime(week_start_raw, "%Y-%m-%d").date()
     except Exception:
         return jsonify({"ok": False, "error": "Invalid week_start format (use YYYY-MM-DD)"}), 400
 
-    week_end = week_start + timedelta(days=7)  # exclusive
+    week_end = week_start + timedelta(days=7)
+    logger.info(f"Calendar date range: {week_start} to {week_end}")
+    
     sessions = (
         Session.query.join(Module)
         .filter(
@@ -798,23 +1049,9 @@ def calendar_week(unit_id: int):
         .all()
     )
 
-    # Build name->id map for this unit's venues
-    unit_venues = (
-        db.session.query(Venue.id, Venue.name)
-        .join(UnitVenue, UnitVenue.venue_id == Venue.id)
-        .filter(UnitVenue.unit_id == unit.id)
-        .all()
-    )
-    venues_by_name = { (name or "").strip().lower(): vid for vid, name in unit_venues }
-
-    return jsonify({
-        "ok": True,
-        "unit_range": {
-            "start": unit.start_date.isoformat() if unit.start_date else None,
-            "end": unit.end_date.isoformat() if unit.end_date else None,
-        },
-        "sessions": [_serialize_session(s, venues_by_name) for s in sessions],
-    })
+    logger.info(f"Found {len(sessions)} sessions for date range {week_start} to {week_end}")
+    for s in sessions[:5]:  # Log first 5 sessions
+        logger.info(f"Session: {s.start_time} - {s.end_time} at {s.location}")
     
 @unitcoordinator_bp.post("/units/<int:unit_id>/sessions")
 @login_required
@@ -947,379 +1184,207 @@ def create_session(unit_id: int):
         "session": _serialize_session(first, venues_by_name),
     }), 201
 
-
-
-@unitcoordinator_bp.post("/units/<int:unit_id>/upload_sessions_csv")
-@login_required
-@role_required(UserRole.UNIT_COORDINATOR)
-def upload_sessions_csv(unit_id: int):
-    """
-    Accept CSV with headers: Venue, Activity, Session, Date, Time
-      - Activity: workshop|tutorial|lab|other (case-insensitive; others→'other')
-      - Date: DD/MM/YYYY or YYYY-MM-DD
-      - Time: 'HH:MM-HH:MM' (accepts '.' as separator and en-dash)
-    Creates sessions inside the unit's date range. Dedupes within-file and against existing.
-    """
-    user = get_current_user()
-    unit = _get_user_unit_or_404(user, unit_id)
-    if not unit:
-        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
-
-    file = request.files.get("sessions_csv")
-    if not file:
-        return jsonify({"ok": False, "error": "No file uploaded"}), 400
-
-    try:
-        text = file.read().decode("utf-8", errors="replace")
-        reader = csv.DictReader(StringIO(text))
-    except Exception as e:
-        return jsonify({"ok": False, "error": f"Failed to read CSV: {e}"}), 400
-
-    # Header check
-    fns = [fn.strip().lower() for fn in (reader.fieldnames or [])]
-    needed = {"venue", "activity", "session", "date", "time"}
-    if not needed.issubset(set(fns)):
-        return jsonify({"ok": False, "error": "CSV must include headers: Venue, Activity, Session, Date, Time"}), 400
-
-    created = 0
-    skipped = 0
-    errors = []
-    seen = set()   # within-file dedupe key
-    created_ids = []
-
-    # Preload/collect existing venues for fast lookup
-    name_to_venue = {v.name.strip().lower(): v for v in Venue.query.all()}
-
-    # Helper to get or create venue + link to unit
-    def ensure_unit_venue(venue_name: str) -> Venue:
-        vkey = (venue_name or "").strip().lower()
-        if not vkey:
-            return None
-        venue = name_to_venue.get(vkey)
-        if not venue:
-            venue = Venue(name=venue_name.strip())
-            db.session.add(venue)
-            db.session.flush()
-            name_to_venue[vkey] = venue
-        # ensure UnitVenue link
-        if not UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first():
-            db.session.add(UnitVenue(unit_id=unit.id, venue_id=venue.id))
-        return venue
-
-    # Process rows
-    MAX_ROWS = 2000
-    for idx, row in enumerate(reader, start=2):
-        if idx - 1 > MAX_ROWS:
-            errors.append(f"Row {idx}: skipped due to row limit ({MAX_ROWS}).")
-            skipped += 1
-            continue
-
-        venue_in   = (row.get("venue") or "").strip()
-        activity_in= _coerce_activity_type(row.get("activity"))
-        session_in = (row.get("session") or "").strip()
-        date_in    = (row.get("date") or "").strip()
-        time_in    = (row.get("time") or "").strip()
-
-        if not (venue_in and activity_in and session_in and date_in and time_in):
-            skipped += 1
-            errors.append(f"Row {idx}: missing required fields.")
-            continue
-
-        d = _parse_date_multi(date_in)
-        tr = _parse_time_range(time_in)
-        if not d:
-            skipped += 1
-            errors.append(f"Row {idx}: invalid date '{date_in}'.")
-            continue
-        if not tr:
-            skipped += 1
-            errors.append(f"Row {idx}: invalid time range '{time_in}'.")
-            continue
-
-        h1, m1, h2, m2 = tr
-        start_dt = datetime(d.year, d.month, d.day, h1, m1)
-        end_dt   = datetime(d.year, d.month, d.day, h2, m2)
-        if end_dt <= start_dt:
-            skipped += 1
-            errors.append(f"Row {idx}: end time must be after start time.")
-            continue
-
-        # Range guard
-        if not _within_unit_range(unit, start_dt) or not _within_unit_range(unit, end_dt):
-            skipped += 1
-            errors.append(f"Row {idx}: outside unit date range.")
-            continue
-
-        # File-level dedupe
-        dedupe_key = (venue_in.strip().lower(), activity_in, session_in.strip().lower(), start_dt, end_dt)
-        if dedupe_key in seen:
-            skipped += 1
-            continue
-        seen.add(dedupe_key)
-
-        # Ensure venue + link to unit
-        venue_obj = ensure_unit_venue(venue_in)
-
-        # Module: name = Session (title), type = Activity
-        mod = _get_or_create_module_by_name(unit, session_in)
-        mod.module_type = activity_in  # set/update to activity type
-
-        # DB-level dedupe: same module + start + end
-        exists = (
-            Session.query
-            .filter(
-                Session.module_id == mod.id,
-                Session.start_time == start_dt,
-                Session.end_time == end_dt,
-            )
-            .first()
-        )
-        if exists:
-            skipped += 1
-            continue
-
-        try:
-            s = Session(
-                module_id=mod.id,
-                session_type="general",
-                start_time=start_dt,
-                end_time=end_dt,
-                day_of_week=start_dt.weekday(),
-                location=venue_obj.name if venue_obj else None,
-                required_skills=None,
-                max_facilitators=1,
-            )
-            db.session.add(s)
-            db.session.flush()
-            created_ids.append(s.id)
-            created += 1
-        except Exception as e:
-            db.session.rollback()
-            errors.append(f"Row {idx}: database error: {e}")
-            continue
-
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"ok": False, "error": f"Commit failed: {e}"}), 500
-
-    return jsonify({
-        "ok": True,
-        "created": created,
-        "skipped": skipped,
-        "errors": errors[:30],
-        "created_session_ids": created_ids,
-    })
-
-
-
-@unitcoordinator_bp.put("/sessions/<int:session_id>")
+@unitcoordinator_bp.route("/sessions/<int:session_id>", methods=["PUT", "PATCH"])
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def update_session(session_id: int):
-    """Move/resize, update venue, or rename session; optional weekly fan-out when apply_to='series'."""
+    """Update an existing session"""
     user = get_current_user()
-    session = Session.query.get(session_id)
-    if not session or session.module.unit.created_by != user.id:
+    
+    # Get session and verify ownership through unit
+    session = Session.query.get_or_404(session_id)
+    unit = Unit.query.join(Module).filter(
+        Module.id == session.module_id,
+        Unit.created_by == user.id
+    ).first()
+    
+    if not unit:
         return jsonify({"ok": False, "error": "Session not found or unauthorized"}), 404
 
-    unit = session.module.unit
     data = request.get_json(force=True, silent=True)
     if not data:
         return jsonify({"ok": False, "error": "Invalid or missing JSON data"}), 400
 
-    # --- Rename session by switching its module ---
-    name_in = (data.get("session_name") or data.get("module_name") or data.get("title") or "").strip()
-    if name_in:
-        new_mod = _get_or_create_module_by_name(unit, name_in)
-        session.module_id = new_mod.id
-    else:
-        new_mod = session.module  # use current for fan-out below
-
-    # --- Validate and update start/end times ---
-    if "start" in data:
-        start_time = _parse_dt(str(data["start"]))
-        if not start_time:
-            return jsonify({"ok": False, "error": "Invalid start time format (use YYYY-MM-DDTHH:MM)"}), 400
-        session.start_time = start_time
-        session.day_of_week = start_time.weekday()
-
-    if "end" in data:
-        end_time = _parse_dt(str(data["end"]))
-        if not end_time:
-            return jsonify({"ok": False, "error": "Invalid end time format (use YYYY-MM-DDTHH:MM)"}), 400
-        session.end_time = end_time
-
-    # --- Validate and update venue ---
-    venue_set = False
-    if "venue_id" in data:
-        venue_id = data["venue_id"]
-        if venue_id:
-            link = (
-                db.session.query(UnitVenue)
-                .join(Venue, Venue.id == UnitVenue.venue_id)
-                .filter(UnitVenue.unit_id == unit.id, UnitVenue.venue_id == venue_id)
-                .first()
-            )
-            if not link:
-                return jsonify({"ok": False, "error": "Invalid venue_id for this unit"}), 400
-            session.location = Venue.query.get(venue_id).name
-        else:
-            session.location = None
-        venue_set = True
-
-    if not venue_set and "venue" in data:
-        venue_name = (data["venue"] or "").strip()
-        if venue_name:
-            venue = db.session.query(Venue).filter(func.lower(Venue.name) == venue_name.lower()).first()
-            if not venue:
-                return jsonify({"ok": False, "error": f"Venue '{venue_name}' not found"}), 404
-            unit_venue = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first()
-            if not unit_venue:
-                return jsonify({"ok": False, "error": f"Venue '{venue_name}' not linked to this unit"}), 400
-            session.location = venue.name
-        else:
-            session.location = None
-
-    # --- Range and sanity checks ---
-    if unit.start_date and session.start_time.date() < unit.start_date:
-        return jsonify({"ok": False, "error": "Session start date is before unit start date"}), 400
-    if unit.end_date and session.end_time.date() > unit.end_date:
-        return jsonify({"ok": False, "error": "Session end date is after unit end date"}), 400
-    if session.end_time <= session.start_time:
-        return jsonify({"ok": False, "error": "End time must be after start time"}), 400
-
-    created_ids = []
-
-    # --- NEW: recurrence fan-out when saving with apply_to='series' ---
-    rec = _parse_recurrence(data.get("recurrence"))
-    apply_to = (data.get("apply_to") or "").lower()
-    if rec.get("occurs") == "weekly" and apply_to == "series":
-        # Use the *current* (possibly edited) times as the pattern seed
-        seed_s = session.start_time
-        seed_e = session.end_time
-        chosen_name = session.location  # normalized earlier if set
-        mod_for_series = new_mod
-
-        try:
-            for s_dt, e_dt in _iter_weekly_occurrences(unit, seed_s, seed_e, rec):
-                # Skip the seed itself (already updated above)
-                if s_dt == seed_s and e_dt == seed_e:
-                    continue
-                # Avoid exact duplicates for this module
-                exists = (
-                    Session.query
-                    .join(Module)
-                    .filter(
-                        Module.unit_id == unit.id,
-                        Session.start_time == s_dt,
-                        Session.end_time == e_dt,
-                        Session.module_id == mod_for_series.id,
-                    )
-                    .first()
-                )
-                if exists:
-                    continue
-                new_sess = Session(
-                    module_id=mod_for_series.id,
-                    session_type="general",
-                    start_time=s_dt,
-                    end_time=e_dt,
-                    day_of_week=s_dt.weekday(),
-                    location=chosen_name,
-                    required_skills=None,
-                    max_facilitators=1,
-                )
-                db.session.add(new_sess)
-                db.session.flush()
-                created_ids.append(new_sess.id)
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"ok": False, "error": f"Database error while expanding series: {str(e)}"}), 500
-
-    # --- Commit changes ---
     try:
+        # Update session fields
+        if "start" in data:
+            start_dt = _parse_dt(data["start"])
+            if start_dt:
+                session.start_time = start_dt
+                session.day_of_week = start_dt.weekday()
+        
+        if "end" in data:
+            end_dt = _parse_dt(data["end"])
+            if end_dt:
+                session.end_time = end_dt
+        
+        if "venue" in data:
+            session.location = data["venue"]
+        
+        if "session_name" in data or "title" in data:
+            new_name = data.get("session_name") or data.get("title")
+            if new_name:
+                mod = _get_or_create_module_by_name(unit, new_name.strip())
+                session.module_id = mod.id
+
         db.session.commit()
+        
+        # Build venues mapping for serialization
+        unit_venues = (
+            db.session.query(Venue.id, Venue.name)
+            .join(UnitVenue, UnitVenue.venue_id == Venue.id)
+            .filter(UnitVenue.unit_id == unit.id)
+            .all()
+        )
+        venues_by_name = { (name or "").strip().lower(): vid for vid, name in unit_venues }
+
+        return jsonify({
+            "ok": True,
+            "session": _serialize_session(session, venues_by_name)
+        })
+        
     except Exception as e:
         db.session.rollback()
-        return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
+        return jsonify({"ok": False, "error": f"Update failed: {str(e)}"}), 500
 
-    # --- Include venue_id in response (when resolvable) ---
-    venues_by_name = {}
-    if session.location:
-        v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == session.location.lower()).scalar()
-        if v_id:
-            venues_by_name[session.location.lower()] = v_id
-
-    resp = {
-        "ok": True,
-        "session": _serialize_session(session, venues_by_name)
-    }
-    if created_ids:
-        resp["created_session_ids"] = created_ids
-    return jsonify(resp)
-
-
-@unitcoordinator_bp.delete("/sessions/<int:session_id>")
+@unitcoordinator_bp.route("/sessions/<int:session_id>", methods=["DELETE"])
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def delete_session(session_id: int):
-    """Delete a session."""
+    """Delete a session"""
     user = get_current_user()
-    session = Session.query.get(session_id)
-    if not session or session.module.unit.created_by != user.id:
+    
+    # Get session and verify ownership through unit
+    session = Session.query.get_or_404(session_id)
+    unit = Unit.query.join(Module).filter(
+        Module.id == session.module_id,
+        Unit.created_by == user.id
+    ).first()
+    
+    if not unit:
         return jsonify({"ok": False, "error": "Session not found or unauthorized"}), 404
 
     try:
+        # Delete any assignments first
+        Assignment.query.filter_by(session_id=session.id).delete()
+        
+        # Delete the session
         db.session.delete(session)
         db.session.commit()
+        
+        return jsonify({"ok": True, "message": "Session deleted successfully"})
+        
     except Exception as e:
         db.session.rollback()
-        return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
+        return jsonify({"ok": False, "error": f"Delete failed: {str(e)}"}), 500
 
-    return jsonify({"ok": True})
-
-
-@unitcoordinator_bp.get("/units/<int:unit_id>/venues")
+@unitcoordinator_bp.route("/units/<int:unit_id>/facilitators")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
-def list_venues(unit_id: int):
-    """Return venues linked to this unit (id + name)."""
+def list_facilitators(unit_id: int):
+    """List facilitators for a unit"""
     user = get_current_user()
     unit = _get_user_unit_or_404(user, unit_id)
     if not unit:
         return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
 
+    # Get facilitators linked to this unit
+    facilitators = (
+        db.session.query(User)
+        .join(UnitFacilitator, UnitFacilitator.user_id == User.id)
+        .filter(UnitFacilitator.unit_id == unit.id)
+        .order_by(User.last_name.asc().nulls_last(), User.first_name.asc().nulls_last())
+        .all()
+    )
+
+    facilitator_list = []
+    for f in facilitators:
+        facilitator_list.append({
+            "id": f.id,
+            "name": getattr(f, "full_name", None) or f.email,
+            "email": f.email,
+            "first_name": getattr(f, "first_name", None),
+            "last_name": getattr(f, "last_name", None),
+        })
+
+    return jsonify({
+        "ok": True,
+        "facilitators": facilitator_list
+    })
+
+@unitcoordinator_bp.route("/units/<int:unit_id>/venues")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def list_venues(unit_id: int):
+    """List venues for a unit"""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    # Get venues linked to this unit
     venues = (
-        db.session.query(Venue.id, Venue.name)
+        db.session.query(Venue)
         .join(UnitVenue, UnitVenue.venue_id == Venue.id)
         .filter(UnitVenue.unit_id == unit.id)
         .order_by(Venue.name.asc())
         .all()
     )
+
+    venue_list = []
+    for v in venues:
+        venue_list.append({
+            "id": v.id,
+            "name": v.name,
+            "capacity": getattr(v, "capacity", None),
+            "location": getattr(v, "location", None),
+        })
+
     return jsonify({
         "ok": True,
-        "venues": [{"id": v.id, "name": v.name} for v in venues]
+        "venues": venue_list
     })
 
 
-@unitcoordinator_bp.get("/units/<int:unit_id>/facilitators")
+@unitcoordinator_bp.route('/facilitator/profile/<staff_id>')
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
-def list_facilitators(unit_id: int):
-    user = get_current_user()
-    unit = _get_user_unit_or_404(user, unit_id)
-    if not unit:
-        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
-
-    facs = (
-        db.session.query(User.email)
-        .join(UnitFacilitator, UnitFacilitator.user_id == User.id)
-        .filter(UnitFacilitator.unit_id == unit.id)
-        .order_by(User.email.asc())
-        .all()
-    )
-    emails = [e for (e,) in facs]
-    return jsonify({"ok": True, "facilitators": emails})
-
+def view_facilitator_profile(staff_id):
+    print(f"DEBUG: Accessing profile for staff_id: {staff_id}")
+    
+    try:
+        # Get the facilitator by staff_number
+        facilitator = Facilitator.query.filter_by(staff_number=staff_id).first()
+        
+        if not facilitator:
+            flash('Facilitator not found', 'error')
+            return redirect(url_for('unitcoordinator.dashboard'))
+        
+        # Get the corresponding user
+        user = User.query.filter_by(email=facilitator.email, role=UserRole.FACILITATOR).first()
+        
+        if not user:
+            flash('User record not found for this facilitator', 'error')
+            return redirect(url_for('unitcoordinator.dashboard'))
+        
+        print(f"DEBUG: Found facilitator: {facilitator.first_name} {facilitator.last_name}")
+        print(f"DEBUG: Found user: {user.email}")
+        
+        # Calculate stats for the facilitator
+        stats = {
+            'units_assigned': 0,
+            'pending_approvals': 0,
+            'total_sessions': 0,
+            'skills_count': 0,
+            'availability_status': 'Available',
+        }
+        
+        return render_template('facilitator_profile.html', 
+                             user=user, 
+                             facilitator=facilitator, 
+                             stats=stats)
+                             
+    except Exception as e:
+        print(f"DEBUG: Error in view_facilitator_profile: {e}")
+        flash(f'Error loading profile: {str(e)}', 'error')
+        return redirect(url_for('unitcoordinator.dashboard'))

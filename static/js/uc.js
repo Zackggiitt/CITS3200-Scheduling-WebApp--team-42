@@ -2276,3 +2276,119 @@ function initUnitTabs() {
 }
 
 document.addEventListener('DOMContentLoaded', initUnitTabs);
+
+
+// Close dropdown when clicking outside - SINGLE EVENT LISTENER
+document.addEventListener('DOMContentLoaded', function() {
+  const details = document.querySelector('details');
+  
+  if (details) {
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      if (!details.contains(event.target)) {
+        details.removeAttribute('open');
+      }
+    });
+    
+    // Prevent the dropdown from closing when clicking inside it
+    details.addEventListener('click', function(event) {
+      event.stopPropagation();
+    });
+  }
+  
+  // Search functionality
+  const searchInput = document.querySelector('input[placeholder="Search facilitators…"]');
+  if (searchInput) {
+    searchInput.addEventListener('input', function(e) {
+      const searchTerm = e.target.value.toLowerCase();
+      const facilitatorCards = document.querySelectorAll('.fac-list article');
+      
+      facilitatorCards.forEach(card => {
+        const nameElement = card.querySelector('h4');
+        const emailElement = card.querySelector('a[href^="mailto:"]');
+        
+        if (nameElement && emailElement) {
+          const name = nameElement.textContent.toLowerCase();
+          const email = emailElement.textContent.toLowerCase();
+          
+          if (name.includes(searchTerm) || email.includes(searchTerm)) {
+            card.style.display = 'block';
+          } else {
+            card.style.display = 'none';
+          }
+        }
+      });
+    });
+  }
+});
+
+// Filter functionality 
+window.filterFacilitators = function(status) {
+  console.log('filterFacilitators called with status:', status);
+  
+  const statusText = document.getElementById('statusFilterText');
+  const facilitatorCards = document.querySelectorAll('.fac-list article');
+  
+  console.log('Found facilitator cards:', facilitatorCards.length);
+  
+  // Update button text
+  switch(status) {
+    case 'all':
+      statusText.textContent = 'All Status';
+      break;
+    case 'ready':
+      statusText.textContent = 'Ready';
+      break;
+    case 'needs-availability':
+      statusText.textContent = 'Needs Availability';
+      break;
+    case 'pending':
+      statusText.textContent = 'Pending Setup';
+      break;
+  }
+  
+  // Filter facilitator cards
+  facilitatorCards.forEach(card => {
+    // Look for status badges
+    const statusBadges = card.querySelectorAll('.status-badge, [class*="badge"]');
+    
+    let shouldShow = false;
+    
+    if (status === 'all') {
+      shouldShow = true;
+    } else {
+      // Check badge text content instead of classes
+      statusBadges.forEach(badge => {
+        const badgeText = badge.textContent.toLowerCase().trim();
+        
+        switch(status) {
+          case 'ready':
+            if (badgeText.includes('ready') || badgeText.includes('complete')) {
+              shouldShow = true;
+            }
+            break;
+          case 'needs-availability':
+            if (badgeText.includes('availability') || badgeText.includes('needs')) {
+              shouldShow = true;
+            }
+            break;
+          case 'pending':
+            if (badgeText.includes('pending') || badgeText.includes('setup')) {
+              shouldShow = true;
+            }
+            break;
+        }
+      });
+    }
+    
+    card.style.display = shouldShow ? 'block' : 'none';
+    console.log('Card:', card.querySelector('h4')?.textContent, 'shouldShow:', shouldShow);
+  });
+  
+  // Close the dropdown
+  const details = document.querySelector('details');
+  if (details) {
+    details.removeAttribute('open');
+  }
+};
+

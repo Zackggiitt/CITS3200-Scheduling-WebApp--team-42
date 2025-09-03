@@ -351,23 +351,23 @@
 
                 <!-- search/filter placeholders -->
                 <div class="flex items-center gap-2">
-                  <label class="relative">
-                    <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-base">search</span>
-                    <input type="search" class="pl-8 pr-3 py-1.5 border rounded-lg text-sm focus:outline-none"
-                          placeholder="Search facilitators…" aria-label="Search facilitators">
-                  </label>
-                  <details class="relative">
-                    <summary class="list-none inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm cursor-pointer">
-                      All Status <span class="material-icons text-base">expand_more</span>
-                    </summary>
-                    <ul class="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow text-sm">
-                      <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">All Status</button></li>
-                      <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Ready</button></li>
-                      <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Needs Availability</button></li>
-                      <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Pending Setup</button></li>
-                    </ul>
-                  </details>
-                </div>
+                <label class="relative">
+                  <span class="material-icons absolute left-2.5 top-2 text-gray-400 text-base pointer-events-none">search</span>
+                  <input type="search" class="pl-8 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Search facilitators…" aria-label="Search facilitators">
+                </label>
+                <details class="relative">
+                  <summary class="list-none inline-flex items-center gap-1 px-3 py-2 border rounded-lg text-sm cursor-pointer hover:bg-gray-50">
+                    <span id="statusFilterText">All Status</span> <span class="material-icons text-base">expand_more</span>
+                  </summary>
+                  <ul class="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow text-sm z-10">
+                    <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50" onclick="window.filterFacilitators('all')">All Status</button></li>
+                    <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50" onclick="window.filterFacilitators('ready')">Ready</button></li>
+                    <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50" onclick="window.filterFacilitators('needs-availability')">Needs Availability</button></li>
+                    <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50" onclick="window.filterFacilitators('pending')">Pending Setup</button></li>
+                  </ul>
+                </details>
+              </div>
               </header>
 
               {% if facilitators %}
