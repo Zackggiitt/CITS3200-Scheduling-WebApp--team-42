@@ -9,7 +9,8 @@ const {
   LIST_FACILITATORS_TEMPLATE,
   CREATE_OR_GET_DRAFT,
   UPLOAD_SETUP_CSV,
-  UPLOAD_SESSIONS_TEMPLATE
+  UPLOAD_SESSIONS_TEMPLATE,
+  UPLOAD_CAS_TEMPLATE
 } = window.FLASK_ROUTES || {};
 
 // ===== Helpers to inject ids into route templates =====
@@ -551,6 +552,81 @@ async function uploadSessionsCsv() {
 
 if (uploadSessionsBtn) {
   uploadSessionsBtn.addEventListener('click', uploadSessionsCsv);
+}
+
+// ===== CAS CSV Upload =====
+const casInput = document.getElementById('cas_csv');
+const casFileName = document.getElementById('cas_file_name');
+const casStatus = document.getElementById('cas_upload_status');
+const uploadCasBtn = document.getElementById('uploadCasBtn');
+
+if (casInput) {
+  casInput.addEventListener('change', () => {
+    casFileName.textContent = casInput.files?.[0]?.name || 'No file selected';
+  });
+}
+
+async function uploadCasCsv() {
+  const unitId = document.getElementById('unit_id').value;
+  if (!unitId) {
+    casStatus.className = 'upload-status error';
+    casStatus.classList.remove('hidden');
+    casStatus.textContent = 'Please complete Step 1 (Unit Information) first.';
+    return;
+  }
+  if (!casInput.files?.length) {
+    casStatus.className = 'upload-status error';
+    casStatus.classList.remove('hidden');
+    casStatus.textContent = 'Choose a CSV file to upload.';
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('cas_csv', casInput.files[0]);
+
+  casStatus.className = 'upload-status';
+  casStatus.classList.remove('hidden');
+  casStatus.textContent = 'Uploading…';
+
+  const url = withUnitId(UPLOAD_CAS_TEMPLATE, unitId);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-CSRFToken': CSRF_TOKEN }
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      const errs = (data.errors || [data.error]).filter(Boolean);
+      casStatus.className = 'upload-status error';
+      casStatus.innerHTML = `
+        <div class="font-semibold">Upload failed</div>
+        <ul class="list-disc list-inside text-sm">
+          ${errs.map((x) => `<li>${x}</li>`).join("")}
+        </ul>`;
+      return;
+    }
+
+    casStatus.className = 'upload-status success';
+    casStatus.innerHTML = `
+      <div class="font-semibold">Upload successful</div>
+      <div class="text-sm mt-1">Sessions created: ${data.created || 0}, Skipped: ${data.skipped || 0}</div>`;
+
+    if (window.calendar) {
+      window.calendar.refetchEvents?.();
+    } else if (!window.__calendarInitRan && document.getElementById('setup_complete')?.value === 'true') {
+      window.__calendarInitRan = true;
+      initCalendar();
+    }
+  } catch (err) {
+    casStatus.className = 'upload-status error';
+    casStatus.textContent = String(err.message || 'Unexpected error during upload.');
+  }
+}
+
+if (uploadCasBtn) {
+  uploadCasBtn.addEventListener('click', uploadCasCsv);
 }
 
 

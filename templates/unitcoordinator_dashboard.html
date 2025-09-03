@@ -793,7 +793,45 @@
             </div>
           </div>
 
-          
+          <!-- NEW: Upload CAS CSV (auto create sessions) -->
+          <div class="setup-card mt-4">
+            <div class="setup-card__header">
+              <span class="material-icons">upload_file</span>
+              <div>
+                <h3 class="setup-card__title">Upload CAS CSV</h3>
+                <p class="setup-card__hint">
+                  Uses headers: <code>activity_group_code</code>, <code>day_of_week</code>, <code>start_time</code>, <code>weeks</code>, <code>duration</code>, <code>location</code>. Others are ignored.
+                </p>
+              </div>
+            </div>
+
+            <div class="upload-row">
+              <div class="upload-col">
+                <div class="hint-title">Example</div>
+                <pre class="hint-sub whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded">
+activity_group_code,day_of_week,start_time,weeks,duration,location
+Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
+                </pre>
+              </div>
+
+              <div class="upload-col">
+                <div class="hint-title">Upload CSV</div>
+                <p class="hint-sub">We'll create sessions based on start time + duration. Venues will be linked automatically.</p>
+                <div class="filepicker">
+                  <input id="cas_csv" name="cas_csv" type="file" accept=".csv" class="filepicker-input" />
+                  <label for="cas_csv" class="filepicker-btn">
+                    <span class="material-icons">upload_file</span>
+                    Choose File
+                  </label>
+                  <span id="cas_file_name" class="filepicker-name" aria-live="polite">No file selected</span>
+                </div>
+
+                <button type="button" id="uploadCasBtn" class="cal-btn primary mt-3">Upload CAS</button>
+
+                <div id="cas_upload_status" class="upload-status hidden mt-2" role="status" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
 
 
 
@@ -1100,7 +1138,8 @@
     CREATE_OR_GET_DRAFT: "{{ url_for('unitcoordinator.create_or_get_draft') }}",
     UPLOAD_SETUP_CSV: "{{ url_for('unitcoordinator.upload_setup_csv') }}",
     UPLOAD_SESSIONS_TEMPLATE: "{{ url_for('unitcoordinator.upload_sessions_csv', unit_id=0) }}",
-    LIST_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.list_facilitators', unit_id=0) }}"
+    LIST_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.list_facilitators', unit_id=0) }}",
+    UPLOAD_CAS_TEMPLATE: "{{ url_for('unitcoordinator.upload_cas_csv', unit_id=0) }}"
   };
   window.CSRF_TOKEN = "{{ csrf_token() }}";
 </script>

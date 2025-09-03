@@ -1447,3 +1447,273 @@ def list_facilitators(unit_id: int):
     emails = [e for (e,) in facs]
     return jsonify({"ok": True, "facilitators": emails})
 
+
+# ---------- CAS CSV Upload (auto-generate sessions) ----------
+@unitcoordinator_bp.post("/units/<int:unit_id>/upload_cas_csv")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def upload_cas_csv(unit_id: int):
+    """
+    Accept a CAS-style CSV and create sessions.
+    Recognized headers (case-insensitive):
+      - activity_group_code (maps to session/module name)
+      - day_of_week         (Monday..Sunday)
+      - start_time          (HH:MM 24h)
+      - duration            (minutes integer)
+      - weeks               (e.g. "1-12", "2,4,6-10") relative to unit start week
+      - location            (venue name). We'll ensure Venue and UnitVenue link.
+
+    Other columns are ignored.
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    file = request.files.get("cas_csv")
+    if not file:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+
+    try:
+        text = file.read().decode("utf-8", errors="replace")
+        reader = csv.DictReader(StringIO(text))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Failed to read CSV: {e}"}), 400
+
+    # Normalize headers
+    fns = [fn.strip().lower() for fn in (reader.fieldnames or [])]
+    needed = {"activity_group_code", "day_of_week", "start_time", "duration", "weeks", "location"}
+    if not needed.intersection(set(fns)):
+        return jsonify({"ok": False, "error": "CSV missing required CAS headers"}), 400
+
+    # Helpers
+    dow_map = {
+        "monday": 0, "mon": 0,
+        "tuesday": 1, "tue": 1, "tues": 1,
+        "wednesday": 2, "wed": 2,
+        "thursday": 3, "thu": 3, "thur": 3, "thurs": 3,
+        "friday": 4, "fri": 4,
+        "saturday": 5, "sat": 5,
+        "sunday": 6, "sun": 6,
+    }
+
+    def parse_weeks(s: str):
+        """Return sorted unique week numbers (1-based) from a string like '1-12,14,16-18'."""
+        out = set()
+        s = (s or "").replace(" ", "")
+        if not s:
+            return []
+        for part in s.split(','):
+            if '-' in part:
+                a, b = part.split('-', 1)
+                try:
+                    a, b = int(a), int(b)
+                except ValueError:
+                    continue
+                if a <= 0 or b <= 0:
+                    continue
+                if a > b:
+                    a, b = b, a
+                out.update(range(a, b + 1))
+            else:
+                try:
+                    n = int(part)
+                    if n > 0:
+                        out.add(n)
+                except ValueError:
+                    continue
+        return sorted(out)
+
+    # Also allow 'weeks' to be explicit dates (e.g., '30/6' or '1/7,8/7') in the CSV
+    def parse_week_dates(s: str):
+        """Return a list of explicit date objects when 'weeks' contains dates like '30/6' or '01/07'.
+        Year is inferred from unit.start_date and rolls over if month < start month.
+        """
+        s = (s or "").strip()
+        if not s or "/" not in s:
+            return []
+        results = []
+        guess_year = unit.start_date.year if unit.start_date else date.today().year
+        start_month = unit.start_date.month if unit.start_date else 1
+        for token in [t.strip() for t in s.split(',') if t.strip()]:
+            m = re.match(r"^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$", token)
+            if not m:
+                continue
+            d, mth, y = m.groups()
+            day_i = int(d)
+            mon_i = int(mth)
+            if y:
+                yr_i = int(y)
+                if yr_i < 100:
+                    yr_i += 2000
+            else:
+                yr_i = guess_year
+                # if the month is before start month, assume it crosses into next year
+                if mon_i < start_month:
+                    yr_i += 1
+            try:
+                results.append(date(yr_i, mon_i, day_i))
+            except Exception:
+                continue
+        return results
+
+    # Find Monday of the unit start week (or just use start_date itself if Monday)
+    if not unit.start_date:
+        return jsonify({"ok": False, "error": "Unit start_date is required for CAS parsing"}), 400
+    unit_start = unit.start_date
+    start_monday = unit_start - timedelta(days=((unit_start.weekday() + 7) % 7))
+
+    # Local helpers shared with other endpoints
+    name_to_venue = {v.name.strip().lower(): v for v in Venue.query.all()}
+
+    def ensure_unit_venue(venue_name: str) -> Venue:
+        key = (venue_name or "").strip().lower()
+        if not key:
+            return None
+        venue = name_to_venue.get(key)
+        if not venue:
+            venue = Venue(name=venue_name.strip())
+            db.session.add(venue)
+            db.session.flush()
+            name_to_venue[key] = venue
+        if not UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first():
+            db.session.add(UnitVenue(unit_id=unit.id, venue_id=venue.id))
+        return venue
+
+    created = 0
+    skipped = 0
+    errors = []
+    created_ids = []
+
+    MAX_ROWS = 5000
+    for idx, row in enumerate(reader, start=2):
+        if idx - 1 > MAX_ROWS:
+            skipped += 1
+            errors.append(f"Row {idx}: exceeded row limit")
+            continue
+
+        name_in = (row.get("activity_group_code") or "").strip()
+        dow_in = (row.get("day_of_week") or "").strip().lower()
+        start_time_in = (row.get("start_time") or "").strip()
+        duration_in = (row.get("duration") or "").strip()
+        weeks_in = (row.get("weeks") or "").strip()
+        location_in = (row.get("location") or "").strip()
+
+        if not (dow_in and start_time_in and duration_in and weeks_in):
+            skipped += 1
+            errors.append(f"Row {idx}: missing required fields")
+            continue
+
+        weekday = dow_map.get(dow_in)
+        if weekday is None:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid day_of_week '{row.get('day_of_week')}'")
+            continue
+
+        try:
+            hh, mm = [int(x) for x in re.split(r"[:\.]", start_time_in, maxsplit=1)]
+            if not (0 <= hh <= 23 and 0 <= mm <= 59):
+                raise ValueError
+        except Exception:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid start_time '{start_time_in}'")
+            continue
+
+        try:
+            duration_min = int(duration_in)
+            if duration_min <= 0:
+                raise ValueError
+        except Exception:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid duration '{duration_in}'")
+            continue
+
+        week_dates = parse_week_dates(weeks_in)
+        if week_dates:
+            # Use explicit dates; ignore day_of_week field and map each date directly
+            targets = []
+            for d0 in week_dates:
+                targets.append(d0)
+        else:
+            weeks_list = parse_weeks(weeks_in)
+            if not weeks_list:
+                skipped += 1
+                errors.append(f"Row {idx}: invalid weeks '{weeks_in}'")
+                continue
+            # Convert week numbers to actual dates by weekday
+            targets = []
+            for w in weeks_list:
+                d0 = start_monday + timedelta(days=(w - 1) * 7 + weekday)
+                targets.append(d0)
+
+        # Ensure module and venue (cleanup complex location strings like 'EZONENTH: [ 109] Room (30/6)')
+        mod = _get_or_create_module_by_name(unit, name_in)
+        clean_location = (location_in or "").strip()
+        if clean_location:
+            # take first segment before comma if multiple
+            clean_location = clean_location.split(',')[0]
+            # remove campus/prefix codes before colon
+            if ':' in clean_location:
+                clean_location = clean_location.split(':', 1)[1]
+            # strip bracketed codes and parentheses
+            clean_location = re.sub(r"\[[^\]]*\]", "", clean_location)
+            clean_location = re.sub(r"\([^\)]*\)", "", clean_location)
+            clean_location = clean_location.strip()
+        venue_obj = ensure_unit_venue(clean_location) if clean_location else None
+
+        for day_date in targets:
+            # If target date provided doesn't match requested weekday, we will trust the date
+            start_dt = datetime(day_date.year, day_date.month, day_date.day, hh, mm)
+            end_dt = start_dt + timedelta(minutes=duration_min)
+
+            if not _within_unit_range(unit, start_dt) or not _within_unit_range(unit, end_dt):
+                skipped += 1
+                continue
+
+            # Avoid duplicates
+            exists = (
+                Session.query
+                .filter(
+                    Session.module_id == mod.id,
+                    Session.start_time == start_dt,
+                    Session.end_time == end_dt,
+                )
+                .first()
+            )
+            if exists:
+                skipped += 1
+                continue
+
+            try:
+                s = Session(
+                    module_id=mod.id,
+                    session_type="general",
+                    start_time=start_dt,
+                    end_time=end_dt,
+                    day_of_week=start_dt.weekday(),
+                    location=venue_obj.name if venue_obj else location_in or None,
+                    required_skills=None,
+                    max_facilitators=1,
+                )
+                db.session.add(s)
+                db.session.flush()
+                created_ids.append(s.id)
+                created += 1
+            except Exception as e:
+                db.session.rollback()
+                errors.append(f"Row {idx}: database error: {e}")
+                continue
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Commit failed: {e}"}), 500
+
+    return jsonify({
+        "ok": True,
+        "created": created,
+        "skipped": skipped,
+        "errors": errors[:30],
+        "created_session_ids": created_ids,
+    })
