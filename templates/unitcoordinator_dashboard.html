@@ -493,18 +493,17 @@
 
           <!-- Swap & Approvals -->
           <section id="panel-team" class="uc-panel" role="tabpanel" aria-labelledby="tab-team" hidden>
-
-            <!-- Top: summary stats row -->
             <div class="flex items-center justify-between mb-4">
               <div>
                 <h2 class="text-xl font-semibold">Session Swap Management</h2>
-                <p class="text-gray-600 text-sm">Overview of all swap requests</p>
+                <p class="text-gray-600 text-sm">Review and approve session swap requests from facilitators</p>
               </div>
               {% if approvals and approvals.pending %}
                 <span class="uc-badge">{{ approvals.pending }} pending approvals</span>
               {% endif %}
             </div>
 
+            <!-- summary stats row -->
             <div class="uc-stats">
               <div class="uc-stat">
                 <div class="uc-stat__value uc-stat__value--orange">{{ approvals.pending or 0 }}</div>
@@ -520,23 +519,110 @@
               </div>
             </div>
 
-            <!-- Bottom: detailed area -->
+            <!-- detailed approval queue -->
             <div class="mt-6">
               <header class="flex items-center gap-2 mb-3">
                 <span class="material-icons text-gray-700">task_alt</span>
                 <h3 class="font-semibold text-gray-900">Approval Queue</h3>
               </header>
 
-              <div class="uc-panel-empty">
-                Table of individual requests with Approve / Reject buttons will go here.
-              </div>
+              {% if pending_requests and pending_requests|length %}
+                <div class="space-y-4">
+                  {% for r in pending_requests %}
+                    <article class="swap-card">
+                      <header class="swap-card__hdr">
+                        <div class="flex items-center gap-2">
+                          <span class="material-icons text-rose-500">swap_horiz</span>
+                          <h4 class="font-semibold">Pending Swap Request</h4>
+                          <span class="swap-chip">
+                            Submitted {{ r.created_at.strftime("%a %b %d, %I:%M %p") if r.created_at else "—" }}
+                          </span>
+                        </div>
+                      </header>
+
+                      <div class="swap-card__body">
+                        <!-- Left: requester -->
+                        <div class="swap-col">
+                          <div class="swap-person">
+                            <div class="swap-avatar">{{ (r.req_first or r.req_email|default(''))[:1] }}</div>
+                            <div>
+                              <div class="swap-name">
+                                {{ (r.req_first ~ ' ' ~ r.req_last)|trim if r.req_first or r.req_last else r.req_email }}
+                              </div>
+                              <div class="swap-sub">Requester</div>
+                            </div>
+                          </div>
+
+                          <div class="swap-side-title text-rose-600">Giving up</div>
+                          <div class="swap-side-session">
+                            <div class="title">{{ r.req_module or ("Session #" ~ r.req_sess_id) }}</div>
+                            <div class="meta">
+                              {% if r.req_start and r.req_end %}
+                                {{ r.req_start.strftime("%A, %b %d") }} • {{ r.req_start.strftime("%H:%M") }}–{{ r.req_end.strftime("%H:%M") }}
+                              {% else %} — {% endif %}
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Middle chevron -->
+                        <div class="swap-arrow">
+                          <span class="material-icons">chevron_right</span>
+                        </div>
+
+                        <!-- Right: target -->
+                        <div class="swap-col">
+                          <div class="swap-person">
+                            <div class="swap-avatar">{{ (r.tgt_first or r.tgt_email|default(''))[:1] }}</div>
+                            <div>
+                              <div class="swap-name">
+                                {{ (r.tgt_first ~ ' ' ~ r.tgt_last)|trim if r.tgt_first or r.tgt_last else r.tgt_email }}
+                              </div>
+                              <div class="swap-sub">Target</div>
+                            </div>
+                          </div>
+
+                          <div class="swap-side-title text-emerald-700">Taking on</div>
+                          <div class="swap-side-session">
+                            <div class="title">{{ r.tgt_module or ("Session #" ~ r.tgt_sess_id) }}</div>
+                            <div class="meta">
+                              {% if r.tgt_start and r.tgt_end %}
+                                {{ r.tgt_start.strftime("%A, %b %d") }} • {{ r.tgt_start.strftime("%H:%M") }}–{{ r.tgt_end.strftime("%H:%M") }}
+                              {% else %} — {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {% if r.reason %}
+                        <div class="swap-reason">
+                          <div class="font-semibold mb-1">Reason for swap</div>
+                          <p class="text-gray-700">{{ r.reason }}</p>
+                        </div>
+                      {% endif %}
+
+                      <footer class="swap-card__ftr">
+                        <form method="POST" action="{{ url_for('unitcoordinator.reject_swap', swap_id=r.id, unit=current_unit.id) }}">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <button type="submit" class="btn btn-reject">
+                            <span class="material-icons text-base">close</span> Reject
+                          </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('unitcoordinator.approve_swap', swap_id=r.id, unit=current_unit.id) }}">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <button type="submit" class="btn btn-approve">
+                            <span class="material-icons text-base">check</span> Approve
+                          </button>
+                        </form>
+                      </footer>
+                    </article>
+
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="uc-panel-empty">No pending swap requests.</div>
+              {% endif %}
             </div>
-
           </section>
-
-
-
-
 
         </div>
       </div>

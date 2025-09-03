@@ -150,6 +150,59 @@ def _parse_time_range(s: str):
         return None
     return h1, m1, h2, m2
 
+def _pending_swaps_for_unit(unit_id):
+    RA = aliased(Assignment)   # requester assignment
+    TA = aliased(Assignment)   # target assignment
+    RS = aliased(Session)
+    TS = aliased(Session)
+    RM = aliased(Module)
+    TM = aliased(Module)
+    RU = aliased(User)         # requester user
+    TU = aliased(User)         # target user
+
+    q = (
+        db.session.query(
+            SwapRequest.id,
+            SwapRequest.created_at,
+            SwapRequest.reason,
+
+            # assignments and sessions (ids)
+            RA.id.label("req_assign_id"),
+            TA.id.label("tgt_assign_id"),
+            RS.id.label("req_sess_id"),
+            TS.id.label("tgt_sess_id"),
+
+            # people
+            RU.first_name.label("req_first"),
+            RU.last_name.label("req_last"),
+            RU.email.label("req_email"),
+            TU.first_name.label("tgt_first"),
+            TU.last_name.label("tgt_last"),
+            TU.email.label("tgt_email"),
+
+            # NEW: module names + times so the card can show nice text
+            RM.module_name.label("req_module"),
+            TM.module_name.label("tgt_module"),
+            RS.start_time.label("req_start"),
+            RS.end_time.label("req_end"),
+            TS.start_time.label("tgt_start"),
+            TS.end_time.label("tgt_end"),
+        )
+        .join(RA, RA.id == SwapRequest.requester_assignment_id)
+        .join(RS, RS.id == RA.session_id)
+        .join(RM, RM.id == RS.module_id)
+        .join(TA, TA.id == SwapRequest.target_assignment_id)
+        .join(TS, TS.id == TA.session_id)
+        .join(TM, TM.id == TS.module_id)
+        # your schema links Assignment -> User via facilitator_id
+        .join(RU, RU.id == RA.facilitator_id)
+        .join(TU, TU.id == TA.facilitator_id)
+        .filter(or_(RM.unit_id == unit_id, TM.unit_id == unit_id))
+        .filter(SwapRequest.status == SwapStatus.PENDING)
+        .order_by(SwapRequest.created_at.asc())
+    )
+    return q.all()
+
 
 
 # --- Recurrence helpers -------------------------------------------------------
@@ -404,6 +457,9 @@ def dashboard():
                 SwapRequest.reviewed_at >= week_ago,
             ).count()
         )
+    pending_requests = []
+    if current_unit:
+        pending_requests = _pending_swaps_for_unit(current_unit.id)
 
     # ---- Render ----
     return render_template(
@@ -417,7 +473,39 @@ def dashboard():
         facilitators=facilitators,
         approvals=approvals,
         approvals_count=approvals_count,
+        pending_requests=pending_requests,
     )
+
+@unitcoordinator_bp.post("/swap_requests/<int:swap_id>/approve")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def approve_swap(swap_id):
+    sr = SwapRequest.query.get_or_404(swap_id)
+    if sr.status != SwapStatus.PENDING:
+        flash("Request is no longer pending.", "warning")
+        return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+
+    sr.status = SwapStatus.APPROVED
+    sr.reviewed_at = datetime.utcnow()
+    db.session.commit()
+    flash("Swap approved.", "success")
+    return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+
+
+@unitcoordinator_bp.post("/swap_requests/<int:swap_id>/reject")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def reject_swap(swap_id):
+    sr = SwapRequest.query.get_or_404(swap_id)
+    if sr.status != SwapStatus.PENDING:
+        flash("Request is no longer pending.", "warning")
+        return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+
+    sr.status = SwapStatus.REJECTED
+    sr.reviewed_at = datetime.utcnow()
+    db.session.commit()
+    flash("Swap rejected.", "success")
+    return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
 
 
 @unitcoordinator_bp.route("/create_unit", methods=["POST"])
