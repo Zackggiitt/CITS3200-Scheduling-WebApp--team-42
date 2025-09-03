@@ -1116,3 +1116,34 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
 .target-ok{ color:#059669; display:inline-flex; align-items:center; gap:6px; font-weight:600; }
 .target-ok .material-icons{ font-size:16px; }
 
+/* Swap & Approvals – stats row layout */
+.uc-stats {
+  display: grid;
+  grid-template-columns: 1fr;       /* mobile: stack */
+  gap: 16px;
+  margin: 16px 0;
+}
+
+@media (min-width: 768px) {
+  .uc-stats {
+    grid-template-columns: repeat(3, 1fr);  /* md+: 3 across */
+  }
+}
+
+/* Stat card look */
+.uc-stat {
+  background: #fff;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  padding: 18px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,.05);
+}
+
+/* Big number + color variants */
+.uc-stat__value { font-size: 28px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+.uc-stat__value--orange { color: #f59e0b; }
+.uc-stat__value--green  { color: #10b981; }
+.uc-stat__value--blue   { color: #3b82f6; }
+
+.uc-stat__label { font-size: 14px; color: #6b7280; }
