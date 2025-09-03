@@ -508,15 +508,15 @@
             <!-- summary stats row -->
             <div class="uc-stats">
               <div class="uc-stat">
-                <div class="uc-stat__value uc-stat__value--orange">{{ approvals.pending or 0 }}</div>
+                <div class="uc-stat__value uc-stat__value--orange">{{ approvals.pending }}</div>
                 <div class="uc-stat__label">Pending Approval</div>
               </div>
               <div class="uc-stat">
-                <div class="uc-stat__value uc-stat__value--green">{{ approvals.approved_this_week or 0 }}</div>
+                <div class="uc-stat__value uc-stat__value--green">{{ approvals.approved_this_week }}</div>
                 <div class="uc-stat__label">Approved This Week</div>
               </div>
               <div class="uc-stat">
-                <div class="uc-stat__value uc-stat__value--blue">{{ approvals.total or 0 }}</div>
+                <div class="uc-stat__value uc-stat__value--blue">{{ approvals.total }}</div>
                 <div class="uc-stat__label">Total Requests</div>
               </div>
             </div>
