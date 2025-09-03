@@ -5,7 +5,6 @@ const {
   CREATE_SESS_TEMPLATE,
   UPDATE_SESS_TEMPLATE,
   DELETE_SESS_TEMPLATE,
-  LIST_VENUES_TEMPLATE,
   LIST_FACILITATORS_TEMPLATE,
   CREATE_OR_GET_DRAFT,
   UPLOAD_SETUP_CSV,
@@ -904,67 +903,6 @@ function refreshCalendarRange() {
   calendar.refetchEvents();
 }
 
-// ===== Venues dropdown helpers =====
-window.__venueCache = window.__venueCache || {};
-
-async function fetchVenuesForUnit(unitId) {
-  if (window.__venueCache[unitId]) return window.__venueCache[unitId];
-
-  try {
-    if (!unitId) return []; // no draft yet
-    const res = await fetch(withUnitId(LIST_VENUES_TEMPLATE, unitId), {
-      headers: { 'X-CSRFToken': CSRF_TOKEN }
-    });
-
-    if (!res.ok) {
-      // don’t try to parse non-JSON error bodies
-      console.warn('list_venues not OK:', res.status);
-      return [];
-    }
-
-    const data = await res.json();
-    const list = (data && data.ok && Array.isArray(data.venues)) ? data.venues : [];
-    window.__venueCache[unitId] = list;
-    return list;
-  } catch (err) {
-    console.error('fetchVenuesForUnit error:', err);
-    return [];
-  }
-}
-
-
-function upgradeVenueInputToSelect() {
-  const old = document.getElementById('inspVenue');
-  if (!old || old.tagName === 'SELECT') return old;
-  const sel = document.createElement('select');
-  sel.id = 'inspVenue';
-  sel.className = old.className + ' select-native';
-  sel.innerHTML = `<option value="">— Select a venue —</option>`;
-  old.parentNode.replaceChild(sel, old);
-  return sel;
-}
-
-function populateVenueSelect(selectEl, venues, selectedId, selectedName) {
-  const opts = [
-    '<option value="" disabled selected hidden>Select a venue</option>'
-  ].concat(venues.map(v => `<option value="${v.id}">${v.name}</option>`));
-  selectEl.innerHTML = opts.join('');
-
-  if (selectedId) {
-    selectEl.value = String(selectedId);
-  } else if (selectedName) {
-    const match = venues.find(v => (v.name || '').toLowerCase() === selectedName.toLowerCase());
-    if (match) selectEl.value = String(match.id);
-  }
-
-  if (!selectEl.value) {
-    selectEl.setAttribute('required', 'required');
-  }
-}
-
-// One-time upgrade on load so the element exists for openInspector
-upgradeVenueInputToSelect();
-
 // ===== Inspector =====
 async function openInspector(ev) {
   const inspector = document.getElementById('calInspector');
@@ -1056,46 +994,6 @@ async function openInspector(ev) {
   nameInput.removeEventListener('input', updateSessionOverview);
   nameInput.addEventListener('input', updateSessionOverview);
 
-  // ---- venue select (fault-tolerant) ----
-  try {
-    const sel = upgradeVenueInputToSelect();
-    const unitId = getUnitId();
-    const venues = await fetchVenuesForUnit(unitId);
-    const selectedId   = ev.extendedProps?.venue_id || null;
-    const selectedName = ev.extendedProps?.venue
-                      || ev.extendedProps?.location
-                      || '';
-    
-    // If no venue in extendedProps but title has venue, try to extract it
-    if (!selectedName && ev.title && ev.title.includes('\n')) {
-      const titleParts = ev.title.split('\n');
-      if (titleParts.length > 1) {
-        const potentialVenue = titleParts[1].trim();
-        // Check if this venue exists in our venues list
-        const venueMatch = venues.find(v => v.name === potentialVenue);
-        if (venueMatch) {
-          console.log('Extracted venue from title:', potentialVenue);
-          // Don't set selectedName here, let populateVenueSelect handle it
-        }
-      }
-    }
-    
-    console.log('Setting up venue:', { selectedId, selectedName, venues: venues.length });
-    
-    populateVenueSelect(sel, venues, selectedId, selectedName);
-  
-    // Remove existing event listeners and add new ones
-    sel.removeEventListener('change', updateSessionOverview);
-    sel.addEventListener('change', updateSessionOverview);
-
-    // DON'T call updateSessionOverview automatically AT ALL
-    // It will only be called when user changes name or venue
-    console.log('NOT calling updateSessionOverview - preserving all existing session data');
-    
-  } catch (err) {
-    console.warn('Venue population failed (non-blocking):', err);
-  }
-
   // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
   _startTP.setDate(_pendingStart, false); // false = don't trigger onChange
@@ -1134,7 +1032,6 @@ function wireInspectorButtons(ev) {
 
   // Save
   document.getElementById('inspSave').onclick = async () => {
-    const sel  = document.getElementById('inspVenue');
     const name = document.getElementById('inspName')?.value?.trim() || '';
 
     // pull times from the timing controls
@@ -1162,18 +1059,6 @@ function wireInspectorButtons(ev) {
     payload.recurrence = readRecurrenceFromUI(pStart, pEnd);
     payload.apply_to   = 'series';
 
-    // venue
-    let selectedVenueName = '';
-    if (sel && sel.tagName === 'SELECT' && sel.value) {
-        payload.venue_id = Number(sel.value);
-        // Get the venue name from the selected option
-        const selectedOption = sel.options[sel.selectedIndex];
-        selectedVenueName = selectedOption ? selectedOption.textContent.trim() : '';
-    } else {
-        payload.venue = (sel?.value || '').trim();
-        selectedVenueName = payload.venue;
-    }
-
     const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
@@ -1190,25 +1075,19 @@ function wireInspectorButtons(ev) {
           window.__editingEvent.setStart(pStart);
           window.__editingEvent.setEnd(pEnd);
           window.__editingEvent.setExtendedProp('session_name', name);
-          window.__editingEvent.setExtendedProp('venue', selectedVenueName);
-          window.__editingEvent.setExtendedProp('venue_id', payload.venue_id || null);
+          window.__editingEvent.setExtendedProp('venue', '');
+          window.__editingEvent.setExtendedProp('venue_id', null);
           window.__editingEvent.setExtendedProp('lead_required', lead_required);
           window.__editingEvent.setExtendedProp('support_required', support_required);
           
           // Update the title with proper formatting
           let displayTitle = name;
-          if (selectedVenueName && 
-              selectedVenueName !== 'Select a venue' && 
-              selectedVenueName !== '— Select a venue —' && 
-              selectedVenueName !== '') {
-            displayTitle = `${name}\n${selectedVenueName}`;
-          }
           window.__editingEvent.setProp('title', displayTitle);
           
           console.log('Updated event locally:', {
             id: window.__editingEvent.id,
             title: displayTitle,
-            venue: selectedVenueName
+            venue: ''
           });
         }
         
@@ -2221,40 +2100,23 @@ setStep = function(n){
 // Update the blue Session Overview card
 function updateSessionOverview() {
   const nameInput = document.getElementById('inspName');
-  const venueSelect = document.getElementById('inspVenue');
   
-  if (!nameInput || !venueSelect || !window.__editingEvent) {
+  if (!nameInput || !window.__editingEvent) {
     console.warn('updateSessionOverview: missing elements or no editing event');
     return;
   }
   
   // Get current values
   const sessionName = nameInput.value.trim() || 'New Session';
-  let venueName = '';
-  
-  if (venueSelect.tagName === 'SELECT') {
-    const selectedOption = venueSelect.options[venueSelect.selectedIndex];
-    venueName = selectedOption ? selectedOption.textContent.trim() : '';
-  } else {
-    venueName = venueSelect.value.trim();
-  }
   
   console.log('updateSessionOverview called for event:', window.__editingEvent.id, {
     sessionName,
-    venueName,
     currentTitle: window.__editingEvent.title
   });
   
   // ONLY update if this is the currently edited event
   if (window.__editingEvent) {
     let displayTitle = sessionName;
-    if (venueName && 
-        venueName !== 'Select a venue' && 
-        venueName !== '— Select a venue —' && 
-        venueName !== '' &&
-        venueName !== 'Select a venue') {
-      displayTitle = `${sessionName}\n${venueName}`;
-    }
     
     console.log('Setting title for event', window.__editingEvent.id, 'from:', window.__editingEvent.title, 'to:', displayTitle);
     
