@@ -793,14 +793,14 @@
             </div>
           </div>
 
-          <!-- NEW: Upload Sessions CSV -->
+          <!-- NEW: Upload CAS CSV (auto create sessions) -->
           <div class="setup-card mt-4">
             <div class="setup-card__header">
-              <span class="material-icons">calendar_month</span>
+              <span class="material-icons">upload_file</span>
               <div>
-                <h3 class="setup-card__title">Upload Sessions CSV</h3>
+                <h3 class="setup-card__title">Upload CAS CSV</h3>
                 <p class="setup-card__hint">
-                  Columns: <code>Venue, Activity, Session, Date, Time</code>. Date: <code>DD/MM/YYYY</code> or <code>YYYY-MM-DD</code>. Time: <code>HH:MM-HH:MM</code>.
+                  Uses headers: <code>activity_group_code</code>, <code>day_of_week</code>, <code>start_time</code>, <code>weeks</code>, <code>duration</code>, <code>location</code>. Others are ignored.
                 </p>
               </div>
             </div>
@@ -809,29 +809,26 @@
               <div class="upload-col">
                 <div class="hint-title">Example</div>
                 <pre class="hint-sub whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded">
-          Venue,Activity,Session,Date,Time
-          EZONE 1.24,Workshop,Week 1 – Intro,27/08/2025,09:00-11:30
-          EZONE 1.24,Tutorial,Tutorial A,28/08/2025,12:30-16:00
-          EZONE 1.24,Lab,Lab 1 – Setup,30/08/2025,09:00-16:00
+activity_group_code,day_of_week,start_time,weeks,duration,location
+Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
                 </pre>
               </div>
 
               <div class="upload-col">
                 <div class="hint-title">Upload CSV</div>
-                <p class="hint-sub">We’ll sanitise and create sessions automatically.</p>
-
+                <p class="hint-sub">We'll create sessions based on start time + duration. Venues will be linked automatically.</p>
                 <div class="filepicker">
-                  <input id="sessions_csv" name="sessions_csv" type="file" accept=".csv" class="filepicker-input" />
-                  <label for="sessions_csv" class="filepicker-btn">
+                  <input id="cas_csv" name="cas_csv" type="file" accept=".csv" class="filepicker-input" />
+                  <label for="cas_csv" class="filepicker-btn">
                     <span class="material-icons">upload_file</span>
                     Choose File
                   </label>
-                  <span id="sessions_file_name" class="filepicker-name" aria-live="polite">No file selected</span>
+                  <span id="cas_file_name" class="filepicker-name" aria-live="polite">No file selected</span>
                 </div>
 
-                <button type="button" id="uploadSessionsBtn" class="cal-btn primary mt-3">Upload Sessions</button>
+                <button type="button" id="uploadCasBtn" class="cal-btn primary mt-3">Upload CAS</button>
 
-                <div id="sessions_upload_status" class="upload-status hidden mt-2" role="status" aria-live="polite"></div>
+                <div id="cas_upload_status" class="upload-status hidden mt-2" role="status" aria-live="polite"></div>
               </div>
             </div>
           </div>
@@ -907,19 +904,6 @@
                       Session Name
                     </span>
                     <input id="inspName" class="cal-input cal-input--soft" placeholder="New Session" />
-                  </label>
-
-                  <!-- Venue -->
-                  <label class="insp-field">
-                    <span class="insp-field__label">
-                      <span class="material-icons">place</span>
-                      Venue
-                    </span>
-
-                    <!-- we still upgrade this to a native <select> in JS -->
-                    <div class="select-wrap">
-                      <input id="inspVenue" class="cal-input cal-input--soft" placeholder="Select a venue" />
-                    </div>
                   </label>
                 </section>
                 <!-- SESSION TIMING -->
@@ -1105,16 +1089,10 @@
               <ul id="rv_sessions" class="space-y-2"></ul>
             </div>
 
-            <!-- Facilitators & Venues -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 class="text-base font-semibold mb-2">Facilitators (<span id="rv_fac_count">0</span>)</h3>
-                <ul id="rv_facilitators" class="list-disc pl-5 text-sm text-gray-800"></ul>
-              </div>
-              <div>
-                <h3 class="text-base font-semibold mb-2">Venues (<span id="rv_ven_count">0</span>)</h3>
-                <ul id="rv_venues" class="list-disc pl-5 text-sm text-gray-800"></ul>
-              </div>
+            <!-- Facilitators -->
+            <div>
+              <h3 class="text-base font-semibold mb-2">Facilitators (<span id="rv_fac_count">0</span>)</h3>
+              <ul id="rv_facilitators" class="list-disc pl-5 text-sm text-gray-800"></ul>
             </div>
           </div>
         </section>
@@ -1141,7 +1119,8 @@
     CREATE_OR_GET_DRAFT: "{{ url_for('unitcoordinator.create_or_get_draft') }}",
     UPLOAD_SETUP_CSV: "{{ url_for('unitcoordinator.upload_setup_csv') }}",
     UPLOAD_SESSIONS_TEMPLATE: "{{ url_for('unitcoordinator.upload_sessions_csv', unit_id=0) }}",
-    LIST_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.list_facilitators', unit_id=0) }}"
+    LIST_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.list_facilitators', unit_id=0) }}",
+    UPLOAD_CAS_TEMPLATE: "{{ url_for('unitcoordinator.upload_cas_csv', unit_id=0) }}"
   };
   window.CSRF_TOKEN = "{{ csrf_token() }}";
 </script>

@@ -34,7 +34,7 @@ app.config.update(
 )
 
 # Rate limiting
-limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
+limiter = Limiter(get_remote_address, app=app, default_limits=["2000 per day", "500 per hour"])
 
 # CSRF protection (protects all POST forms, incl. logout form)
 csrf = CSRFProtect(app)

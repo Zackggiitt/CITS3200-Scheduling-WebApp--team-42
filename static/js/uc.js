@@ -5,11 +5,11 @@ const {
   CREATE_SESS_TEMPLATE,
   UPDATE_SESS_TEMPLATE,
   DELETE_SESS_TEMPLATE,
-  LIST_VENUES_TEMPLATE,
   LIST_FACILITATORS_TEMPLATE,
   CREATE_OR_GET_DRAFT,
   UPLOAD_SETUP_CSV,
-  UPLOAD_SESSIONS_TEMPLATE
+  UPLOAD_SESSIONS_TEMPLATE,
+  UPLOAD_CAS_TEMPLATE
 } = window.FLASK_ROUTES || {};
 
 // ===== Helpers to inject ids into route templates =====
@@ -539,9 +539,15 @@ async function uploadSessionsCsv() {
       <div class="font-semibold">Upload successful</div>
       <div class="text-sm mt-1">Sessions created: ${data.created || 0}, Skipped: ${data.skipped || 0}</div>`;
 
-    // Refresh calendar so new sessions appear
+    // Ensure calendar section is visible and refresh/init calendar
+    const setupFlagEl = document.getElementById('setup_complete');
+    if (setupFlagEl) setupFlagEl.value = 'true';
+    showCalendarIfReady();
     if (window.calendar) {
       window.calendar.refetchEvents?.();
+    } else if (!window.__calendarInitRan) {
+      window.__calendarInitRan = true;
+      initCalendar();
     }
   } catch (err) {
     sessionsStatus.className = 'upload-status error';
@@ -551,6 +557,88 @@ async function uploadSessionsCsv() {
 
 if (uploadSessionsBtn) {
   uploadSessionsBtn.addEventListener('click', uploadSessionsCsv);
+}
+
+// ===== CAS CSV Upload =====
+const casInput = document.getElementById('cas_csv');
+const casFileName = document.getElementById('cas_file_name');
+const casStatus = document.getElementById('cas_upload_status');
+const uploadCasBtn = document.getElementById('uploadCasBtn');
+
+if (casInput) {
+  casInput.addEventListener('change', () => {
+    casFileName.textContent = casInput.files?.[0]?.name || 'No file selected';
+  });
+}
+
+async function uploadCasCsv() {
+  const unitId = document.getElementById('unit_id').value;
+  if (!unitId) {
+    casStatus.className = 'upload-status error';
+    casStatus.classList.remove('hidden');
+    casStatus.textContent = 'Please complete Step 1 (Unit Information) first.';
+    return;
+  }
+  if (!casInput.files?.length) {
+    casStatus.className = 'upload-status error';
+    casStatus.classList.remove('hidden');
+    casStatus.textContent = 'Choose a CSV file to upload.';
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('cas_csv', casInput.files[0]);
+
+  casStatus.className = 'upload-status';
+  casStatus.classList.remove('hidden');
+  casStatus.textContent = 'Uploading…';
+
+  const url = withUnitId(UPLOAD_CAS_TEMPLATE, unitId);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-CSRFToken': CSRF_TOKEN }
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      const errs = (data.errors || [data.error]).filter(Boolean);
+      casStatus.className = 'upload-status error';
+      casStatus.innerHTML = `
+        <div class="font-semibold">Upload failed</div>
+        <ul class="list-disc list-inside text-sm">
+          ${errs.map((x) => `<li>${x}</li>`).join("")}
+        </ul>`;
+      return;
+    }
+
+    casStatus.className = 'upload-status success';
+    casStatus.innerHTML = `
+      <div class="font-semibold">Upload successful</div>
+      <div class="text-sm mt-1">Sessions created: ${data.created || 0}, Skipped: ${data.skipped || 0}</div>`;
+
+    // Mark setup complete so the calendar section is shown, then refresh/init
+    const setupFlagEl = document.getElementById('setup_complete');
+    if (setupFlagEl) setupFlagEl.value = 'true';
+    showCalendarIfReady();
+
+    if (window.calendar) {
+      window.calendar.refetchEvents?.();
+    } else {
+      if (!window.__calendarInitRan) {
+        window.__calendarInitRan = true;
+        initCalendar();
+      }
+    }
+  } catch (err) {
+    casStatus.className = 'upload-status error';
+    casStatus.textContent = String(err.message || 'Unexpected error during upload.');
+  }
+}
+
+if (uploadCasBtn) {
+  uploadCasBtn.addEventListener('click', uploadCasCsv);
 }
 
 
@@ -815,67 +903,6 @@ function refreshCalendarRange() {
   calendar.refetchEvents();
 }
 
-// ===== Venues dropdown helpers =====
-window.__venueCache = window.__venueCache || {};
-
-async function fetchVenuesForUnit(unitId) {
-  if (window.__venueCache[unitId]) return window.__venueCache[unitId];
-
-  try {
-    if (!unitId) return []; // no draft yet
-    const res = await fetch(withUnitId(LIST_VENUES_TEMPLATE, unitId), {
-      headers: { 'X-CSRFToken': CSRF_TOKEN }
-    });
-
-    if (!res.ok) {
-      // don’t try to parse non-JSON error bodies
-      console.warn('list_venues not OK:', res.status);
-      return [];
-    }
-
-    const data = await res.json();
-    const list = (data && data.ok && Array.isArray(data.venues)) ? data.venues : [];
-    window.__venueCache[unitId] = list;
-    return list;
-  } catch (err) {
-    console.error('fetchVenuesForUnit error:', err);
-    return [];
-  }
-}
-
-
-function upgradeVenueInputToSelect() {
-  const old = document.getElementById('inspVenue');
-  if (!old || old.tagName === 'SELECT') return old;
-  const sel = document.createElement('select');
-  sel.id = 'inspVenue';
-  sel.className = old.className + ' select-native';
-  sel.innerHTML = `<option value="">— Select a venue —</option>`;
-  old.parentNode.replaceChild(sel, old);
-  return sel;
-}
-
-function populateVenueSelect(selectEl, venues, selectedId, selectedName) {
-  const opts = [
-    '<option value="" disabled selected hidden>Select a venue</option>'
-  ].concat(venues.map(v => `<option value="${v.id}">${v.name}</option>`));
-  selectEl.innerHTML = opts.join('');
-
-  if (selectedId) {
-    selectEl.value = String(selectedId);
-  } else if (selectedName) {
-    const match = venues.find(v => (v.name || '').toLowerCase() === selectedName.toLowerCase());
-    if (match) selectEl.value = String(match.id);
-  }
-
-  if (!selectEl.value) {
-    selectEl.setAttribute('required', 'required');
-  }
-}
-
-// One-time upgrade on load so the element exists for openInspector
-upgradeVenueInputToSelect();
-
 // ===== Inspector =====
 async function openInspector(ev) {
   const inspector = document.getElementById('calInspector');
@@ -967,46 +994,6 @@ async function openInspector(ev) {
   nameInput.removeEventListener('input', updateSessionOverview);
   nameInput.addEventListener('input', updateSessionOverview);
 
-  // ---- venue select (fault-tolerant) ----
-  try {
-    const sel = upgradeVenueInputToSelect();
-    const unitId = getUnitId();
-    const venues = await fetchVenuesForUnit(unitId);
-    const selectedId   = ev.extendedProps?.venue_id || null;
-    const selectedName = ev.extendedProps?.venue
-                      || ev.extendedProps?.location
-                      || '';
-    
-    // If no venue in extendedProps but title has venue, try to extract it
-    if (!selectedName && ev.title && ev.title.includes('\n')) {
-      const titleParts = ev.title.split('\n');
-      if (titleParts.length > 1) {
-        const potentialVenue = titleParts[1].trim();
-        // Check if this venue exists in our venues list
-        const venueMatch = venues.find(v => v.name === potentialVenue);
-        if (venueMatch) {
-          console.log('Extracted venue from title:', potentialVenue);
-          // Don't set selectedName here, let populateVenueSelect handle it
-        }
-      }
-    }
-    
-    console.log('Setting up venue:', { selectedId, selectedName, venues: venues.length });
-    
-    populateVenueSelect(sel, venues, selectedId, selectedName);
-  
-    // Remove existing event listeners and add new ones
-    sel.removeEventListener('change', updateSessionOverview);
-    sel.addEventListener('change', updateSessionOverview);
-
-    // DON'T call updateSessionOverview automatically AT ALL
-    // It will only be called when user changes name or venue
-    console.log('NOT calling updateSessionOverview - preserving all existing session data');
-    
-  } catch (err) {
-    console.warn('Venue population failed (non-blocking):', err);
-  }
-
   // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
   _startTP.setDate(_pendingStart, false); // false = don't trigger onChange
@@ -1045,7 +1032,6 @@ function wireInspectorButtons(ev) {
 
   // Save
   document.getElementById('inspSave').onclick = async () => {
-    const sel  = document.getElementById('inspVenue');
     const name = document.getElementById('inspName')?.value?.trim() || '';
 
     // pull times from the timing controls
@@ -1073,18 +1059,6 @@ function wireInspectorButtons(ev) {
     payload.recurrence = readRecurrenceFromUI(pStart, pEnd);
     payload.apply_to   = 'series';
 
-    // venue
-    let selectedVenueName = '';
-    if (sel && sel.tagName === 'SELECT' && sel.value) {
-        payload.venue_id = Number(sel.value);
-        // Get the venue name from the selected option
-        const selectedOption = sel.options[sel.selectedIndex];
-        selectedVenueName = selectedOption ? selectedOption.textContent.trim() : '';
-    } else {
-        payload.venue = (sel?.value || '').trim();
-        selectedVenueName = payload.venue;
-    }
-
     const res = await fetch(withSessionId(UPDATE_SESS_TEMPLATE, ev.id), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
@@ -1101,25 +1075,19 @@ function wireInspectorButtons(ev) {
           window.__editingEvent.setStart(pStart);
           window.__editingEvent.setEnd(pEnd);
           window.__editingEvent.setExtendedProp('session_name', name);
-          window.__editingEvent.setExtendedProp('venue', selectedVenueName);
-          window.__editingEvent.setExtendedProp('venue_id', payload.venue_id || null);
+          window.__editingEvent.setExtendedProp('venue', '');
+          window.__editingEvent.setExtendedProp('venue_id', null);
           window.__editingEvent.setExtendedProp('lead_required', lead_required);
           window.__editingEvent.setExtendedProp('support_required', support_required);
           
           // Update the title with proper formatting
           let displayTitle = name;
-          if (selectedVenueName && 
-              selectedVenueName !== 'Select a venue' && 
-              selectedVenueName !== '— Select a venue —' && 
-              selectedVenueName !== '') {
-            displayTitle = `${name}\n${selectedVenueName}`;
-          }
           window.__editingEvent.setProp('title', displayTitle);
           
           console.log('Updated event locally:', {
             id: window.__editingEvent.id,
             title: displayTitle,
-            venue: selectedVenueName
+            venue: ''
           });
         }
         
@@ -1492,8 +1460,9 @@ function handleCloseUnitModal() {
   document.getElementById('end_date_input').value = '';
   document.getElementById('date-summary').classList.add('hidden');
 
-  // Reset / destroy the session calendar
+  // Reset / destroy the session calendar AND remove all events
   if (calendar) {
+    try { calendar.removeAllEvents(); } catch (err) {}
     try { calendar.destroy(); } catch (err) { console.warn('Error destroying calendar', err); }
     calendar = null;
   }
@@ -1591,6 +1560,7 @@ async function confirmCloseModal() {
     }
   }
   
+  // Ensure the UI fully resets after backend cancel
   closeCreateUnitModal();
 }
 
@@ -2046,54 +2016,44 @@ async function populateReview() {
     }
   } catch {}
 
-  // Sessions: PRIORITIZE CALENDAR FIRST, then try API as fallback
+  // Sessions: Fetch all sessions for the review
   let sessions = [];
 
-  if (calendar && calendar.getEvents) {
-    // Get sessions from the current calendar instance (they exist in memory)
-    const calendarEvents = calendar.getEvents();
-    console.log('Getting sessions from calendar:', calendarEvents.length, 'events found');
-    
-    sessions = calendarEvents.map(e => ({
-      id: e.id, 
-      start: e.start.toISOString(), 
-      end: e.end.toISOString(), 
-      title: e.title,
-      extendedProps: e.extendedProps || {}
-    }));
-  } else if (sd && ed && unitId) {
-    // Fallback to API if calendar not available
-    console.log('Calendar not available, trying API fetch');
-    
-    async function fetchAllSessions(unitId, startISO, endISO) {
-      const uniq = new Map();
-      const start = new Date(startISO), end = new Date(endISO);
-      if (!(start && end)) return [];
-      // align to Monday for weekly stepping
-      const day = start.getDay(); // 0 Sun … 6 Sat
-      const monday = new Date(start);
-      monday.setDate(start.getDate() - ((day + 6) % 7));
-      for (let d = new Date(monday); d <= end; d.setDate(d.getDate()+7)) {
-        const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
-        const weekStart = `${y}-${m}-${dd}`;
-        const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
-        try {
-          const r = await fetch(url, { headers: { 'X-CSRFToken': CSRF_TOKEN }});
-          const j = await r.json();
-          if (j.ok && Array.isArray(j.sessions)) {
-            j.sessions.forEach(s => uniq.set(String(s.id), s));
-          }
-        } catch {}
+  const toISO = (s) => {
+    const [d,m,y] = (s || '').split('/').map(Number);
+    return (y && m && d) ? `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
+  };
+
+  async function fetchAllSessions(unitId, startISO, endISO) {
+    const uniq = new Map();
+    const start = new Date(startISO), end = new Date(endISO);
+    if (!(start && end)) return [];
+    // align to Monday for weekly stepping
+    const day = start.getDay(); // 0 Sun … 6 Sat
+    const monday = new Date(start);
+    monday.setDate(start.getDate() - ((day + 6) % 7));
+    for (let d = new Date(monday); d <= end; d.setDate(d.getDate()+7)) {
+      const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+      const weekStart = `${y}-${m}-${dd}`;
+      const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
+      try {
+        const r = await fetch(url, { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+        const j = await r.json();
+        if (j.ok && Array.isArray(j.sessions)) {
+          j.sessions.forEach(s => uniq.set(String(s.id), s));
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch sessions for week ${weekStart}:`, err);
       }
-      return Array.from(uniq.values());
     }
+    return Array.from(uniq.values());
+  }
 
-    const toISO = (s) => {
-      const [d,m,y] = (s || '').split('/').map(Number);
-      return (y && m && d) ? `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
-    };
+  const startISO = toISO(start_date);
+  const endISO = toISO(end_date);
 
-    sessions = await fetchAllSessions(unitId, toISO(start_date), toISO(end_date));
+  if (unitId && startISO && endISO) {
+    sessions = await fetchAllSessions(unitId, startISO, endISO);
   } else {
     console.log('No calendar and no valid date range, sessions will be empty');
     sessions = [];
@@ -2120,7 +2080,7 @@ async function populateReview() {
         <span class="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block"></span>
         <div>
           <div class="font-medium">${sessionName}</div>
-          <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • Starting ${st.toLocaleDateString()}${venueName ? ' • ' + venueName : ''}</div>
+          <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • ${st.toLocaleDateString()} (${st.getDate()}/${st.getMonth() + 1})${s.extendedProps.location ? ' • ' + s.extendedProps.location : ''}</div>
         </div>
       </div>
       <div class="text-sm text-gray-500">${staffCount} staff</div>
@@ -2140,40 +2100,23 @@ setStep = function(n){
 // Update the blue Session Overview card
 function updateSessionOverview() {
   const nameInput = document.getElementById('inspName');
-  const venueSelect = document.getElementById('inspVenue');
   
-  if (!nameInput || !venueSelect || !window.__editingEvent) {
+  if (!nameInput || !window.__editingEvent) {
     console.warn('updateSessionOverview: missing elements or no editing event');
     return;
   }
   
   // Get current values
   const sessionName = nameInput.value.trim() || 'New Session';
-  let venueName = '';
-  
-  if (venueSelect.tagName === 'SELECT') {
-    const selectedOption = venueSelect.options[venueSelect.selectedIndex];
-    venueName = selectedOption ? selectedOption.textContent.trim() : '';
-  } else {
-    venueName = venueSelect.value.trim();
-  }
   
   console.log('updateSessionOverview called for event:', window.__editingEvent.id, {
     sessionName,
-    venueName,
     currentTitle: window.__editingEvent.title
   });
   
   // ONLY update if this is the currently edited event
   if (window.__editingEvent) {
     let displayTitle = sessionName;
-    if (venueName && 
-        venueName !== 'Select a venue' && 
-        venueName !== '— Select a venue —' && 
-        venueName !== '' &&
-        venueName !== 'Select a venue') {
-      displayTitle = `${sessionName}\n${venueName}`;
-    }
     
     console.log('Setting title for event', window.__editingEvent.id, 'from:', window.__editingEvent.title, 'to:', displayTitle);
     

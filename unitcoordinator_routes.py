@@ -110,6 +110,7 @@ def _serialize_session(s: Session, venues_by_name=None):
             "venue": venue_name,
             "venue_id": vid,
             "session_name": title,
+            "location": s.location,
         }
     }
 
@@ -1447,3 +1448,379 @@ def list_facilitators(unit_id: int):
     emails = [e for (e,) in facs]
     return jsonify({"ok": True, "facilitators": emails})
 
+
+# ---------- CAS CSV Upload (auto-generate sessions) ----------
+@unitcoordinator_bp.post("/units/<int:unit_id>/upload_cas_csv")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def upload_cas_csv(unit_id: int):
+    """
+    Accept a CAS-style CSV and create sessions.
+    Recognized headers (case-insensitive):
+      - activity_group_code (maps to session/module name)
+      - day_of_week         (Monday..Sunday)
+      - start_time          (HH:MM 24h)
+      - duration            (minutes integer)
+      - weeks               (e.g. "1-12", "2,4,6-10") relative to unit start week
+      - location            (venue name). We'll ensure Venue and UnitVenue link.
+
+    Other columns are ignored.
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    file = request.files.get("cas_csv")
+    if not file:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+
+    try:
+        text = file.read().decode("utf-8", errors="replace")
+        reader = csv.DictReader(StringIO(text))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Failed to read CSV: {e}"}), 400
+
+    # Normalize headers (accept wide variety – we will resolve per-row using aliases)
+    fns = [fn.strip().lower() for fn in (reader.fieldnames or [])]
+    if not fns:
+        return jsonify({"ok": False, "error": "CSV has no headers"}), 400
+
+    # Helpers
+    dow_map = {
+        "monday": 0, "mon": 0,
+        "tuesday": 1, "tue": 1, "tues": 1,
+        "wednesday": 2, "wed": 2,
+        "thursday": 3, "thu": 3, "thur": 3, "thurs": 3,
+        "friday": 4, "fri": 4,
+        "saturday": 5, "sat": 5,
+        "sunday": 6, "sun": 6,
+    }
+
+    def parse_weeks(s: str):
+        """Return sorted unique week numbers (1-based) from a string like '1-12,14,16-18'."""
+        out = set()
+        s = (s or "").replace(" ", "")
+        if not s:
+            return []
+        for part in s.split(','):
+            if '-' in part:
+                a, b = part.split('-', 1)
+                try:
+                    a, b = int(a), int(b)
+                except ValueError:
+                    continue
+                if a <= 0 or b <= 0:
+                    continue
+                if a > b:
+                    a, b = b, a
+                out.update(range(a, b + 1))
+            else:
+                try:
+                    n = int(part)
+                    if n > 0:
+                        out.add(n)
+                except ValueError:
+                    continue
+        return sorted(out)
+
+    # Also allow 'weeks' to be explicit dates/ranges (e.g., '30/6' or '24/7-28/8, 11/9-16/10')
+    def parse_week_dates(s: str):
+        """Return a list of date objects expanded weekly when 'weeks' contains explicit
+        date tokens or date ranges. For a token like '24/7-28/8' we add dates every 7 days
+        from the first to the last date (inclusive). Year is inferred from the unit start.
+        """
+        s = (s or "").strip()
+        if not s or "/" not in s:
+            return []
+        results = []
+        guess_year = unit.start_date.year if unit.start_date else date.today().year
+        start_month = unit.start_date.month if unit.start_date else 1
+
+        def parse_one_date(tok: str):
+            m = re.match(r"^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$", tok)
+            if not m:
+                return None
+            d_str, m_str, y_str = m.groups()
+            day_i = int(d_str)
+            mon_i = int(m_str)
+            if y_str:
+                yr_i = int(y_str)
+                if yr_i < 100:
+                    yr_i += 2000
+            else:
+                yr_i = guess_year
+                if mon_i < start_month:
+                    yr_i += 1
+            try:
+                return date(yr_i, mon_i, day_i)
+            except Exception:
+                return None
+
+        for token in [t.strip() for t in s.split(',') if t.strip()]:
+            if '-' in token:
+                a, b = [p.strip() for p in token.split('-', 1)]
+                d1 = parse_one_date(a)
+                d2 = parse_one_date(b)
+                if not d1 or not d2:
+                    continue
+                if d1 > d2:
+                    d1, d2 = d2, d1
+                cur = d1
+                while cur <= d2:
+                    results.append(cur)
+                    cur = cur + timedelta(days=7)
+            else:
+                d = parse_one_date(token)
+                if d:
+                    results.append(d)
+        return results
+
+    # Find Monday of the unit start week (or just use start_date itself if Monday)
+    if not unit.start_date:
+        return jsonify({"ok": False, "error": "Unit start_date is required for CAS parsing"}), 400
+    unit_start = unit.start_date
+    start_monday = unit_start - timedelta(days=((unit_start.weekday() + 7) % 7))
+
+    # Local helpers shared with other endpoints
+    name_to_venue = {v.name.strip().lower(): v for v in Venue.query.all()}
+
+    def ensure_unit_venue(venue_name: str) -> Venue:
+        key = (venue_name or "").strip().lower()
+        if not key:
+            return None
+        venue = name_to_venue.get(key)
+        if not venue:
+            venue = Venue(name=venue_name.strip())
+            db.session.add(venue)
+            db.session.flush()
+            name_to_venue[key] = venue
+        if not UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first():
+            db.session.add(UnitVenue(unit_id=unit.id, venue_id=venue.id))
+        return venue
+
+    created = 0
+    skipped = 0
+    errors = []
+    created_ids = []
+
+    MAX_ROWS = 5000
+    # Column alias helpers
+    def first_value(d: dict, keys):
+        for k in keys:
+            if k in d and (str(d[k]).strip() != ""):
+                return str(d[k]).strip()
+        return ""
+
+    name_keys = ["activity_group_code", "activity", "session", "module", "module_name", "activity_code", "group", "title"]
+    dow_keys = ["day_of_week", "day", "dow"]
+    start_keys = ["start_time", "start", "from"]
+    time_keys = ["time", "time_range", "session_time"]  # may contain range 'HH:MM-HH:MM'
+    duration_keys = ["duration", "minutes", "mins", "length"]
+    weeks_keys = ["weeks", "week", "teaching_weeks", "dates", "date_weeks"]
+    explicit_date_keys = ["date", "session_date"]  # single date per row (dd/mm or dd/mm/yyyy)
+    location_keys = ["location", "venue", "room", "place"]
+
+    for idx, row in enumerate(reader, start=2):
+        if idx - 1 > MAX_ROWS:
+            skipped += 1
+            errors.append(f"Row {idx}: exceeded row limit")
+            continue
+
+        # Row values via aliases
+        lowered_row = {k.strip().lower(): v for k, v in row.items()}
+        name_in = first_value(lowered_row, name_keys)
+        dow_in = first_value(lowered_row, dow_keys).lower()
+        start_time_in = first_value(lowered_row, start_keys)
+        time_range_in = first_value(lowered_row, time_keys)
+        duration_in = first_value(lowered_row, duration_keys)
+        weeks_in = first_value(lowered_row, weeks_keys)
+        explicit_date_in = first_value(lowered_row, explicit_date_keys)
+        location_in = first_value(lowered_row, location_keys)
+
+        # We need at minimum: a location AND (either time-range or start+duration) AND (either dates/weeks or a single date)
+        if not location_in:
+            skipped += 1
+            errors.append(f"Row {idx}: missing required fields")
+            continue
+
+        # Skip non-physical or unspecified locations per parsing rules
+        def _is_physical_location(loc: str) -> bool:
+            if not loc:
+                return False
+            val = loc.strip().lower()
+            if val in {"tba", "tbd", "n/a", "na"}:
+                return False
+            banned_keywords = [
+                "online", "virtual", "zoom", "teams", "webex",
+                "collaborate", "interactive", "recorded", "recording",
+                "stream", "streaming"
+            ]
+            return not any(k in val for k in banned_keywords)
+
+        if not _is_physical_location(location_in):
+            skipped += 1
+            # Only log an error message if the row had a location but it's non-physical
+            if location_in:
+                errors.append(f"Row {idx}: non-physical location '{location_in}' skipped")
+            else:
+                errors.append(f"Row {idx}: missing/unspecific location skipped")
+            continue
+
+        weekday = dow_map.get(dow_in) if dow_in else None
+
+        # Time parsing: allow either explicit range or start+duration
+        duration_min = None
+        if time_range_in:
+            # Accept 'HH:MM-HH:MM' style
+            m = TIME_RANGE_RE.match(time_range_in.replace('–', '-').replace('—', '-'))
+            if not m:
+                skipped += 1
+                errors.append(f"Row {idx}: invalid time range '{time_range_in}'")
+                continue
+            h1, m1, h2, m2 = map(int, m.groups())
+            hh, mm = h1, m1
+            duration_min = (h2 * 60 + m2) - (h1 * 60 + m1)
+            if duration_min <= 0:
+                skipped += 1
+                errors.append(f"Row {idx}: invalid time range (end before start)")
+                continue
+        else:
+            try:
+                hh, mm = [int(x) for x in re.split(r"[:\.]", start_time_in, maxsplit=1)]
+                if not (0 <= hh <= 23 and 0 <= mm <= 59):
+                    raise ValueError
+            except Exception:
+                skipped += 1
+                errors.append(f"Row {idx}: invalid start_time '{start_time_in}'")
+                continue
+
+            if duration_in:
+                try:
+                    duration_min = int(duration_in)
+                    if duration_min <= 0:
+                        raise ValueError
+                except Exception:
+                    skipped += 1
+                    errors.append(f"Row {idx}: invalid duration '{duration_in}'")
+                    continue
+            else:
+                skipped += 1
+                errors.append(f"Row {idx}: missing duration/time range")
+                continue
+
+        # Date targets: explicit date(s) column, or 'weeks' (dates or week numbers)
+        week_dates = parse_week_dates(explicit_date_in or weeks_in)
+        if week_dates:
+            # Use explicit dates; ignore day_of_week field and map each date directly
+            targets = []
+            for d0 in week_dates:
+                targets.append(d0)
+        else:
+            weeks_list = parse_weeks(weeks_in)
+            if not weeks_list:
+                skipped += 1
+                errors.append(f"Row {idx}: invalid weeks '{weeks_in}'")
+                continue
+            # Convert week numbers to actual dates by weekday
+            targets = []
+            for w in weeks_list:
+                # If weekday not present, default to unit start weekday
+                wd = weekday if weekday is not None else unit_start.weekday()
+                d0 = start_monday + timedelta(days=(w - 1) * 7 + wd)
+                targets.append(d0)
+
+        # Ensure module and venue (cleanup complex location strings like 'EZONENTH: [ 109] Room (30/6)')
+        mod = _get_or_create_module_by_name(unit, name_in)
+        clean_location = (location_in or "").strip()
+        if clean_location:
+            # If there are multiple comma-separated venues, pick the first physical one
+            candidates = [t.strip() for t in clean_location.split(',') if t.strip()]
+            chosen_token = None
+            for tok in candidates:
+                # Reject non-physical tokens early
+                low = tok.lower()
+                if any(k in low for k in [
+                    "online", "virtual", "zoom", "teams", "webex",
+                    "collaborate", "interactive", "recorded", "recording",
+                    "stream", "streaming", "tba", "tbd", "n/a", "na",
+                    "lecture recording"
+                ]):
+                    continue
+                chosen_token = tok
+                break
+            # Fallback to first token if none explicitly chosen (kept for backwards compatibility)
+            if not chosen_token and candidates:
+                chosen_token = candidates[0]
+
+            clean_location = chosen_token or ''
+            # remove campus/prefix codes before colon
+            if ':' in clean_location:
+                clean_location = clean_location.split(':', 1)[1]
+            # strip bracketed codes and parentheses
+            clean_location = re.sub(r"\[[^\]]*\]", "", clean_location)
+            clean_location = re.sub(r"\([^\)]*\)", "", clean_location)
+            clean_location = clean_location.strip()
+        # After cleaning, ensure we still have a non-empty physical venue
+        if not clean_location:
+            skipped += 1
+            errors.append(f"Row {idx}: location became empty after normalization, skipped")
+            continue
+        venue_obj = ensure_unit_venue(clean_location) if clean_location else None
+
+        for day_date in targets:
+            # If target date provided doesn't match requested weekday, we will trust the date
+            start_dt = datetime(day_date.year, day_date.month, day_date.day, hh, mm)
+            end_dt = start_dt + timedelta(minutes=duration_min)
+
+            if not _within_unit_range(unit, start_dt) or not _within_unit_range(unit, end_dt):
+                skipped += 1
+                continue
+
+            # Avoid duplicates
+            exists = (
+                Session.query
+                .filter(
+                    Session.module_id == mod.id,
+                    Session.start_time == start_dt,
+                    Session.end_time == end_dt,
+                )
+                .first()
+            )
+            if exists:
+                skipped += 1
+                continue
+
+            try:
+                s = Session(
+                    module_id=mod.id,
+                    session_type="general",
+                    start_time=start_dt,
+                    end_time=end_dt,
+                    day_of_week=start_dt.weekday(),
+                    location=location_in or None,
+                    required_skills=None,
+                    max_facilitators=1,
+                )
+                db.session.add(s)
+                db.session.flush()
+                created_ids.append(s.id)
+                created += 1
+            except Exception as e:
+                db.session.rollback()
+                errors.append(f"Row {idx}: database error: {e}")
+                continue
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Commit failed: {e}"}), 500
+
+    return jsonify({
+        "ok": True,
+        "created": created,
+        "skipped": skipped,
+        "errors": errors[:30],
+        "created_session_ids": created_ids,
+    })
