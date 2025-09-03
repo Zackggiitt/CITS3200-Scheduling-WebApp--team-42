@@ -2137,54 +2137,44 @@ async function populateReview() {
     }
   } catch {}
 
-  // Sessions: PRIORITIZE CALENDAR FIRST, then try API as fallback
+  // Sessions: Fetch all sessions for the review
   let sessions = [];
 
-  if (calendar && calendar.getEvents) {
-    // Get sessions from the current calendar instance (they exist in memory)
-    const calendarEvents = calendar.getEvents();
-    console.log('Getting sessions from calendar:', calendarEvents.length, 'events found');
-    
-    sessions = calendarEvents.map(e => ({
-      id: e.id, 
-      start: e.start.toISOString(), 
-      end: e.end.toISOString(), 
-      title: e.title,
-      extendedProps: e.extendedProps || {}
-    }));
-  } else if (sd && ed && unitId) {
-    // Fallback to API if calendar not available
-    console.log('Calendar not available, trying API fetch');
-    
-    async function fetchAllSessions(unitId, startISO, endISO) {
-      const uniq = new Map();
-      const start = new Date(startISO), end = new Date(endISO);
-      if (!(start && end)) return [];
-      // align to Monday for weekly stepping
-      const day = start.getDay(); // 0 Sun … 6 Sat
-      const monday = new Date(start);
-      monday.setDate(start.getDate() - ((day + 6) % 7));
-      for (let d = new Date(monday); d <= end; d.setDate(d.getDate()+7)) {
-        const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
-        const weekStart = `${y}-${m}-${dd}`;
-        const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
-        try {
-          const r = await fetch(url, { headers: { 'X-CSRFToken': CSRF_TOKEN }});
-          const j = await r.json();
-          if (j.ok && Array.isArray(j.sessions)) {
-            j.sessions.forEach(s => uniq.set(String(s.id), s));
-          }
-        } catch {}
+  const toISO = (s) => {
+    const [d,m,y] = (s || '').split('/').map(Number);
+    return (y && m && d) ? `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
+  };
+
+  async function fetchAllSessions(unitId, startISO, endISO) {
+    const uniq = new Map();
+    const start = new Date(startISO), end = new Date(endISO);
+    if (!(start && end)) return [];
+    // align to Monday for weekly stepping
+    const day = start.getDay(); // 0 Sun … 6 Sat
+    const monday = new Date(start);
+    monday.setDate(start.getDate() - ((day + 6) % 7));
+    for (let d = new Date(monday); d <= end; d.setDate(d.getDate()+7)) {
+      const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+      const weekStart = `${y}-${m}-${dd}`;
+      const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
+      try {
+        const r = await fetch(url, { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+        const j = await r.json();
+        if (j.ok && Array.isArray(j.sessions)) {
+          j.sessions.forEach(s => uniq.set(String(s.id), s));
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch sessions for week ${weekStart}:`, err);
       }
-      return Array.from(uniq.values());
     }
+    return Array.from(uniq.values());
+  }
 
-    const toISO = (s) => {
-      const [d,m,y] = (s || '').split('/').map(Number);
-      return (y && m && d) ? `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
-    };
+  const startISO = toISO(start_date);
+  const endISO = toISO(end_date);
 
-    sessions = await fetchAllSessions(unitId, toISO(start_date), toISO(end_date));
+  if (unitId && startISO && endISO) {
+    sessions = await fetchAllSessions(unitId, startISO, endISO);
   } else {
     console.log('No calendar and no valid date range, sessions will be empty');
     sessions = [];
