@@ -1015,11 +1015,18 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
 /* --- Stats row --- */
 .uc-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));  /* Changed from 3 to 4 */
   gap: 1rem;
 }
 @media (max-width: 768px) {
-  .uc-stats { grid-template-columns: 1fr; }
+  .uc-stats { 
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* 2x2 on tablets */
+  }
+}
+@media (max-width: 480px) {
+  .uc-stats { 
+    grid-template-columns: 1fr; /* Single column on phones */
+  }
 }
 .uc-stat {
   background: #fff;
