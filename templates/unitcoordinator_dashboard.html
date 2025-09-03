@@ -351,11 +351,13 @@
 
                 <!-- search/filter placeholders -->
                 <div class="flex items-center gap-2">
-                  <label class="relative">
-                    <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-base">search</span>
-                    <input type="search" class="pl-8 pr-3 py-1.5 border rounded-lg text-sm focus:outline-none"
-                          placeholder="Search facilitators…" aria-label="Search facilitators">
-                  </label>
+                  <div class="relative flex-grow">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                      <span class="material-icons text-gray-400">search</span>
+                    </span>
+                    <input type="search" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                           placeholder="Search facilitators…" aria-label="Search facilitators">
+                  </div>
                   <details class="relative">
                     <summary class="list-none inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm cursor-pointer">
                       All Status <span class="material-icons text-base">expand_more</span>
