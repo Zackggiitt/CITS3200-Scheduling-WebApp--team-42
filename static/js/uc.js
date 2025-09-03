@@ -2066,6 +2066,12 @@ async function populateReview() {
   ulS.innerHTML = '';
   const dayName = (d) => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d];
   const timeHM = (dt) => dt.toTimeString().slice(0,5);
+  const formatDDMMYYYY = (d) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
   
   sessions.sort((a,b)=> a.start.localeCompare(b.start)).forEach(s => {
     const st = new Date(s.start), en = new Date(s.end);
@@ -2080,7 +2086,7 @@ async function populateReview() {
         <span class="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block"></span>
         <div>
           <div class="font-medium">${sessionName}</div>
-          <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • ${st.toLocaleDateString()} (${st.getDate()}/${st.getMonth() + 1})${s.extendedProps.location ? ' • ' + s.extendedProps.location : ''}</div>
+          <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • ${formatDDMMYYYY(st)}${s.extendedProps.location ? ' • ' + s.extendedProps.location : ''}</div>
         </div>
       </div>
       <div class="text-sm text-gray-500">${staffCount} staff</div>
