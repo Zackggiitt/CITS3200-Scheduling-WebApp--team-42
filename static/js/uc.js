@@ -2210,8 +2210,133 @@ function initCompletedUnitBanners() {
   });
 }
 
-// Run after DOM is ready (safe even if script is at the end)
+
 document.addEventListener('DOMContentLoaded', initCompletedUnitBanners);
+
+function initFacilitatorFilters() {
+  const filterDropdown = document.querySelector('.fac-list details');
+  const searchInput = document.querySelector('.fac-list input[type="search"]');
+  const facilitatorCards = document.querySelectorAll('.fac-list article');
+  
+  if (!filterDropdown) return;
+
+  let currentStatusFilter = 'all';
+
+  // Search functionality
+  function filterFacilitators() {
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    
+    facilitatorCards.forEach(card => {
+      const name = card.querySelector('h4')?.textContent?.toLowerCase() || '';
+      const email = card.querySelector('a[href^="mailto:"]')?.textContent?.toLowerCase() || '';
+      
+      // Get status from badges
+      const badges = card.querySelectorAll('.status-badge, [class*="badge"]');
+      let cardStatus = 'inactive';
+      
+      badges.forEach(badge => {
+        const text = badge.textContent.toLowerCase();
+        if (text.includes('ready') || text.includes('complete')) {
+          cardStatus = 'ready';
+        } else if (text.includes('needs availability') || text.includes('availability')) {
+          cardStatus = 'needs_availability';
+        } else if (text.includes('pending') || text.includes('setup')) {
+          cardStatus = 'pending_setup';
+        }
+      });
+
+      // Check search match
+      const searchMatch = !searchTerm || 
+        name.includes(searchTerm) || 
+        email.includes(searchTerm);
+
+      // Check status filter match
+      const statusMatch = currentStatusFilter === 'all' || 
+        currentStatusFilter === cardStatus;
+
+      // Show/hide card
+      if (searchMatch && statusMatch) {
+        card.style.display = '';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    // Update visible count
+    const visibleCards = Array.from(facilitatorCards).filter(card => 
+      card.style.display !== 'none'
+    );
+    
+    const countEl = document.querySelector('.fac-list .ml-2');
+    if (countEl) {
+      const totalCount = facilitatorCards.length;
+      countEl.textContent = `${visibleCards.length} of ${totalCount}`;
+    }
+  }
+
+  // Wire up search input if it exists
+  if (searchInput) {
+    searchInput.addEventListener('input', filterFacilitators);
+  }
+
+  // Wire up status filter buttons
+  const filterButtons = filterDropdown.querySelectorAll('button[type="button"]');
+  filterButtons.forEach(button => {
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const text = button.textContent.toLowerCase().trim();
+      
+      if (text === 'all status') {
+        currentStatusFilter = 'all';
+      } else if (text === 'ready') {
+        currentStatusFilter = 'ready';
+      } else if (text === 'needs availability') {
+        currentStatusFilter = 'needs_availability';
+      } else if (text === 'pending setup') {
+        currentStatusFilter = 'pending_setup';
+      }
+
+      // Update the summary text to show selected filter
+      const summary = filterDropdown.querySelector('summary');
+      if (summary && text !== 'all status') {
+        summary.innerHTML = `${button.textContent} <span class="material-icons text-base">expand_more</span>`;
+      } else if (summary) {
+        summary.innerHTML = `All Status <span class="material-icons text-base">expand_more</span>`;
+      }
+
+      // Close the dropdown
+      filterDropdown.removeAttribute('open');
+      
+      // Apply filter
+      filterFacilitators();
+    });
+  });
+
+  // Close dropdown when clicking outside - FIXED VERSION
+  const closeHandler = (e) => {
+    if (!filterDropdown.contains(e.target)) {
+      filterDropdown.removeAttribute('open');
+    }
+  };
+  
+  // Remove any existing listeners and add the new one
+  document.removeEventListener('click', closeHandler, true);
+  document.addEventListener('click', closeHandler, true);
+
+  // Prevent dropdown from closing when clicking inside
+  filterDropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && filterDropdown.hasAttribute('open')) {
+      filterDropdown.removeAttribute('open');
+    }
+  });
+}
 
 // --- Unit Tabs (switch panels, remember per unit) ---
 function initUnitTabs() {
@@ -2242,6 +2367,10 @@ function initUnitTabs() {
     });
 
     try { localStorage.setItem(`uc_tab_${unitId}`, key); } catch (e) {}
+
+    if (key === 'staffing') {
+      setTimeout(initFacilitatorFilters, 100);
+    }
   }
 
   // Click to activate
@@ -2276,3 +2405,5 @@ function initUnitTabs() {
 }
 
 document.addEventListener('DOMContentLoaded', initUnitTabs);
+
+
