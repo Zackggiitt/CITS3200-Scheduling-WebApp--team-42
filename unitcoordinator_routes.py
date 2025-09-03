@@ -7,6 +7,8 @@ from sqlalchemy import and_, func
 from sqlalchemy import func
 # from models import Unit, Module, Session
 from datetime import date
+from sqlalchemy.orm import aliased
+from sqlalchemy import or_
 
 from flask import (
     Blueprint, render_template, redirect, url_for, flash, request,
@@ -256,7 +258,9 @@ from sqlalchemy import func
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def dashboard():
-    from sqlalchemy import func
+    from sqlalchemy import func, or_
+    from sqlalchemy.orm import aliased
+    from datetime import datetime, timedelta
 
     user = get_current_user()
 
@@ -283,9 +287,8 @@ def dashboard():
         else (units[0] if units else None)
     )
 
-# ----- Staffing tiles (safe if no current_unit) -----
+    # ----- Staffing tiles (safe if no current_unit) -----
     stats = {"total": 0, "fully": 0, "needs_lead": 0, "unstaffed": 0}
-
     if current_unit:
         session_rows = (
             db.session.query(
@@ -303,7 +306,6 @@ def dashboard():
         total_sessions = len(session_rows)
         fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
         unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
-        # Inclusive: anything not fully staffed (includes unstaffed)
         needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
 
         stats = {
@@ -312,7 +314,6 @@ def dashboard():
             "needs_lead": needs_lead,
             "unstaffed": unstaffed,
         }
-
 
     # ----- Facilitator Setup Progress + Details -----
     fac_progress = {"total": 0, "account": 0, "availability": 0, "ready": 0}
@@ -331,7 +332,6 @@ def dashboard():
         fac_progress["total"] = len(links)
 
         for _, f in links:
-            # "Account setup" heuristic: any profile fields present
             has_profile = bool(
                 (getattr(f, "first_name", None) or getattr(f, "last_name", None))
                 or getattr(f, "phone", None)
@@ -339,8 +339,6 @@ def dashboard():
                 or getattr(f, "avatar_url", None)
             )
 
-            # Availability: current model is *global*, not unit-scoped — will be
-            # rerouted once unit-specific availability is in place (TODO noted below)
             has_avail = (
                 db.session.query(Availability.id)
                 .filter(Availability.user_id == f.id)
@@ -361,18 +359,53 @@ def dashboard():
                     "email": f.email,
                     "phone": getattr(f, "phone", None),
                     "staff_number": getattr(f, "staff_number", None),
-                    # Display-only placeholders — wire these to Assignments/Sessions when ready.
-                    "experience_years": None,         # TODO: reroute when experience field exists
-                    "upcoming_sessions": None,        # TODO: reroute using Session/Assignment join
-                    "total_hours": None,              # TODO: reroute using Assignment durations
-                    "last_login": getattr(f, "last_login", None),  # if your User has it
-                    # Status flags
+                    "experience_years": None,         # TODO wire real data later
+                    "upcoming_sessions": None,
+                    "total_hours": None,
+                    "last_login": getattr(f, "last_login", None),
                     "has_profile": has_profile,
                     "has_availability": has_avail,
                     "is_ready": is_ready,
                 }
             )
 
+    # ----- Swap & Approvals counts -----
+    approvals = {"pending": 0, "approved_this_week": 0, "total": 0}
+    approvals_count = 0
+
+    if current_unit:
+        RA = aliased(Assignment)
+        TA = aliased(Assignment)
+        RS = aliased(Session)
+        TS = aliased(Session)
+        RM = aliased(Module)
+        TM = aliased(Module)
+
+        base_q = (
+            db.session.query(SwapRequest)
+            .join(RA, RA.id == SwapRequest.requester_assignment_id)
+            .join(RS, RS.id == RA.session_id)
+            .join(RM, RM.id == RS.module_id)
+            .join(TA, TA.id == SwapRequest.target_assignment_id)
+            .join(TS, TS.id == TA.session_id)
+            .join(TM, TM.id == TS.module_id)
+            .filter(or_(RM.unit_id == current_unit.id, TM.unit_id == current_unit.id))
+        )
+
+        approvals["total"] = base_q.count()
+        approvals["pending"] = base_q.filter(SwapRequest.status == SwapStatus.PENDING).count()
+        approvals_count = approvals["pending"]
+
+        week_ago = datetime.utcnow() - timedelta(days=7)
+        approvals["approved_this_week"] = (
+            base_q.filter(
+                SwapRequest.status == SwapStatus.APPROVED,
+                SwapRequest.reviewed_at != None,
+                SwapRequest.reviewed_at >= week_ago,
+            ).count()
+        )
+
+    # ---- Render ----
     return render_template(
         "unitcoordinator_dashboard.html",
         user=user,
@@ -382,7 +415,10 @@ def dashboard():
         stats=stats,
         fac_progress=fac_progress,
         facilitators=facilitators,
+        approvals=approvals,
+        approvals_count=approvals_count,
     )
+
 
 @unitcoordinator_bp.route("/create_unit", methods=["POST"])
 @login_required

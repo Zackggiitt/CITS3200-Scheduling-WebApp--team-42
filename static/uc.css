@@ -969,3 +969,63 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
   border-radius: 8px;
   font-size: 13px;
 }
+
+/* --- Panels --- */
+.uc-panel { padding: 1rem 0; }
+
+/* --- Badge --- */
+.uc-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 .375rem;
+  font-size: .75rem;
+  line-height: 1;
+  font-weight: 600;
+  color: #fff;
+  background: #ef4444; /* red-500 */
+  border-radius: 9999px;
+}
+
+/* --- Stats row --- */
+.uc-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+@media (max-width: 768px) {
+  .uc-stats { grid-template-columns: 1fr; }
+}
+.uc-stat {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  text-align: center;
+}
+.uc-stat__value {
+  font-size: 1.875rem; /* text-3xl */
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+.uc-stat__label {
+  font-size: .875rem;
+  color: #6b7280;
+}
+
+/* color accents for values */
+.uc-stat__value--orange { color: #f59e0b; } /* amber-500 */
+.uc-stat__value--green  { color: #10b981; } /* emerald-500 */
+.uc-stat__value--blue   { color: #3b82f6; } /* blue-500 */
+
+/* Optional empty state inside panels */
+.uc-panel-empty {
+  background: #f9fafb;
+  border: 1px dashed #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  color: #6b7280;
+  font-size: .875rem;
+}

@@ -491,6 +491,53 @@
             </div>
           </section>
 
+          <!-- Swap & Approvals -->
+          <section id="panel-team" class="uc-panel" role="tabpanel" aria-labelledby="tab-team" hidden>
+
+            <!-- Top: summary stats row -->
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="text-xl font-semibold">Session Swap Management</h2>
+                <p class="text-gray-600 text-sm">Overview of all swap requests</p>
+              </div>
+              {% if approvals and approvals.pending %}
+                <span class="uc-badge">{{ approvals.pending }} pending approvals</span>
+              {% endif %}
+            </div>
+
+            <div class="uc-stats">
+              <div class="uc-stat">
+                <div class="uc-stat__value uc-stat__value--orange">{{ approvals.pending or 0 }}</div>
+                <div class="uc-stat__label">Pending Approval</div>
+              </div>
+              <div class="uc-stat">
+                <div class="uc-stat__value uc-stat__value--green">{{ approvals.approved_this_week or 0 }}</div>
+                <div class="uc-stat__label">Approved This Week</div>
+              </div>
+              <div class="uc-stat">
+                <div class="uc-stat__value uc-stat__value--blue">{{ approvals.total or 0 }}</div>
+                <div class="uc-stat__label">Total Requests</div>
+              </div>
+            </div>
+
+            <!-- Bottom: detailed area -->
+            <div class="mt-6">
+              <header class="flex items-center gap-2 mb-3">
+                <span class="material-icons text-gray-700">task_alt</span>
+                <h3 class="font-semibold text-gray-900">Approval Queue</h3>
+              </header>
+
+              <div class="uc-panel-empty">
+                Table of individual requests with Approve / Reject buttons will go here.
+              </div>
+            </div>
+
+          </section>
+
+
+
+
+
         </div>
       </div>
     {% endif %}
