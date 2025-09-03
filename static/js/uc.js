@@ -2080,7 +2080,7 @@ async function populateReview() {
         <span class="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block"></span>
         <div>
           <div class="font-medium">${sessionName}</div>
-          <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • Starting ${st.toLocaleDateString()}${venueName ? ' • ' + venueName : ''}</div>
+          <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • ${st.toLocaleDateString()} (${st.getDate()}/${st.getMonth() + 1})${venueName ? ' • ' + venueName : ''}</div>
         </div>
       </div>
       <div class="text-sm text-gray-500">${staffCount} staff</div>
