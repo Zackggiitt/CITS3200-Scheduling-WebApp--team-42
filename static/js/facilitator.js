@@ -2,9 +2,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
     const calendarView = document.getElementById('calendar-view');
-    const notificationsView = document.getElementById('notifications-view');
     const availabilityView = document.getElementById('availability-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
+    
+    // Notification popup elements
+    const bellIcon = document.getElementById('bell-icon');
+    const notificationPopup = document.getElementById('notification-popup');
+    const popupOverlay = document.getElementById('popup-overlay');
+    const headerNotificationBadge = document.getElementById('header-notification-badge');
+    const popupCloseBtn = document.getElementById('popup-close');
     
     // Navigation click handlers
     navItems.forEach(item => {
@@ -23,29 +29,160 @@ document.addEventListener('DOMContentLoaded', function() {
                 dashboardSections.forEach(section => section.style.display = 'none');
                 availabilityView.style.display = 'block';
                 calendarView.style.display = 'none';
-                notificationsView.style.display = 'none';
             } else if (href === '#schedule') {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
                 availabilityView.style.display = 'none';
                 calendarView.style.display = 'block';
-                notificationsView.style.display = 'none';
                 initCalendar();
-            } else if (href === '#notifications') {
-                // Show notifications view
-                dashboardSections.forEach(section => section.style.display = 'none');
-                availabilityView.style.display = 'none';
-                calendarView.style.display = 'none';
-                notificationsView.style.display = 'block';
             } else {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
                 availabilityView.style.display = 'none';
                 calendarView.style.display = 'none';
-                notificationsView.style.display = 'none';
             }
         });
     });
+
+    // Notification popup functionality
+    function showNotificationPopup() {
+        notificationPopup.style.display = 'block';
+        popupOverlay.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function hideNotificationPopup() {
+        notificationPopup.style.display = 'none';
+        popupOverlay.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    // Bell icon click handler
+    if (bellIcon) {
+        bellIcon.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            showNotificationPopup();
+        });
+    }
+
+    // Close button handler
+    if (popupCloseBtn) {
+        popupCloseBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            hideNotificationPopup();
+        });
+    }
+
+    // Escape key closes popup
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && notificationPopup && notificationPopup.style.display === 'block') {
+            hideNotificationPopup();
+        }
+    });
+
+    // Overlay click handler to close popup
+    if (popupOverlay) {
+        popupOverlay.addEventListener('click', function() {
+            hideNotificationPopup();
+        });
+    }
+
+    // Close popup when clicking outside
+    document.addEventListener('click', function(e) {
+        if (notificationPopup && notificationPopup.style.display === 'block') {
+            if (!notificationPopup.contains(e.target) && !bellIcon.contains(e.target)) {
+                hideNotificationPopup();
+            }
+        }
+    });
+
+    // Popup filter functionality
+    const popupFilterBtns = document.querySelectorAll('.popup-filter-btn');
+    const popupNotificationItems = document.querySelectorAll('.popup-notification-item');
+
+    popupFilterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Update active filter
+            popupFilterBtns.forEach(f => f.classList.remove('active'));
+            this.classList.add('active');
+            
+            const filter = this.getAttribute('data-filter');
+            
+            // Filter notifications
+            popupNotificationItems.forEach(item => {
+                if (filter === 'all') {
+                    item.style.display = 'flex';
+                } else if (filter === 'unread' && item.classList.contains('unread')) {
+                    item.style.display = 'flex';
+                } else if (filter === 'action' && item.querySelector('.popup-action-btn')) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+
+    // Mark all as read in popup
+    const popupMarkAllReadBtn = document.getElementById('popup-mark-all-read');
+    if (popupMarkAllReadBtn) {
+        popupMarkAllReadBtn.addEventListener('click', function() {
+            const unreadItems = document.querySelectorAll('.popup-notification-item.unread');
+            unreadItems.forEach(item => {
+                item.classList.remove('unread');
+            });
+            
+            // Update notification badge
+            updateHeaderNotificationBadge();
+        });
+    }
+
+    // Popup action buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.popup-action-btn.accept')) {
+            const notification = e.target.closest('.popup-notification-item');
+            notification.classList.remove('unread');
+            updateHeaderNotificationBadge();
+            alert('Shift accepted successfully!');
+        } else if (e.target.closest('.popup-action-btn.decline')) {
+            const notification = e.target.closest('.popup-notification-item');
+            notification.classList.remove('unread');
+            notification.style.display = 'none';
+            updateHeaderNotificationBadge();
+            alert('Shift declined.');
+        } else if (e.target.closest('.popup-action-btn.primary')) {
+            // Handle "Update Now" button
+            hideNotificationPopup();
+            // Navigate to availability section
+            const availabilityNavItem = document.querySelector('a[href="#availability"]');
+            if (availabilityNavItem) {
+                availabilityNavItem.click();
+            }
+        }
+    });
+
+    // View all notifications button
+    const viewAllBtn = document.getElementById('view-all-notifications');
+    if (viewAllBtn) {
+        viewAllBtn.addEventListener('click', function() {
+            hideNotificationPopup();
+            // You can implement a full notifications page here if needed
+            alert('View all notifications functionality can be implemented here.');
+        });
+    }
+
+    // Function to update header notification badge
+    function updateHeaderNotificationBadge() {
+        const unreadCount = document.querySelectorAll('.popup-notification-item.unread').length;
+        
+        if (unreadCount === 0) {
+            headerNotificationBadge.style.display = 'none';
+        } else {
+            headerNotificationBadge.style.display = 'flex';
+            headerNotificationBadge.textContent = unreadCount;
+        }
+    }
 
     // Update greeting icon based on time of day
     function updateGreetingIcon() {
@@ -200,82 +337,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // NOTIFICATIONS FUNCTIONALITY
-    // Notification filters
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const notificationItems = document.querySelectorAll('.notification-item');
-
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            // Update active filter
-            filterBtns.forEach(f => f.classList.remove('active'));
-            this.classList.add('active');
-            
-            const filter = this.getAttribute('data-filter');
-            
-            // Filter notifications
-            notificationItems.forEach(item => {
-                if (filter === 'all' || item.getAttribute('data-type') === filter) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
-    });
-
-    // Mark all as read
-    const markAllReadBtn = document.getElementById('mark-all-read');
-    if (markAllReadBtn) {
-        markAllReadBtn.addEventListener('click', function() {
-            const unreadItems = document.querySelectorAll('.notification-item.unread');
-            unreadItems.forEach(item => {
-                item.classList.remove('unread');
-            });
-            
-            // Remove notification badge completely
-            const badge = document.querySelector('.notification-badge');
-            if (badge) {
-                badge.remove();
-            }
-        });
-    }
-
-    // Clear all notifications
-    const clearAllBtn = document.getElementById('clear-all');
-    if (clearAllBtn) {
-        clearAllBtn.addEventListener('click', function() {
-            if (confirm('Are you sure you want to clear all notifications?')) {
-                const notificationsList = document.getElementById('notifications-list');
-                const emptyState = document.getElementById('notifications-empty');
-                
-                if (notificationsList) notificationsList.style.display = 'none';
-                if (emptyState) emptyState.style.display = 'block';
-                
-                // Update notification badge
-                const badge = document.querySelector('.notification-badge');
-                if (badge) {
-                    badge.remove();
-                }
-            }
-        });
-    }
-        
-    // Function to check if there are any unread notifications and update badge
-    function updateNotificationBadge() {
-        const unreadCount = document.querySelectorAll('.notification-item.unread').length;
-        const badge = document.querySelector('.notification-badge');
-        
-        if (unreadCount === 0 && badge) {
-            badge.remove();
-        } else if (badge) {
-            badge.textContent = unreadCount;
-        }
-    }
-
     // GLOBAL CLICK HANDLER - Only one for all click events
     document.addEventListener('click', function(e) {
-        // Handle notification accept/decline buttons
+        // Handle notification accept/decline buttons (legacy support)
         if (e.target.closest('.action-btn.accept')) {
             const notification = e.target.closest('.notification-item');
             notification.classList.remove('unread');
@@ -363,7 +427,6 @@ document.addEventListener('DOMContentLoaded', function() {
             dashboardSections.forEach(section => section.style.display = 'none');
             availabilityView.style.display = 'block';
             calendarView.style.display = 'none';
-            notificationsView.style.display = 'none';
         }
     });
 
@@ -399,6 +462,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (availableDaysElement) {
             availableDaysElement.textContent = checkedDays;
+        }
+    }
+
+    // Legacy notification badge update function (for backward compatibility)
+    function updateNotificationBadge() {
+        const unreadCount = document.querySelectorAll('.notification-item.unread').length;
+        const badge = document.querySelector('.notification-badge');
+        
+        if (unreadCount === 0 && badge) {
+            badge.remove();
+        } else if (badge) {
+            badge.textContent = unreadCount;
         }
     }
 });
