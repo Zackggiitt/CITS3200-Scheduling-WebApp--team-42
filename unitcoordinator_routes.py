@@ -110,6 +110,7 @@ def _serialize_session(s: Session, venues_by_name=None):
             "venue": venue_name,
             "venue_id": vid,
             "session_name": title,
+            "location": s.location,
         }
     }
 
@@ -1797,7 +1798,7 @@ def upload_cas_csv(unit_id: int):
                     start_time=start_dt,
                     end_time=end_dt,
                     day_of_week=start_dt.weekday(),
-                    location=venue_obj.name if venue_obj else location_in or None,
+                    location=location_in or None,
                     required_skills=None,
                     max_facilitators=1,
                 )
