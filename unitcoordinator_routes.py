@@ -4,6 +4,9 @@ import re
 from io import StringIO, BytesIO
 from datetime import datetime, date, timedelta
 from sqlalchemy import and_, func
+from sqlalchemy import func
+# from models import Unit, Module, Session
+from datetime import date
 
 from flask import (
     Blueprint, render_template, redirect, url_for, flash, request,
@@ -13,7 +16,8 @@ from flask import (
 from auth import login_required, get_current_user
 from utils import role_required
 from models import db
-from models import UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session
+
+from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Availability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -28,7 +32,6 @@ unitcoordinator_bp = Blueprint(
 # CSV columns for the combined facilitators/venues file
 CSV_HEADERS = [
     "facilitator_email",   # optional per row
-    "venue_name",          # optional per row
 ]
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -69,11 +72,14 @@ def _iso(d: date) -> str:
 
 
 def _parse_dt(s: str):
-    """Parse 'YYYY-MM-DDTHH:MM' to datetime."""
-    try:
-        return datetime.strptime(s, "%Y-%m-%dT%H:%M")
-    except ValueError:
-        return None
+    """Parse 'YYYY-MM-DDTHH:MM' or 'YYYY-MM-DD HH:MM' to datetime."""
+    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"):
+        try:
+            return datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    return None
+
 
 
 def _get_or_create_default_module(unit: Unit) -> Module:
@@ -119,17 +125,264 @@ def _get_or_create_module_by_name(unit: Unit, name: str) -> Module:
     return m
 
 
+ACTIVITY_ALLOWED = {"workshop", "tutorial", "lab"}
+
+def _coerce_activity_type(s: str) -> str:
+    v = (s or "").strip().lower()
+    return v if v in ACTIVITY_ALLOWED else "other"
+
+TIME_RANGE_RE = re.compile(
+    r"^\s*(\d{1,2})[:\.](\d{2})\s*[-–—]\s*(\d{1,2})[:\.](\d{2})\s*$"
+)
+
+def _parse_time_range(s: str):
+    """
+    Accepts '09:00-11:30', '9.00 – 11.30', etc.
+    Returns (start_h, start_m, end_h, end_m) or None.
+    """
+    if not s: return None
+    m = TIME_RANGE_RE.match(s)
+    if not m: return None
+    h1, m1, h2, m2 = map(int, m.groups())
+    if not (0 <= h1 <= 23 and 0 <= h2 <= 23 and 0 <= m1 <= 59 and 0 <= m2 <= 59):
+        return None
+    return h1, m1, h2, m2
+
+
+
+# --- Recurrence helpers -------------------------------------------------------
+
+def _parse_recurrence(d: dict):
+    """
+    Expect shape like:
+      {"occurs":"weekly", "interval":1, "byweekday":[0-6], "count":N, "until":"YYYY-MM-DD" | None}
+    Return a normalized dict or {"occurs":"none"}.
+    """
+    if not isinstance(d, dict):
+        return {"occurs": "none"}
+    occurs = (d.get("occurs") or "none").lower()
+    if occurs != "weekly":
+        return {"occurs": "none"}
+    interval = int(d.get("interval") or 1)
+    if interval < 1:
+        interval = 1
+    # UI sends weekday of the first start date; we just step weekly from start, so this is informational.
+    byweekday = d.get("byweekday") if isinstance(d.get("byweekday"), list) else None
+
+    count = d.get("count")
+    try:
+        count = int(count) if count is not None else None
+    except (TypeError, ValueError):
+        count = None
+    if count is not None and count < 1:
+        count = 1
+
+    until_raw = (d.get("until") or "").strip()
+    until_date = _parse_date_multi(until_raw) if until_raw else None
+
+    return {
+        "occurs": "weekly",
+        "interval": interval,
+        "byweekday": byweekday,
+        "count": count,
+        "until": until_date,  # Python date or None
+    }
+
+
+def _within_unit_range(unit: Unit, dt: datetime) -> bool:
+    """Check datetime against unit.start_date/end_date (if set)."""
+    d = dt.date()
+    if unit.start_date and d < unit.start_date:
+        return False
+    if unit.end_date and d > unit.end_date:
+        return False
+    return True
+
+
+def _iter_weekly_occurrences(unit: Unit, start_dt: datetime, end_dt: datetime, rec: dict):
+    """
+    Yield (s,e) pairs for a weekly rule starting at (start_dt,end_dt), inclusive.
+    Bounds:
+      - stop when 'count' reached, OR
+      - stop after 'until' (date), OR
+      - stop when we step beyond unit.end_date.
+    Always includes the first occurrence.
+    """
+    interval = rec.get("interval", 1) or 1
+    count    = rec.get("count")
+    until_d  = rec.get("until")  # date | None
+
+    made = 0
+    cur_s = start_dt
+    cur_e = end_dt
+    while True:
+        # Stop conditions before yielding if outside range
+        if not _within_unit_range(unit, cur_s) or not _within_unit_range(unit, cur_e):
+            # If the first one is out of range we still don't yield it.
+            pass
+        else:
+            yield (cur_s, cur_e)
+            made += 1
+            if count is not None and made >= count:
+                break
+
+        # compute next
+        cur_s = cur_s + timedelta(weeks=interval)
+        cur_e = cur_e + timedelta(weeks=interval)
+
+        # if until is set, next start after 'until' should stop
+        if until_d and cur_s.date() > until_d:
+            break
+
+        # unit end bound
+        if unit.end_date and cur_s.date() > unit.end_date:
+            break
+
+
+
 # ------------------------------------------------------------------------------
 # Views
 # ------------------------------------------------------------------------------
+# in unitcoordinator_route.py
+
+
+# unitcoordinator_routes.py
+from datetime import date
+from sqlalchemy import func
+# ...other imports incl. request...
+
+# unitcoordinator_route.py (dashboard)
 @unitcoordinator_bp.route("/dashboard")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def dashboard():
-    user = get_current_user()
-    units = Unit.query.filter_by(created_by=user.id).all()
-    return render_template("unitcoordinator_dashboard.html", user=user, units=units)
+    from sqlalchemy import func
 
+    user = get_current_user()
+
+    # Build list of units this UC owns + session counts (for the single-card header)
+    rows = (
+        db.session.query(Unit, func.count(Session.id))
+        .outerjoin(Module, Module.unit_id == Unit.id)
+        .outerjoin(Session, Session.module_id == Module.id)
+        .filter(Unit.created_by == user.id)
+        .group_by(Unit.id)
+        .order_by(Unit.unit_code.asc())
+        .all()
+    )
+    units = []
+    for u, cnt in rows:
+        setattr(u, "session_count", int(cnt or 0))
+        units.append(u)
+
+    # Which unit is selected (via ?unit=) — otherwise first
+    selected_id = request.args.get("unit", type=int)
+    current_unit = (
+        next((u for u in units if u.id == selected_id), None)
+        if selected_id
+        else (units[0] if units else None)
+    )
+
+# ----- Staffing tiles (safe if no current_unit) -----
+    stats = {"total": 0, "fully": 0, "needs_lead": 0, "unstaffed": 0}
+
+    if current_unit:
+        session_rows = (
+            db.session.query(
+                Session.id.label("sid"),
+                func.coalesce(Session.max_facilitators, 1).label("maxf"),
+                func.count(Assignment.id).label("assigned"),
+            )
+            .join(Module, Module.id == Session.module_id)
+            .outerjoin(Assignment, Assignment.session_id == Session.id)
+            .filter(Module.unit_id == current_unit.id)
+            .group_by(Session.id, Session.max_facilitators)
+            .all()
+        )
+
+        total_sessions = len(session_rows)
+        fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
+        unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
+        # Inclusive: anything not fully staffed (includes unstaffed)
+        needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
+
+        stats = {
+            "total": total_sessions,
+            "fully": fully_staffed,
+            "needs_lead": needs_lead,
+            "unstaffed": unstaffed,
+        }
+
+
+    # ----- Facilitator Setup Progress + Details -----
+    fac_progress = {"total": 0, "account": 0, "availability": 0, "ready": 0}
+    facilitators = []
+
+    if current_unit:
+        # All facilitator links for this unit
+        links = (
+            db.session.query(UnitFacilitator, User)
+            .join(User, UnitFacilitator.user_id == User.id)
+            .filter(UnitFacilitator.unit_id == current_unit.id)
+            .order_by(User.last_name.asc().nulls_last(), User.first_name.asc().nulls_last())
+            .all()
+        )
+
+        fac_progress["total"] = len(links)
+
+        for _, f in links:
+            # "Account setup" heuristic: any profile fields present
+            has_profile = bool(
+                (getattr(f, "first_name", None) or getattr(f, "last_name", None))
+                or getattr(f, "phone", None)
+                or getattr(f, "staff_number", None)
+                or getattr(f, "avatar_url", None)
+            )
+
+            # Availability: current model is *global*, not unit-scoped — will be
+            # rerouted once unit-specific availability is in place (TODO noted below)
+            has_avail = (
+                db.session.query(Availability.id)
+                .filter(Availability.user_id == f.id)
+                .limit(1)
+                .first()
+                is not None
+            )
+
+            is_ready = has_profile and has_avail
+            fac_progress["account"] += 1 if has_profile else 0
+            fac_progress["availability"] += 1 if has_avail else 0
+            fac_progress["ready"] += 1 if is_ready else 0
+
+            facilitators.append(
+                {
+                    "id": f.id,
+                    "name": getattr(f, "full_name", None) or f.email,
+                    "email": f.email,
+                    "phone": getattr(f, "phone", None),
+                    "staff_number": getattr(f, "staff_number", None),
+                    # Display-only placeholders — wire these to Assignments/Sessions when ready.
+                    "experience_years": None,         # TODO: reroute when experience field exists
+                    "upcoming_sessions": None,        # TODO: reroute using Session/Assignment join
+                    "total_hours": None,              # TODO: reroute using Assignment durations
+                    "last_login": getattr(f, "last_login", None),  # if your User has it
+                    # Status flags
+                    "has_profile": has_profile,
+                    "has_availability": has_avail,
+                    "is_ready": is_ready,
+                }
+            )
+
+    return render_template(
+        "unitcoordinator_dashboard.html",
+        user=user,
+        units=units,
+        current_unit=current_unit,
+        today=date.today(),
+        stats=stats,
+        fac_progress=fac_progress,
+        facilitators=facilitators,
+    )
 
 @unitcoordinator_bp.route("/create_unit", methods=["POST"])
 @login_required
@@ -234,16 +487,142 @@ def create_unit():
     return redirect(url_for("unitcoordinator.dashboard"))
 
 
+@unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/profile')
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def facilitator_profile(facilitator_id):
+    """View a specific facilitator's profile"""
+    user = get_current_user()
+    
+    # Get facilitator from Facilitator table
+    facilitator = Facilitator.query.get_or_404(facilitator_id)
+    
+    # Get corresponding User record
+    facilitator_user = User.query.filter_by(email=facilitator.email).first()
+    
+    # Calculate stats
+    stats = {
+        'units_assigned': 0,
+        'pending_approvals': 0,
+        'total_sessions': 0,
+        'skills_count': 0,
+        'availability_status': 'Not Set'
+    }
+    
+    if facilitator_user:
+        try:
+            # Count units assigned to this facilitator
+            stats['units_assigned'] = db.session.query(UnitFacilitator).filter_by(user_id=facilitator_user.id).count()
+            
+            # Count pending swap requests
+            stats['pending_approvals'] = SwapRequest.query.filter_by(
+                requested_by=facilitator_user.id, 
+                status=SwapStatus.PENDING
+            ).count()
+            
+            # Count total sessions assigned
+            stats['total_sessions'] = Assignment.query.filter_by(facilitator_id=facilitator_user.id).count()
+            
+            # Count skills registered
+            stats['skills_count'] = FacilitatorSkill.query.filter_by(user_id=facilitator_user.id).count()
+            
+            # Check availability status
+            has_availability = Availability.query.filter_by(user_id=facilitator_user.id).first()
+            stats['availability_status'] = 'Available' if has_availability else 'Not Set'
+            
+        except Exception as e:
+            print(f"Error calculating stats: {e}")
+    
+    return render_template('unitcoordinator/facilitator_profile.html', 
+                         facilitator=facilitator,
+                         facilitator_user=facilitator_user,
+                         stats=stats)
+
+@unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/edit', methods=['GET', 'POST'])
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def edit_facilitator_profile(facilitator_id):
+    """Edit a facilitator's profile"""
+    user = get_current_user()
+    facilitator = Facilitator.query.get_or_404(facilitator_id)
+    facilitator_user = User.query.filter_by(email=facilitator.email).first()
+    
+    if request.method == 'POST':
+        try:
+            # Update facilitator data
+            facilitator.first_name = request.form.get('first_name', '').strip()
+            facilitator.last_name = request.form.get('last_name', '').strip()
+            facilitator.phone = request.form.get('phone', '').strip()
+            facilitator.staff_number = request.form.get('staff_number', '').strip()
+            
+            # Update user data if exists
+            if facilitator_user:
+                facilitator_user.first_name = facilitator.first_name
+                facilitator_user.last_name = facilitator.last_name
+            
+            db.session.commit()
+            flash('Facilitator profile updated successfully!', 'success')
+            return redirect(url_for('unitcoordinator.facilitator_profile', facilitator_id=facilitator_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating profile: {str(e)}', 'error')
+    
+    return render_template('unitcoordinator/edit_facilitator_profile.html', 
+                         facilitator=facilitator,
+                         facilitator_user=facilitator_user)
+
+
+
 @unitcoordinator_bp.post("/create_or_get_draft")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def create_or_get_draft():
-    """
-    Idempotently returns an existing Unit for this UC+code+year+semester,
-    or creates it if absent. Useful for attaching CSV uploads in Step 3.
-    """
     user = get_current_user()
+    
+    # CHECK FOR CANCEL ACTION FIRST
+    action = request.form.get('action', '').strip()
+    if action == 'cancel_draft':
+        unit_id = request.form.get('unit_id', '').strip()
+        if unit_id:
+            try:
+                unit_id = int(unit_id)
+                unit = Unit.query.get(unit_id)
+                if unit and unit.created_by == user.id:
+                    # Delete all sessions for this unit
+                    sessions = db.session.query(Session).join(Module).filter(Module.unit_id == unit.id).all()
+                    for session in sessions:
+                        db.session.delete(session)
+                    
+                    # Delete all modules for this unit
+                    modules = Module.query.filter_by(unit_id=unit.id).all()
+                    for module in modules:
+                        db.session.delete(module)
+                    
+                    # Delete unit facilitator links
+                    UnitFacilitator.query.filter_by(unit_id=unit.id).delete()
+                    
+                    # Delete unit venue links
+                    UnitVenue.query.filter_by(unit_id=unit.id).delete()
+                    
+                    # Delete the unit itself
+                    db.session.delete(unit)
+                    db.session.commit()
+                    
+                    logger.info(f"Cancelled and deleted draft unit {unit_id} for user {user.id}")
+                    return jsonify({"ok": True, "message": "Draft cancelled successfully"})
+                else:
+                    return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+            except ValueError:
+                return jsonify({"ok": False, "error": "Invalid unit ID"}), 400
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Error cancelling draft: {e}")
+                return jsonify({"ok": False, "error": "Failed to cancel draft"}), 500
+        
+        return jsonify({"ok": True, "message": "No unit to cancel"})
 
+    # EXISTING CREATE/GET LOGIC
     unit_code = (request.form.get("unit_code") or "").strip()
     unit_name = (request.form.get("unit_name") or "").strip()
     year_raw = (request.form.get("year") or "").strip()
@@ -290,10 +669,8 @@ def create_or_get_draft():
 @role_required(UserRole.UNIT_COORDINATOR)
 def download_setup_csv_template():
     """
-    Returns a CSV with two columns:
+    Returns a CSV with one column:
       - facilitator_email
-      - venue_name
-    Rows may have either or both. Blank cells are ignored.
     """
     sio = StringIO()
     writer = csv.DictWriter(sio, fieldnames=CSV_HEADERS, extrasaction="ignore")
@@ -305,22 +682,23 @@ def download_setup_csv_template():
         mem,
         mimetype="text/csv",
         as_attachment=True,
-        download_name="facilitators_venues_template.csv",
+        download_name="facilitators_template.csv",
     )
 
 
+# --------------------------------------------------------------------------
+# Upload Facilitators CSV
+# --------------------------------------------------------------------------
 @unitcoordinator_bp.post("/upload-setup-csv")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def upload_setup_csv():
     """
-    Accepts a 2-column CSV:
+    Accepts a 1-column CSV:
       - facilitator_email
-      - venue_name
 
     For each row:
       - If facilitator_email is present: ensure a User(role=FACILITATOR) exists; link to the Unit
-      - If venue_name is present: upsert a Venue by name (name only); link to the Unit
     Returns counts + errors.
     """
     user = get_current_user()
@@ -345,98 +723,51 @@ def upload_setup_csv():
 
     # Validate headers
     fns = [fn.strip().lower() for fn in (reader.fieldnames or [])]
-    required = {"facilitator_email", "venue_name"}
+    required = {"facilitator_email"}
     if not required.issubset(set(fns)):
         return jsonify({
             "ok": False,
-            "error": f"CSV must include headers: {', '.join(sorted(required))}"
+            "error": "CSV must include header: facilitator_email"
         }), 400
 
     # Counters
     created_users = 0
     linked_facilitators = 0
-    created_venues = 0
-    linked_venues = 0
     errors = []
 
-    for idx, row in enumerate(reader, start=2):  # start=2 for human-friendly row numbers
-        fac_email = (row.get("facilitator_email") or "").strip()
-        venue_name = (row.get("venue_name") or "").strip()
+    for idx, row in enumerate(reader, start=2):  # start=2 because header is row 1
+        email = (row.get("facilitator_email") or "").strip().lower()
+        if not email:
+            continue
+        if not _valid_email(email):
+            errors.append(f"Row {idx}: invalid facilitator_email '{email}'")
+            continue
 
-        # Process facilitator email if present
-        if fac_email:
-            if not _valid_email(fac_email):
-                errors.append(f"Row {idx}: invalid facilitator_email '{fac_email}'")
-            else:
-                user_rec = User.query.filter_by(email=fac_email).first()
-                if not user_rec:
-                    user_rec = User(email=fac_email, role=UserRole.FACILITATOR)
-                    db.session.add(user_rec)
-                    created_users += 1
+        # Ensure facilitator user exists
+        user_obj = User.query.filter_by(email=email).first()
+        if not user_obj:
+            user_obj = User(email=email, role=UserRole.FACILITATOR)
+            db.session.add(user_obj)
+            db.session.flush()  # <-- ensure user_obj.id is available
+            created_users += 1
 
-                exists = UnitFacilitator.query.filter_by(unit_id=unit.id, user_id=user_rec.id).first()
-                if not exists:
-                    db.session.add(UnitFacilitator(unit_id=unit.id, user_id=user_rec.id))
-                    linked_facilitators += 1
+        # Ensure link to unit exists
+        link = UnitFacilitator.query.filter_by(unit_id=unit.id, user_id=user_obj.id).first()
+        if not link:
+            link = UnitFacilitator(unit_id=unit.id, user_id=user_obj.id)
+            db.session.add(link)
+            linked_facilitators += 1
 
-        # Process venue name if present
-        if venue_name:
-            # Normalize venue name
-            venue_name = " ".join(venue_name.lstrip(",").strip().split())
 
-            # Case-insensitive lookup to prevent duplicates
-            venue = db.session.query(Venue).filter(func.lower(Venue.name) == venue_name.lower()).first()
 
-            # Upsert global catalog
-            if not venue:
-                venue = Venue(name=venue_name)
-                db.session.add(venue)
-                created_venues += 1  # Newly cataloged venue
-
-            # Ensure per-unit link
-            link = UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first()
-            if not link:
-                db.session.add(UnitVenue(unit_id=unit.id, venue_id=venue.id))
-                linked_venues += 1
-
-        # If a row is entirely blank, silently ignore it (no error)
-
-    # Commit all changes at once
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        errors.append(f"Database error: {str(e)}")
-        return jsonify({
-            "ok": False,
-            "created_users": created_users,
-            "linked_facilitators": linked_facilitators,
-            "created_venues": created_venues,
-            "linked_venues": linked_venues,
-            "updated_venues": 0,  # Keep for UI compatibility
-            "errors": errors[:20],
-        }), 400
-
-    if errors:
-        return jsonify({
-            "ok": False,
-            "created_users": created_users,
-            "linked_facilitators": linked_facilitators,
-            "created_venues": created_venues,
-            "linked_venues": linked_venues,
-            "updated_venues": 0,  # Keep for UI compatibility
-            "errors": errors[:20],
-        }), 400
+    db.session.commit()
 
     return jsonify({
         "ok": True,
         "created_users": created_users,
         "linked_facilitators": linked_facilitators,
-        "created_venues": created_venues,
-        "linked_venues": linked_venues,
-        "updated_venues": 0,  # Keep for UI compatibility
+        "errors": errors[:20],  # show up to 20 issues
     }), 200
-
 
 # ---------- Step 3B: Calendar / Sessions ----------
 @unitcoordinator_bp.get("/units/<int:unit_id>/calendar")
@@ -484,13 +815,12 @@ def calendar_week(unit_id: int):
         },
         "sessions": [_serialize_session(s, venues_by_name) for s in sessions],
     })
-
-
+    
 @unitcoordinator_bp.post("/units/<int:unit_id>/sessions")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def create_session(unit_id: int):
-    """Create a simple session (uses/creates a module named by session_name/module_name/title)."""
+    """Create a session or a weekly series (based on 'recurrence')."""
     user = get_current_user()
     unit = _get_user_unit_or_404(user, unit_id)
     if not unit:
@@ -508,6 +838,9 @@ def create_session(unit_id: int):
     venue_name_in = (data.get("venue") or "").strip()
     venue_id_in = data.get("venue_id")
 
+    # Optional recurrence
+    rec = _parse_recurrence(data.get("recurrence"))
+
     # Validate datetime inputs
     start_dt = _parse_dt(start_raw)
     end_dt = _parse_dt(end_raw)
@@ -516,13 +849,11 @@ def create_session(unit_id: int):
     if end_dt <= start_dt:
         return jsonify({"ok": False, "error": "End time must be after start time"}), 400
 
-    # Range guard
-    if unit.start_date and start_dt.date() < unit.start_date:
-        return jsonify({"ok": False, "error": "Session start date is before unit start date"}), 400
-    if unit.end_date and end_dt.date() > unit.end_date:
-        return jsonify({"ok": False, "error": "Session end date is after unit end date"}), 400
+    # Range guard for the first
+    if not _within_unit_range(unit, start_dt) or not _within_unit_range(unit, end_dt):
+        return jsonify({"ok": False, "error": "Session outside unit date range"}), 400
 
-    # Determine and validate venue; we store the venue NAME in `location`
+    # Determine/validate venue; we store the venue NAME in `location`
     chosen_name = None
     if venue_id_in:
         link = (
@@ -546,37 +877,240 @@ def create_session(unit_id: int):
     # Pick/create module by name (falls back to 'General' if empty)
     mod = _get_or_create_module_by_name(unit, name_in)
 
-    # Create session
-    session = Session(
-        module_id=mod.id,
-        session_type="general",
-        start_time=start_dt,
-        end_time=end_dt,
-        day_of_week=start_dt.weekday(),
-        location=chosen_name,
-        required_skills=None,
-        max_facilitators=1,
-    )
-    db.session.add(session)
+    created_ids = []
     try:
+        if rec.get("occurs") == "weekly":
+            # Fan out occurrences
+            for s_dt, e_dt in _iter_weekly_occurrences(unit, start_dt, end_dt, rec):
+                # Skip exact duplicates (same module + start_time)
+                exists = (
+                    Session.query
+                    .join(Module)
+                    .filter(
+                        Module.unit_id == unit.id,
+                        Session.start_time == s_dt,
+                        Session.end_time == e_dt,
+                        Session.module_id == mod.id,
+                    )
+                    .first()
+                )
+                if exists:
+                    continue
+
+                sess = Session(
+                    module_id=mod.id,
+                    session_type="general",
+                    start_time=s_dt,
+                    end_time=e_dt,
+                    day_of_week=s_dt.weekday(),
+                    location=chosen_name,
+                    required_skills=None,
+                    max_facilitators=1,
+                )
+                db.session.add(sess)
+                db.session.flush()
+                created_ids.append(sess.id)
+        else:
+            # Single
+            session = Session(
+                module_id=mod.id,
+                session_type="general",
+                start_time=start_dt,
+                end_time=end_dt,
+                day_of_week=start_dt.weekday(),
+                location=chosen_name,
+                required_skills=None,
+                max_facilitators=1,
+            )
+            db.session.add(session)
+            db.session.flush()
+            created_ids.append(session.id)
+
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
-    # Include venue_id in response (when resolvable)
+    # Build mapping for serializer (venue_id resolution)
     venues_by_name = {}
     if chosen_name:
-            v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == chosen_name.lower()).scalar()
-            if v_id:
-                venues_by_name[chosen_name.lower()] = v_id
+        v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == chosen_name.lower()).scalar()
+        if v_id:
+            venues_by_name[chosen_name.lower()] = v_id
+
+    # Serialize the first + include all IDs
+    first = Session.query.get(created_ids[0])
+    return jsonify({
+        "ok": True,
+        "session_id": created_ids[0],
+        "created_session_ids": created_ids,
+        "session": _serialize_session(first, venues_by_name),
+    }), 201
+
+
+
+@unitcoordinator_bp.post("/units/<int:unit_id>/upload_sessions_csv")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def upload_sessions_csv(unit_id: int):
+    """
+    Accept CSV with headers: Venue, Activity, Session, Date, Time
+      - Activity: workshop|tutorial|lab|other (case-insensitive; others→'other')
+      - Date: DD/MM/YYYY or YYYY-MM-DD
+      - Time: 'HH:MM-HH:MM' (accepts '.' as separator and en-dash)
+    Creates sessions inside the unit's date range. Dedupes within-file and against existing.
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    file = request.files.get("sessions_csv")
+    if not file:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+
+    try:
+        text = file.read().decode("utf-8", errors="replace")
+        reader = csv.DictReader(StringIO(text))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Failed to read CSV: {e}"}), 400
+
+    # Header check
+    fns = [fn.strip().lower() for fn in (reader.fieldnames or [])]
+    needed = {"venue", "activity", "session", "date", "time"}
+    if not needed.issubset(set(fns)):
+        return jsonify({"ok": False, "error": "CSV must include headers: Venue, Activity, Session, Date, Time"}), 400
+
+    created = 0
+    skipped = 0
+    errors = []
+    seen = set()   # within-file dedupe key
+    created_ids = []
+
+    # Preload/collect existing venues for fast lookup
+    name_to_venue = {v.name.strip().lower(): v for v in Venue.query.all()}
+
+    # Helper to get or create venue + link to unit
+    def ensure_unit_venue(venue_name: str) -> Venue:
+        vkey = (venue_name or "").strip().lower()
+        if not vkey:
+            return None
+        venue = name_to_venue.get(vkey)
+        if not venue:
+            venue = Venue(name=venue_name.strip())
+            db.session.add(venue)
+            db.session.flush()
+            name_to_venue[vkey] = venue
+        # ensure UnitVenue link
+        if not UnitVenue.query.filter_by(unit_id=unit.id, venue_id=venue.id).first():
+            db.session.add(UnitVenue(unit_id=unit.id, venue_id=venue.id))
+        return venue
+
+    # Process rows
+    MAX_ROWS = 2000
+    for idx, row in enumerate(reader, start=2):
+        if idx - 1 > MAX_ROWS:
+            errors.append(f"Row {idx}: skipped due to row limit ({MAX_ROWS}).")
+            skipped += 1
+            continue
+
+        venue_in   = (row.get("venue") or "").strip()
+        activity_in= _coerce_activity_type(row.get("activity"))
+        session_in = (row.get("session") or "").strip()
+        date_in    = (row.get("date") or "").strip()
+        time_in    = (row.get("time") or "").strip()
+
+        if not (venue_in and activity_in and session_in and date_in and time_in):
+            skipped += 1
+            errors.append(f"Row {idx}: missing required fields.")
+            continue
+
+        d = _parse_date_multi(date_in)
+        tr = _parse_time_range(time_in)
+        if not d:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid date '{date_in}'.")
+            continue
+        if not tr:
+            skipped += 1
+            errors.append(f"Row {idx}: invalid time range '{time_in}'.")
+            continue
+
+        h1, m1, h2, m2 = tr
+        start_dt = datetime(d.year, d.month, d.day, h1, m1)
+        end_dt   = datetime(d.year, d.month, d.day, h2, m2)
+        if end_dt <= start_dt:
+            skipped += 1
+            errors.append(f"Row {idx}: end time must be after start time.")
+            continue
+
+        # Range guard
+        if not _within_unit_range(unit, start_dt) or not _within_unit_range(unit, end_dt):
+            skipped += 1
+            errors.append(f"Row {idx}: outside unit date range.")
+            continue
+
+        # File-level dedupe
+        dedupe_key = (venue_in.strip().lower(), activity_in, session_in.strip().lower(), start_dt, end_dt)
+        if dedupe_key in seen:
+            skipped += 1
+            continue
+        seen.add(dedupe_key)
+
+        # Ensure venue + link to unit
+        venue_obj = ensure_unit_venue(venue_in)
+
+        # Module: name = Session (title), type = Activity
+        mod = _get_or_create_module_by_name(unit, session_in)
+        mod.module_type = activity_in  # set/update to activity type
+
+        # DB-level dedupe: same module + start + end
+        exists = (
+            Session.query
+            .filter(
+                Session.module_id == mod.id,
+                Session.start_time == start_dt,
+                Session.end_time == end_dt,
+            )
+            .first()
+        )
+        if exists:
+            skipped += 1
+            continue
+
+        try:
+            s = Session(
+                module_id=mod.id,
+                session_type="general",
+                start_time=start_dt,
+                end_time=end_dt,
+                day_of_week=start_dt.weekday(),
+                location=venue_obj.name if venue_obj else None,
+                required_skills=None,
+                max_facilitators=1,
+            )
+            db.session.add(s)
+            db.session.flush()
+            created_ids.append(s.id)
+            created += 1
+        except Exception as e:
+            db.session.rollback()
+            errors.append(f"Row {idx}: database error: {e}")
+            continue
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Commit failed: {e}"}), 500
 
     return jsonify({
         "ok": True,
-        "session_id": session.id,   
-        "session": _serialize_session(session, venues_by_name)
-    }), 201
-
+        "created": created,
+        "skipped": skipped,
+        "errors": errors[:30],
+        "created_session_ids": created_ids,
+    })
 
 
 
@@ -584,7 +1118,7 @@ def create_session(unit_id: int):
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
 def update_session(session_id: int):
-    """Move/resize, update venue, or rename session (via module) for an existing session."""
+    """Move/resize, update venue, or rename session; optional weekly fan-out when apply_to='series'."""
     user = get_current_user()
     session = Session.query.get(session_id)
     if not session or session.module.unit.created_by != user.id:
@@ -600,6 +1134,8 @@ def update_session(session_id: int):
     if name_in:
         new_mod = _get_or_create_module_by_name(unit, name_in)
         session.module_id = new_mod.id
+    else:
+        new_mod = session.module  # use current for fan-out below
 
     # --- Validate and update start/end times ---
     if "start" in data:
@@ -654,6 +1190,54 @@ def update_session(session_id: int):
     if session.end_time <= session.start_time:
         return jsonify({"ok": False, "error": "End time must be after start time"}), 400
 
+    created_ids = []
+
+    # --- NEW: recurrence fan-out when saving with apply_to='series' ---
+    rec = _parse_recurrence(data.get("recurrence"))
+    apply_to = (data.get("apply_to") or "").lower()
+    if rec.get("occurs") == "weekly" and apply_to == "series":
+        # Use the *current* (possibly edited) times as the pattern seed
+        seed_s = session.start_time
+        seed_e = session.end_time
+        chosen_name = session.location  # normalized earlier if set
+        mod_for_series = new_mod
+
+        try:
+            for s_dt, e_dt in _iter_weekly_occurrences(unit, seed_s, seed_e, rec):
+                # Skip the seed itself (already updated above)
+                if s_dt == seed_s and e_dt == seed_e:
+                    continue
+                # Avoid exact duplicates for this module
+                exists = (
+                    Session.query
+                    .join(Module)
+                    .filter(
+                        Module.unit_id == unit.id,
+                        Session.start_time == s_dt,
+                        Session.end_time == e_dt,
+                        Session.module_id == mod_for_series.id,
+                    )
+                    .first()
+                )
+                if exists:
+                    continue
+                new_sess = Session(
+                    module_id=mod_for_series.id,
+                    session_type="general",
+                    start_time=s_dt,
+                    end_time=e_dt,
+                    day_of_week=s_dt.weekday(),
+                    location=chosen_name,
+                    required_skills=None,
+                    max_facilitators=1,
+                )
+                db.session.add(new_sess)
+                db.session.flush()
+                created_ids.append(new_sess.id)
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"ok": False, "error": f"Database error while expanding series: {str(e)}"}), 500
+
     # --- Commit changes ---
     try:
         db.session.commit()
@@ -664,11 +1248,17 @@ def update_session(session_id: int):
     # --- Include venue_id in response (when resolvable) ---
     venues_by_name = {}
     if session.location:
-            v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == session.location.lower()).scalar()
-            if v_id:
-                venues_by_name[session.location.lower()] = v_id
+        v_id = db.session.query(Venue.id).filter(func.lower(Venue.name) == session.location.lower()).scalar()
+        if v_id:
+            venues_by_name[session.location.lower()] = v_id
 
-    return jsonify({"ok": True, "session": _serialize_session(session, venues_by_name)})
+    resp = {
+        "ok": True,
+        "session": _serialize_session(session, venues_by_name)
+    }
+    if created_ids:
+        resp["created_session_ids"] = created_ids
+    return jsonify(resp)
 
 
 @unitcoordinator_bp.delete("/sessions/<int:session_id>")
@@ -712,3 +1302,24 @@ def list_venues(unit_id: int):
         "ok": True,
         "venues": [{"id": v.id, "name": v.name} for v in venues]
     })
+
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/facilitators")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def list_facilitators(unit_id: int):
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    facs = (
+        db.session.query(User.email)
+        .join(UnitFacilitator, UnitFacilitator.user_id == User.id)
+        .filter(UnitFacilitator.unit_id == unit.id)
+        .order_by(User.email.asc())
+        .all()
+    )
+    emails = [e for (e,) in facs]
+    return jsonify({"ok": True, "facilitators": emails})
+

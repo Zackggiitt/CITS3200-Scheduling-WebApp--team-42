@@ -25,15 +25,51 @@ def add_sample_sessions():
     app = create_minimal_app()
     
     with app.app_context():
-        # Get modules
-        lab1 = Module.query.get(1)
-        lab2 = Module.query.get(2)
-        workshop_a = Module.query.get(4)
-        lecture1 = Module.query.get(6)
+        from models import Unit, UserRole, User
         
-        if not lab1 or not lab2 or not workshop_a or not lecture1:
-            print("Required modules not found!")
-            return
+        # Create units first
+        geng2000 = Unit.query.filter_by(unit_code='GENG2000').first()
+        if not geng2000:
+            # Get first admin user for created_by field
+            admin_user = User.query.filter_by(role=UserRole.ADMIN).first()
+            if not admin_user:
+                print("No admin user found!")
+                return
+                
+            geng2000 = Unit(
+                unit_code='GENG2000',
+                unit_name='Engineering Computing',
+                year=2024,
+                semester='Semester 1',
+                created_by=admin_user.id
+            )
+            db.session.add(geng2000)
+            db.session.flush()
+        
+        # Create modules
+        lab1 = Module.query.filter_by(unit_id=geng2000.id, module_name='Lab 1').first()
+        if not lab1:
+            lab1 = Module(unit_id=geng2000.id, module_name='Lab 1', module_type='lab')
+            db.session.add(lab1)
+            db.session.flush()
+            
+        lab2 = Module.query.filter_by(unit_id=geng2000.id, module_name='Lab 2').first()
+        if not lab2:
+            lab2 = Module(unit_id=geng2000.id, module_name='Lab 2', module_type='lab')
+            db.session.add(lab2)
+            db.session.flush()
+            
+        workshop_a = Module.query.filter_by(unit_id=geng2000.id, module_name='Workshop A').first()
+        if not workshop_a:
+            workshop_a = Module(unit_id=geng2000.id, module_name='Workshop A', module_type='workshop')
+            db.session.add(workshop_a)
+            db.session.flush()
+            
+        lecture1 = Module.query.filter_by(unit_id=geng2000.id, module_name='Lecture 1').first()
+        if not lecture1:
+            lecture1 = Module(unit_id=geng2000.id, module_name='Lecture 1', module_type='lecture')
+            db.session.add(lecture1)
+            db.session.flush()
         
         # Add sample sessions
         # Create datetime objects for next week
