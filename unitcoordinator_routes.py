@@ -1480,11 +1480,10 @@ def upload_cas_csv(unit_id: int):
     except Exception as e:
         return jsonify({"ok": False, "error": f"Failed to read CSV: {e}"}), 400
 
-    # Normalize headers
+    # Normalize headers (accept wide variety – we will resolve per-row using aliases)
     fns = [fn.strip().lower() for fn in (reader.fieldnames or [])]
-    needed = {"activity_group_code", "day_of_week", "start_time", "duration", "weeks", "location"}
-    if not needed.intersection(set(fns)):
-        return jsonify({"ok": False, "error": "CSV missing required CAS headers"}), 400
+    if not fns:
+        return jsonify({"ok": False, "error": "CSV has no headers"}), 400
 
     # Helpers
     dow_map = {
@@ -1524,10 +1523,11 @@ def upload_cas_csv(unit_id: int):
                     continue
         return sorted(out)
 
-    # Also allow 'weeks' to be explicit dates (e.g., '30/6' or '1/7,8/7') in the CSV
+    # Also allow 'weeks' to be explicit dates/ranges (e.g., '30/6' or '24/7-28/8, 11/9-16/10')
     def parse_week_dates(s: str):
-        """Return a list of explicit date objects when 'weeks' contains dates like '30/6' or '01/07'.
-        Year is inferred from unit.start_date and rolls over if month < start month.
+        """Return a list of date objects expanded weekly when 'weeks' contains explicit
+        date tokens or date ranges. For a token like '24/7-28/8' we add dates every 7 days
+        from the first to the last date (inclusive). Year is inferred from the unit start.
         """
         s = (s or "").strip()
         if not s or "/" not in s:
@@ -1535,26 +1535,44 @@ def upload_cas_csv(unit_id: int):
         results = []
         guess_year = unit.start_date.year if unit.start_date else date.today().year
         start_month = unit.start_date.month if unit.start_date else 1
-        for token in [t.strip() for t in s.split(',') if t.strip()]:
-            m = re.match(r"^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$", token)
+
+        def parse_one_date(tok: str):
+            m = re.match(r"^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$", tok)
             if not m:
-                continue
-            d, mth, y = m.groups()
-            day_i = int(d)
-            mon_i = int(mth)
-            if y:
-                yr_i = int(y)
+                return None
+            d_str, m_str, y_str = m.groups()
+            day_i = int(d_str)
+            mon_i = int(m_str)
+            if y_str:
+                yr_i = int(y_str)
                 if yr_i < 100:
                     yr_i += 2000
             else:
                 yr_i = guess_year
-                # if the month is before start month, assume it crosses into next year
                 if mon_i < start_month:
                     yr_i += 1
             try:
-                results.append(date(yr_i, mon_i, day_i))
+                return date(yr_i, mon_i, day_i)
             except Exception:
-                continue
+                return None
+
+        for token in [t.strip() for t in s.split(',') if t.strip()]:
+            if '-' in token:
+                a, b = [p.strip() for p in token.split('-', 1)]
+                d1 = parse_one_date(a)
+                d2 = parse_one_date(b)
+                if not d1 or not d2:
+                    continue
+                if d1 > d2:
+                    d1, d2 = d2, d1
+                cur = d1
+                while cur <= d2:
+                    results.append(cur)
+                    cur = cur + timedelta(days=7)
+            else:
+                d = parse_one_date(token)
+                if d:
+                    results.append(d)
         return results
 
     # Find Monday of the unit start week (or just use start_date itself if Monday)
@@ -1586,49 +1604,112 @@ def upload_cas_csv(unit_id: int):
     created_ids = []
 
     MAX_ROWS = 5000
+    # Column alias helpers
+    def first_value(d: dict, keys):
+        for k in keys:
+            if k in d and (str(d[k]).strip() != ""):
+                return str(d[k]).strip()
+        return ""
+
+    name_keys = ["activity_group_code", "activity", "session", "module", "module_name", "activity_code", "group", "title"]
+    dow_keys = ["day_of_week", "day", "dow"]
+    start_keys = ["start_time", "start", "from"]
+    time_keys = ["time", "time_range", "session_time"]  # may contain range 'HH:MM-HH:MM'
+    duration_keys = ["duration", "minutes", "mins", "length"]
+    weeks_keys = ["weeks", "week", "teaching_weeks", "dates", "date_weeks"]
+    explicit_date_keys = ["date", "session_date"]  # single date per row (dd/mm or dd/mm/yyyy)
+    location_keys = ["location", "venue", "room", "place"]
+
     for idx, row in enumerate(reader, start=2):
         if idx - 1 > MAX_ROWS:
             skipped += 1
             errors.append(f"Row {idx}: exceeded row limit")
             continue
 
-        name_in = (row.get("activity_group_code") or "").strip()
-        dow_in = (row.get("day_of_week") or "").strip().lower()
-        start_time_in = (row.get("start_time") or "").strip()
-        duration_in = (row.get("duration") or "").strip()
-        weeks_in = (row.get("weeks") or "").strip()
-        location_in = (row.get("location") or "").strip()
+        # Row values via aliases
+        lowered_row = {k.strip().lower(): v for k, v in row.items()}
+        name_in = first_value(lowered_row, name_keys)
+        dow_in = first_value(lowered_row, dow_keys).lower()
+        start_time_in = first_value(lowered_row, start_keys)
+        time_range_in = first_value(lowered_row, time_keys)
+        duration_in = first_value(lowered_row, duration_keys)
+        weeks_in = first_value(lowered_row, weeks_keys)
+        explicit_date_in = first_value(lowered_row, explicit_date_keys)
+        location_in = first_value(lowered_row, location_keys)
 
-        if not (dow_in and start_time_in and duration_in and weeks_in):
+        # We need at minimum: a location AND (either time-range or start+duration) AND (either dates/weeks or a single date)
+        if not location_in:
             skipped += 1
             errors.append(f"Row {idx}: missing required fields")
             continue
 
-        weekday = dow_map.get(dow_in)
-        if weekday is None:
+        # Skip non-physical or unspecified locations per parsing rules
+        def _is_physical_location(loc: str) -> bool:
+            if not loc:
+                return False
+            val = loc.strip().lower()
+            if val in {"tba", "tbd", "n/a", "na"}:
+                return False
+            banned_keywords = [
+                "online", "virtual", "zoom", "teams", "webex",
+                "collaborate", "interactive", "recorded", "recording",
+                "stream", "streaming"
+            ]
+            return not any(k in val for k in banned_keywords)
+
+        if not _is_physical_location(location_in):
             skipped += 1
-            errors.append(f"Row {idx}: invalid day_of_week '{row.get('day_of_week')}'")
+            # Only log an error message if the row had a location but it's non-physical
+            if location_in:
+                errors.append(f"Row {idx}: non-physical location '{location_in}' skipped")
+            else:
+                errors.append(f"Row {idx}: missing/unspecific location skipped")
             continue
 
-        try:
-            hh, mm = [int(x) for x in re.split(r"[:\.]", start_time_in, maxsplit=1)]
-            if not (0 <= hh <= 23 and 0 <= mm <= 59):
-                raise ValueError
-        except Exception:
-            skipped += 1
-            errors.append(f"Row {idx}: invalid start_time '{start_time_in}'")
-            continue
+        weekday = dow_map.get(dow_in) if dow_in else None
 
-        try:
-            duration_min = int(duration_in)
+        # Time parsing: allow either explicit range or start+duration
+        duration_min = None
+        if time_range_in:
+            # Accept 'HH:MM-HH:MM' style
+            m = TIME_RANGE_RE.match(time_range_in.replace('–', '-').replace('—', '-'))
+            if not m:
+                skipped += 1
+                errors.append(f"Row {idx}: invalid time range '{time_range_in}'")
+                continue
+            h1, m1, h2, m2 = map(int, m.groups())
+            hh, mm = h1, m1
+            duration_min = (h2 * 60 + m2) - (h1 * 60 + m1)
             if duration_min <= 0:
-                raise ValueError
-        except Exception:
-            skipped += 1
-            errors.append(f"Row {idx}: invalid duration '{duration_in}'")
-            continue
+                skipped += 1
+                errors.append(f"Row {idx}: invalid time range (end before start)")
+                continue
+        else:
+            try:
+                hh, mm = [int(x) for x in re.split(r"[:\.]", start_time_in, maxsplit=1)]
+                if not (0 <= hh <= 23 and 0 <= mm <= 59):
+                    raise ValueError
+            except Exception:
+                skipped += 1
+                errors.append(f"Row {idx}: invalid start_time '{start_time_in}'")
+                continue
 
-        week_dates = parse_week_dates(weeks_in)
+            if duration_in:
+                try:
+                    duration_min = int(duration_in)
+                    if duration_min <= 0:
+                        raise ValueError
+                except Exception:
+                    skipped += 1
+                    errors.append(f"Row {idx}: invalid duration '{duration_in}'")
+                    continue
+            else:
+                skipped += 1
+                errors.append(f"Row {idx}: missing duration/time range")
+                continue
+
+        # Date targets: explicit date(s) column, or 'weeks' (dates or week numbers)
+        week_dates = parse_week_dates(explicit_date_in or weeks_in)
         if week_dates:
             # Use explicit dates; ignore day_of_week field and map each date directly
             targets = []
@@ -1643,15 +1724,35 @@ def upload_cas_csv(unit_id: int):
             # Convert week numbers to actual dates by weekday
             targets = []
             for w in weeks_list:
-                d0 = start_monday + timedelta(days=(w - 1) * 7 + weekday)
+                # If weekday not present, default to unit start weekday
+                wd = weekday if weekday is not None else unit_start.weekday()
+                d0 = start_monday + timedelta(days=(w - 1) * 7 + wd)
                 targets.append(d0)
 
         # Ensure module and venue (cleanup complex location strings like 'EZONENTH: [ 109] Room (30/6)')
         mod = _get_or_create_module_by_name(unit, name_in)
         clean_location = (location_in or "").strip()
         if clean_location:
-            # take first segment before comma if multiple
-            clean_location = clean_location.split(',')[0]
+            # If there are multiple comma-separated venues, pick the first physical one
+            candidates = [t.strip() for t in clean_location.split(',') if t.strip()]
+            chosen_token = None
+            for tok in candidates:
+                # Reject non-physical tokens early
+                low = tok.lower()
+                if any(k in low for k in [
+                    "online", "virtual", "zoom", "teams", "webex",
+                    "collaborate", "interactive", "recorded", "recording",
+                    "stream", "streaming", "tba", "tbd", "n/a", "na",
+                    "lecture recording"
+                ]):
+                    continue
+                chosen_token = tok
+                break
+            # Fallback to first token if none explicitly chosen (kept for backwards compatibility)
+            if not chosen_token and candidates:
+                chosen_token = candidates[0]
+
+            clean_location = chosen_token or ''
             # remove campus/prefix codes before colon
             if ':' in clean_location:
                 clean_location = clean_location.split(':', 1)[1]
@@ -1659,6 +1760,11 @@ def upload_cas_csv(unit_id: int):
             clean_location = re.sub(r"\[[^\]]*\]", "", clean_location)
             clean_location = re.sub(r"\([^\)]*\)", "", clean_location)
             clean_location = clean_location.strip()
+        # After cleaning, ensure we still have a non-empty physical venue
+        if not clean_location:
+            skipped += 1
+            errors.append(f"Row {idx}: location became empty after normalization, skipped")
+            continue
         venue_obj = ensure_unit_venue(clean_location) if clean_location else None
 
         for day_date in targets:

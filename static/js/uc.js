@@ -540,9 +540,15 @@ async function uploadSessionsCsv() {
       <div class="font-semibold">Upload successful</div>
       <div class="text-sm mt-1">Sessions created: ${data.created || 0}, Skipped: ${data.skipped || 0}</div>`;
 
-    // Refresh calendar so new sessions appear
+    // Ensure calendar section is visible and refresh/init calendar
+    const setupFlagEl = document.getElementById('setup_complete');
+    if (setupFlagEl) setupFlagEl.value = 'true';
+    showCalendarIfReady();
     if (window.calendar) {
       window.calendar.refetchEvents?.();
+    } else if (!window.__calendarInitRan) {
+      window.__calendarInitRan = true;
+      initCalendar();
     }
   } catch (err) {
     sessionsStatus.className = 'upload-status error';
@@ -613,11 +619,18 @@ async function uploadCasCsv() {
       <div class="font-semibold">Upload successful</div>
       <div class="text-sm mt-1">Sessions created: ${data.created || 0}, Skipped: ${data.skipped || 0}</div>`;
 
+    // Mark setup complete so the calendar section is shown, then refresh/init
+    const setupFlagEl = document.getElementById('setup_complete');
+    if (setupFlagEl) setupFlagEl.value = 'true';
+    showCalendarIfReady();
+
     if (window.calendar) {
       window.calendar.refetchEvents?.();
-    } else if (!window.__calendarInitRan && document.getElementById('setup_complete')?.value === 'true') {
-      window.__calendarInitRan = true;
-      initCalendar();
+    } else {
+      if (!window.__calendarInitRan) {
+        window.__calendarInitRan = true;
+        initCalendar();
+      }
     }
   } catch (err) {
     casStatus.className = 'upload-status error';
@@ -1568,8 +1581,9 @@ function handleCloseUnitModal() {
   document.getElementById('end_date_input').value = '';
   document.getElementById('date-summary').classList.add('hidden');
 
-  // Reset / destroy the session calendar
+  // Reset / destroy the session calendar AND remove all events
   if (calendar) {
+    try { calendar.removeAllEvents(); } catch (err) {}
     try { calendar.destroy(); } catch (err) { console.warn('Error destroying calendar', err); }
     calendar = null;
   }
@@ -1667,6 +1681,7 @@ async function confirmCloseModal() {
     }
   }
   
+  // Ensure the UI fully resets after backend cancel
   closeCreateUnitModal();
 }
 
