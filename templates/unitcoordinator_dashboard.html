@@ -285,19 +285,19 @@
               <!-- Stats Grid - Compact size -->
               <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white border rounded-xl p-4 text-center">
-                  <div class="text-2xl font-bold text-orange-600 mb-1">0</div>
+                  <div class="text-2xl font-bold text-orange-600 mb-1" data-stat="total_schedule">{{ fac_stats.total_schedule }}</div>
                   <div class="text-xs text-gray-600">Total Schedule</div>
                 </div>
                 <div class="bg-white border rounded-xl p-4 text-center">
-                  <div class="text-2xl font-bold text-green-600 mb-1">0</div>
+                  <div class="text-2xl font-bold text-green-600 mb-1" data-stat="schedule_assigned">{{ fac_stats.schedule_assigned }}</div>
                   <div class="text-xs text-gray-600">Schedule Assigned</div>
                 </div>
                 <div class="bg-white border rounded-xl p-4 text-center">
-                  <div class="text-2xl font-bold text-red-600 mb-1">0</div>
+                  <div class="text-2xl font-bold text-red-600 mb-1" data-stat="schedule_conflicts">{{ fac_stats.schedule_conflicts }}</div>
                   <div class="text-xs text-gray-600">Schedule Conflicts</div>
                 </div>
                 <div class="bg-white border rounded-xl p-4 text-center">
-                  <div class="text-2xl font-bold text-blue-600 mb-1">0</div>
+                  <div class="text-2xl font-bold text-blue-600 mb-1" data-stat="total_facilitators">{{ fac_stats.total_facilitators }}</div>
                   <div class="text-xs text-gray-600">Total Facilitators</div>
                 </div>
               </div>
