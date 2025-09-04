@@ -1083,8 +1083,8 @@ function wireInspectorButtons(ev) {
           window.__editingEvent.setExtendedProp('session_name', name);
           window.__editingEvent.setExtendedProp('venue', '');
           window.__editingEvent.setExtendedProp('venue_id', null);
-          window.__editingEvent.setExtendedProp('lead_required', lead_required);
-          window.__editingEvent.setExtendedProp('support_required', support_required);
+          window.__editingEvent.setExtendedProp('lead_staff_required', leadStaff);
+          window.__editingEvent.setExtendedProp('support_staff_required', supportStaff);
           
           // Update the title with proper formatting
           let displayTitle = name;
@@ -1095,6 +1095,11 @@ function wireInspectorButtons(ev) {
             title: displayTitle,
             venue: ''
           });
+          
+          // Refresh review step if we're on it
+          if (currentStep === 5) {
+            populateReview();
+          }
         }
         
         closeInspector();
@@ -2004,7 +2009,7 @@ async function populateReview() {
     const st = new Date(s.start), en = new Date(s.end);
     const sessionName = s.extendedProps?.session_name || s.title?.split('\n')[0] || 'New Session';
     const venueName = s.extendedProps?.venue || (s.title?.includes('\n') ? s.title.split('\n')[1] : '');
-    const staffCount = (s.extendedProps?.lead_required || 1) + (s.extendedProps?.support_required || 0);
+    const staffCount = (s.extendedProps?.lead_staff_required || 1) + (s.extendedProps?.support_staff_required || 0);
     
     const li = document.createElement('li');
     li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
@@ -2027,7 +2032,7 @@ async function populateReview() {
 const __origSetStep = setStep;
 setStep = function(n){
   __origSetStep(n);
-  if (n === 4) { populateReview(); }
+  if (n === 5) { populateReview(); }
 };
 
 // Update the blue Session Overview card
@@ -2486,6 +2491,10 @@ function initBulkStaffing() {
       const data = await response.json();
       if (data.ok) {
         alert(`Bulk staffing applied: ${data.updated_sessions} out of ${data.total_sessions} sessions updated with ${leadCount} lead staff and ${supportCount} support staff.`);
+        // Refresh the review step if we're currently on it
+        if (currentStep === 5) {
+          populateReview();
+        }
       } else {
         alert(`Error: ${data.error}`);
       }
