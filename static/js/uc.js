@@ -569,6 +569,9 @@ async function uploadSessionsCsv() {
       window.__calendarInitRan = true;
       initCalendar();
     }
+    
+    // Also refresh list view data
+    loadListSessionData();
   } catch (err) {
     sessionsStatus.className = 'upload-status error';
     sessionsStatus.textContent = String(err.message || 'Unexpected error during upload.');
@@ -651,6 +654,9 @@ async function uploadCasCsv() {
         initCalendar();
       }
     }
+    
+    // Also refresh list view data
+    loadListSessionData();
   } catch (err) {
     casStatus.className = 'upload-status error';
     casStatus.textContent = String(err.message || 'Unexpected error during upload.');
@@ -3069,6 +3075,9 @@ function initSchedulePanel() {
   // Load sessions for current week
   loadScheduleSessions();
   
+  // Also load data for list view
+  loadListSessionData();
+  
   // Set up event listeners
   setupScheduleEventListeners();
 }
@@ -3225,6 +3234,7 @@ function setupScheduleEventListeners() {
     prevWeekBtn.addEventListener('click', () => {
       currentWeekStart.setDate(currentWeekStart.getDate() - 7);
       loadScheduleSessions();
+      loadListSessionData(); // Also refresh list view data
     });
   }
   
@@ -3232,6 +3242,7 @@ function setupScheduleEventListeners() {
     nextWeekBtn.addEventListener('click', () => {
       currentWeekStart.setDate(currentWeekStart.getDate() + 7);
       loadScheduleSessions();
+      loadListSessionData(); // Also refresh list view data
     });
   }
 
@@ -3255,10 +3266,350 @@ function setupScheduleEventListeners() {
   }
 }
 
+// ===== List View Functions =====
+
+// Session data will be injected from the backend
+let sessionData = [];
+
+// Function to set session data from backend
+function setSessionData(data) {
+  sessionData = data || [];
+  // Re-render list view if it's currently active
+  const listView = document.getElementById('list-view');
+  if (listView && listView.style.display !== 'none') {
+    renderListView();
+  }
+}
+
+// Load session data for list view from the same API as calendar
+async function loadListSessionData() {
+  const unitId = getUnitId();
+  if (!unitId) return;
+
+  try {
+    const weekStart = currentWeekStart.toISOString().split('T')[0];
+    const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
+    
+    const response = await fetch(url, {
+      headers: { 'X-CSRFToken': CSRF_TOKEN }
+    });
+    const data = await response.json();
+    
+    if (data.ok && data.sessions) {
+      // Transform calendar session data to list view format
+      sessionData = data.sessions.map(session => ({
+        id: session.id,
+        title: session.extendedProps?.session_name || session.title || 'New Session',
+        status: getSessionStatus(session),
+        day: new Date(session.start).toLocaleDateString('en-US', { weekday: 'long' }),
+        time: formatTimeRange(session.start, session.end),
+        location: session.extendedProps?.location || session.extendedProps?.venue || 'TBA',
+        facilitator: getSessionFacilitator(session),
+        moduleType: session.extendedProps?.module_type || 'Workshop',
+        students: session.extendedProps?.students || 0
+      }));
+      
+      // Re-render list view if it's currently active
+      const listView = document.getElementById('list-view');
+      if (listView && listView.style.display !== 'none') {
+        renderListView();
+      }
+    }
+  } catch (error) {
+    console.error('Error loading list session data:', error);
+  }
+}
+
+// Helper function to determine session status
+function getSessionStatus(session) {
+  // This would need to be determined based on your business logic
+  // For now, we'll use a simple heuristic
+  if (session.extendedProps?.facilitator_id) {
+    return 'approved';
+  } else if (session.extendedProps?.pending) {
+    return 'pending';
+  } else {
+    return 'unassigned';
+  }
+}
+
+// Helper function to get facilitator name
+function getSessionFacilitator(session) {
+  return session.extendedProps?.facilitator_name || null;
+}
+
+// Helper function to format time range
+function formatTimeRange(start, end) {
+  const startTime = new Date(start).toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false 
+  });
+  const endTime = new Date(end).toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false 
+  });
+  return `${startTime} - ${endTime}`;
+}
+
+// Initialize List View
+function initListView() {
+  const viewToggle = document.querySelector('.view-toggle');
+  const calendarView = document.getElementById('calendar-view');
+  const listView = document.getElementById('list-view');
+  
+  if (!viewToggle || !calendarView || !listView) return;
+
+  // Handle view toggle
+  viewToggle.addEventListener('click', (e) => {
+    if (e.target.closest('.view-btn')) {
+      const btn = e.target.closest('.view-btn');
+      const view = btn.dataset.view;
+      
+      // Update button states
+      document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      // Show/hide views
+      if (view === 'calendar') {
+        calendarView.style.display = 'block';
+        listView.style.display = 'none';
+      } else {
+        calendarView.style.display = 'none';
+        listView.style.display = 'block';
+        // Load data from the same source as calendar view
+        loadListSessionData();
+      }
+    }
+  });
+
+  // Initialize filters
+  initFilters();
+  
+  // Render initial list
+  renderListView();
+}
+
+// Initialize filters and search
+function initFilters() {
+  const searchInput = document.getElementById('session-search');
+  const statusFilter = document.getElementById('status-filter');
+  const dayFilter = document.getElementById('day-filter');
+  const sortFilter = document.getElementById('sort-filter');
+  const sortDirection = document.getElementById('sort-direction');
+  
+  if (searchInput) {
+    searchInput.addEventListener('input', filterSessions);
+  }
+  
+  if (statusFilter) {
+    statusFilter.addEventListener('change', filterSessions);
+  }
+  
+  if (dayFilter) {
+    dayFilter.addEventListener('change', filterSessions);
+  }
+  
+  if (sortFilter) {
+    sortFilter.addEventListener('change', sortSessions);
+  }
+  
+  if (sortDirection) {
+    sortDirection.addEventListener('click', toggleSortDirection);
+  }
+}
+
+// Render the list view
+function renderListView() {
+  const container = document.getElementById('sessions-container');
+  if (!container) return;
+
+  const filteredSessions = getFilteredSessions();
+  updateSessionStats(filteredSessions);
+  
+  if (filteredSessions.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <span class="material-icons">event_note</span>
+        </div>
+        <div class="empty-state-title">No sessions found</div>
+        <div class="empty-state-text">
+          ${sessionData.length === 0 
+            ? 'No sessions have been created yet. Sessions will appear here when they are added to the schedule.'
+            : 'No sessions match your current filters. Try adjusting your search criteria.'
+          }
+        </div>
+      </div>
+    `;
+  } else {
+    container.innerHTML = filteredSessions.map(session => `
+      <div class="session-item" data-session-id="${session.id}">
+        <div class="session-item-header">
+          <div class="session-title">
+            <span class="material-icons">menu_book</span>
+            ${session.title}
+            <span class="session-status ${session.status}">
+              <span class="material-icons">${getStatusIcon(session.status)}</span>
+              ${session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+            </span>
+          </div>
+          <div class="session-actions">
+            <button class="action-btn" title="View Details">
+              <span class="material-icons">visibility</span>
+            </button>
+            <button class="action-btn" title="More Options">
+              <span class="material-icons">more_vert</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="session-details">
+          <div class="session-detail">
+            <span class="material-icons">schedule</span>
+            <span class="session-detail-value">${session.day}</span>
+            <span>${session.time}</span>
+          </div>
+          
+          <div class="session-detail">
+            <span class="material-icons">place</span>
+            <span class="session-detail-value">${session.location}</span>
+          </div>
+          
+          <div class="session-detail">
+            <span class="material-icons">person</span>
+            <span class="session-detail-value">${session.facilitator || 'Unassigned'}</span>
+          </div>
+          
+          <div class="session-detail">
+            <span class="material-icons">book</span>
+            <span class="session-detail-value">${session.moduleType}</span>
+            <span>${session.students} students</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  updateSessionCount(filteredSessions.length);
+}
+
+// Get filtered sessions based on current filters
+function getFilteredSessions() {
+  const searchTerm = document.getElementById('session-search')?.value.toLowerCase() || '';
+  const statusFilter = document.getElementById('status-filter')?.value || '';
+  const dayFilter = document.getElementById('day-filter')?.value || '';
+  
+  let filtered = sessionData.filter(session => {
+    const matchesSearch = !searchTerm || 
+      session.title.toLowerCase().includes(searchTerm) ||
+      session.location.toLowerCase().includes(searchTerm) ||
+      (session.facilitator && session.facilitator.toLowerCase().includes(searchTerm)) ||
+      session.moduleType.toLowerCase().includes(searchTerm);
+    
+    const matchesStatus = !statusFilter || session.status === statusFilter;
+    const matchesDay = !dayFilter || session.day.toLowerCase() === dayFilter;
+    
+    return matchesSearch && matchesStatus && matchesDay;
+  });
+  
+  return sortSessions(filtered);
+}
+
+// Sort sessions
+function sortSessions(sessions) {
+  const sortBy = document.getElementById('sort-filter')?.value || 'time';
+  const isAscending = !document.getElementById('sort-direction')?.classList.contains('desc');
+  
+  return sessions.sort((a, b) => {
+    let comparison = 0;
+    
+    switch (sortBy) {
+      case 'title':
+        comparison = a.title.localeCompare(b.title);
+        break;
+      case 'facilitator':
+        comparison = (a.facilitator || '').localeCompare(b.facilitator || '');
+        break;
+      case 'status':
+        comparison = a.status.localeCompare(b.status);
+        break;
+      case 'time':
+      default:
+        comparison = a.time.localeCompare(b.time);
+        break;
+    }
+    
+    return isAscending ? comparison : -comparison;
+  });
+}
+
+// Toggle sort direction
+function toggleSortDirection() {
+  const btn = document.getElementById('sort-direction');
+  const icon = btn.querySelector('.material-icons');
+  
+  if (btn.classList.contains('desc')) {
+    btn.classList.remove('desc');
+    btn.innerHTML = '<span class="material-icons">unfold_more</span> Ascending';
+  } else {
+    btn.classList.add('desc');
+    btn.innerHTML = '<span class="material-icons">unfold_less</span> Descending';
+  }
+  
+  filterSessions();
+}
+
+// Filter sessions (called by filter controls)
+function filterSessions() {
+  renderListView();
+}
+
+// Update session statistics
+function updateSessionStats(sessions) {
+  const total = sessions.length;
+  const approved = sessions.filter(s => s.status === 'approved').length;
+  const pending = sessions.filter(s => s.status === 'pending').length;
+  const unassigned = sessions.filter(s => s.status === 'unassigned').length;
+  
+  // Update stat cards
+  const totalEl = document.getElementById('total-sessions');
+  const approvedEl = document.getElementById('approved-sessions');
+  const pendingEl = document.getElementById('pending-sessions');
+  const unassignedEl = document.getElementById('unassigned-sessions');
+  
+  if (totalEl) totalEl.textContent = total;
+  if (approvedEl) approvedEl.textContent = approved;
+  if (pendingEl) pendingEl.textContent = pending;
+  if (unassignedEl) unassignedEl.textContent = unassigned;
+}
+
+// Update session count display
+function updateSessionCount(count) {
+  const filteredCount = document.getElementById('filtered-count');
+  const sessionCount = document.getElementById('session-count');
+  
+  if (filteredCount) filteredCount.textContent = count;
+  if (sessionCount) sessionCount.textContent = `${count} sessions`;
+}
+
+// Get status icon
+function getStatusIcon(status) {
+  switch (status) {
+    case 'approved': return 'check_circle';
+    case 'pending': return 'warning';
+    case 'unassigned': return 'person';
+    case 'proposed': return 'schedule';
+    default: return 'help';
+  }
+}
+
 // Initialize schedule panel when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   // Check if we're on the unit coordinator dashboard
   if (document.getElementById('schedule-grid')) {
     initSchedulePanel();
+    initListView();
   }
 });
