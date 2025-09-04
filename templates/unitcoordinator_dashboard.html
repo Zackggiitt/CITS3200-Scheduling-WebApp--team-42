@@ -110,6 +110,17 @@
       {% set unit = current_unit or (units|first) %}
       <div class="w-full max-w-5xl">
 
+        <!-- GREETING BANNER -->
+        <div class="greeting-banner mb-6">
+          <div>
+            <h2 id="greeting-message" data-user-name="{{ user.first_name }}">, {{ user.first_name }}! 👋</h2>
+            <p>Here's what's happening with your units.</p>
+          </div>
+          <div class="greeting-icon">
+            <span class="material-icons" aria-hidden="true">wb_sunny</span>
+          </div>
+        </div>
+
         <!-- UNIT CARD -->
         <article class="unit-card bg-white border rounded-xl p-6 shadow-sm flex items-start justify-between mb-4">
           <div>
@@ -428,16 +439,6 @@
 
           <!-- DASHBOARD PANEL -->
           <section id="panel-dashboard" class="uc-panel" role="tabpanel" aria-labelledby="tab-dashboard">
-            <div class="greeting-banner">
-              <div>
-                <h2 id="greeting-message" data-user-name="{{ user.first_name }}">, {{ user.first_name }}! 👋</h2>
-                <p>Here's what's happening with your units.</p>
-              </div>
-              <div class="greeting-icon">
-                <span class="material-icons" aria-hidden="true">wb_sunny</span>
-              </div>
-            </div>
-
              <!-- Session Swap Management -->
             <div class="mt-6">
               <div class="flex items-center justify-between mb-4">
