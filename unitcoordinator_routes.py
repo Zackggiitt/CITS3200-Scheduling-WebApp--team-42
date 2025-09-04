@@ -111,6 +111,8 @@ def _serialize_session(s: Session, venues_by_name=None):
             "venue_id": vid,
             "session_name": title,
             "location": s.location,
+            "lead_staff_required": s.lead_staff_required or 1,
+            "support_staff_required": s.support_staff_required or 0,
         }
     }
 
@@ -965,6 +967,10 @@ def create_session(unit_id: int):
 
     # Optional recurrence
     rec = _parse_recurrence(data.get("recurrence"))
+    
+    # Staffing requirements
+    lead_staff_required = data.get("lead_staff_required", 1)
+    support_staff_required = data.get("support_staff_required", 0)
 
     # Validate datetime inputs
     start_dt = _parse_dt(start_raw)
@@ -1031,6 +1037,8 @@ def create_session(unit_id: int):
                     location=chosen_name,
                     required_skills=None,
                     max_facilitators=1,
+                    lead_staff_required=lead_staff_required,
+                    support_staff_required=support_staff_required,
                 )
                 db.session.add(sess)
                 db.session.flush()
@@ -1046,6 +1054,8 @@ def create_session(unit_id: int):
                 location=chosen_name,
                 required_skills=None,
                 max_facilitators=1,
+                lead_staff_required=lead_staff_required,
+                support_staff_required=support_staff_required,
             )
             db.session.add(session)
             db.session.flush()
@@ -1275,6 +1285,12 @@ def update_session(session_id: int):
         if not end_time:
             return jsonify({"ok": False, "error": "Invalid end time format (use YYYY-MM-DDTHH:MM)"}), 400
         session.end_time = end_time
+
+    # --- Update staffing requirements ---
+    if "lead_staff_required" in data:
+        session.lead_staff_required = data.get("lead_staff_required", 1)
+    if "support_staff_required" in data:
+        session.support_staff_required = data.get("support_staff_required", 0)
 
     # --- Validate and update venue ---
     venue_set = False
@@ -1824,3 +1840,316 @@ def upload_cas_csv(unit_id: int):
         "errors": errors[:30],
         "created_session_ids": created_ids,
     })
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/bulk-staffing/filters")
+
+@login_required
+
+@role_required(UserRole.UNIT_COORDINATOR)
+
+def get_bulk_staffing_filters(unit_id: int):
+
+    """Get filter options for bulk staffing based on existing sessions."""
+
+    user = get_current_user()
+
+    unit = _get_user_unit_or_404(user, unit_id)
+
+    if not unit:
+
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+
+
+    filter_type = request.args.get("type", "activity")
+
+    
+
+    try:
+
+        if filter_type == "activity":
+
+            # Get unique session types
+
+            session_types = (
+
+                db.session.query(Session.session_type)
+
+                .join(Module)
+
+                .filter(Module.unit_id == unit.id, Session.session_type.isnot(None))
+
+                .distinct()
+
+                .all()
+
+            )
+
+            options = [{"value": st[0], "label": st[0]} for st in session_types if st[0]]
+
+            
+
+        elif filter_type == "session_name":
+
+            # Get unique session names (using session_type as name for now)
+
+            session_names = (
+
+                db.session.query(Session.session_type)
+
+                .join(Module)
+
+                .filter(Module.unit_id == unit.id, Session.session_type.isnot(None))
+
+                .distinct()
+
+                .all()
+
+            )
+
+            options = [{"value": sn[0], "label": sn[0]} for sn in session_names if sn[0]]
+
+            
+
+        elif filter_type == "module":
+
+            # Get modules for this unit
+
+            modules = (
+
+                db.session.query(Module.id, Module.module_name)
+
+                .filter(Module.unit_id == unit.id)
+
+                .all()
+
+            )
+
+            options = [{"value": str(m[0]), "label": m[1]} for m in modules]
+
+            
+
+        else:
+
+            return jsonify({"ok": False, "error": "Invalid filter type"}), 400
+
+
+
+        return jsonify({"ok": True, "options": options})
+
+        
+
+    except Exception as e:
+
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+
+
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/bulk-staffing/sessions")
+
+@login_required
+
+@role_required(UserRole.UNIT_COORDINATOR)
+
+def get_bulk_staffing_sessions(unit_id: int):
+
+    """Get sessions that match the bulk staffing filter criteria."""
+
+    user = get_current_user()
+
+    unit = _get_user_unit_or_404(user, unit_id)
+
+    if not unit:
+
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+
+
+    filter_type = request.args.get("type", "activity")
+
+    filter_value = request.args.get("value", "")
+
+    
+
+    if not filter_value:
+
+        return jsonify({"ok": False, "error": "Filter value required"}), 400
+
+
+
+    try:
+
+        query = Session.query.join(Module).filter(Module.unit_id == unit.id)
+
+        
+
+        if filter_type == "activity":
+
+            query = query.filter(Session.session_type == filter_value)
+
+        elif filter_type == "session_name":
+
+            query = query.filter(Session.session_type == filter_value)
+
+        elif filter_type == "module":
+
+            query = query.filter(Module.id == int(filter_value))
+
+        else:
+
+            return jsonify({"ok": False, "error": "Invalid filter type"}), 400
+
+
+
+        sessions = query.all()
+
+        
+
+        # Serialize sessions for display
+
+        session_data = []
+
+        for session in sessions:
+
+            session_data.append({
+
+                "id": session.id,
+
+                "name": session.session_type or "Unnamed Session",
+
+                "start_time": session.start_time.isoformat(),
+
+                "end_time": session.end_time.isoformat(),
+
+                "location": session.location or "TBA",
+
+                "lead_staff_required": session.lead_staff_required or 1,
+
+                "support_staff_required": session.support_staff_required or 0,
+
+                "module_name": session.module.module_name
+
+            })
+
+
+
+        return jsonify({"ok": True, "sessions": session_data})
+
+        
+
+    except Exception as e:
+
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+
+
+
+@unitcoordinator_bp.post("/units/<int:unit_id>/bulk-staffing/apply")
+
+@login_required
+
+@role_required(UserRole.UNIT_COORDINATOR)
+
+def apply_bulk_staffing(unit_id: int):
+
+    """Apply bulk staffing requirements to filtered sessions."""
+
+    user = get_current_user()
+
+    unit = _get_user_unit_or_404(user, unit_id)
+
+    if not unit:
+
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+
+
+    data = request.get_json()
+
+    filter_type = data.get("type", "activity")
+
+    filter_value = data.get("value", "")
+
+    lead_staff_required = data.get("lead_staff_required", 1)
+
+    support_staff_required = data.get("support_staff_required", 0)
+
+    respect_overrides = data.get("respect_overrides", True)
+
+
+
+    if not filter_value:
+
+        return jsonify({"ok": False, "error": "Filter value required"}), 400
+
+
+
+    try:
+
+        query = Session.query.join(Module).filter(Module.unit_id == unit.id)
+
+        
+
+        if filter_type == "activity":
+
+            query = query.filter(Session.session_type == filter_value)
+
+        elif filter_type == "session_name":
+
+            query = query.filter(Session.session_type == filter_value)
+
+        elif filter_type == "module":
+
+            query = query.filter(Module.id == int(filter_value))
+
+        else:
+
+            return jsonify({"ok": False, "error": "Invalid filter type"}), 400
+
+
+
+        sessions = query.all()
+
+        updated_count = 0
+
+
+
+        for session in sessions:
+
+            # Only update if not respecting overrides or if values are currently default
+
+            if not respect_overrides or (session.lead_staff_required == 1 and session.support_staff_required == 0):
+
+                session.lead_staff_required = lead_staff_required
+
+                session.support_staff_required = support_staff_required
+
+                updated_count += 1
+
+
+
+        db.session.commit()
+
+
+
+        return jsonify({
+
+            "ok": True, 
+
+            "updated_sessions": updated_count,
+
+            "total_sessions": len(sessions)
+
+        })
+
+        
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        return jsonify({"ok": False, "error": str(e)}), 500
+

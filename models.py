@@ -114,6 +114,8 @@ class Session(db.Model):
     location = db.Column(db.String(200))
     required_skills = db.Column(db.Text)  # JSON string of required skills
     max_facilitators = db.Column(db.Integer, default=1)
+    lead_staff_required = db.Column(db.Integer, default=1)  # Number of lead staff required
+    support_staff_required = db.Column(db.Integer, default=0)  # Number of support staff required
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships

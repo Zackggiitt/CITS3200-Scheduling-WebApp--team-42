@@ -256,7 +256,7 @@ refreshMiniRangeShading();
 
 // ===== Step navigation =====
 let currentStep = 1;
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 function setStep(n) {
   currentStep = n;
@@ -311,6 +311,11 @@ async function nextStep() {
       return;
     }
     return setStep(4);
+  }
+
+  if (currentStep === 4) {
+    // Bulk staffing step - no validation required, can proceed to review
+    return setStep(5);
   }
 }
 function prevStep() { setStep(Math.max(1, currentStep - 1)); }
@@ -989,6 +994,17 @@ async function openInspector(ev) {
   nameInput.removeEventListener('input', updateSessionOverview);
   nameInput.addEventListener('input', updateSessionOverview);
 
+  // ---- staffing fields ----
+  const leadStaffInput = document.getElementById('inspLeadStaff');
+  const supportStaffInput = document.getElementById('inspSupportStaff');
+  
+  if (leadStaffInput) {
+    leadStaffInput.value = ev.extendedProps?.lead_staff_required || 1;
+  }
+  if (supportStaffInput) {
+    supportStaffInput.value = ev.extendedProps?.support_staff_required || 0;
+  }
+
   // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
   _startTP.setDate(_pendingStart, false); // false = don't trigger onChange
@@ -1032,12 +1048,17 @@ function wireInspectorButtons(ev) {
     const endOut   = fmtLocalYYYYMMDDHHMM(pEnd);
 
 
+    const leadStaff = document.getElementById('inspLeadStaff')?.value || 1;
+    const supportStaff = document.getElementById('inspSupportStaff')?.value || 0;
+
     const payload = {
         start: startOut,
         end:   endOut,
         session_name: name,
         module_name:  name,
-        title:        name
+        title:        name,
+        lead_staff_required: parseInt(leadStaff),
+        support_staff_required: parseInt(supportStaff)
     };
 
     // recurrence from inspector UI
@@ -2260,5 +2281,237 @@ function initUnitTabs() {
 }
 
 document.addEventListener('DOMContentLoaded', initUnitTabs);
+
+// ===== Bulk Staffing Functionality =====
+function initBulkStaffing() {
+  const leadCountInput = document.getElementById('lead_count');
+  const supportCountInput = document.getElementById('support_count');
+  const leadDecreaseBtn = document.getElementById('lead_decrease');
+  const leadIncreaseBtn = document.getElementById('lead_increase');
+  const supportDecreaseBtn = document.getElementById('support_decrease');
+  const supportIncreaseBtn = document.getElementById('support_increase');
+  const filterSelect = document.getElementById('bulk_filter_select');
+  const filterTypeRadios = document.querySelectorAll('input[name="bulk_filter_type"]');
+  const previewBtn = document.getElementById('preview_bulk');
+  const applyBtn = document.getElementById('apply_bulk');
+  const resetBtn = document.getElementById('reset_bulk');
+
+  if (!leadCountInput || !supportCountInput) return;
+
+  // Counter controls
+  function updateCounter(input, delta) {
+    const current = parseInt(input.value) || 0;
+    const newValue = Math.max(0, current + delta);
+    input.value = newValue;
+  }
+
+  leadDecreaseBtn?.addEventListener('click', () => updateCounter(leadCountInput, -1));
+  leadIncreaseBtn?.addEventListener('click', () => updateCounter(leadCountInput, 1));
+  supportDecreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, -1));
+  supportIncreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, 1));
+
+  // Filter type change
+  filterTypeRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      updateFilterOptions();
+    });
+  });
+
+  // Update filter options based on selected type
+  async function updateFilterOptions() {
+    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
+    const select = filterSelect;
+    
+    if (!select) return;
+
+    // Clear existing options
+    select.innerHTML = '<option value="">Choose an option...</option>';
+
+    if (selectedType === 'activity') {
+      // Get unique session types from created sessions
+      const sessionTypes = await getSessionTypes();
+      sessionTypes.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type.value;
+        option.textContent = type.label;
+        select.appendChild(option);
+      });
+    } else if (selectedType === 'session_name') {
+      // Get unique session names
+      const sessionNames = await getSessionNames();
+      sessionNames.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name.value;
+        option.textContent = name.label;
+        select.appendChild(option);
+      });
+    } else if (selectedType === 'module') {
+      // Get unique modules
+      const modules = await getModules();
+      modules.forEach(module => {
+        const option = document.createElement('option');
+        option.value = module.value;
+        option.textContent = module.label;
+        select.appendChild(option);
+      });
+    }
+  }
+
+  // Get session types from created sessions
+  async function getSessionTypes() {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return [];
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=activity`);
+      const data = await response.json();
+      return data.ok ? data.options : [];
+    } catch (e) {
+      console.error('Failed to fetch session types:', e);
+      return [];
+    }
+  }
+
+  // Get session names from created sessions
+  async function getSessionNames() {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return [];
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=session_name`);
+      const data = await response.json();
+      return data.ok ? data.options : [];
+    } catch (e) {
+      console.error('Failed to fetch session names:', e);
+      return [];
+    }
+  }
+
+  // Get modules from the current unit
+  async function getModules() {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return [];
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=module`);
+      const data = await response.json();
+      return data.ok ? data.options : [];
+    } catch (e) {
+      console.error('Failed to fetch modules:', e);
+      return [];
+    }
+  }
+
+  // Preview functionality
+  previewBtn?.addEventListener('click', async () => {
+    const selectedFilter = filterSelect.value;
+    const leadCount = parseInt(leadCountInput.value) || 0;
+    const supportCount = parseInt(supportCountInput.value) || 0;
+    
+    if (!selectedFilter) {
+      alert('Please select a filter option first.');
+      return;
+    }
+
+    // Show preview of what will be updated
+    const sessions = await getFilteredSessions(selectedFilter);
+    alert(`Preview: ${sessions.length} sessions will be updated with ${leadCount} lead staff and ${supportCount} support staff.`);
+  });
+
+  // Apply functionality
+  applyBtn?.addEventListener('click', async () => {
+    const selectedFilter = filterSelect.value;
+    const leadCount = parseInt(leadCountInput.value) || 0;
+    const supportCount = parseInt(supportCountInput.value) || 0;
+    
+    if (!selectedFilter) {
+      alert('Please select a filter option first.');
+      return;
+    }
+
+    // Apply bulk staffing to filtered sessions
+    await applyBulkStaffing(selectedFilter, leadCount, supportCount);
+  });
+
+  // Reset functionality
+  resetBtn?.addEventListener('click', () => {
+    leadCountInput.value = '0';
+    supportCountInput.value = '0';
+  });
+
+  // Get filtered sessions based on selected filter
+  async function getFilteredSessions(filterValue) {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return [];
+    
+    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/sessions?type=${selectedType}&value=${encodeURIComponent(filterValue)}`);
+      const data = await response.json();
+      return data.ok ? data.sessions : [];
+    } catch (e) {
+      console.error('Failed to fetch filtered sessions:', e);
+      return [];
+    }
+  }
+
+  // Apply bulk staffing to sessions
+  async function applyBulkStaffing(filterValue, leadCount, supportCount) {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) {
+      alert('No unit ID found. Please complete the previous steps first.');
+      return;
+    }
+    
+    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
+    const respectOverrides = document.getElementById('respect_overrides')?.checked || false;
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': window.CSRF_TOKEN
+        },
+        body: JSON.stringify({
+          type: selectedType,
+          value: filterValue,
+          lead_staff_required: leadCount,
+          support_staff_required: supportCount,
+          respect_overrides: respectOverrides
+        })
+      });
+      
+      const data = await response.json();
+      if (data.ok) {
+        alert(`Bulk staffing applied: ${data.updated_sessions} out of ${data.total_sessions} sessions updated with ${leadCount} lead staff and ${supportCount} support staff.`);
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (e) {
+      console.error('Failed to apply bulk staffing:', e);
+      alert('Failed to apply bulk staffing. Please try again.');
+    }
+  }
+
+  // Initialize filter options when step 4 is shown
+  const step4Section = document.querySelector('[data-step="4"]');
+  if (step4Section) {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          if (!step4Section.classList.contains('hidden')) {
+            updateFilterOptions();
+          }
+        }
+      });
+    });
+    observer.observe(step4Section, { attributes: true });
+  }
+}
+
+// Initialize bulk staffing when DOM is loaded
+document.addEventListener('DOMContentLoaded', initBulkStaffing);
 
 
