@@ -272,7 +272,109 @@
                 <span class="material-icons" aria-hidden="true">wb_sunny</span>
               </div>
             </div>
+
+             <!-- Session Swap Management -->
+            <div class="mt-6">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h2 class="text-xl font-semibold">Session Swap Management</h2>
+                  <p class="text-gray-600 text-sm">Review and approve session swap requests from facilitators</p>
+                </div>
+              </div>
+              
+              <!-- Stats Grid - Compact size -->
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white border rounded-xl p-4 text-center">
+                  <div class="text-2xl font-bold text-orange-600 mb-1">0</div>
+                  <div class="text-xs text-gray-600">Total Schedule</div>
+                </div>
+                <div class="bg-white border rounded-xl p-4 text-center">
+                  <div class="text-2xl font-bold text-green-600 mb-1">0</div>
+                  <div class="text-xs text-gray-600">Schedule Assigned</div>
+                </div>
+                <div class="bg-white border rounded-xl p-4 text-center">
+                  <div class="text-2xl font-bold text-red-600 mb-1">0</div>
+                  <div class="text-xs text-gray-600">Pending Schedule</div>
+                </div>
+                <div class="bg-white border rounded-xl p-4 text-center">
+                  <div class="text-2xl font-bold text-blue-600 mb-1">0</div>
+                  <div class="text-xs text-gray-600">Schedule Conflicts</div>
+                </div>
+              </div>
+
+              <!-- Time-off Requests Chart - Right aligned -->
+              <div class="flex justify-end">
+                <div class="w-72">
+                  <div class="mb-3">
+                    <h3 class="text-lg font-semibold">Time-off Requests</h3>
+                    <p class="text-gray-600 text-xs">Facilitator request status overview</p>
+                  </div>
+                  
+                  <div class="bg-white border rounded-xl p-3">
+                    <div class="flex items-center justify-between">
+                      <!-- Chart Container - Smaller -->
+                      <div class="relative w-20 h-20">
+                        <div class="w-full h-full relative">
+                          <!-- Donut Chart SVG -->
+                          <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                            <!-- Background circle -->
+                            <circle cx="50" cy="50" r="35" fill="none" stroke="#f3f4f6" stroke-width="8"/>
+                            
+                            <!-- Approved segment (50%) -->
+                            <circle cx="50" cy="50" r="35" fill="none" stroke="#10b981" stroke-width="8"
+                                    stroke-dasharray="109.96 219.91" stroke-dashoffset="0" stroke-linecap="round"/>
+                            
+                            <!-- Pending segment (30%) -->
+                            <circle cx="50" cy="50" r="35" fill="none" stroke="#f59e0b" stroke-width="8"
+                                    stroke-dasharray="65.97 219.91" stroke-dashoffset="-109.96" stroke-linecap="round"/>
+                            
+                            <!-- Rejected segment (20%) -->
+                            <circle cx="50" cy="50" r="35" fill="none" stroke="#ef4444" stroke-width="8"
+                                    stroke-dasharray="43.98 219.91" stroke-dashoffset="-175.93" stroke-linecap="round"/>
+                          </svg>
+                          
+                          <!-- Center percentage -->
+                          <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="text-center">
+                              <div class="text-base font-bold text-gray-900">50%</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Legend - More compact -->
+                      <div class="flex flex-col space-y-1.5 ml-3">
+                        <div class="flex items-center space-x-2">
+                          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                          <div class="flex flex-col">
+                            <span class="text-xs font-medium text-gray-900">Approved</span>
+                            <span class="text-xs text-gray-500">50%</span>
+                          </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                          <div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+                          <div class="flex flex-col">
+                            <span class="text-xs font-medium text-gray-900">Pending</span>
+                            <span class="text-xs text-gray-500">30%</span>
+                          </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                          <div class="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                          <div class="flex flex-col">
+                            <span class="text-xs font-medium text-gray-900">Rejected</span>
+                            <span class="text-xs text-gray-500">20%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
+
 
           <!-- Other panels -->
           <section id="panel-staffing" class="uc-panel" role="tabpanel" aria-labelledby="tab-staffing" hidden>
