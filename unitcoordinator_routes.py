@@ -329,6 +329,35 @@ from sqlalchemy import func
 # ...other imports incl. request...
 
 # unitcoordinator_route.py (dashboard)
+@unitcoordinator_bp.route("/profile")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def profile():
+    """Unit Coordinator Profile Page"""
+    from datetime import date
+    
+    user = get_current_user()
+    today = date.today()
+    
+    # Get user's units for display
+    units = (
+        db.session.query(Unit, func.count(Session.id))
+        .outerjoin(Module, Module.unit_id == Unit.id)
+        .outerjoin(Session, Session.module_id == Module.id)
+        .filter(Unit.created_by == user.id)
+        .group_by(Unit.id)
+        .order_by(Unit.unit_code.asc())
+        .all()
+    )
+    
+    # Add session counts to units
+    units_with_counts = []
+    for unit, session_count in units:
+        setattr(unit, "session_count", int(session_count or 0))
+        units_with_counts.append(unit)
+    
+    return render_template("profile.html", user=user, units=units_with_counts, today=today)
+
 @unitcoordinator_bp.route("/dashboard")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)
