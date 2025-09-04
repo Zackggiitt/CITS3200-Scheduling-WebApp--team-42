@@ -1116,3 +1116,341 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
 .target-ok{ color:#059669; display:inline-flex; align-items:center; gap:6px; font-weight:600; }
 .target-ok .material-icons{ font-size:16px; }
 
+main {
+  padding-bottom: 20px;
+  margin-top: 1rem; 
+}
+
+/* Optional empty state inside panels */
+.uc-panel-empty {
+  background: #f9fafb;
+  border: 1px dashed #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  color: #6b7280;
+  font-size: .875rem;
+}
+
+/* --- Greeting Banner --- */
+.greeting-banner {
+    background: linear-gradient(90deg, #111827 0%, rgba(17, 24, 39, 0.95) 70%, rgba(17, 24, 39, 0.85) 100%);
+    color: #f9fafb;
+    padding: 24px 28px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px; 
+    min-height: 80px;
+}
+.greeting-banner h2 {
+  font-size: 20px; 
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.greeting-banner p {
+  font-size: 16px; 
+  color: #d1d5db; 
+  margin-top: 0;
+}
+.greeting-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+}
+.greeting-icon .material-icons {
+  font-size: 24px;
+  color: #f9fafb;
+}
+
+
+/* --- Swap queue cards --- */
+.swap-card{
+  background:#fff; border:1px solid var(--c-line); border-radius:12px;
+  box-shadow:0 1px 2px rgba(16,24,40,.04); overflow:hidden;
+}
+.swap-card__hdr{
+  padding:10px 14px; border-bottom:1px solid var(--c-line);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.swap-chip{
+  display:inline-flex; align-items:center; padding:2px 8px; border-radius:9999px;
+  font-size:12px; font-weight:600; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb;
+  margin-left:8px;
+}
+.swap-card__body{
+  display:grid; grid-template-columns:1fr auto 1fr; gap:18px; padding:14px;
+  background:#fff7ed; border-radius:12px; margin:12px; border:1px solid #fed7aa;
+}
+.swap-col{ display:flex; flex-direction:column; gap:8px; }
+.swap-person{ display:flex; align-items:center; gap:10px; }
+.swap-avatar{
+  width:36px; height:36px; border-radius:9999px; display:inline-flex; align-items:center; justify-content:center;
+  background:#eef2ff; color:#4f46e5; font-weight:700;
+}
+.swap-name{ font-weight:700; color:#111827; }
+.swap-sub{ font-size:12px; color:#6b7280; }
+.swap-side-title{ font-weight:700; }
+.swap-side-session .title { font-weight:700; color:#111827; }
+.swap-side-session .meta { font-size:14px; color:#6b7280; }
+
+.swap-arrow{ display:flex; align-items:center; justify-content:center; }
+.swap-arrow .material-icons{ color:#9ca3af; }
+
+.swap-reason{
+  margin:0 12px 12px; border:1px solid #e5e7eb; background:#f3f4f6; border-radius:10px; padding:12px;
+}
+
+.swap-card__ftr{
+  display:flex; gap:10px; justify-content:flex-end; padding:12px 14px; border-top:1px solid #e5e7eb;
+}
+.btn{
+  display:inline-flex; align-items:center; gap:6px; font-weight:600; font-size:14px;
+  padding:8px 14px; border-radius:10px; border:1px solid transparent; background:#fff; cursor:pointer;
+}
+.btn-approve{ background:#10b981; color:#fff; border-color:#10b981; }
+.btn-approve:hover{ background:#059669; border-color:#059669; }
+.btn-reject{ background:#fff; color:#b91c1c; border-color:#fecaca; }
+.btn-reject:hover{ background:#fee2e2; border-color:#fca5a5; }
+
+.priority-chip{
+  display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:9999px;
+  background:#fee2e2; color:#b91c1c; font-weight:700; font-size:12px; border:1px solid #fecaca;
+}
+.target-ok{ color:#059669; display:inline-flex; align-items:center; gap:6px; font-weight:600; }
+.target-ok .material-icons{ font-size:16px; }
+
+#todaySessionsList .mi-sm {
+  font-size: 12px;    
+  line-height: 1;
+  vertical-align: -1px; 
+}
+
+/* Attendance Summary card */
+#attendanceSummaryCard {
+  width: 350px;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: auto;
+  margin-top: 0;
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+#attendanceSummaryCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Add subtle background pattern */
+#attendanceSummaryCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(30px, -30px);
+}
+
+/* Enhanced header */
+#attendanceSummaryCard .flex.items-center.justify-between {
+  padding: 0 20px 0 4px;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+#attendanceSummaryCard h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  letter-spacing: -0.025em;
+  margin-right: auto;
+}
+
+#attendanceSummaryCard .material-icons,
+#attendanceSummaryClone .material-icons {
+  display: none;
+}
+
+/* Enhanced gauge container */
+#attendanceSummaryCard .gauge-wrap {
+  position: relative;
+  width: 180px;   
+  height: 90px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#attendanceSummaryCard canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Enhanced center label */
+#attendanceGaugeLabel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 20px;
+  color: #1f2937;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  transform: translateY(30px);
+}
+
+/* Enhanced caption */
+#attendanceSummaryCard .gauge-caption {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  margin-top: 4px;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+
+@media (max-width: 1023.98px) {
+  #attendanceSummaryCard { 
+    margin-left: auto; 
+    margin-right: auto; 
+  }
+}
+
+/* Clone Summary card - same styling as attendance card */
+#attendanceSummaryClone {
+  width: 350px;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: auto;
+  margin-top: 0;
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+  transform: translateY(-170px);
+}
+
+#attendanceSummaryClone:hover {
+  transform: translateY(-172px);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Clone card header styling */
+#attendanceSummaryClone .flex.items-center.justify-between {
+  padding: 0 0 0 0; 
+  margin-bottom: 1px;
+  gap: 12px;
+  transform: translateY(-45px)
+}
+
+#attendanceSummaryClone h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  letter-spacing: -0.025em;
+  margin-right: auto;
+}
+
+#attendanceSummaryClone .material-icons {
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+/* Clone card text content */
+#attendanceSummaryClone p {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0;
+}
+
+@media (max-width: 1023.98px) {
+  #attendanceSummaryClone { 
+    margin-left: auto; 
+    margin-right: auto; 
+  }
+}
+
+#swapLineCard {
+  width: 130%;
+  min-height: 300px; 
+  height: auto;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease-in-out;
+  border-radius: 1rem;
+  background: #ffffff;
+  overflow: hidden;
+}
+#swapLineCard .swap-line-wrap {
+  min-height: 350px; 
+  height: auto;
+}
+
+#swapLineCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+#swapLineCard canvas {
+  min-height: 300px !important; 
+  height: 300px !important;
+}
+
+#panel-dashboard .bg-blue-50 {
+  min-height: 280px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-radius: 1rem;
+  border: 1px solid #e0e7ff; 
+  background: #eff6ff !important; 
+  padding: 20px 20px 20px 20px; 
+  transition: all 0.2s ease-in-out; 
+}
+
+/* Add hover effect */
+#panel-dashboard .bg-blue-50:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+#panel-dashboard .bg-purple-50 {
+  min-height: 280px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-radius: 1rem;
+  border: 1px solid #e9d5ff;
+  background: #faf5ff !important;
+  padding: 20px;
+  transition: all 0.2s ease-in-out;
+}
+
+#panel-dashboard .bg-purple-50:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}

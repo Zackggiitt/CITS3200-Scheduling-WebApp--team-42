@@ -261,7 +261,112 @@
             </button>
           </nav>
 
-          <!-- Other panels (placeholders for now) -->
+          <!-- DASHBOARD PANEL -->
+          <section id="panel-dashboard" class="uc-panel" role="tabpanel" aria-labelledby="tab-dashboard">
+            <div class="greeting-banner">
+              <div>
+                <h2 id="greeting-message" data-user-name="{{ user.first_name }}">, {{ user.first_name }}! 👋</h2>
+                <p>Here's what's happening with your units.</p>
+              </div>
+              <div class="greeting-icon">
+                <span class="material-icons" aria-hidden="true">wb_sunny</span>
+              </div>
+            </div>
+
+             <!-- Session Swap Management -->
+            <div class="mt-6">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h2 class="text-xl font-semibold">Schedule Overview</h2>
+                  <p class="text-gray-600 text-sm">Track total sessions, assignments, conflicts, and facilitators in this unit</p>
+                </div>
+              </div>
+              
+              <!-- Stats Grid - Compact size -->
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white border rounded-xl p-4 text-center">
+                  <div class="text-2xl font-bold text-orange-600 mb-1" data-stat="total_schedule">{{ fac_stats.total_schedule }}</div>
+                  <div class="text-xs text-gray-600">Total Schedule</div>
+                </div>
+                <div class="bg-white border rounded-xl p-4 text-center">
+                  <div class="text-2xl font-bold text-green-600 mb-1" data-stat="schedule_assigned">{{ fac_stats.schedule_assigned }}</div>
+                  <div class="text-xs text-gray-600">Schedule Assigned</div>
+                </div>
+                <div class="bg-white border rounded-xl p-4 text-center">
+                  <div class="text-2xl font-bold text-red-600 mb-1" data-stat="schedule_conflicts">{{ fac_stats.schedule_conflicts }}</div>
+                  <div class="text-xs text-gray-600">Schedule Conflicts</div>
+                </div>
+                <div class="bg-white border rounded-xl p-4 text-center">
+                  <div class="text-2xl font-bold text-blue-600 mb-1" data-stat="total_facilitators">{{ fac_stats.total_facilitators }}</div>
+                  <div class="text-xs text-gray-600">Total Facilitators</div>
+                </div>
+              </div>
+
+              <!-- Sessions Overview Widget  -->
+              <div class="mt-6">
+                <div class="mb-3">
+                  <h3 class="text-lg font-semibold">Session Overview</h3>
+                  <p class="text-gray-600 text-xs">Track sessions, attendance, and upcoming schedule at a glance</p>
+                </div>
+                
+                <div id="panel-dashboard">
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Today's Sessions -->
+                    <section class="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+                      <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-semibold">Today's Sessions</h3>
+                        <span class="material-icons text-blue-500">event</span>
+                      </div>
+                      <div id="todaySessionsList" class="flex gap-3"></div>
+                    </section>
+
+                    <!-- Upcoming Sessions -->
+                    <section class="bg-purple-50 border border-purple-200 rounded-2xl p-5">
+                      <div class="flex items-center justify-between mb-1">
+                        <h3 class="text-lg font-semibold">Upcoming Sessions</h3>
+                        <span class="material-icons text-purple-500">schedule</span>
+                      </div>
+                      <p class="text-sm text-gray-600 mb-3">
+                        You have <span id="weekSessionCount">0</span> sessions this week
+                      </p>
+
+                      <!-- mini week calendar -->
+                      <div id="miniCalendarDays" class="grid grid-cols-7 gap-2 mb-4"></div>
+
+                      <!-- list -->
+                      <div id="upcomingSessionsList" class="space-y-2"></div>
+                    </section>
+
+                      <!-- Attendance Summary -->
+                      <section id="attendanceSummaryCard"
+                            class="bg-white border border-gray-200 rounded-2xl p-4">
+                      <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-semibold text-gray-900">Attendance Summary</h3>
+                        <span class="material-icons text-indigo-500 bg-indigo-50 p-1.5 rounded-lg text-sm">pie_chart</span>
+                      </div>
+                      <div class="gauge-wrap">
+                        <canvas id="attendanceGauge"></canvas>
+                        <div id="attendanceGaugeLabel">0%</div>
+                      </div>
+                      <div class="gauge-caption">Overall attendance rate</div>
+                    </section>
+                  </div>
+                  <section id="attendanceSummaryClone"
+                        class="bg-white border border-gray-200 rounded-2xl p-3 mt-6"
+                        style="width: 350px; height: 170px; margin-left: auto;">
+                  <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-semibold">Facilitator Session Count</h3>
+                    <span class="material-icons text-gray-500 text-sm">bar_chart</span>
+                  </div>
+                  <div class="clone-content">
+                    This is a placeholder for the bar chart.
+                  </div>
+                </section>
+            </div>
+          </section>
+
+
+          <!-- Other panels -->
           <section id="panel-staffing" class="uc-panel" role="tabpanel" aria-labelledby="tab-staffing" hidden>
             {# --- Session staffing stats row --- #}
             <div class="uc-stats">
