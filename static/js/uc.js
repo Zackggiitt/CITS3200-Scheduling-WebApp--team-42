@@ -2536,4 +2536,39 @@ function initBulkStaffing() {
 // Initialize bulk staffing when DOM is loaded
 document.addEventListener('DOMContentLoaded', initBulkStaffing);
 
+// ===== Unit Code Auto-Uppercase =====
+function initUnitCodeUppercase() {
+  const unitCodeInput = document.querySelector('input[name="unit_code"]');
+  
+  if (unitCodeInput) {
+    unitCodeInput.addEventListener('input', function(e) {
+      // Store cursor position
+      const cursorPosition = e.target.selectionStart;
+      
+      // Convert to uppercase
+      const uppercaseValue = e.target.value.toUpperCase();
+      
+      // Update the value
+      e.target.value = uppercaseValue;
+      
+      // Restore cursor position
+      e.target.setSelectionRange(cursorPosition, cursorPosition);
+    });
+    
+    // Also handle paste events
+    unitCodeInput.addEventListener('paste', function(e) {
+      // Allow the paste to complete, then convert to uppercase
+      setTimeout(() => {
+        const cursorPosition = e.target.selectionStart;
+        const uppercaseValue = e.target.value.toUpperCase();
+        e.target.value = uppercaseValue;
+        e.target.setSelectionRange(cursorPosition, cursorPosition);
+      }, 0);
+    });
+  }
+}
+
+// Initialize unit code uppercase when DOM is loaded
+document.addEventListener('DOMContentLoaded', initUnitCodeUppercase);
+
 
