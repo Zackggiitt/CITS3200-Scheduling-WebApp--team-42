@@ -1363,8 +1363,9 @@ main {
 /* Clone card header styling */
 #attendanceSummaryClone .flex.items-center.justify-between {
   padding: 0 0 0 0; 
-  margin-bottom: 8px;
+  margin-bottom: 1px;
   gap: 12px;
+  transform: translateY(-45px)
 }
 
 #attendanceSummaryClone h3 {
