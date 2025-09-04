@@ -183,27 +183,60 @@
 ========================================= */
 .select { position: relative; width: 100%; }
 .select-trigger{
-  width: 100%; background: #f3f4f6; border: 1px solid var(--c-line); border-radius: 8px;
-  padding: 10px 40px 10px 12px; font-size: 14px; color: var(--c-text);
+  width: 100%; background: #f8fafc; border: 1px solid #d1d5db; border-radius: 10px;
+  padding: 12px 40px 12px 16px; font-size: 14px; color: var(--c-text);
   display: flex; align-items: center; justify-content: space-between; text-align: left;
+  transition: all 0.2s ease;
+  font-weight: 500;
 }
-.select-trigger:hover { background: #eef0f3; }
-.select-trigger:focus { outline: none; border-color: var(--c-text); box-shadow: 0 0 0 3px rgba(17,24,39,.08); }
+.select-trigger:hover { 
+  background: #f1f5f9; 
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.select-trigger:focus { 
+  outline: none; 
+  border-color: #3b82f6; 
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: #fff;
+}
 .select-caret { font-size: 20px; color: #6b7280; }
 .select-list{
   position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60;
-  background: #fff; border: 1px solid var(--c-line); border-radius: 10px;
-  box-shadow: 0 12px 24px rgba(0,0,0,.08), 0 4px 8px rgba(0,0,0,.05);
-  padding: 6px 0; list-style: none; margin: 0; display: none;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: 8px 0; list-style: none; margin: 0; display: none;
+  max-height: 200px; overflow-y: auto;
+  backdrop-filter: blur(8px);
 }
 .select.open .select-list { display: block; }
 .option{
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 10px 12px; font-size: 14px; color: var(--c-text); cursor: pointer;
+  padding: 12px 16px; font-size: 14px; color: var(--c-text); cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+  margin: 2px 8px;
 }
-.option:hover { background: #f3f4f6; }
+.option:hover { 
+  background: #f8fafc; 
+  color: var(--c-text);
+  transform: translateX(2px);
+}
+.option.selected { 
+  background: #3b82f6; 
+  color: #fff; 
+  font-weight: 500;
+}
+.option.selected:hover {
+  background: #2563eb;
+  transform: translateX(2px);
+}
 .option .check { font-size: 18px; color: var(--c-text); opacity: 0; }
-.option.selected .check { opacity: 1; }
+.option.selected .check { 
+  opacity: 1; 
+  color: #fff;
+}
 
 /* =========================================
    Step 2: Date pickers (Flatpickr)
@@ -225,6 +258,323 @@
 .flatpickr-day.startRange,
 .flatpickr-day.endRange {
   background: var(--c-text) !important; color: #fff !important; border-color: var(--c-text) !important;
+}
+
+/* Flatpickr Month Dropdown Styling */
+.flatpickr-calendar .flatpickr-monthDropdown-months {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--c-text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 8px;
+  transition: all 0.2s ease;
+}
+
+.flatpickr-calendar .flatpickr-monthDropdown-months:hover {
+  background: #f3f4f6;
+}
+
+.flatpickr-calendar .flatpickr-monthDropdown-months:focus {
+  outline: none;
+  background: #f8fafc;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Month dropdown options */
+.flatpickr-calendar .flatpickr-monthDropdown-months option {
+  background: #fff;
+  color: var(--c-text);
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.flatpickr-calendar .flatpickr-monthDropdown-months option:hover {
+  background: #f8fafc;
+}
+
+.flatpickr-calendar .flatpickr-monthDropdown-months option:checked {
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Year input styling */
+.flatpickr-calendar .numInputWrapper {
+  position: relative;
+}
+
+.flatpickr-calendar .numInput {
+  background: transparent;
+  border: none;
+  color: var(--c-text);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  width: 60px;
+  text-align: center;
+}
+
+.flatpickr-calendar .numInput:hover {
+  background: #f3f4f6;
+}
+
+.flatpickr-calendar .numInput:focus {
+  outline: none;
+  background: #f8fafc;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Month navigation arrows */
+.flatpickr-calendar .flatpickr-prev-month,
+.flatpickr-calendar .flatpickr-next-month {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 16px;
+  height: 32px;
+  padding: 0;
+  transition: all 0.2s ease;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flatpickr-calendar .flatpickr-prev-month:hover,
+.flatpickr-calendar .flatpickr-next-month:hover {
+  background: #f3f4f6;
+  color: var(--c-text);
+  transform: scale(1.1);
+}
+
+.flatpickr-calendar .flatpickr-prev-month:focus,
+.flatpickr-calendar .flatpickr-next-month:focus {
+  outline: none;
+  background: #f8fafc;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Month header container */
+.flatpickr-calendar .flatpickr-months {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+/* Month dropdown container */
+.flatpickr-calendar .flatpickr-monthDropdown-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* =========================================
+   Bulk Staffing Dropdown Styling
+========================================= */
+#bulk_filter_select {
+  appearance: none;
+  background: #f8fafc;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  color: var(--c-text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 12px 40px 12px 16px;
+  transition: all 0.2s ease;
+  width: 100%;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+}
+
+#bulk_filter_select:hover {
+  background: #f1f5f9;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+#bulk_filter_select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: #fff;
+}
+
+#bulk_filter_select option {
+  background: #fff;
+  color: var(--c-text);
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+}
+
+#bulk_filter_select option:hover {
+  background: #f8fafc;
+}
+
+#bulk_filter_select option:checked {
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Bulk staffing form styling improvements */
+.bg-gray-50 {
+  background: #f8fafc !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+}
+
+.bg-gray-50 h4 {
+  color: var(--c-text);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+/* Radio button styling for bulk filter type */
+input[name="bulk_filter_type"] {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+input[name="bulk_filter_type"]:checked {
+  border-color: #3b82f6;
+  background: #3b82f6;
+}
+
+input[name="bulk_filter_type"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  border-radius: 50%;
+}
+
+input[name="bulk_filter_type"]:hover {
+  border-color: #9ca3af;
+  transform: scale(1.05);
+}
+
+input[name="bulk_filter_type"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Staff counter buttons styling */
+#lead_decrease, #lead_increase, #support_decrease, #support_increase {
+  background: #f8fafc;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  height: 32px;
+  transition: all 0.2s ease;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#lead_decrease:hover, #lead_increase:hover, #support_decrease:hover, #support_increase:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+  color: var(--c-text);
+  transform: scale(1.05);
+}
+
+#lead_decrease:active, #lead_increase:active, #support_decrease:active, #support_increase:active {
+  transform: scale(0.95);
+}
+
+/* Staff count input styling */
+#lead_count, #support_count {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: var(--c-text);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px;
+  text-align: center;
+  transition: all 0.2s ease;
+  width: 64px;
+}
+
+#lead_count:focus, #support_count:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Checkbox styling */
+#respect_overrides {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+#respect_overrides:checked {
+  border-color: #3b82f6;
+  background: #3b82f6;
+}
+
+#respect_overrides:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#respect_overrides:hover {
+  border-color: #9ca3af;
+  transform: scale(1.05);
+}
+
+#respect_overrides:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 /* Date summary chip */
