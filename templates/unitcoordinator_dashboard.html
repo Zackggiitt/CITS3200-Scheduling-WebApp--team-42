@@ -42,6 +42,37 @@
       margin-left: 6px;
       vertical-align: middle;
     }
+    
+    /* Profile button styling */
+    .user-profile-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: background-color 0.2s ease;
+    }
+    
+    .user-profile-btn:hover {
+      background-color: #f3f4f6;
+    }
+    
+    .user-profile-btn:active {
+      background-color: #e5e7eb;
+    }
+    
+    .profile-arrow {
+      font-size: 18px;
+      color: #6b7280;
+      transition: transform 0.2s ease;
+    }
+    
+    .user-profile-btn:hover .profile-arrow {
+      transform: rotate(180deg);
+    }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -71,8 +102,11 @@
         </div>
 
         <div class="user" aria-label="Current user">
-          <span class="material-icons icon-account" aria-hidden="true">account_circle</span>
-          <span class="user-name">{{ user.full_name }}</span>
+          <button class="user-profile-btn" onclick="openProfilePage()" aria-label="Open profile">
+            <span class="material-icons icon-account" aria-hidden="true">account_circle</span>
+            <span class="user-name">{{ user.full_name }}</span>
+            <span class="material-icons profile-arrow" aria-hidden="true">arrow_drop_down</span>
+          </button>
         </div>
 
         <span class="role-badge">
@@ -1475,6 +1509,17 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     UPLOAD_CAS_TEMPLATE: "{{ url_for('unitcoordinator.upload_cas_csv', unit_id=0) }}"
   };
   window.CSRF_TOKEN = "{{ csrf_token() }}";
+
+  // Profile page functionality
+  function openProfilePage() {
+    // For now, show an alert - you can replace this with actual navigation
+    alert('Profile page coming soon!');
+    
+    // When you create the profile page, you can use:
+    // window.location.href = '/unitcoordinator/profile';
+    // or
+    // window.open('/unitcoordinator/profile', '_blank');
+  }
 </script>
 
 
