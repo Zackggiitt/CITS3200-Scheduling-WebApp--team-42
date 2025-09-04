@@ -871,3 +871,33 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
 .target-ok{ color:#059669; display:inline-flex; align-items:center; gap:6px; font-weight:600; }
 .target-ok .material-icons{ font-size:16px; }
 
+.overflow-x-auto::-webkit-scrollbar {
+  display: none;
+}
+
+.session-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 140px; /* Ensures all cards have the same height */
+  flex-shrink: 0;
+  width: 280px;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: #fff;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.session-card__facilitators {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-card-details {
+  font-size: 13px; /* Smaller font size for text */
+}
+.session-card-details .material-icons {
+  font-size: 16px; /* Smaller icon size */
+}

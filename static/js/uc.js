@@ -2296,25 +2296,29 @@ function initUnitTabs() {
   };
 
   function showTab(key, focus = false) {
-    tabs.forEach(tab => {
-      const active = tab.dataset.tab === key;
-      tab.classList.toggle('is-active', active);
-      tab.setAttribute('aria-selected', active ? 'true' : 'false');
-      tab.tabIndex = active ? 0 : -1;
-      if (active && focus) tab.focus();
-    });
+  tabs.forEach(tab => {
+    const active = tab.dataset.tab === key;
+    tab.classList.toggle('is-active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    tab.tabIndex = active ? 0 : -1;
+    if (active && focus) tab.focus();
+  });
 
-    Object.entries(panels).forEach(([k, el]) => {
-      if (!el) return;
-      if (k === key) el.removeAttribute('hidden'); else el.setAttribute('hidden', '');
-    });
+  Object.entries(panels).forEach(([k, el]) => {
+    if (!el) return;
+    if (k === key) el.removeAttribute('hidden'); else el.setAttribute('hidden', '');
+  });
 
-    try { localStorage.setItem(`uc_tab_${unitId}`, key); } catch (e) {}
+  try { localStorage.setItem(`uc_tab_${unitId}`, key); } catch (e) {}
 
-    if (key === 'staffing') {
-      setTimeout(initFacilitatorFilters, 100);
-    }
+  if (key === 'staffing') {
+    setTimeout(initFacilitatorFilters, 100);
   }
+  
+  if (key === 'dashboard') {
+    setTimeout(initSessionsOverview, 100);
+  }
+}
 
   // Click to activate
   tabs.forEach(tab => {
@@ -2383,3 +2387,203 @@ function initGreetingBanner() {
 }
 
 document.addEventListener('DOMContentLoaded', initGreetingBanner);
+
+function updateTodaysSessions(sessions) {
+  const container = document.getElementById('todaySessionsList');
+  console.log('Today sessions container found:', !!container);
+  
+  if (!container) return;
+  
+  if (!sessions || sessions.length === 0) {
+    container.innerHTML = '<div class="text-sm text-gray-500">No sessions today</div>';
+    return;
+  }
+  
+  // Create horizontal scrollable container with FIXED width AND height cards
+  container.innerHTML = `
+    <div class="flex gap-3 overflow-x-auto pb-2" style="scrollbar-width: none; -ms-overflow-style: none;">
+      ${sessions.map(session => `
+        <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm w-[280px] h-[140px] flex-shrink-0 flex flex-col justify-between">
+          <div>
+            <div class="flex items-start justify-between mb-3">
+              <h5 class="font-semibold text-gray-900 text-base truncate flex-1 pr-2">${session.name}</h5>
+              <div class="text-sm text-gray-500 flex-shrink-0">${session.status || 'Scheduled'}</div>
+            </div>
+            
+            <div class="space-y-1">
+              <!-- Smaller time line -->
+              <div class="flex items-center gap-2 text-xs text-gray-700">
+                <span class="material-icons text-xs leading-none text-gray-500">schedule</span>
+                <span class="truncate">${session.time}</span>
+              </div>
+              <!-- Smaller venue line -->
+              <div class="flex items-center gap-2 text-xs text-gray-700">
+                <span class="material-icons text-xs leading-none text-gray-500">location_on</span>
+                <span class="truncate">${session.location || 'TBA'}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-2">
+            <div class="flex items-start gap-2">
+              <span class="text-xs text-gray-600 flex-shrink-0">Facilitators:</span>
+              <div class="text-xs text-gray-700 truncate">
+                ${session.facilitators?.map(f => f.name || f.initials || 'Unknown').join(', ') || 'No facilitators assigned'}
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+      
+      ${sessions.length > 2 ? `
+        <div class="w-[60px] h-[140px] flex-shrink-0 flex items-center justify-center">
+          <button class="w-10 h-10 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors">
+            <span class="material-icons">chevron_right</span>
+          </button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  
+  const scrollButton = container.querySelector('button');
+  if (scrollButton) {
+    scrollButton.addEventListener('click', () => {
+      const scrollContainer = container.querySelector('.flex.gap-3');
+      scrollContainer.scrollBy({ left: 300, behavior: 'smooth' });
+    });
+  }
+}
+// Sessions Overview Widget Functions 
+function initSessionsOverview() {
+  console.log('Initializing sessions overview...');
+  
+  // Check if we're on the dashboard panel
+  const dashboardPanel = document.getElementById('panel-dashboard');
+  if (!dashboardPanel) {
+    console.warn('Dashboard panel not found');
+    return;
+  }
+  
+  // Always show sample data for now
+  showSampleSessionsData();
+}
+
+function showSampleSessionsData() {
+  console.log('Loading sample sessions data...');
+  const sampleData = {
+    today: [
+      {
+        name: "Yin Yoga",
+        time: "8:00 AM - 9:00 AM",
+        location: "Private session - home",
+        status: "confirmed",
+        facilitators: [
+          { name: "Maya K", initials: "MK" }
+        ]
+      },
+      {
+        name: "Vinyasa Flow", 
+        time: "11:30 AM - 12:30 PM",
+        location: "Zen Studio",
+        status: "confirmed", 
+        facilitators: [
+          { name: "Sarah J", initials: "SJ" },
+          { name: "Mike R", initials: "MR" },
+          { name: "Lisa T", initials: "LT" },
+          { name: "Tom B", initials: "TB" }
+        ]
+      }
+    ],
+    upcoming: [
+      {
+        name: "Tutorial B",
+        date: "Tomorrow",
+        time: "10:00 AM",
+        location: "Room 3.21"
+      },
+      {
+        name: "Workshop",
+        date: "Wednesday",
+        time: "1:00 PM",
+        location: "EZONE 2.15"
+      }
+    ],
+    calendar: {
+      weekTotal: 8,
+      days: {
+        [new Date().toISOString().split('T')[0]]: true,
+        [new Date(Date.now() + 86400000).toISOString().split('T')[0]]: true
+      }
+    }
+  };
+  
+  updateTodaysSessions(sampleData.today);
+  updateUpcomingSessions(sampleData.upcoming);
+  updateMiniCalendar(sampleData.calendar);
+}
+
+
+
+function updateUpcomingSessions(sessions) {
+  const container = document.getElementById('upcomingSessionsList');
+  console.log('Upcoming sessions container found:', !!container);
+  
+  if (!container) return;
+  
+  if (!sessions || sessions.length === 0) {
+    container.innerHTML = '<div class="text-xs text-gray-500">No upcoming sessions</div>';
+    return;
+  }
+  
+  container.innerHTML = sessions.slice(0, 3).map(session => `
+    <div class="bg-white rounded-md p-2 border border-purple-200">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+          <span class="text-xs font-medium">${session.name}</span>
+        </div>
+        <div class="text-xs text-gray-500">${session.date}</div>
+      </div>
+      <div class="text-xs text-gray-600 mt-1">
+        ${session.time} • ${session.location || 'TBA'}
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateMiniCalendar(calendarData) {
+  const weekCountEl = document.getElementById('weekSessionCount');
+  const daysContainer = document.getElementById('miniCalendarDays');
+  
+  if (!weekCountEl || !daysContainer) return;
+  
+  weekCountEl.textContent = calendarData.weekTotal || 0;
+  
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+  
+  let daysHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(startOfWeek);
+    date.setDate(startOfWeek.getDate() + i);
+    const dayNum = date.getDate();
+    const isToday = date.toDateString() === today.toDateString();
+    const hasSession = calendarData.days && calendarData.days[date.toISOString().split('T')[0]];
+    
+    const classes = [
+      'text-center py-1 rounded text-xs',
+      isToday ? 'bg-blue-600 text-white font-medium' : 'text-gray-700',
+      hasSession ? 'relative' : ''
+    ].filter(Boolean).join(' ');
+    
+    daysHTML += `
+      <div class="${classes}">
+        ${dayNum}
+        ${hasSession ? '<div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-purple-500 rounded-full"></div>' : ''}
+      </div>
+    `;
+  }
+  
+  daysContainer.innerHTML = daysHTML;
+}
