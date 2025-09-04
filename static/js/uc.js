@@ -12,6 +12,9 @@ const {
   UPLOAD_CAS_TEMPLATE
 } = window.FLASK_ROUTES || {};
 
+const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+
+
 // ===== Helpers to inject ids into route templates =====
 function withUnitId(tpl, id)     { return tpl.replace(/\/0(\/|$)/, `/${id}$1`); }
 function withSessionId(tpl, id)  { return tpl.replace(/0(\/|$)/, `${id}$1`); }
@@ -2265,6 +2268,19 @@ function initUnitTabs() {
     if (key === 'staffing') {
       setTimeout(initFacilitatorFilters, 100);
     }
+    
+    if (key === 'dashboard') {
+      setTimeout(initSessionsOverview, 100);
+      // Re-render gauge once the panel is visible
+      setTimeout(() => {
+        renderAttendanceGauge(window.__attData.today, window.__attData.upcoming);
+      }, 150);
+
+      setTimeout(() => {
+        renderFacilitatorBar(window.__attData?.today || [], window.__attData?.upcoming || []);
+      }, 160);
+      
+    }
   }
 
   // Click to activate
@@ -2572,3 +2588,454 @@ function initUnitCodeUppercase() {
 document.addEventListener('DOMContentLoaded', initUnitCodeUppercase);
 
 
+document.addEventListener('DOMContentLoaded', initUnitTabs);
+
+// --- Greeting Banner ---
+function initGreetingBanner() {
+  const greetingEl = document.getElementById('greeting-message');
+  if (!greetingEl) return;
+
+  const iconEl = document.querySelector('.greeting-icon .material-icons');
+  const userName = greetingEl.dataset.userName || 'User';
+  const now = new Date();
+  const hour = now.getHours();
+
+  let greetingText = '';
+  let iconName = 'wb_sunny'; 
+
+  if (hour < 12) {
+    greetingText = 'Good morning';
+    iconName = 'wb_sunny';
+  } else if (hour < 18) {
+    greetingText = 'Good afternoon';
+    iconName = 'brightness_5';
+  } else {
+    greetingText = 'Good evening';
+    iconName = 'nights_stay';
+  }
+
+  greetingEl.innerHTML = `${greetingText}, ${userName}! 👋`;
+  if (iconEl) {
+    iconEl.textContent = iconName;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initGreetingBanner);
+
+function updateTodaysSessions(sessions) {
+  const container = document.getElementById('todaySessionsList');
+  console.log('Today sessions container found:', !!container);
+  
+  if (!container) return;
+  
+  if (!sessions || sessions.length === 0) {
+    container.innerHTML = '<div class="text-sm text-gray-500">No sessions today</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="flex gap-3 overflow-x-auto pb-2" style="scrollbar-width: none; -ms-overflow-style: none;">
+      ${sessions.map(session => {
+        const isConfirmed = String(session.status || '').toLowerCase() === 'confirmed';
+        const statusEl = isConfirmed
+          ? `<span class="material-icons text-green-600 text-xs leading-none" title="Confirmed" aria-label="Confirmed">task_alt</span>`
+          : `<span class="text-xs text-gray-500">${session.status || 'Scheduled'}</span>`;
+        return `
+        <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm w-[280px] h-[140px] flex-shrink-0 flex flex-col justify-between">
+          <div>
+            <div class="flex items-start justify-between mb-3">
+              <h5 class="font-semibold text-gray-900 text-base truncate flex-1 pr-2">${session.name}</h5>
+              <div class="flex items-center flex-shrink-0">${statusEl}</div>
+            </div>
+            
+             <div class="space-y-1">
+              <!-- Time (Google Material Icon, smaller) -->
+              <div class="flex items-center gap-2 text-xs text-gray-700">
+                <span class="material-icons mi-sm text-gray-500" aria-hidden="true">schedule</span>
+                <span class="truncate">${session.time}</span>
+              </div>
+              <!-- Venue (Google Material Icon, smaller) -->
+              <div class="flex items-center gap-2 text-xs text-gray-700">
+                <span class="material-icons mi-sm text-gray-500" aria-hidden="true">location_on</span>
+                <span class="truncate">${session.location || 'TBA'}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-2">
+            <div class="flex items-start gap-2">
+              <span class="text-xs text-gray-600 flex-shrink-0">Facilitators:</span>
+              <div class="text-xs text-gray-700 truncate">
+                ${session.facilitators?.map(f => f.name || f.initials || 'Unknown').join(', ') || 'No facilitators assigned'}
+              </div>
+            </div>
+          </div>
+        </div>
+        `;
+      }).join('')}
+      
+      ${sessions.length > 2 ? `
+        <div class="w-[60px] h-[140px] flex-shrink-0 flex items-center justify-center">
+          <button class="w-10 h-10 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors">
+            <span class="material-icons">chevron_right</span>
+          </button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  
+  const scrollButton = container.querySelector('button');
+  if (scrollButton) {
+    scrollButton.addEventListener('click', () => {
+      const scrollContainer = container.querySelector('.flex.gap-3');
+      scrollContainer.scrollBy({ left: 300, behavior: 'smooth' });
+    });
+  }
+}
+function loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(s);
+  });
+}
+let chartJsReady = null;
+function ensureChartJs() {
+  if (window.Chart) return Promise.resolve(window.Chart);
+  if (!chartJsReady) chartJsReady = loadScriptOnce(CHART_JS_URL).then(() => window.Chart);
+  return chartJsReady;
+}
+window.ensureChartJs = ensureChartJs;
+
+// --- Attendance gauge (semi‑circle doughnut) ---
+let attendanceGaugeChart = null;
+
+// Wait until an element has a visible size before drawing
+function waitForVisible(el, tries = 20) {
+  return new Promise((resolve, reject) => {
+    function tick(left) {
+      const rect = el.getBoundingClientRect();
+      const visible = rect.width > 0 && rect.height > 0;
+      if (visible) return resolve();
+      if (left <= 0) return reject(new Error('Gauge container never became visible'));
+      setTimeout(() => tick(left - 1), 100);
+    }
+    tick(tries);
+  });
+}
+
+function renderAttendanceGauge(today = [], upcoming = []) {
+  const canvas = document.getElementById('attendanceGauge');
+  const label = document.getElementById('attendanceGaugeLabel');
+  if (!canvas || !label) return;
+
+  const all = [...(today || []), ...(upcoming || [])];
+  const total = all.length || 0;
+  const attended = all.filter(s => {
+    const a = String(s.attendance || s.attendance_status || '').toLowerCase();
+    return ['attended', 'present', 'checked-in', 'checked in'].includes(a);
+  }).length;
+
+  const pct = total ? Math.round((attended / total) * 1000) / 10 : 0;
+  label.textContent = `${pct}%`;
+
+  const wrap = canvas.closest('.gauge-wrap') || canvas.parentElement;
+
+  // Defer draw until sized and Chart.js is ready
+   Promise.all([ensureChartJs(), waitForVisible(wrap)])
+    .then(() => {
+      if (attendanceGaugeChart) attendanceGaugeChart.destroy();
+      attendanceGaugeChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          datasets: [{
+            data: [attended, Math.max(0, total - attended)],
+            backgroundColor: ['#16a34a', '#e5e7eb'],
+            borderWidth: 0,
+            hoverOffset: 0,
+            // Rounded ends and a small gap between segments
+            borderRadius: 999,   // max rounding for arc ends
+            spacing: 4           // subtle gap to emphasize rounded caps
+          }]
+        },
+        options: {
+          rotation: -90,
+          circumference: 180,
+          cutout: '88%',        // thinner ring (was 70%)
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          responsive: true,
+          maintainAspectRatio: false,
+          // ensure arcs render smoothly
+          elements: { arc: { borderAlign: 'inner' } }
+        }
+      });
+
+      // Ensure it sizes correctly after first paint and on resize
+      setTimeout(() => attendanceGaugeChart?.resize(), 0);
+      window.addEventListener('resize', () => attendanceGaugeChart?.resize());
+    })
+    .catch((e) => console.warn('Gauge render deferred:', e.message));
+}
+
+// Keep last data so we can re-render when tab becomes visible
+window.__attData = { today: [], upcoming: [] };
+// Sessions Overview Widget Functions 
+function initSessionsOverview() {
+  console.log('Initializing sessions overview...');
+  ensureSwapLineCard();
+  const dashboardPanel = document.getElementById('panel-dashboard');
+  if (!dashboardPanel) {
+    console.warn('Dashboard panel not found');
+    return;
+  }
+  showSampleSessionsData();
+}
+
+function showSampleSessionsData() {
+  console.log('Loading sample sessions data...');
+  const sampleData = {
+    today: [
+      { name: "Workshop-01", time: "8:00 AM - 9:00 AM", location: "Private session - home", status: "confirmed", attendance: "Attended",
+        facilitators: [{ name: "Maya K", initials: "MK" }] },
+      { name: "Workshop-02", time: "11:30 AM - 12:30 PM", location: "Zen Studio", status: "confirmed", attendance: "Pending",
+        facilitators: [{ name: "Sarah J" }, { name: "Mike R" }, { name: "Lisa T" }, { name: "Tom B" }] }
+    ],
+    upcoming: [
+      { name: "Tutorial B", date: "Tomorrow",  time: "10:00 AM", location: "Room 3.21", attendance: "Pending" },
+      { name: "Workshop",   date: "Wednesday", time: "1:00 PM",  location: "EZONE 2.15", attendance: "Cancelled" }
+    ],
+    calendar: { weekTotal: 8, days: {} }
+  };
+
+  // Store for later re-render
+  window.__attData.today = sampleData.today;
+  window.__attData.upcoming = sampleData.upcoming;
+
+  updateTodaysSessions(sampleData.today);
+  updateUpcomingSessions(sampleData.upcoming);
+  updateMiniCalendar(sampleData.calendar);
+  renderAttendanceGauge(sampleData.today, sampleData.upcoming);
+  renderFacilitatorBar(sampleData.today, sampleData.upcoming);   
+}
+
+function waitForVisible(el, tries = 20) {
+  return new Promise((resolve, reject) => {
+    function tick(left) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) return resolve();
+      if (left <= 0) return reject(new Error('element not visible'));
+      setTimeout(() => tick(left - 1), 80);
+    }
+    tick(tries);
+  });
+}
+
+function ensureSwapLineCard() {
+  const attendanceCard = document.getElementById('attendanceSummaryCard');
+  if (!attendanceCard) return;
+
+  // Remove the old bar card if it exists
+  const oldBar = document.getElementById('facilitatorBarCard');
+  if (oldBar) oldBar.remove();
+
+  // If card already inserted, stop
+  if (document.getElementById('swapLineCard')) return;
+
+  // Ensure parent is a 2-col grid row
+  const grid = attendanceCard.parentElement;
+  grid.classList.add('grid', 'grid-cols-1', 'lg:grid-cols-2', 'gap-6', 'items-start');
+
+  // Pin attendance on the right
+  attendanceCard.classList.add('lg:col-start-2', 'lg:justify-self-end');
+
+  // Insert the swap line card into the left column
+  const sec = document.createElement('section');
+  sec.id = 'swapLineCard';
+  sec.className = 'lg:col-start-1 lg:col-span-1 w-full';
+  sec.innerHTML = `
+    <div class="bg-white border border-gray-200 rounded-2xl">
+      <div class="flex items-center justify-between px-4 pt-4">
+        <h3 class="text-sm font-semibold">Swap Requests Over Time</h3>
+        <span class="material-icons text-gray-500 text-sm">show_chart</span>
+      </div>
+      <div class="swap-line-wrap px-4 pb-4">
+        <canvas id="swapLine"></canvas>
+      </div>
+    </div>
+  `;
+  grid.insertBefore(sec, attendanceCard);
+}
+
+// Aggregate daily counts from raw swap events
+function buildDailySwapSeries(raw = []) {
+  const dayKey = (d) => new Date(d).toISOString().slice(0,10);
+  const map = new Map();
+
+  raw.forEach(item => {
+    let dateStr = null, count = 1;
+    if (typeof item === 'string' || item instanceof Date) {
+      dateStr = dayKey(item);
+    } else if (item?.date || item?.created || item?.created_at) {
+      dateStr = dayKey(item.date || item.created || item.created_at);
+      if (Number.isFinite(item.count)) count = item.count;
+    }
+    if (!dateStr) return;
+    map.set(dateStr, (map.get(dateStr) || 0) + count);
+  });
+
+  // Sort by date
+  const days = Array.from(map.keys()).sort();
+  const data = days.map(d => map.get(d));
+
+  // Pretty labels (e.g., 04 Sep)
+  const labels = days.map(d => {
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+  });
+
+  return { labels, data, days };
+}
+
+let swapLineChart = null;
+function renderSwapRequestsLine(raw = []) {
+  ensureSwapLineCard();
+
+  const canvas = document.getElementById('swapLine');
+  const wrap = canvas?.closest('.swap-line-wrap') || canvas?.parentElement;
+  if (!canvas || !wrap) return;
+
+  const { labels, data } = buildDailySwapSeries(raw);
+
+  // If no data, clear chart and exit
+  if (!labels.length) {
+    if (swapLineChart) { swapLineChart.destroy(); swapLineChart = null; }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    return;
+  }
+
+  ensureChartJs().then(() => waitForVisible(wrap)).then(() => {
+    if (swapLineChart) swapLineChart.destroy();
+
+    const ctx = canvas.getContext('2d');
+    // Soft gradient under the line
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, 'rgba(37, 99, 235, 0.25)');  // blue-600 @ 25%
+    grad.addColorStop(1, 'rgba(37, 99, 235, 0.00)');
+
+    swapLineChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Swap requests',
+          data,
+          borderColor: '#2563eb',    // blue-600
+          backgroundColor: grad,
+          borderWidth: 2,
+          fill: true,
+          cubicInterpolationMode: 'monotone',
+          tension: 0.35,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+          pointBackgroundColor: '#2563eb',
+          pointBorderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.parsed.y} swap${ctx.parsed.y === 1 ? '' : 's'}` }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { maxRotation: 0, autoSkip: true, color: '#6b7280' }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0, color: '#6b7280' },
+            grid: { color: 'rgba(0,0,0,.06)' }
+          }
+        }
+      }
+    });
+  }).catch(console.warn);
+}
+
+window.__swapsData = [];
+window.setSwapRequestsData = function(dataArray) {
+  window.__swapsData = Array.isArray(dataArray) ? dataArray : [];
+  renderSwapRequestsLine(window.__swapsData);
+};
+
+function updateUpcomingSessions(sessions) {
+  const container = document.getElementById('upcomingSessionsList');
+  console.log('Upcoming sessions container found:', !!container);
+  
+  if (!container) return;
+  
+  if (!sessions || sessions.length === 0) {
+    container.innerHTML = '<div class="text-xs text-gray-500">No upcoming sessions</div>';
+    return;
+  }
+  
+  container.innerHTML = sessions.slice(0, 3).map(session => `
+    <div class="bg-white rounded-md p-2 border border-purple-200">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+          <span class="text-xs font-medium">${session.name}</span>
+        </div>
+        <div class="text-xs text-gray-500">${session.date}</div>
+      </div>
+      <div class="text-xs text-gray-600 mt-1">
+        ${session.time} • ${session.location || 'TBA'}
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateMiniCalendar(calendarData) {
+  const weekCountEl = document.getElementById('weekSessionCount');
+  const daysContainer = document.getElementById('miniCalendarDays');
+  
+  if (!weekCountEl || !daysContainer) return;
+  
+  weekCountEl.textContent = calendarData.weekTotal || 0;
+  
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+  
+  let daysHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(startOfWeek);
+    date.setDate(startOfWeek.getDate() + i);
+    const dayNum = date.getDate();
+    const isToday = date.toDateString() === today.toDateString();
+    const hasSession = calendarData.days && calendarData.days[date.toISOString().split('T')[0]];
+    
+    const classes = [
+      'text-center py-1 rounded text-xs',
+      isToday ? 'bg-blue-600 text-white font-medium' : 'text-gray-700',
+      hasSession ? 'relative' : ''
+    ].filter(Boolean).join(' ');
+    
+    daysHTML += `
+      <div class="${classes}">
+        ${dayNum}
+        ${hasSession ? '<div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-purple-500 rounded-full"></div>' : ''}
+      </div>
+    `;
+  }
+  
+  daysContainer.innerHTML = daysHTML;
+}

@@ -371,6 +371,45 @@ def dashboard():
             "unstaffed": unstaffed,
         }
 
+           # ----- NEW: Facilitator stats -----
+    fac_stats = {
+        "total_schedule": 0,
+        "schedule_assigned": 0, 
+        "schedule_conflicts": 0,
+        "total_facilitators": 0
+    }
+
+    if current_unit:
+        # Total facilitators associated with this unit
+        total_facilitators = (
+            db.session.query(func.count(UnitFacilitator.user_id.distinct()))
+            .filter(UnitFacilitator.unit_id == current_unit.id)
+            .scalar() or 0
+        )
+        fac_stats["total_facilitators"] = total_facilitators
+
+        # Total schedule slots (sessions * max_facilitators)
+        total_schedule_slots = (
+            db.session.query(func.sum(func.coalesce(Session.max_facilitators, 1)))
+            .join(Module, Module.id == Session.module_id)
+            .filter(Module.unit_id == current_unit.id)
+            .scalar() or 0
+        )
+        fac_stats["total_schedule"] = total_schedule_slots
+
+        # Assigned schedule slots (total assignments)
+        assigned_slots = (
+            db.session.query(func.count(Assignment.id))
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .filter(Module.unit_id == current_unit.id)
+            .scalar() or 0
+        )
+        fac_stats["schedule_assigned"] = assigned_slots
+
+        # Schedule conflicts (placeholder for now)
+        fac_stats["schedule_conflicts"] = 0
+
     # ----- Facilitator Setup Progress + Details -----
     fac_progress = {"total": 0, "account": 0, "availability": 0, "ready": 0}
     facilitators = []
@@ -474,6 +513,7 @@ def dashboard():
         stats=stats,
         fac_progress=fac_progress,
         facilitators=facilitators,
+        fac_stats=fac_stats,
         approvals=approvals,
         approvals_count=approvals_count,
         pending_requests=pending_requests,
