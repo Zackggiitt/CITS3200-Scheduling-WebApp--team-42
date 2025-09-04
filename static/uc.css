@@ -781,7 +781,7 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
 /* --- Greeting Banner --- */
 .greeting-banner {
     background: linear-gradient(90deg, #111827 0%, rgba(17, 24, 39, 0.95) 70%, rgba(17, 24, 39, 0.85) 100%);
-    color: var(--color-text-white);
+    color: #f9fafb;
     padding: 24px 28px;
     border-radius: 10px;
     display: flex;
@@ -791,21 +791,22 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
     min-height: 80px;
 }
 .greeting-banner h2 {
-  font-size: 1.25rem; /* text-xl */
+  font-size: 20px; 
   font-weight: 700;
+  margin-bottom: 6px;
 }
 .greeting-banner p {
-  font-size: 0.875rem; /* text-sm */
-  color: #d1d5db; /* gray-300 */
-  margin-top: 0.25rem;
+  font-size: 16px; 
+  color: #d1d5db; 
+  margin-top: 0;
 }
 .greeting-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  background-color: rgba(255, 255, 255, 0.1);
+  width: 52px;
+  height: 52px;
+  background-color: rgba(255, 255, 255, 0.2);
   border-radius: 9999px;
 }
 .greeting-icon .material-icons {
