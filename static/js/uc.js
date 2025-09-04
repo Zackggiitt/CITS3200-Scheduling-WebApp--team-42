@@ -259,7 +259,7 @@ refreshMiniRangeShading();
 
 // ===== Step navigation =====
 let currentStep = 1;
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 function setStep(n) {
   currentStep = n;
@@ -314,6 +314,11 @@ async function nextStep() {
       return;
     }
     return setStep(4);
+  }
+
+  if (currentStep === 4) {
+    // Bulk staffing step - no validation required, can proceed to review
+    return setStep(5);
   }
 }
 function prevStep() { setStep(Math.max(1, currentStep - 1)); }
@@ -738,9 +743,6 @@ function initCalendar() {
             end,
             venue: '',
             session_name: '',
-            // staffing defaults
-            lead_required: DEFAULT_LEAD_REQUIRED,
-            support_required: DEFAULT_SUPPORT_REQUIRED,
             // recurrence default
             recurrence: { occurs: 'none' }
           })
@@ -758,9 +760,7 @@ function initCalendar() {
           extendedProps: {
             session_name: '',
             venue: '',
-            venue_id: null,
-            lead_required: DEFAULT_LEAD_REQUIRED,
-            support_required: DEFAULT_SUPPORT_REQUIRED
+            venue_id: null
           }
         };
 
@@ -997,6 +997,17 @@ async function openInspector(ev) {
   nameInput.removeEventListener('input', updateSessionOverview);
   nameInput.addEventListener('input', updateSessionOverview);
 
+  // ---- staffing fields ----
+  const leadStaffInput = document.getElementById('inspLeadStaff');
+  const supportStaffInput = document.getElementById('inspSupportStaff');
+  
+  if (leadStaffInput) {
+    leadStaffInput.value = ev.extendedProps?.lead_staff_required || 1;
+  }
+  if (supportStaffInput) {
+    supportStaffInput.value = ev.extendedProps?.support_staff_required || 0;
+  }
+
   // ---- timing controls (start/end + presets) ----
   ensureTimePickers();
   _startTP.setDate(_pendingStart, false); // false = don't trigger onChange
@@ -1016,11 +1027,6 @@ async function openInspector(ev) {
     };
   });
 
-  // ---- staffing (seed + buttons) ----
-  const leadReq    = ev.extendedProps?.lead_required ?? DEFAULT_LEAD_REQUIRED;
-  const supportReq = ev.extendedProps?.support_required ?? DEFAULT_SUPPORT_REQUIRED;
-  setStaffingInUI(leadReq, supportReq);
-  wireStaffingButtons();
 
   // ---- actions ----
   wireInspectorButtons(ev);
@@ -1044,8 +1050,9 @@ function wireInspectorButtons(ev) {
     const startOut = fmtLocalYYYYMMDDHHMM(pStart);
     const endOut   = fmtLocalYYYYMMDDHHMM(pEnd);
 
-    // staffing
-    const { lead_required, support_required } = getStaffingFromUI();
+
+    const leadStaff = document.getElementById('inspLeadStaff')?.value || 1;
+    const supportStaff = document.getElementById('inspSupportStaff')?.value || 0;
 
     const payload = {
         start: startOut,
@@ -1053,9 +1060,8 @@ function wireInspectorButtons(ev) {
         session_name: name,
         module_name:  name,
         title:        name,
-        // include staffing
-        lead_required,
-        support_required
+        lead_staff_required: parseInt(leadStaff),
+        support_staff_required: parseInt(supportStaff)
     };
 
     // recurrence from inspector UI
@@ -1080,8 +1086,8 @@ function wireInspectorButtons(ev) {
           window.__editingEvent.setExtendedProp('session_name', name);
           window.__editingEvent.setExtendedProp('venue', '');
           window.__editingEvent.setExtendedProp('venue_id', null);
-          window.__editingEvent.setExtendedProp('lead_required', lead_required);
-          window.__editingEvent.setExtendedProp('support_required', support_required);
+          window.__editingEvent.setExtendedProp('lead_staff_required', leadStaff);
+          window.__editingEvent.setExtendedProp('support_staff_required', supportStaff);
           
           // Update the title with proper formatting
           let displayTitle = name;
@@ -1092,6 +1098,11 @@ function wireInspectorButtons(ev) {
             title: displayTitle,
             venue: ''
           });
+          
+          // Refresh review step if we're on it
+          if (currentStep === 5) {
+            populateReview();
+          }
         }
         
         closeInspector();
@@ -1734,55 +1745,6 @@ async function createUnitFinal() {
 
 
 
-// ===== Staffing: defaults + helpers =========================================
-const DEFAULT_LEAD_REQUIRED = 1;
-const DEFAULT_SUPPORT_REQUIRED = 0;
-
-function setStaffingInUI(lead = DEFAULT_LEAD_REQUIRED, support = DEFAULT_SUPPORT_REQUIRED) {
-  const leadEl = document.getElementById('leadCount');
-  const supEl  = document.getElementById('supportCount');
-  const totalEl = document.getElementById('totalStaffText');
-
-  const safeLead = Math.max(0, Number.isFinite(+lead) ? +lead : DEFAULT_LEAD_REQUIRED);
-  const safeSup  = Math.max(0, Number.isFinite(+support) ? +support : DEFAULT_SUPPORT_REQUIRED);
-  const total = safeLead + safeSup;
-
-  if (leadEl) leadEl.textContent = String(safeLead);
-  if (supEl)  supEl.textContent  = String(safeSup);
-  if (totalEl) totalEl.textContent = `${total} ${total === 1 ? 'facilitator' : 'facilitators'}`;
-}
-
-function getStaffingFromUI() {
-  const lead = parseInt(document.getElementById('leadCount')?.textContent || DEFAULT_LEAD_REQUIRED, 10);
-  const support = parseInt(document.getElementById('supportCount')?.textContent || DEFAULT_SUPPORT_REQUIRED, 10);
-  return {
-    lead_required: Math.max(0, isNaN(lead) ? DEFAULT_LEAD_REQUIRED : lead),
-    support_required: Math.max(0, isNaN(support) ? DEFAULT_SUPPORT_REQUIRED : support)
-  };
-}
-
-function wireStaffingButtons() {
-  const leadMinus = document.getElementById('leadMinusBtn');
-  const leadPlus  = document.getElementById('leadPlusBtn');
-  const supMinus  = document.getElementById('supportMinusBtn');
-  const supPlus   = document.getElementById('supportPlusBtn');
-
-  const adjust = (id, delta, min = 0) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const cur = parseInt(el.textContent || '0', 10) || 0;
-    const next = Math.max(min, cur + delta);
-    el.textContent = String(next);
-    // refresh total
-    const { lead_required, support_required } = getStaffingFromUI();
-    setStaffingInUI(lead_required, support_required);
-  };
-
-  if (leadMinus) leadMinus.onclick = () => adjust('leadCount', -1, 0);
-  if (leadPlus)  leadPlus.onclick  = () => adjust('leadCount', +1, 0);
-  if (supMinus)  supMinus.onclick  = () => adjust('supportCount', -1, 0);
-  if (supPlus)   supPlus.onclick   = () => adjust('supportCount', +1, 0);
-}
 
 // ==== Recurrence UI helpers ===============================================
 let _recUntilPicker = null;
@@ -1906,8 +1868,7 @@ function resetCreateUnitWizard() {
   window.__calendarInitRan = false;
   window.__venueCache = {}; // clear cached venues
 
-  // 7) Inspector/staffing/recurrence small resets (safe no-ops if missing)
-  setStaffingInUI?.(1, 0);
+  // 7) Inspector/recurrence small resets (safe no-ops if missing)
   const recOccurs = document.getElementById('recOccurs');
   const recCount  = document.getElementById('recCount');
   const recUntil  = document.getElementById('recUntil');
@@ -1981,29 +1942,6 @@ async function populateReview() {
 
   const unitId = document.getElementById('unit_id').value;
 
-  // Facilitators
-  try {
-    if (LIST_FACILITATORS_TEMPLATE) {
-      const resF = await fetch(withUnitId(LIST_FACILITATORS_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
-      const dataF = await resF.json();
-      const ulF = document.getElementById('rv_facilitators');
-      ulF.innerHTML = '';
-      if (dataF.ok) {
-        dataF.facilitators.forEach(email => {
-          const li = document.createElement('li'); li.textContent = email; ulF.appendChild(li);
-        });
-        document.getElementById('rv_fac_count').textContent = dataF.facilitators.length;
-      }
-    } else {
-      // No facilitators route available yet
-      document.getElementById('rv_fac_count').textContent = 0;
-      document.getElementById('rv_facilitators').innerHTML = '<li>No facilitators data available</li>';
-    }
-  } catch (err) {
-    console.warn('Failed to load facilitators:', err);
-    document.getElementById('rv_fac_count').textContent = 0;
-    document.getElementById('rv_facilitators').innerHTML = '<li>Error loading facilitators</li>';
-  }
 
   // Venues
   try {
@@ -2074,7 +2012,20 @@ async function populateReview() {
     const st = new Date(s.start), en = new Date(s.end);
     const sessionName = s.extendedProps?.session_name || s.title?.split('\n')[0] || 'New Session';
     const venueName = s.extendedProps?.venue || (s.title?.includes('\n') ? s.title.split('\n')[1] : '');
-    const staffCount = (s.extendedProps?.lead_required || 1) + (s.extendedProps?.support_required || 0);
+    const leadCount = s.extendedProps?.lead_staff_required || 1;
+    const supportCount = s.extendedProps?.support_staff_required || 0;
+    
+    // Create staffing display text
+    let staffingText = '';
+    if (leadCount > 0 && supportCount > 0) {
+      staffingText = `${leadCount} lead, ${supportCount} support`;
+    } else if (leadCount > 0) {
+      staffingText = `${leadCount} lead`;
+    } else if (supportCount > 0) {
+      staffingText = `${supportCount} support`;
+    } else {
+      staffingText = 'No staff';
+    }
     
     const li = document.createElement('li');
     li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
@@ -2086,7 +2037,7 @@ async function populateReview() {
           <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • ${st.toLocaleDateString()} (${st.getDate()}/${st.getMonth() + 1})${s.extendedProps.location ? ' • ' + s.extendedProps.location : ''}</div>
         </div>
       </div>
-      <div class="text-sm text-gray-500">${staffCount} staff</div>
+      <div class="text-sm text-gray-500">${staffingText}</div>
     `;
     ulS.appendChild(li);
   });
@@ -2097,7 +2048,7 @@ async function populateReview() {
 const __origSetStep = setStep;
 setStep = function(n){
   __origSetStep(n);
-  if (n === 4) { populateReview(); }
+  if (n === 5) { populateReview(); }
 };
 
 // Update the blue Session Overview card
@@ -2364,6 +2315,277 @@ function initUnitTabs() {
 }
 
 document.addEventListener('DOMContentLoaded', initUnitTabs);
+
+// ===== Bulk Staffing Functionality =====
+function initBulkStaffing() {
+  const leadCountInput = document.getElementById('lead_count');
+  const supportCountInput = document.getElementById('support_count');
+  const leadDecreaseBtn = document.getElementById('lead_decrease');
+  const leadIncreaseBtn = document.getElementById('lead_increase');
+  const supportDecreaseBtn = document.getElementById('support_decrease');
+  const supportIncreaseBtn = document.getElementById('support_increase');
+  const filterSelect = document.getElementById('bulk_filter_select');
+  const filterTypeRadios = document.querySelectorAll('input[name="bulk_filter_type"]');
+  const previewBtn = document.getElementById('preview_bulk');
+  const applyBtn = document.getElementById('apply_bulk');
+  const resetBtn = document.getElementById('reset_bulk');
+
+  if (!leadCountInput || !supportCountInput) return;
+
+  // Counter controls
+  function updateCounter(input, delta) {
+    const current = parseInt(input.value) || 0;
+    const newValue = Math.max(0, current + delta);
+    input.value = newValue;
+  }
+
+  leadDecreaseBtn?.addEventListener('click', () => updateCounter(leadCountInput, -1));
+  leadIncreaseBtn?.addEventListener('click', () => updateCounter(leadCountInput, 1));
+  supportDecreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, -1));
+  supportIncreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, 1));
+
+  // Filter type change
+  filterTypeRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      updateFilterOptions();
+    });
+  });
+
+  // Update filter options based on selected type
+  async function updateFilterOptions() {
+    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
+    const select = filterSelect;
+    
+    if (!select) return;
+
+    // Clear existing options
+    select.innerHTML = '<option value="">Choose an option...</option>';
+
+    if (selectedType === 'activity') {
+      // Get unique session types from created sessions
+      const sessionTypes = await getSessionTypes();
+      sessionTypes.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type.value;
+        option.textContent = type.label;
+        select.appendChild(option);
+      });
+    } else if (selectedType === 'session_name') {
+      // Get unique session names
+      const sessionNames = await getSessionNames();
+      sessionNames.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name.value;
+        option.textContent = name.label;
+        select.appendChild(option);
+      });
+    } else if (selectedType === 'module') {
+      // Get unique modules
+      const modules = await getModules();
+      modules.forEach(module => {
+        const option = document.createElement('option');
+        option.value = module.value;
+        option.textContent = module.label;
+        select.appendChild(option);
+      });
+    }
+  }
+
+  // Get session types from created sessions
+  async function getSessionTypes() {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return [];
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=activity`);
+      const data = await response.json();
+      return data.ok ? data.options : [];
+    } catch (e) {
+      console.error('Failed to fetch session types:', e);
+      return [];
+    }
+  }
+
+  // Get session names from created sessions
+  async function getSessionNames() {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return [];
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=session_name`);
+      const data = await response.json();
+      return data.ok ? data.options : [];
+    } catch (e) {
+      console.error('Failed to fetch session names:', e);
+      return [];
+    }
+  }
+
+  // Get modules from the current unit
+  async function getModules() {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return [];
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=module`);
+      const data = await response.json();
+      return data.ok ? data.options : [];
+    } catch (e) {
+      console.error('Failed to fetch modules:', e);
+      return [];
+    }
+  }
+
+  // Preview functionality
+  previewBtn?.addEventListener('click', async () => {
+    const selectedFilter = filterSelect.value;
+    const leadCount = parseInt(leadCountInput.value) || 0;
+    const supportCount = parseInt(supportCountInput.value) || 0;
+    
+    if (!selectedFilter) {
+      alert('Please select a filter option first.');
+      return;
+    }
+
+    // Show preview of what will be updated
+    const sessions = await getFilteredSessions(selectedFilter);
+    alert(`Preview: ${sessions.length} sessions will be updated with ${leadCount} lead staff and ${supportCount} support staff.`);
+  });
+
+  // Apply functionality
+  applyBtn?.addEventListener('click', async () => {
+    const selectedFilter = filterSelect.value;
+    const leadCount = parseInt(leadCountInput.value) || 0;
+    const supportCount = parseInt(supportCountInput.value) || 0;
+    
+    if (!selectedFilter) {
+      alert('Please select a filter option first.');
+      return;
+    }
+
+    // Apply bulk staffing to filtered sessions
+    await applyBulkStaffing(selectedFilter, leadCount, supportCount);
+  });
+
+  // Reset functionality
+  resetBtn?.addEventListener('click', () => {
+    leadCountInput.value = '0';
+    supportCountInput.value = '0';
+  });
+
+  // Get filtered sessions based on selected filter
+  async function getFilteredSessions(filterValue) {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return [];
+    
+    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/sessions?type=${selectedType}&value=${encodeURIComponent(filterValue)}`);
+      const data = await response.json();
+      return data.ok ? data.sessions : [];
+    } catch (e) {
+      console.error('Failed to fetch filtered sessions:', e);
+      return [];
+    }
+  }
+
+  // Apply bulk staffing to sessions
+  async function applyBulkStaffing(filterValue, leadCount, supportCount) {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) {
+      alert('No unit ID found. Please complete the previous steps first.');
+      return;
+    }
+    
+    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
+    const respectOverrides = document.getElementById('respect_overrides')?.checked || false;
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': window.CSRF_TOKEN
+        },
+        body: JSON.stringify({
+          type: selectedType,
+          value: filterValue,
+          lead_staff_required: leadCount,
+          support_staff_required: supportCount,
+          respect_overrides: respectOverrides
+        })
+      });
+      
+      const data = await response.json();
+      if (data.ok) {
+        alert(`Bulk staffing applied: ${data.updated_sessions} out of ${data.total_sessions} sessions updated with ${leadCount} lead staff and ${supportCount} support staff.`);
+        // Refresh the review step if we're currently on it
+        if (currentStep === 5) {
+          populateReview();
+        }
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (e) {
+      console.error('Failed to apply bulk staffing:', e);
+      alert('Failed to apply bulk staffing. Please try again.');
+    }
+  }
+
+  // Initialize filter options when step 4 is shown
+  const step4Section = document.querySelector('[data-step="4"]');
+  if (step4Section) {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          if (!step4Section.classList.contains('hidden')) {
+            updateFilterOptions();
+          }
+        }
+      });
+    });
+    observer.observe(step4Section, { attributes: true });
+  }
+}
+
+// Initialize bulk staffing when DOM is loaded
+document.addEventListener('DOMContentLoaded', initBulkStaffing);
+
+// ===== Unit Code Auto-Uppercase =====
+function initUnitCodeUppercase() {
+  const unitCodeInput = document.querySelector('input[name="unit_code"]');
+  
+  if (unitCodeInput) {
+    unitCodeInput.addEventListener('input', function(e) {
+      // Store cursor position
+      const cursorPosition = e.target.selectionStart;
+      
+      // Convert to uppercase
+      const uppercaseValue = e.target.value.toUpperCase();
+      
+      // Update the value
+      e.target.value = uppercaseValue;
+      
+      // Restore cursor position
+      e.target.setSelectionRange(cursorPosition, cursorPosition);
+    });
+    
+    // Also handle paste events
+    unitCodeInput.addEventListener('paste', function(e) {
+      // Allow the paste to complete, then convert to uppercase
+      setTimeout(() => {
+        const cursorPosition = e.target.selectionStart;
+        const uppercaseValue = e.target.value.toUpperCase();
+        e.target.value = uppercaseValue;
+        e.target.setSelectionRange(cursorPosition, cursorPosition);
+      }, 0);
+    });
+  }
+}
+
+// Initialize unit code uppercase when DOM is loaded
+document.addEventListener('DOMContentLoaded', initUnitCodeUppercase);
 
 
 document.addEventListener('DOMContentLoaded', initUnitTabs);

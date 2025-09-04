@@ -751,7 +751,8 @@
         <div class="step active"><span>1</span> Unit Information</div>
         <div class="step"><span>2</span> Date Range</div>
         <div class="step"><span>3</span> Sessions</div>
-        <div class="step"><span>4</span> Review</div>
+        <div class="step"><span>4</span> Bulk Staffing</div>
+        <div class="step"><span>5</span> Review</div>
       </div>
 
       <form method="POST" action="{{ url_for('unitcoordinator.create_unit') }}" class="modal-form" id="create-unit-form">
@@ -1105,41 +1106,26 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
                 <!-- STAFFING REQUIREMENTS -->
                 <section class="insp-section">
                   <header class="insp-section__hdr">
-                    <span class="material-icons">groups</span>
+                    <span class="material-icons">group</span>
                     <h4>Staffing Requirements</h4>
                   </header>
 
-                  <div class="space-y-3">
-                    <!-- Lead -->
-                    <div class="rounded-2xl border border-green-200 bg-green-50 p-3 flex items-center justify-between">
-                      <div>
-                        <div class="font-medium">Lead Facilitators</div>
-                        <div class="text-xs text-green-700">Required • Primary responsibility</div>
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <button type="button" id="leadMinusBtn" class="cal-btn" aria-label="Decrease lead">−</button>
-                        <div id="leadCount" class="w-6 text-center font-semibold">1</div>
-                        <button type="button" id="leadPlusBtn" class="cal-btn" aria-label="Increase lead">+</button>
-                      </div>
-                    </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="insp-field">
+                      <span class="insp-field__label">
+                        <span class="material-icons">person</span>
+                        Lead Staff Required
+                      </span>
+                      <input id="inspLeadStaff" type="number" min="0" class="cal-input cal-input--soft" value="1" />
+                    </label>
 
-                    <!-- Support -->
-                    <div class="rounded-2xl border border-blue-200 bg-blue-50 p-3 flex items-center justify-between">
-                      <div>
-                        <div class="font-medium">Support Facilitators</div>
-                        <div class="text-xs text-blue-700">Optional • Additional support</div>
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <button type="button" id="supportMinusBtn" class="cal-btn" aria-label="Decrease support">−</button>
-                        <div id="supportCount" class="w-6 text-center font-semibold">0</div>
-                        <button type="button" id="supportPlusBtn" class="cal-btn" aria-label="Increase support">+</button>
-                      </div>
-                    </div>
-
-                    <!-- Total -->
-                    <div class="rounded-xl bg-gray-100 text-gray-700 px-3 py-2 text-sm">
-                      Total Staff Required: <span id="totalStaffText" class="font-semibold">1 facilitator</span>
-                    </div>
+                    <label class="insp-field">
+                      <span class="insp-field__label">
+                        <span class="material-icons">group_add</span>
+                        Support Staff Required
+                      </span>
+                      <input id="inspSupportStaff" type="number" min="0" class="cal-input cal-input--soft" value="0" />
+                    </label>
                   </div>
                 </section>
 
@@ -1153,8 +1139,108 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
 
           </div>
         </section>
-        <!-- STEP 4: Review -->
-        <section class="wizard-step hidden" data-step="4" aria-labelledby="review-title">
+
+        <!-- STEP 4: Bulk Staffing -->
+        <section class="wizard-step hidden" data-step="4" aria-labelledby="bulk-staffing-title">
+          <h2 id="bulk-staffing-title">Bulk Staffing</h2>
+          <p class="subtext">Set staff requirements across multiple sessions</p>
+
+          <div class="bg-white border border-gray-200 rounded-xl p-6">
+            <div class="mb-6">
+              <h3 class="text-lg font-semibold mb-2">Set Staff Requirements</h3>
+              <p class="text-gray-600 text-sm">
+                Use bulk staffing to quickly set lead and support staff requirements across multiple sessions. 
+                This step is optional - you can adjust individual session staffing later.
+              </p>
+            </div>
+
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+              <h4 class="font-semibold mb-4">Bulk staffing</h4>
+              
+              <!-- Filter Options -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">Choose what you want to update in bulk:</label>
+                <div class="space-y-3">
+                  <label class="flex items-center">
+                    <input type="radio" name="bulk_filter_type" value="activity" class="mr-3" checked>
+                    <span>By activity</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input type="radio" name="bulk_filter_type" value="session_name" class="mr-3">
+                    <span>By session name</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input type="radio" name="bulk_filter_type" value="module" class="mr-3">
+                    <span>By module</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Filter Selection -->
+              <div class="mb-6">
+                <label for="bulk_filter_select" class="block text-sm font-medium text-gray-700 mb-2">Select activity</label>
+                <select id="bulk_filter_select" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Choose an option...</option>
+                </select>
+              </div>
+
+              <!-- Staff Requirements -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Lead</label>
+                  <div class="flex items-center space-x-2">
+                    <button type="button" id="lead_decrease" class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center">-</button>
+                    <input type="number" id="lead_count" value="1" min="0" class="w-16 text-center border border-gray-300 rounded-md px-2 py-1">
+                    <button type="button" id="lead_increase" class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center">+</button>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Support</label>
+                  <div class="flex items-center space-x-2">
+                    <button type="button" id="support_decrease" class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center">-</button>
+                    <input type="number" id="support_count" value="0" min="0" class="w-16 text-center border border-gray-300 rounded-md px-2 py-1">
+                    <button type="button" id="support_increase" class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center">+</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Options -->
+              <div class="mb-6">
+                <label class="flex items-center">
+                  <input type="checkbox" id="respect_overrides" checked class="mr-2">
+                  <span class="text-sm text-gray-700">Respect overrides</span>
+                </label>
+              </div>
+
+              <!-- Filters Toggle -->
+              <div class="mb-6">
+                <button type="button" id="show_filters" class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                  <span>Show filters</span>
+                  <span class="ml-1">▼</span>
+                </button>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="flex space-x-3">
+                <button type="button" id="preview_bulk" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center">
+                  <span class="material-icons mr-2" style="font-size: 18px;">visibility</span>
+                  Preview
+                </button>
+                <button type="button" id="apply_bulk" class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 flex items-center">
+                  <span class="material-icons mr-2" style="font-size: 18px;">check</span>
+                  Apply to all
+                </button>
+                <button type="button" id="reset_bulk" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center">
+                  <span class="material-icons mr-2" style="font-size: 18px;">refresh</span>
+                  Reset to 0
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 5: Review -->
+        <section class="wizard-step hidden" data-step="5" aria-labelledby="review-title">
           <h2 id="review-title">Review &amp; Create</h2>
           <p class="subtext">Confirm details before creating your unit</p>
 
@@ -1194,11 +1280,6 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
               <ul id="rv_sessions" class="space-y-2"></ul>
             </div>
 
-            <!-- Facilitators -->
-            <div>
-              <h3 class="text-base font-semibold mb-2">Facilitators (<span id="rv_fac_count">0</span>)</h3>
-              <ul id="rv_facilitators" class="list-disc pl-5 text-sm text-gray-800"></ul>
-            </div>
           </div>
         </section>
 
