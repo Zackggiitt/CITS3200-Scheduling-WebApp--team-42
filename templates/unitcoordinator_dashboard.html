@@ -261,7 +261,20 @@
             </button>
           </nav>
 
-          <!-- Other panels (placeholders for now) -->
+          <!-- DASHBOARD PANEL -->
+          <section id="panel-dashboard" class="uc-panel" role="tabpanel" aria-labelledby="tab-dashboard">
+            <div class="greeting-banner">
+              <div>
+                <h2 id="greeting-message" data-user-name="{{ user.first_name }}">, {{ user.first_name }}! 👋</h2>
+                <p>Here's what's happening with your units today.</p>
+              </div>
+              <div class="greeting-icon">
+                <span class="material-icons" aria-hidden="true">wb_sunny</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Other panels -->
           <section id="panel-staffing" class="uc-panel" role="tabpanel" aria-labelledby="tab-staffing" hidden>
             {# --- Session staffing stats row --- #}
             <div class="uc-stats">

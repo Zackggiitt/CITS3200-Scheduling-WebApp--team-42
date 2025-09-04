@@ -2350,3 +2350,36 @@ function initUnitTabs() {
 document.addEventListener('DOMContentLoaded', initUnitTabs);
 
 
+document.addEventListener('DOMContentLoaded', initUnitTabs);
+
+// --- Greeting Banner ---
+function initGreetingBanner() {
+  const greetingEl = document.getElementById('greeting-message');
+  if (!greetingEl) return;
+
+  const iconEl = document.querySelector('.greeting-icon .material-icons');
+  const userName = greetingEl.dataset.userName || 'User';
+  const now = new Date();
+  const hour = now.getHours();
+
+  let greetingText = '';
+  let iconName = 'wb_sunny'; 
+
+  if (hour < 12) {
+    greetingText = 'Good morning';
+    iconName = 'wb_sunny';
+  } else if (hour < 18) {
+    greetingText = 'Good afternoon';
+    iconName = 'brightness_5';
+  } else {
+    greetingText = 'Good evening';
+    iconName = 'nights_stay';
+  }
+
+  greetingEl.innerHTML = `${greetingText}, ${userName}! 👋`;
+  if (iconEl) {
+    iconEl.textContent = iconName;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initGreetingBanner);
