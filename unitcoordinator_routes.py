@@ -358,6 +358,151 @@ def profile():
     
     return render_template("profile.html", user=user, units=units_with_counts, today=today)
 
+@unitcoordinator_bp.route("/account-settings")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def account_settings():
+    """Unit Coordinator Account Settings Page"""
+    user = get_current_user()
+    return render_template("account_settings.html", user=user)
+
+@unitcoordinator_bp.route("/update-personal-info", methods=["POST"])
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def update_personal_info():
+    """Update user's personal information (name and email)"""
+    user = get_current_user()
+    
+    try:
+        # Get form data
+        full_name = request.form.get('full_name', '').strip()
+        email = request.form.get('email', '').strip()
+        
+        # Validate required fields
+        if not full_name:
+            flash('Full name is required', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        if not email:
+            flash('Email address is required', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        # Validate email format
+        if not EMAIL_RE.match(email):
+            flash('Please enter a valid email address', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        # Check if email is already taken by another user
+        existing_user = User.query.filter(User.email == email, User.id != user.id).first()
+        if existing_user:
+            flash('This email address is already in use by another account', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        # Update user information
+        user.full_name = full_name
+        user.email = email
+        
+        db.session.commit()
+        flash('Personal information updated successfully', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating personal info: {str(e)}")
+        flash('An error occurred while updating your information. Please try again.', 'error')
+    
+    return redirect(url_for('unitcoordinator.account_settings'))
+
+@unitcoordinator_bp.route("/update-contact-info", methods=["POST"])
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def update_contact_info():
+    """Update user's contact information"""
+    user = get_current_user()
+    
+    try:
+        # Get form data
+        phone = request.form.get('phone', '').strip()
+        mobile = request.form.get('mobile', '').strip()
+        address = request.form.get('address', '').strip()
+        
+        # Update user information
+        user.phone = phone if phone else None
+        user.mobile = mobile if mobile else None
+        user.address = address if address else None
+        
+        db.session.commit()
+        flash('Contact information updated successfully', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating contact info: {str(e)}")
+        flash('An error occurred while updating your contact information. Please try again.', 'error')
+    
+    return redirect(url_for('unitcoordinator.account_settings'))
+
+@unitcoordinator_bp.route("/change-password", methods=["POST"])
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def change_password():
+    """Change user's password"""
+    user = get_current_user()
+    
+    try:
+        # Get form data
+        current_password = request.form.get('current_password', '')
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        # Validate required fields
+        if not current_password:
+            flash('Current password is required', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        if not new_password:
+            flash('New password is required', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        if not confirm_password:
+            flash('Please confirm your new password', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        # Validate password confirmation
+        if new_password != confirm_password:
+            flash('New passwords do not match', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        # Validate current password
+        if not user.check_password(current_password):
+            flash('Current password is incorrect', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        # Validate new password strength
+        if len(new_password) < 8:
+            flash('New password must be at least 8 characters long', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        # Check for uppercase, lowercase, number, and special character
+        has_upper = any(c.isupper() for c in new_password)
+        has_lower = any(c.islower() for c in new_password)
+        has_digit = any(c.isdigit() for c in new_password)
+        has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in new_password)
+        
+        if not (has_upper and has_lower and has_digit and has_special):
+            flash('New password must contain uppercase letters, lowercase letters, numbers, and special characters', 'error')
+            return redirect(url_for('unitcoordinator.account_settings'))
+        
+        # Update password
+        user.set_password(new_password)
+        db.session.commit()
+        flash('Password changed successfully', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error changing password: {str(e)}")
+        flash('An error occurred while changing your password. Please try again.', 'error')
+    
+    return redirect(url_for('unitcoordinator.account_settings'))
+
 @unitcoordinator_bp.route("/dashboard")
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)

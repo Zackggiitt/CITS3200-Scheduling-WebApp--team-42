@@ -236,7 +236,7 @@
                   <span class="material-icons">person</span>
                   <span>View Profile</span>
                 </a>
-                <a href="#" class="profile-menu-item" onclick="openAccountSettings()">
+                <a href="{{ url_for('unitcoordinator.account_settings') }}" class="profile-menu-item">
                   <span class="material-icons">settings</span>
                   <span>Account Settings</span>
                 </a>
@@ -1674,10 +1674,6 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     window.location.href = '/unitcoordinator/profile';
   }
   
-  function openAccountSettings() {
-    alert('Account settings coming soon!');
-    // window.location.href = '/unitcoordinator/settings';
-  }
   
   function openPreferences() {
     alert('Preferences coming soon!');
