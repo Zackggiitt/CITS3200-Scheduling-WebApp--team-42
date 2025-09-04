@@ -25,6 +25,7 @@
    Header
 ========================================= */
 .header { background: var(--c-bg); border-bottom: 1px solid var(--c-line); }
+main { padding-bottom: 120px; }
 
 .container {
   max-width: 1200px; margin: 0 auto; padding: 6px 16px;
@@ -879,8 +880,8 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
 
 /* Attendance Summary card */
 #attendanceSummaryCard {
-  width: 240px;
-  height: 240px;
+  width: 350px;
+  height: 170px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -915,28 +916,23 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
 }
 #attendanceSummaryCard .gauge-caption { font-size: 10px; }
 
-/* Facilitator Sessions card */
-#facilitatorBarCard {
-  width: 100% !important;     
-  max-width: none !important;
-  height: auto !important;
-  min-height: 280px;
-  margin: 0;                   
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border: 1px solid var(--c-line);
-  border-radius: 1rem;
-}
-
-
-#facilitatorBarCard .bar-wrap {
+#swapLineCard { width: 130%; }
+#swapLineCard .swap-line-wrap {
   position: relative;
-  height: 260px;               
-  padding: 0 8px 8px 0;
+  height: 280px;  
 }
-#facilitatorBarCard canvas {
+#swapLineCard canvas {
   width: 100% !important;
   height: 100% !important;
   display: block;
+}
+
+#panel-dashboard .grid.grid-cols-1.lg\:grid-cols-2 > div {
+  align-self: stretch !important; /* Force the height alignment */
+}
+
+/* Or try targeting the specific cards directly */
+#panel-dashboard .bg-blue-50,
+#panel-dashboard .bg-purple-50 {
+  min-height: 280px !important; /* Match the taller card's height */
 }

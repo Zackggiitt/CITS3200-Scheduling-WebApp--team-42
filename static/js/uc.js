@@ -2563,6 +2563,7 @@ window.__attData = { today: [], upcoming: [] };
 // Sessions Overview Widget Functions 
 function initSessionsOverview() {
   console.log('Initializing sessions overview...');
+  ensureSwapLineCard();
   const dashboardPanel = document.getElementById('panel-dashboard');
   if (!dashboardPanel) {
     console.warn('Dashboard panel not found');
@@ -2610,72 +2611,148 @@ function waitForVisible(el, tries = 20) {
   });
 }
 
-function ensureFacilitatorBarCard() {
-  if (document.getElementById('facilitatorBarCard')) return;
-
+function ensureSwapLineCard() {
   const attendanceCard = document.getElementById('attendanceSummaryCard');
   if (!attendanceCard) return;
 
-  const grid = attendanceCard.parentElement; // the 2-col grid
+  // Remove the old bar card if it exists
+  const oldBar = document.getElementById('facilitatorBarCard');
+  if (oldBar) oldBar.remove();
+
+  // If card already inserted, stop
+  if (document.getElementById('swapLineCard')) return;
+
+  // Ensure parent is a 2-col grid row
+  const grid = attendanceCard.parentElement;
+  grid.classList.add('grid', 'grid-cols-1', 'lg:grid-cols-2', 'gap-6', 'items-start');
+
+  // Pin attendance on the right
+  attendanceCard.classList.add('lg:col-start-2', 'lg:justify-self-end');
+
+  // Insert the swap line card into the left column
   const sec = document.createElement('section');
-  sec.id = 'facilitatorBarCard';
-  // Stretch across the full left column
-  sec.className = 'w-full lg:col-start-1 lg:col-span-1 lg:justify-self-stretch';
+  sec.id = 'swapLineCard';
+  sec.className = 'lg:col-start-1 lg:col-span-1 w-full';
   sec.innerHTML = `
-    <div class="flex items-center justify-between px-4 pt-4">
-      <h3 class="text-sm font-semibold">Facilitator Sessions</h3>
-      <span class="material-icons text-gray-500 text-sm">bar_chart</span>
-    </div>
-    <div class="bar-wrap px-4 pb-4">
-      <canvas id="facilitatorBar"></canvas>
+    <div class="bg-white border border-gray-200 rounded-2xl">
+      <div class="flex items-center justify-between px-4 pt-4">
+        <h3 class="text-sm font-semibold">Swap Requests Over Time</h3>
+        <span class="material-icons text-gray-500 text-sm">show_chart</span>
+      </div>
+      <div class="swap-line-wrap px-4 pb-4">
+        <canvas id="swapLine"></canvas>
+      </div>
     </div>
   `;
   grid.insertBefore(sec, attendanceCard);
 }
 
-let facilitatorBarChart = null;
-function renderFacilitatorBar(today = [], upcoming = []) {
-  ensureFacilitatorBarCard();
-  const canvas = document.getElementById('facilitatorBar');
-  const wrap = canvas?.closest('.bar-wrap') || canvas?.parentElement;
+// Aggregate daily counts from raw swap events
+function buildDailySwapSeries(raw = []) {
+  const dayKey = (d) => new Date(d).toISOString().slice(0,10);
+  const map = new Map();
+
+  raw.forEach(item => {
+    let dateStr = null, count = 1;
+    if (typeof item === 'string' || item instanceof Date) {
+      dateStr = dayKey(item);
+    } else if (item?.date || item?.created || item?.created_at) {
+      dateStr = dayKey(item.date || item.created || item.created_at);
+      if (Number.isFinite(item.count)) count = item.count;
+    }
+    if (!dateStr) return;
+    map.set(dateStr, (map.get(dateStr) || 0) + count);
+  });
+
+  // Sort by date
+  const days = Array.from(map.keys()).sort();
+  const data = days.map(d => map.get(d));
+
+  // Pretty labels (e.g., 04 Sep)
+  const labels = days.map(d => {
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+  });
+
+  return { labels, data, days };
+}
+
+let swapLineChart = null;
+function renderSwapRequestsLine(raw = []) {
+  ensureSwapLineCard();
+
+  const canvas = document.getElementById('swapLine');
+  const wrap = canvas?.closest('.swap-line-wrap') || canvas?.parentElement;
   if (!canvas || !wrap) return;
 
-  const all = [...(today || []), ...(upcoming || [])];
-  const counts = {};
-  all.forEach(s => (s.facilitators || []).forEach(f => {
-    const name = f?.name || f?.initials || String(f || '').trim();
-    if (name) counts[name] = (counts[name] || 0) + 1;
-  }));
-  const labels = Object.keys(counts);
-  const data = labels.map(k => counts[k]);
+  const { labels, data } = buildDailySwapSeries(raw);
 
-  Promise.all([ensureChartJs(), waitForVisible(wrap)]).then(() => {
-    if (window.facilitatorBarChart) window.facilitatorBarChart.destroy?.();
-    window.facilitatorBarChart = new Chart(canvas, {
-      type: 'bar',
+  // If no data, clear chart and exit
+  if (!labels.length) {
+    if (swapLineChart) { swapLineChart.destroy(); swapLineChart = null; }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    return;
+  }
+
+  ensureChartJs().then(() => waitForVisible(wrap)).then(() => {
+    if (swapLineChart) swapLineChart.destroy();
+
+    const ctx = canvas.getContext('2d');
+    // Soft gradient under the line
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, 'rgba(37, 99, 235, 0.25)');  // blue-600 @ 25%
+    grad.addColorStop(1, 'rgba(37, 99, 235, 0.00)');
+
+    swapLineChart = new Chart(canvas, {
+      type: 'line',
       data: {
         labels,
         datasets: [{
+          label: 'Swap requests',
           data,
-          backgroundColor: '#60a5fa',
-          borderRadius: 8,
-          barThickness: 18,
-          maxBarThickness: 24
+          borderColor: '#2563eb',    // blue-600
+          backgroundColor: grad,
+          borderWidth: 2,
+          fill: true,
+          cubicInterpolationMode: 'monotone',
+          tension: 0.35,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+          pointBackgroundColor: '#2563eb',
+          pointBorderWidth: 0
         }]
       },
       options: {
-        indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.parsed.y} swap${ctx.parsed.y === 1 ? '' : 's'}` }
+          }
+        },
         scales: {
-          x: { beginAtZero: true, ticks: { precision: 0, color: '#6b7280' }, grid: { display: false } },
-          y: { ticks: { color: '#111827', autoSkip: false }, grid: { display: false } }
+          x: {
+            grid: { display: false },
+            ticks: { maxRotation: 0, autoSkip: true, color: '#6b7280' }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0, color: '#6b7280' },
+            grid: { color: 'rgba(0,0,0,.06)' }
+          }
         }
       }
     });
   }).catch(console.warn);
 }
+
+window.__swapsData = [];
+window.setSwapRequestsData = function(dataArray) {
+  window.__swapsData = Array.isArray(dataArray) ? dataArray : [];
+  renderSwapRequestsLine(window.__swapsData);
+};
 
 function updateUpcomingSessions(sessions) {
   const container = document.getElementById('upcomingSessionsList');
