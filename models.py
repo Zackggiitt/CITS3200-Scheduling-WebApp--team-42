@@ -95,6 +95,18 @@ class User(db.Model):
     def full_name(self):
         return f"{self.first_name or ''} {self.last_name or ''}".strip() or self.email
     
+    def set_password(self, password):
+        """Set password hash"""
+        from werkzeug.security import generate_password_hash
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        """Check password against hash"""
+        from werkzeug.security import check_password_hash
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
+    
     # Relationships
     availability = db.relationship('Availability', backref='user', lazy=True, cascade='all, delete-orphan')
     assignments = db.relationship('Assignment', backref='facilitator', lazy=True)

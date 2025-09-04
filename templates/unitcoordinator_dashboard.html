@@ -42,6 +42,145 @@
       margin-left: 6px;
       vertical-align: middle;
     }
+    
+    /* Profile button styling */
+    .user-profile-container {
+      position: relative;
+    }
+    
+    .user-profile-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: background-color 0.2s ease;
+    }
+    
+    .user-profile-btn:hover {
+      background-color: #f3f4f6;
+    }
+    
+    .user-profile-btn:active {
+      background-color: #e5e7eb;
+    }
+    
+    .profile-arrow {
+      font-size: 18px;
+      color: #6b7280;
+      transition: transform 0.2s ease;
+    }
+    
+    .user-profile-container:hover .profile-arrow {
+      transform: rotate(180deg);
+    }
+    
+    /* Profile dropdown styling */
+    .profile-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      width: 280px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.2s ease;
+      z-index: 1000;
+      margin-top: 8px;
+    }
+    
+    .user-profile-container:hover .profile-dropdown {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    
+    .profile-dropdown-header {
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 12px 12px 0 0;
+    }
+    
+    .profile-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .profile-icon {
+      font-size: 40px;
+      color: #6366f1;
+    }
+    
+    .profile-name {
+      font-weight: 600;
+      color: #1f2937;
+      font-size: 16px;
+    }
+    
+    .profile-email {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    
+    .profile-dropdown-divider {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 8px 0;
+    }
+    
+    .profile-dropdown-menu {
+      padding: 8px 0;
+    }
+    
+    .profile-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      color: #374151;
+      text-decoration: none;
+      transition: background-color 0.2s ease;
+      font-size: 14px;
+    }
+    
+    .profile-menu-item:hover {
+      background-color: #f3f4f6;
+      color: #1f2937;
+    }
+    
+    .profile-menu-item .material-icons {
+      font-size: 20px;
+      color: #6b7280;
+    }
+    
+    .profile-menu-item:hover .material-icons {
+      color: #6366f1;
+    }
+    
+    .logout-item {
+      color: #dc2626;
+    }
+    
+    .logout-item:hover {
+      background-color: #fef2f2;
+      color: #b91c1c;
+    }
+    
+    .logout-item .material-icons {
+      color: #dc2626;
+    }
+    
+    .logout-item:hover .material-icons {
+      color: #b91c1c;
+    }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -71,20 +210,74 @@
         </div>
 
         <div class="user" aria-label="Current user">
-          <span class="material-icons icon-account" aria-hidden="true">account_circle</span>
-          <span class="user-name">{{ user.full_name }}</span>
+          <div class="user-profile-container">
+            <button class="user-profile-btn" aria-label="Open profile">
+              <span class="material-icons icon-account" aria-hidden="true">account_circle</span>
+              <span class="user-name">{{ user.full_name }}</span>
+              <span class="material-icons profile-arrow" aria-hidden="true">arrow_drop_down</span>
+            </button>
+            
+            <!-- Profile Dropdown Menu -->
+            <div class="profile-dropdown" id="profileDropdown">
+              <div class="profile-dropdown-header">
+                <div class="profile-info">
+                  <span class="material-icons profile-icon">account_circle</span>
+                  <div>
+                    <div class="profile-name">{{ user.full_name }}</div>
+                    <div class="profile-email">{{ user.email }}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="profile-dropdown-divider"></div>
+              
+              <div class="profile-dropdown-menu">
+                <a href="#" class="profile-menu-item" onclick="openProfilePage()">
+                  <span class="material-icons">person</span>
+                  <span>View Profile</span>
+                </a>
+                <a href="{{ url_for('unitcoordinator.account_settings') }}" class="profile-menu-item">
+                  <span class="material-icons">settings</span>
+                  <span>Account Settings</span>
+                </a>
+                <a href="#" class="profile-menu-item" onclick="openPreferences()">
+                  <span class="material-icons">tune</span>
+                  <span>Preferences</span>
+                </a>
+                <a href="#" class="profile-menu-item" onclick="openNotifications()">
+                  <span class="material-icons">notifications</span>
+                  <span>Notifications</span>
+                </a>
+                
+                <div class="profile-dropdown-divider"></div>
+                
+                <a href="#" class="profile-menu-item" onclick="openHelp()">
+                  <span class="material-icons">help</span>
+                  <span>Help & Support</span>
+                </a>
+                <a href="#" class="profile-menu-item" onclick="openAbout()">
+                  <span class="material-icons">info</span>
+                  <span>About</span>
+                </a>
+                
+                <div class="profile-dropdown-divider"></div>
+                
+                <a href="#" class="profile-menu-item logout-item" onclick="confirmLogout()">
+                  <span class="material-icons">logout</span>
+                  <span>Sign Out</span>
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
 
         <span class="role-badge">
           {{ user.role.value.replace('_', ' ') | title }}
         </span>
 
-        <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+        <!-- Hidden logout form for profile dropdown to use -->
+        <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form" style="display: none;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="logout-btn" type="submit" aria-label="Logout">
-            <span class="material-icons icon-logout" aria-hidden="true">logout</span>
-            <span>Logout</span>
-          </button>
         </form>
       </div>
     </div>
@@ -1475,6 +1668,44 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     UPLOAD_CAS_TEMPLATE: "{{ url_for('unitcoordinator.upload_cas_csv', unit_id=0) }}"
   };
   window.CSRF_TOKEN = "{{ csrf_token() }}";
+
+  // Profile dropdown functionality
+  function openProfilePage() {
+    window.location.href = '/unitcoordinator/profile';
+  }
+  
+  
+  function openPreferences() {
+    alert('Preferences coming soon!');
+    // window.location.href = '/unitcoordinator/preferences';
+  }
+  
+  function openNotifications() {
+    alert('Notification settings coming soon!');
+    // window.location.href = '/unitcoordinator/notifications';
+  }
+  
+  function openHelp() {
+    alert('Help & Support coming soon!');
+    // window.location.href = '/help';
+  }
+  
+  function openAbout() {
+    alert('About Unit Coordinator Portal\nVersion 1.0.0\nBuilt with Flask & Python');
+    // window.location.href = '/about';
+  }
+  
+  function confirmLogout() {
+    if (confirm('Are you sure you want to sign out?')) {
+      // Use the existing logout form
+      const logoutForm = document.querySelector('.logout-form');
+      if (logoutForm) {
+        logoutForm.submit();
+      } else {
+        window.location.href = '/auth/logout';
+      }
+    }
+  }
 </script>
 
 
