@@ -266,7 +266,7 @@
             <div class="greeting-banner">
               <div>
                 <h2 id="greeting-message" data-user-name="{{ user.first_name }}">, {{ user.first_name }}! 👋</h2>
-                <p>Here's what's happening with your units today.</p>
+                <p>Here's what's happening with your units.</p>
               </div>
               <div class="greeting-icon">
                 <span class="material-icons" aria-hidden="true">wb_sunny</span>
@@ -294,15 +294,15 @@
                 </div>
                 <div class="bg-white border rounded-xl p-4 text-center">
                   <div class="text-2xl font-bold text-red-600 mb-1">0</div>
-                  <div class="text-xs text-gray-600">Pending Schedule</div>
+                  <div class="text-xs text-gray-600">Schedule Conflicts</div>
                 </div>
                 <div class="bg-white border rounded-xl p-4 text-center">
                   <div class="text-2xl font-bold text-blue-600 mb-1">0</div>
-                  <div class="text-xs text-gray-600">Schedule Conflicts</div>
+                  <div class="text-xs text-gray-600">Total Facilitators</div>
                 </div>
               </div>
 
-              <!-- Sessions Overview Widget - Full width -->
+              <!-- Sessions Overview Widget  -->
               <div class="mt-6">
                 <div class="mb-3">
                   <h3 class="text-lg font-semibold">Session Overview</h3>
@@ -311,7 +311,7 @@
                 
                 <div id="panel-dashboard">
                   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Today's Sessions (separate card) -->
+                    <!-- Today's Sessions -->
                     <section class="bg-blue-50 border border-blue-200 rounded-2xl p-5">
                       <div class="flex items-center justify-between mb-3">
                         <h3 class="text-lg font-semibold">Today's Sessions</h3>
@@ -320,7 +320,7 @@
                       <div id="todaySessionsList" class="flex gap-3"></div>
                     </section>
 
-                    <!-- Upcoming Sessions (separate card) -->
+                    <!-- Upcoming Sessions -->
                     <section class="bg-purple-50 border border-purple-200 rounded-2xl p-5">
                       <div class="flex items-center justify-between mb-1">
                         <h3 class="text-lg font-semibold">Upcoming Sessions</h3>
@@ -335,6 +335,20 @@
 
                       <!-- list -->
                       <div id="upcomingSessionsList" class="space-y-2"></div>
+                    </section>
+
+                      <!-- Attendance Summary -->
+                      <section id="attendanceSummaryCard"
+                            class="bg-white border border-gray-200 rounded-2xl p-3 lg:col-start-2 max-w-md ml-auto mt-6">
+                      <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-base font-semibold">Attendance Summary</h3>
+                        <span class="material-icons text-gray-500 text-base">pie_chart</span>
+                      </div>
+                      <div class="gauge-wrap">
+                        <canvas id="attendanceGauge"></canvas>
+                        <div id="attendanceGaugeLabel">0%</div>
+                        <div class="gauge-caption">Overall attendance</div>
+                      </div>
                     </section>
                   </div>
                 </div>

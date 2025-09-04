@@ -12,6 +12,9 @@ const {
   UPLOAD_CAS_TEMPLATE
 } = window.FLASK_ROUTES || {};
 
+const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+
+
 // ===== Helpers to inject ids into route templates =====
 function withUnitId(tpl, id)     { return tpl.replace(/\/0(\/|$)/, `/${id}$1`); }
 function withSessionId(tpl, id)  { return tpl.replace(/0(\/|$)/, `${id}$1`); }
@@ -2296,29 +2299,38 @@ function initUnitTabs() {
   };
 
   function showTab(key, focus = false) {
-  tabs.forEach(tab => {
-    const active = tab.dataset.tab === key;
-    tab.classList.toggle('is-active', active);
-    tab.setAttribute('aria-selected', active ? 'true' : 'false');
-    tab.tabIndex = active ? 0 : -1;
-    if (active && focus) tab.focus();
-  });
+    tabs.forEach(tab => {
+      const active = tab.dataset.tab === key;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      tab.tabIndex = active ? 0 : -1;
+      if (active && focus) tab.focus();
+    });
 
-  Object.entries(panels).forEach(([k, el]) => {
-    if (!el) return;
-    if (k === key) el.removeAttribute('hidden'); else el.setAttribute('hidden', '');
-  });
+    Object.entries(panels).forEach(([k, el]) => {
+      if (!el) return;
+      if (k === key) el.removeAttribute('hidden'); else el.setAttribute('hidden', '');
+    });
 
-  try { localStorage.setItem(`uc_tab_${unitId}`, key); } catch (e) {}
+    try { localStorage.setItem(`uc_tab_${unitId}`, key); } catch (e) {}
 
-  if (key === 'staffing') {
-    setTimeout(initFacilitatorFilters, 100);
+    if (key === 'staffing') {
+      setTimeout(initFacilitatorFilters, 100);
+    }
+    
+    if (key === 'dashboard') {
+      setTimeout(initSessionsOverview, 100);
+      // Re-render gauge once the panel is visible
+      setTimeout(() => {
+        renderAttendanceGauge(window.__attData.today, window.__attData.upcoming);
+      }, 150);
+
+      setTimeout(() => {
+        renderFacilitatorBar(window.__attData?.today || [], window.__attData?.upcoming || []);
+      }, 160);
+      
+    }
   }
-  
-  if (key === 'dashboard') {
-    setTimeout(initSessionsOverview, 100);
-  }
-}
 
   // Click to activate
   tabs.forEach(tab => {
@@ -2398,27 +2410,31 @@ function updateTodaysSessions(sessions) {
     container.innerHTML = '<div class="text-sm text-gray-500">No sessions today</div>';
     return;
   }
-  
-  // Create horizontal scrollable container with FIXED width AND height cards
+
   container.innerHTML = `
     <div class="flex gap-3 overflow-x-auto pb-2" style="scrollbar-width: none; -ms-overflow-style: none;">
-      ${sessions.map(session => `
+      ${sessions.map(session => {
+        const isConfirmed = String(session.status || '').toLowerCase() === 'confirmed';
+        const statusEl = isConfirmed
+          ? `<span class="material-icons text-green-600 text-xs leading-none" title="Confirmed" aria-label="Confirmed">task_alt</span>`
+          : `<span class="text-xs text-gray-500">${session.status || 'Scheduled'}</span>`;
+        return `
         <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm w-[280px] h-[140px] flex-shrink-0 flex flex-col justify-between">
           <div>
             <div class="flex items-start justify-between mb-3">
               <h5 class="font-semibold text-gray-900 text-base truncate flex-1 pr-2">${session.name}</h5>
-              <div class="text-sm text-gray-500 flex-shrink-0">${session.status || 'Scheduled'}</div>
+              <div class="flex items-center flex-shrink-0">${statusEl}</div>
             </div>
             
-            <div class="space-y-1">
-              <!-- Smaller time line -->
+             <div class="space-y-1">
+              <!-- Time (Google Material Icon, smaller) -->
               <div class="flex items-center gap-2 text-xs text-gray-700">
-                <span class="material-icons text-xs leading-none text-gray-500">schedule</span>
+                <span class="material-icons mi-sm text-gray-500" aria-hidden="true">schedule</span>
                 <span class="truncate">${session.time}</span>
               </div>
-              <!-- Smaller venue line -->
+              <!-- Venue (Google Material Icon, smaller) -->
               <div class="flex items-center gap-2 text-xs text-gray-700">
-                <span class="material-icons text-xs leading-none text-gray-500">location_on</span>
+                <span class="material-icons mi-sm text-gray-500" aria-hidden="true">location_on</span>
                 <span class="truncate">${session.location || 'TBA'}</span>
               </div>
             </div>
@@ -2433,7 +2449,8 @@ function updateTodaysSessions(sessions) {
             </div>
           </div>
         </div>
-      `).join('')}
+        `;
+      }).join('')}
       
       ${sessions.length > 2 ? `
         <div class="w-[60px] h-[140px] flex-shrink-0 flex items-center justify-center">
@@ -2453,18 +2470,104 @@ function updateTodaysSessions(sessions) {
     });
   }
 }
+function loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(s);
+  });
+}
+let chartJsReady = null;
+function ensureChartJs() {
+  if (window.Chart) return Promise.resolve(window.Chart);
+  if (!chartJsReady) chartJsReady = loadScriptOnce(CHART_JS_URL).then(() => window.Chart);
+  return chartJsReady;
+}
+window.ensureChartJs = ensureChartJs;
+
+// --- Attendance gauge (semi‑circle doughnut) ---
+let attendanceGaugeChart = null;
+
+// Wait until an element has a visible size before drawing
+function waitForVisible(el, tries = 20) {
+  return new Promise((resolve, reject) => {
+    function tick(left) {
+      const rect = el.getBoundingClientRect();
+      const visible = rect.width > 0 && rect.height > 0;
+      if (visible) return resolve();
+      if (left <= 0) return reject(new Error('Gauge container never became visible'));
+      setTimeout(() => tick(left - 1), 100);
+    }
+    tick(tries);
+  });
+}
+
+function renderAttendanceGauge(today = [], upcoming = []) {
+  const canvas = document.getElementById('attendanceGauge');
+  const label = document.getElementById('attendanceGaugeLabel');
+  if (!canvas || !label) return;
+
+  const all = [...(today || []), ...(upcoming || [])];
+  const total = all.length || 0;
+  const attended = all.filter(s => {
+    const a = String(s.attendance || s.attendance_status || '').toLowerCase();
+    return ['attended', 'present', 'checked-in', 'checked in'].includes(a);
+  }).length;
+
+  const pct = total ? Math.round((attended / total) * 1000) / 10 : 0;
+  label.textContent = `${pct}%`;
+
+  const wrap = canvas.closest('.gauge-wrap') || canvas.parentElement;
+
+  // Defer draw until sized and Chart.js is ready
+   Promise.all([ensureChartJs(), waitForVisible(wrap)])
+    .then(() => {
+      if (attendanceGaugeChart) attendanceGaugeChart.destroy();
+      attendanceGaugeChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          datasets: [{
+            data: [attended, Math.max(0, total - attended)],
+            backgroundColor: ['#16a34a', '#e5e7eb'],
+            borderWidth: 0,
+            hoverOffset: 0,
+            // Rounded ends and a small gap between segments
+            borderRadius: 999,   // max rounding for arc ends
+            spacing: 4           // subtle gap to emphasize rounded caps
+          }]
+        },
+        options: {
+          rotation: -90,
+          circumference: 180,
+          cutout: '88%',        // thinner ring (was 70%)
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          responsive: true,
+          maintainAspectRatio: false,
+          // ensure arcs render smoothly
+          elements: { arc: { borderAlign: 'inner' } }
+        }
+      });
+
+      // Ensure it sizes correctly after first paint and on resize
+      setTimeout(() => attendanceGaugeChart?.resize(), 0);
+      window.addEventListener('resize', () => attendanceGaugeChart?.resize());
+    })
+    .catch((e) => console.warn('Gauge render deferred:', e.message));
+}
+
+// Keep last data so we can re-render when tab becomes visible
+window.__attData = { today: [], upcoming: [] };
 // Sessions Overview Widget Functions 
 function initSessionsOverview() {
   console.log('Initializing sessions overview...');
-  
-  // Check if we're on the dashboard panel
   const dashboardPanel = document.getElementById('panel-dashboard');
   if (!dashboardPanel) {
     console.warn('Dashboard panel not found');
     return;
   }
-  
-  // Always show sample data for now
   showSampleSessionsData();
 }
 
@@ -2472,57 +2575,107 @@ function showSampleSessionsData() {
   console.log('Loading sample sessions data...');
   const sampleData = {
     today: [
-      {
-        name: "Yin Yoga",
-        time: "8:00 AM - 9:00 AM",
-        location: "Private session - home",
-        status: "confirmed",
-        facilitators: [
-          { name: "Maya K", initials: "MK" }
-        ]
-      },
-      {
-        name: "Vinyasa Flow", 
-        time: "11:30 AM - 12:30 PM",
-        location: "Zen Studio",
-        status: "confirmed", 
-        facilitators: [
-          { name: "Sarah J", initials: "SJ" },
-          { name: "Mike R", initials: "MR" },
-          { name: "Lisa T", initials: "LT" },
-          { name: "Tom B", initials: "TB" }
-        ]
-      }
+      { name: "Workshop-01", time: "8:00 AM - 9:00 AM", location: "Private session - home", status: "confirmed", attendance: "Attended",
+        facilitators: [{ name: "Maya K", initials: "MK" }] },
+      { name: "Workshop-02", time: "11:30 AM - 12:30 PM", location: "Zen Studio", status: "confirmed", attendance: "Pending",
+        facilitators: [{ name: "Sarah J" }, { name: "Mike R" }, { name: "Lisa T" }, { name: "Tom B" }] }
     ],
     upcoming: [
-      {
-        name: "Tutorial B",
-        date: "Tomorrow",
-        time: "10:00 AM",
-        location: "Room 3.21"
-      },
-      {
-        name: "Workshop",
-        date: "Wednesday",
-        time: "1:00 PM",
-        location: "EZONE 2.15"
-      }
+      { name: "Tutorial B", date: "Tomorrow",  time: "10:00 AM", location: "Room 3.21", attendance: "Pending" },
+      { name: "Workshop",   date: "Wednesday", time: "1:00 PM",  location: "EZONE 2.15", attendance: "Cancelled" }
     ],
-    calendar: {
-      weekTotal: 8,
-      days: {
-        [new Date().toISOString().split('T')[0]]: true,
-        [new Date(Date.now() + 86400000).toISOString().split('T')[0]]: true
-      }
-    }
+    calendar: { weekTotal: 8, days: {} }
   };
-  
+
+  // Store for later re-render
+  window.__attData.today = sampleData.today;
+  window.__attData.upcoming = sampleData.upcoming;
+
   updateTodaysSessions(sampleData.today);
   updateUpcomingSessions(sampleData.upcoming);
   updateMiniCalendar(sampleData.calendar);
+  renderAttendanceGauge(sampleData.today, sampleData.upcoming);
+  renderFacilitatorBar(sampleData.today, sampleData.upcoming);   
 }
 
+function waitForVisible(el, tries = 20) {
+  return new Promise((resolve, reject) => {
+    function tick(left) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) return resolve();
+      if (left <= 0) return reject(new Error('element not visible'));
+      setTimeout(() => tick(left - 1), 80);
+    }
+    tick(tries);
+  });
+}
 
+function ensureFacilitatorBarCard() {
+  if (document.getElementById('facilitatorBarCard')) return;
+
+  const attendanceCard = document.getElementById('attendanceSummaryCard');
+  if (!attendanceCard) return;
+
+  const grid = attendanceCard.parentElement; // the 2-col grid
+  const sec = document.createElement('section');
+  sec.id = 'facilitatorBarCard';
+  // Stretch across the full left column
+  sec.className = 'w-full lg:col-start-1 lg:col-span-1 lg:justify-self-stretch';
+  sec.innerHTML = `
+    <div class="flex items-center justify-between px-4 pt-4">
+      <h3 class="text-sm font-semibold">Facilitator Sessions</h3>
+      <span class="material-icons text-gray-500 text-sm">bar_chart</span>
+    </div>
+    <div class="bar-wrap px-4 pb-4">
+      <canvas id="facilitatorBar"></canvas>
+    </div>
+  `;
+  grid.insertBefore(sec, attendanceCard);
+}
+
+let facilitatorBarChart = null;
+function renderFacilitatorBar(today = [], upcoming = []) {
+  ensureFacilitatorBarCard();
+  const canvas = document.getElementById('facilitatorBar');
+  const wrap = canvas?.closest('.bar-wrap') || canvas?.parentElement;
+  if (!canvas || !wrap) return;
+
+  const all = [...(today || []), ...(upcoming || [])];
+  const counts = {};
+  all.forEach(s => (s.facilitators || []).forEach(f => {
+    const name = f?.name || f?.initials || String(f || '').trim();
+    if (name) counts[name] = (counts[name] || 0) + 1;
+  }));
+  const labels = Object.keys(counts);
+  const data = labels.map(k => counts[k]);
+
+  Promise.all([ensureChartJs(), waitForVisible(wrap)]).then(() => {
+    if (window.facilitatorBarChart) window.facilitatorBarChart.destroy?.();
+    window.facilitatorBarChart = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: '#60a5fa',
+          borderRadius: 8,
+          barThickness: 18,
+          maxBarThickness: 24
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, ticks: { precision: 0, color: '#6b7280' }, grid: { display: false } },
+          y: { ticks: { color: '#111827', autoSkip: false }, grid: { display: false } }
+        }
+      }
+    });
+  }).catch(console.warn);
+}
 
 function updateUpcomingSessions(sessions) {
   const container = document.getElementById('upcomingSessionsList');

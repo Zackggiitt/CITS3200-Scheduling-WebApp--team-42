@@ -871,33 +871,72 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
 .target-ok{ color:#059669; display:inline-flex; align-items:center; gap:6px; font-weight:600; }
 .target-ok .material-icons{ font-size:16px; }
 
-.overflow-x-auto::-webkit-scrollbar {
-  display: none;
+#todaySessionsList .mi-sm {
+  font-size: 12px;    
+  line-height: 1;
+  vertical-align: -1px; 
 }
 
-.session-card {
+/* Attendance Summary card */
+#attendanceSummaryCard {
+  width: 240px;
+  height: 240px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  height: 140px; /* Ensures all cards have the same height */
-  flex-shrink: 0;
-  width: 280px;
-  padding: 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  background-color: #fff;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  justify-content: center;
+  margin-left: auto;
+  border-radius: 1rem;
+  border: 1px solid var(--c-line);
+  background: #fff;
+}
+@media (max-width: 1023.98px) {
+  #attendanceSummaryCard { margin-left: auto; margin-right: auto; }
 }
 
-.session-card__facilitators {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+#attendanceSummaryCard .gauge-wrap {
+  position: relative;
+  width: 160px;   
+  height: 80px;
+  margin: 0 auto;
+}
+#attendanceSummaryCard canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+#attendanceGaugeLabel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px; 
+}
+#attendanceSummaryCard .gauge-caption { font-size: 10px; }
+
+/* Facilitator Sessions card */
+#facilitatorBarCard {
+  width: 100% !important;     
+  max-width: none !important;
+  height: auto !important;
+  min-height: 280px;
+  margin: 0;                   
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--c-line);
+  border-radius: 1rem;
 }
 
-.session-card-details {
-  font-size: 13px; /* Smaller font size for text */
+
+#facilitatorBarCard .bar-wrap {
+  position: relative;
+  height: 260px;               
+  padding: 0 8px 8px 0;
 }
-.session-card-details .material-icons {
-  font-size: 16px; /* Smaller icon size */
+#facilitatorBarCard canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
