@@ -2006,21 +2006,31 @@ main {
   font-weight: 500;
 }
 
+/* Schedule Grid Container */
+.schedule-grid-container {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 12px;
+}
+
 /* Schedule Grid */
 .schedule-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(200px, 1fr));
   gap: 1px;
   background: #e5e7eb;
   border-radius: 12px;
-  overflow: hidden;
   min-height: 400px;
+  min-width: 1400px; /* Ensure minimum width for all 7 columns */
 }
 
 .schedule-day {
   background: white;
   padding: 16px;
   min-height: 200px;
+  min-width: 200px;
+  flex-shrink: 0;
 }
 
 .schedule-day-header {
@@ -2158,4 +2168,34 @@ main {
 .empty-day-text {
   font-size: 12px;
   line-height: 1.4;
+}
+
+/* Responsive adjustments for schedule grid */
+@media (max-width: 1200px) {
+  .schedule-grid {
+    min-width: 1200px; /* Reduce minimum width on smaller screens */
+  }
+  
+  .schedule-day {
+    min-width: 170px; /* Slightly smaller day columns */
+  }
+}
+
+@media (max-width: 768px) {
+  .schedule-grid {
+    min-width: 1000px; /* Further reduce for mobile */
+  }
+  
+  .schedule-day {
+    min-width: 140px;
+    padding: 12px;
+  }
+  
+  .day-name {
+    font-size: 14px;
+  }
+  
+  .day-date {
+    font-size: 12px;
+  }
 }
