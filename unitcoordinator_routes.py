@@ -100,12 +100,31 @@ def _serialize_session(s: Session, venues_by_name=None):
         vid = venues_by_name.get(venue_name.strip().lower())
 
     title = s.module.module_name or "Session"
+    
+    # Get facilitator information
+    facilitator = None
+    if s.assignments:
+        assignment = s.assignments[0]  # Get first assignment
+        if assignment.facilitator:
+            facilitator = f"{assignment.facilitator.first_name} {assignment.facilitator.last_name}"
+    
+    # Determine session status
+    status = "unassigned"
+    if facilitator:
+        status = "approved"  # For now, assume assigned means approved
+    
     return {
         "id": str(s.id),  # turn this into a string
         "title": title,
         "start": s.start_time.isoformat(timespec="minutes"),
         "end": s.end_time.isoformat(timespec="minutes"),
         "venue": venue_name,
+        "facilitator": facilitator,
+        "status": status,
+        "session_name": title,
+        "location": s.location,
+        "module_type": s.module.module_type or "Workshop",
+        "attendees": getattr(s, 'attendees', None),
         "extendedProps": {
             "venue": venue_name,
             "venue_id": vid,

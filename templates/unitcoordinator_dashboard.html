@@ -261,6 +261,171 @@
             </button>
           </nav>
 
+          <!-- SCHEDULE PANEL -->
+          <section id="panel-schedule" class="uc-panel" role="tabpanel" aria-labelledby="tab-schedule" hidden>
+            <!-- Schedule Management Header -->
+            <div class="schedule-header">
+              <div class="schedule-title">
+                <span class="material-icons">event</span>
+                <h2>Schedule Management</h2>
+              </div>
+              
+              <!-- View Toggle -->
+              <div class="view-toggle">
+                <button type="button" class="view-btn active" data-view="calendar">
+                  <span class="material-icons">calendar_view_week</span>
+                  Calendar View
+                </button>
+                <button type="button" class="view-btn" data-view="list">
+                  <span class="material-icons">list</span>
+                  List View
+                </button>
+              </div>
+            </div>
+
+            <!-- Course Info -->
+            <div class="course-info">
+              <h3>{{ unit.unit_code }} Schedule</h3>
+              <p>Manage {{ unit.session_count or 0 }} sessions from university timetable with facilitator assignments.</p>
+              
+              <!-- Auto Assign Button -->
+              <button type="button" class="auto-assign-btn">
+                <span class="material-icons">auto_awesome</span>
+                Auto-Assign Facilitators
+              </button>
+            </div>
+
+            <!-- Week Navigation -->
+            <div class="week-navigation">
+              <button type="button" class="nav-btn" id="prev-week">
+                <span class="material-icons">chevron_left</span>
+              </button>
+              <span class="week-text">This Week</span>
+              <button type="button" class="nav-btn" id="next-week">
+                <span class="material-icons">chevron_right</span>
+              </button>
+              <div class="current-week" id="current-week">Week of September 1, 2025</div>
+            </div>
+
+            <!-- Assignment Status Legend -->
+            <div class="status-legend">
+              <div class="legend-item">
+                <div class="legend-dot approved"></div>
+                <span>Approved</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot pending"></div>
+                <span>Pending</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot unassigned"></div>
+                <span>Unassigned</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot proposed"></div>
+                <span>Proposed</span>
+              </div>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="calendar-view" class="schedule-view">
+              <div class="schedule-grid-container">
+                <div class="schedule-grid" id="schedule-grid">
+                  <!-- Days will be populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+
+            <!-- List View -->
+            <div id="list-view" class="schedule-view" style="display: none;">
+              <!-- Session Statistics Cards -->
+              <div class="session-stats">
+                <div class="stat-card">
+                  <div class="stat-number" id="total-sessions">0</div>
+                  <div class="stat-label">Total Sessions</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-number approved" id="approved-sessions">0</div>
+                  <div class="stat-label">Approved</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-number pending" id="pending-sessions">0</div>
+                  <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-number unassigned" id="unassigned-sessions">0</div>
+                  <div class="stat-label">Unassigned</div>
+                </div>
+              </div>
+
+              <!-- Filters & Search -->
+              <div class="filters-section">
+                <div class="filters-header">
+                  <span class="material-icons">tune</span>
+                  <h3>Filters & Search</h3>
+                </div>
+                
+                <div class="filters-controls">
+                  <div class="search-box">
+                    <span class="material-icons">search</span>
+                    <input type="text" id="session-search" placeholder="Search by activity, location, facilitator, or module...">
+                  </div>
+                  
+                  <div class="filter-dropdowns">
+                    <select id="status-filter" class="filter-select">
+                      <option value="">All Status</option>
+                      <option value="approved">Approved</option>
+                      <option value="pending">Pending</option>
+                      <option value="unassigned">Unassigned</option>
+                      <option value="proposed">Proposed</option>
+                    </select>
+                    
+                    <select id="day-filter" class="filter-select">
+                      <option value="">All Days</option>
+                      <option value="monday">Monday</option>
+                      <option value="tuesday">Tuesday</option>
+                      <option value="wednesday">Wednesday</option>
+                      <option value="thursday">Thursday</option>
+                      <option value="friday">Friday</option>
+                    </select>
+                    
+                    <select id="sort-filter" class="filter-select">
+                      <option value="time">Time</option>
+                      <option value="title">Title</option>
+                      <option value="facilitator">Facilitator</option>
+                      <option value="status">Status</option>
+                    </select>
+                  </div>
+                  
+                  <div class="sort-control">
+                    <button type="button" id="sort-direction" class="sort-btn">
+                      <span class="material-icons">unfold_more</span>
+                      Ascending
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="session-count">
+                  Showing <span id="filtered-count">{{ unit.session_count or 0 }}</span> of <span id="total-count">{{ unit.session_count or 0 }}</span> sessions
+                </div>
+              </div>
+
+              <!-- Sessions List -->
+              <div class="sessions-list-section">
+                <div class="sessions-header">
+                  <span class="material-icons">event_note</span>
+                  <h3>Sessions List</h3>
+                  <span class="session-badge" id="session-count">{{ unit.session_count or 0 }} sessions</span>
+                </div>
+                
+                <div class="sessions-container" id="sessions-container">
+                  <!-- Sessions will be populated by JavaScript -->
+                  <!-- To inject session data, call: setSessionData(sessionDataArray) -->
+                </div>
+              </div>
+            </div>
+          </section>
+
           <!-- DASHBOARD PANEL -->
           <section id="panel-dashboard" class="uc-panel" role="tabpanel" aria-labelledby="tab-dashboard">
             <div class="greeting-banner">
