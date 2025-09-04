@@ -2009,7 +2009,20 @@ async function populateReview() {
     const st = new Date(s.start), en = new Date(s.end);
     const sessionName = s.extendedProps?.session_name || s.title?.split('\n')[0] || 'New Session';
     const venueName = s.extendedProps?.venue || (s.title?.includes('\n') ? s.title.split('\n')[1] : '');
-    const staffCount = (s.extendedProps?.lead_staff_required || 1) + (s.extendedProps?.support_staff_required || 0);
+    const leadCount = s.extendedProps?.lead_staff_required || 1;
+    const supportCount = s.extendedProps?.support_staff_required || 0;
+    
+    // Create staffing display text
+    let staffingText = '';
+    if (leadCount > 0 && supportCount > 0) {
+      staffingText = `${leadCount} lead, ${supportCount} support`;
+    } else if (leadCount > 0) {
+      staffingText = `${leadCount} lead`;
+    } else if (supportCount > 0) {
+      staffingText = `${supportCount} support`;
+    } else {
+      staffingText = 'No staff';
+    }
     
     const li = document.createElement('li');
     li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
@@ -2021,7 +2034,7 @@ async function populateReview() {
           <div class="text-sm text-gray-600">${dayName(st.getDay())} • ${timeHM(st)}–${timeHM(en)} • ${st.toLocaleDateString()} (${st.getDate()}/${st.getMonth() + 1})${s.extendedProps.location ? ' • ' + s.extendedProps.location : ''}</div>
         </div>
       </div>
-      <div class="text-sm text-gray-500">${staffCount} staff</div>
+      <div class="text-sm text-gray-500">${staffingText}</div>
     `;
     ulS.appendChild(li);
   });
