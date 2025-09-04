@@ -364,7 +364,24 @@ def profile():
 def account_settings():
     """Unit Coordinator Account Settings Page"""
     user = get_current_user()
-    return render_template("account_settings.html", user=user)
+    
+    # Load contact information from preferences
+    contact_info = {}
+    if hasattr(user, 'preferences') and user.preferences:
+        try:
+            import json
+            preferences = json.loads(user.preferences) if user.preferences else {}
+            contact_info = {
+                'phone': preferences.get('phone', ''),
+                'mobile': preferences.get('mobile', ''),
+                'address': preferences.get('address', '')
+            }
+        except:
+            contact_info = {'phone': '', 'mobile': '', 'address': ''}
+    else:
+        contact_info = {'phone': '', 'mobile': '', 'address': ''}
+    
+    return render_template("account_settings.html", user=user, contact_info=contact_info)
 
 @unitcoordinator_bp.route("/update-personal-info", methods=["POST"])
 @login_required
@@ -398,8 +415,14 @@ def update_personal_info():
             flash('This email address is already in use by another account', 'error')
             return redirect(url_for('unitcoordinator.account_settings'))
         
+        # Parse full name into first and last name
+        name_parts = full_name.split(' ', 1)
+        first_name = name_parts[0] if name_parts else ''
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
         # Update user information
-        user.full_name = full_name
+        user.first_name = first_name
+        user.last_name = last_name
         user.email = email
         
         db.session.commit()
@@ -425,10 +448,23 @@ def update_contact_info():
         mobile = request.form.get('mobile', '').strip()
         address = request.form.get('address', '').strip()
         
-        # Update user information
-        user.phone = phone if phone else None
-        user.mobile = mobile if mobile else None
-        user.address = address if address else None
+        # Store contact info in preferences JSON field
+        preferences = {}
+        if hasattr(user, 'preferences') and user.preferences:
+            try:
+                import json
+                preferences = json.loads(user.preferences) if user.preferences else {}
+            except:
+                preferences = {}
+        
+        # Update contact information in preferences
+        preferences['phone'] = phone if phone else None
+        preferences['mobile'] = mobile if mobile else None
+        preferences['address'] = address if address else None
+        
+        # Save preferences back to user
+        import json
+        user.preferences = json.dumps(preferences)
         
         db.session.commit()
         flash('Contact information updated successfully', 'success')

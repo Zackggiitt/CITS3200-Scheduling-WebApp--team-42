@@ -286,7 +286,7 @@
                   <input type="tel" 
                          id="phone" 
                          name="phone" 
-                         value="{{ user.phone or '' }}"
+                         value="{{ contact_info.phone or '' }}"
                          class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none"
                          placeholder="+61 4XX XXX XXX">
                 </div>
@@ -298,7 +298,7 @@
                   <input type="tel" 
                          id="mobile" 
                          name="mobile" 
-                         value="{{ user.mobile or '' }}"
+                         value="{{ contact_info.mobile or '' }}"
                          class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none"
                          placeholder="+61 4XX XXX XXX">
                 </div>
@@ -312,7 +312,7 @@
                           name="address" 
                           rows="3"
                           class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none"
-                          placeholder="Enter your address">{{ user.address or '' }}</textarea>
+                          placeholder="Enter your address">{{ contact_info.address or '' }}</textarea>
               </div>
 
               <div class="flex justify-end">
