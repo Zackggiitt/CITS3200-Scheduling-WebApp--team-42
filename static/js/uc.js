@@ -19,7 +19,19 @@ const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd
 function withUnitId(tpl, id)     { return tpl.replace(/\/0(\/|$)/, `/${id}$1`); }
 function withSessionId(tpl, id)  { return tpl.replace(/0(\/|$)/, `${id}$1`); }
 function getUnitId() {
-  return document.getElementById('unit_id')?.value || '';
+  // Try to get from unit_id input first (for create unit modal)
+  const unitIdInput = document.getElementById('unit_id');
+  if (unitIdInput && unitIdInput.value) {
+    return unitIdInput.value;
+  }
+  
+  // Try to get from the tabs navigation data attribute
+  const tabsNav = document.querySelector('[data-unit-id]');
+  if (tabsNav) {
+    return tabsNav.getAttribute('data-unit-id');
+  }
+  
+  return '';
 }
 
 // ===== Modal open/close =====
@@ -3039,3 +3051,214 @@ function updateMiniCalendar(calendarData) {
   
   daysContainer.innerHTML = daysHTML;
 }
+
+// ===== Schedule Panel Functionality =====
+let currentWeekStart = new Date();
+let scheduleSessions = [];
+
+// Initialize schedule panel
+function initSchedulePanel() {
+  // Set current week to start of week (Monday)
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  currentWeekStart = new Date(today);
+  currentWeekStart.setDate(today.getDate() + daysToMonday);
+  currentWeekStart.setHours(0, 0, 0, 0);
+
+  // Load sessions for current week
+  loadScheduleSessions();
+  
+  // Set up event listeners
+  setupScheduleEventListeners();
+}
+
+// Load sessions for the current week
+async function loadScheduleSessions() {
+  const unitId = getUnitId();
+  if (!unitId) return;
+
+  try {
+    const weekStart = currentWeekStart.toISOString().split('T')[0];
+    const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.ok) {
+      scheduleSessions = data.sessions || [];
+      renderScheduleGrid();
+    }
+  } catch (error) {
+    console.error('Error loading schedule sessions:', error);
+  }
+}
+
+// Render the schedule grid
+function renderScheduleGrid() {
+  const grid = document.getElementById('schedule-grid');
+  if (!grid) return;
+
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const today = new Date();
+  
+  let gridHTML = '';
+  
+  for (let i = 0; i < 7; i++) {
+    const dayDate = new Date(currentWeekStart);
+    dayDate.setDate(currentWeekStart.getDate() + i);
+    
+    const isToday = dayDate.toDateString() === today.toDateString();
+    const daySessions = getSessionsForDay(dayDate);
+    const pendingCount = daySessions.filter(s => s.status === 'pending').length;
+    const totalCount = daySessions.length;
+    
+    gridHTML += `
+      <div class="schedule-day">
+        <div class="schedule-day-header">
+          <div>
+            <div class="day-name">${days[i]}</div>
+            <div class="day-date">${dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+            ${isToday ? '<div class="today-label">Today</div>' : ''}
+          </div>
+          <div class="day-status ${pendingCount > 0 ? 'pending' : 'info'}">
+            <span class="material-icons">${pendingCount > 0 ? 'warning' : 'info'}</span>
+            ${pendingCount}/${totalCount}
+          </div>
+        </div>
+        <div class="day-sessions">
+          ${renderDaySessions(daySessions)}
+        </div>
+      </div>
+    `;
+  }
+  
+  grid.innerHTML = gridHTML;
+  updateCurrentWeekDisplay();
+}
+
+// Get sessions for a specific day
+function getSessionsForDay(date) {
+  return scheduleSessions.filter(session => {
+    const sessionDate = new Date(session.start);
+    return sessionDate.toDateString() === date.toDateString();
+  });
+}
+
+// Render sessions for a specific day
+function renderDaySessions(sessions) {
+  if (sessions.length === 0) {
+    return `
+      <div class="empty-day">
+        <span class="material-icons">add</span>
+        <div class="empty-day-text">No sessions scheduled.<br>Sessions will appear when CSV is uploaded.</div>
+      </div>
+    `;
+  }
+
+  return sessions.map(session => `
+    <div class="session-card">
+      <div class="session-header">
+        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}">
+          ${session.facilitator ? getInitials(session.facilitator) : 'Unassigned'}
+        </div>
+        <div class="session-time">
+          ${formatTime(session.start)} - ${formatTime(session.end)}
+        </div>
+      </div>
+      <div class="session-title">${session.session_name || session.title || 'New Session'}</div>
+      <div class="session-details">
+        <div class="session-detail">
+          <span class="material-icons">place</span>
+          <span>${session.location || 'TBA'}</span>
+        </div>
+        <div class="session-detail">
+          <span class="material-icons">book</span>
+          <span>${session.module_type || 'Workshop'}</span>
+        </div>
+        ${session.attendees ? `
+          <div class="session-detail">
+            <span class="material-icons">people</span>
+            <span>${session.attendees} students</span>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// Helper functions
+function getInitials(name) {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
+
+function formatTime(timeString) {
+  const date = new Date(timeString);
+  return date.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false 
+  });
+}
+
+function updateCurrentWeekDisplay() {
+  const weekEnd = new Date(currentWeekStart);
+  weekEnd.setDate(currentWeekStart.getDate() + 6);
+  
+  const weekDisplay = document.getElementById('current-week');
+  if (weekDisplay) {
+    weekDisplay.textContent = `Week of ${currentWeekStart.toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric' 
+    })}`;
+  }
+}
+
+// Set up event listeners for schedule panel
+function setupScheduleEventListeners() {
+  // Week navigation
+  const prevWeekBtn = document.getElementById('prev-week');
+  const nextWeekBtn = document.getElementById('next-week');
+  
+  if (prevWeekBtn) {
+    prevWeekBtn.addEventListener('click', () => {
+      currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+      loadScheduleSessions();
+    });
+  }
+  
+  if (nextWeekBtn) {
+    nextWeekBtn.addEventListener('click', () => {
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      loadScheduleSessions();
+    });
+  }
+
+  // View toggle
+  const viewBtns = document.querySelectorAll('.view-btn');
+  viewBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      viewBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // TODO: Implement list view
+    });
+  });
+
+  // Auto assign button
+  const autoAssignBtn = document.querySelector('.auto-assign-btn');
+  if (autoAssignBtn) {
+    autoAssignBtn.addEventListener('click', () => {
+      // TODO: Implement auto-assign functionality
+      console.log('Auto-assign clicked');
+    });
+  }
+}
+
+// Initialize schedule panel when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  // Check if we're on the unit coordinator dashboard
+  if (document.getElementById('schedule-grid')) {
+    initSchedulePanel();
+  }
+});

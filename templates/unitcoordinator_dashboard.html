@@ -261,6 +261,78 @@
             </button>
           </nav>
 
+          <!-- SCHEDULE PANEL -->
+          <section id="panel-schedule" class="uc-panel" role="tabpanel" aria-labelledby="tab-schedule" hidden>
+            <!-- Schedule Management Header -->
+            <div class="schedule-header">
+              <div class="schedule-title">
+                <span class="material-icons">event</span>
+                <h2>Schedule Management</h2>
+              </div>
+              
+              <!-- View Toggle -->
+              <div class="view-toggle">
+                <button type="button" class="view-btn active" data-view="calendar">
+                  <span class="material-icons">calendar_view_week</span>
+                  Calendar View
+                </button>
+                <button type="button" class="view-btn" data-view="list">
+                  <span class="material-icons">list</span>
+                  List View
+                </button>
+              </div>
+            </div>
+
+            <!-- Course Info -->
+            <div class="course-info">
+              <h3>{{ unit.unit_code }} Schedule</h3>
+              <p>Manage {{ unit.session_count or 0 }} sessions from university timetable with facilitator assignments.</p>
+              
+              <!-- Auto Assign Button -->
+              <button type="button" class="auto-assign-btn">
+                <span class="material-icons">auto_awesome</span>
+                Auto-Assign Facilitators
+              </button>
+            </div>
+
+            <!-- Week Navigation -->
+            <div class="week-navigation">
+              <button type="button" class="nav-btn" id="prev-week">
+                <span class="material-icons">chevron_left</span>
+              </button>
+              <span class="week-text">This Week</span>
+              <button type="button" class="nav-btn" id="next-week">
+                <span class="material-icons">chevron_right</span>
+              </button>
+              <div class="current-week" id="current-week">Week of September 1, 2025</div>
+            </div>
+
+            <!-- Assignment Status Legend -->
+            <div class="status-legend">
+              <div class="legend-item">
+                <div class="legend-dot approved"></div>
+                <span>Approved</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot pending"></div>
+                <span>Pending</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot unassigned"></div>
+                <span>Unassigned</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot proposed"></div>
+                <span>Proposed</span>
+              </div>
+            </div>
+
+            <!-- Weekly Schedule Grid -->
+            <div class="schedule-grid" id="schedule-grid">
+              <!-- Days will be populated by JavaScript -->
+            </div>
+          </section>
+
           <!-- DASHBOARD PANEL -->
           <section id="panel-dashboard" class="uc-panel" role="tabpanel" aria-labelledby="tab-dashboard">
             <div class="greeting-banner">
