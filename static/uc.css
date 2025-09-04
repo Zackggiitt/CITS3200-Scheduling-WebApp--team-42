@@ -916,23 +916,45 @@ article.bg-white.rounded-xl.p-6.shadow-sm {
 }
 #attendanceSummaryCard .gauge-caption { font-size: 10px; }
 
-#swapLineCard { width: 130%; }
-#swapLineCard .swap-line-wrap {
-  position: relative;
-  height: 280px;  
+/* Clone of Attendance Summary card with same dimensions */
+#attendanceSummaryClone {
+  width: 350px;
+  height: 170px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: auto;
+  margin-top: 0 !important; /* Remove all top margin */
+  transform: translateY(-200px); /* Move it up by 150px */
+  border-radius: 1rem;
+  border: 1px solid var(--c-line);
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
+
+
+#swapLineCard {
+  width: 130%;
+  min-height: 300px; 
+  height: auto;
+}
+#swapLineCard .swap-line-wrap {
+  min-height: 350px; 
+  height: auto;
+}
+
 #swapLineCard canvas {
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
+  min-height: 300px !important; 
+  height: 300px !important;
 }
 
 #panel-dashboard .grid.grid-cols-1.lg\:grid-cols-2 > div {
-  align-self: stretch !important; /* Force the height alignment */
+  align-self: stretch !important; 
 }
 
-/* Or try targeting the specific cards directly */
+
 #panel-dashboard .bg-blue-50,
 #panel-dashboard .bg-purple-50 {
-  min-height: 280px !important; /* Match the taller card's height */
+  min-height: 280px !important; 
 }
