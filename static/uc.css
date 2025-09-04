@@ -129,7 +129,7 @@
 
 /* Stepper */
 .modal-steps{
-  display: grid; grid-template-columns: repeat(4,1fr); align-items: center;
+  display: grid; grid-template-columns: repeat(5,1fr); align-items: center;
   justify-content: space-between; padding: 12px 28px; border-bottom: 1px solid var(--c-line); font-size: 14px; color: var(--c-muted);
 }
 .modal-steps .step { display: flex; align-items: center; gap: 10px; justify-content: center; position: relative; }
@@ -140,7 +140,7 @@
 .modal-steps .step.active { color: var(--c-text); }
 .modal-steps .step.active span { background: var(--c-text); color: #fff; border-color: var(--c-text); }
 .modal-steps .step:not(:last-child)::after{
-  content: ""; width: 56px; height: 2px; background: var(--c-line); margin-left: 14px; border-radius: 999px;
+  content: ""; width: 40px; height: 2px; background: var(--c-line); margin-left: 14px; border-radius: 999px;
 }
 
 /* Body (scrolls) */
