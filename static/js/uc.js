@@ -735,9 +735,6 @@ function initCalendar() {
             end,
             venue: '',
             session_name: '',
-            // staffing defaults
-            lead_required: DEFAULT_LEAD_REQUIRED,
-            support_required: DEFAULT_SUPPORT_REQUIRED,
             // recurrence default
             recurrence: { occurs: 'none' }
           })
@@ -755,9 +752,7 @@ function initCalendar() {
           extendedProps: {
             session_name: '',
             venue: '',
-            venue_id: null,
-            lead_required: DEFAULT_LEAD_REQUIRED,
-            support_required: DEFAULT_SUPPORT_REQUIRED
+            venue_id: null
           }
         };
 
@@ -1013,11 +1008,6 @@ async function openInspector(ev) {
     };
   });
 
-  // ---- staffing (seed + buttons) ----
-  const leadReq    = ev.extendedProps?.lead_required ?? DEFAULT_LEAD_REQUIRED;
-  const supportReq = ev.extendedProps?.support_required ?? DEFAULT_SUPPORT_REQUIRED;
-  setStaffingInUI(leadReq, supportReq);
-  wireStaffingButtons();
 
   // ---- actions ----
   wireInspectorButtons(ev);
@@ -1041,18 +1031,13 @@ function wireInspectorButtons(ev) {
     const startOut = fmtLocalYYYYMMDDHHMM(pStart);
     const endOut   = fmtLocalYYYYMMDDHHMM(pEnd);
 
-    // staffing
-    const { lead_required, support_required } = getStaffingFromUI();
 
     const payload = {
         start: startOut,
         end:   endOut,
         session_name: name,
         module_name:  name,
-        title:        name,
-        // include staffing
-        lead_required,
-        support_required
+        title:        name
     };
 
     // recurrence from inspector UI
@@ -1731,55 +1716,6 @@ async function createUnitFinal() {
 
 
 
-// ===== Staffing: defaults + helpers =========================================
-const DEFAULT_LEAD_REQUIRED = 1;
-const DEFAULT_SUPPORT_REQUIRED = 0;
-
-function setStaffingInUI(lead = DEFAULT_LEAD_REQUIRED, support = DEFAULT_SUPPORT_REQUIRED) {
-  const leadEl = document.getElementById('leadCount');
-  const supEl  = document.getElementById('supportCount');
-  const totalEl = document.getElementById('totalStaffText');
-
-  const safeLead = Math.max(0, Number.isFinite(+lead) ? +lead : DEFAULT_LEAD_REQUIRED);
-  const safeSup  = Math.max(0, Number.isFinite(+support) ? +support : DEFAULT_SUPPORT_REQUIRED);
-  const total = safeLead + safeSup;
-
-  if (leadEl) leadEl.textContent = String(safeLead);
-  if (supEl)  supEl.textContent  = String(safeSup);
-  if (totalEl) totalEl.textContent = `${total} ${total === 1 ? 'facilitator' : 'facilitators'}`;
-}
-
-function getStaffingFromUI() {
-  const lead = parseInt(document.getElementById('leadCount')?.textContent || DEFAULT_LEAD_REQUIRED, 10);
-  const support = parseInt(document.getElementById('supportCount')?.textContent || DEFAULT_SUPPORT_REQUIRED, 10);
-  return {
-    lead_required: Math.max(0, isNaN(lead) ? DEFAULT_LEAD_REQUIRED : lead),
-    support_required: Math.max(0, isNaN(support) ? DEFAULT_SUPPORT_REQUIRED : support)
-  };
-}
-
-function wireStaffingButtons() {
-  const leadMinus = document.getElementById('leadMinusBtn');
-  const leadPlus  = document.getElementById('leadPlusBtn');
-  const supMinus  = document.getElementById('supportMinusBtn');
-  const supPlus   = document.getElementById('supportPlusBtn');
-
-  const adjust = (id, delta, min = 0) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const cur = parseInt(el.textContent || '0', 10) || 0;
-    const next = Math.max(min, cur + delta);
-    el.textContent = String(next);
-    // refresh total
-    const { lead_required, support_required } = getStaffingFromUI();
-    setStaffingInUI(lead_required, support_required);
-  };
-
-  if (leadMinus) leadMinus.onclick = () => adjust('leadCount', -1, 0);
-  if (leadPlus)  leadPlus.onclick  = () => adjust('leadCount', +1, 0);
-  if (supMinus)  supMinus.onclick  = () => adjust('supportCount', -1, 0);
-  if (supPlus)   supPlus.onclick   = () => adjust('supportCount', +1, 0);
-}
 
 // ==== Recurrence UI helpers ===============================================
 let _recUntilPicker = null;
@@ -1903,8 +1839,7 @@ function resetCreateUnitWizard() {
   window.__calendarInitRan = false;
   window.__venueCache = {}; // clear cached venues
 
-  // 7) Inspector/staffing/recurrence small resets (safe no-ops if missing)
-  setStaffingInUI?.(1, 0);
+  // 7) Inspector/recurrence small resets (safe no-ops if missing)
   const recOccurs = document.getElementById('recOccurs');
   const recCount  = document.getElementById('recCount');
   const recUntil  = document.getElementById('recUntil');
@@ -1978,29 +1913,6 @@ async function populateReview() {
 
   const unitId = document.getElementById('unit_id').value;
 
-  // Facilitators
-  try {
-    if (LIST_FACILITATORS_TEMPLATE) {
-      const resF = await fetch(withUnitId(LIST_FACILITATORS_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
-      const dataF = await resF.json();
-      const ulF = document.getElementById('rv_facilitators');
-      ulF.innerHTML = '';
-      if (dataF.ok) {
-        dataF.facilitators.forEach(email => {
-          const li = document.createElement('li'); li.textContent = email; ulF.appendChild(li);
-        });
-        document.getElementById('rv_fac_count').textContent = dataF.facilitators.length;
-      }
-    } else {
-      // No facilitators route available yet
-      document.getElementById('rv_fac_count').textContent = 0;
-      document.getElementById('rv_facilitators').innerHTML = '<li>No facilitators data available</li>';
-    }
-  } catch (err) {
-    console.warn('Failed to load facilitators:', err);
-    document.getElementById('rv_fac_count').textContent = 0;
-    document.getElementById('rv_facilitators').innerHTML = '<li>Error loading facilitators</li>';
-  }
 
   // Venues
   try {
