@@ -2809,7 +2809,52 @@ function initSessionsOverview() {
     console.warn('Dashboard panel not found');
     return;
   }
-  showSampleSessionsData();
+  loadRealSessionsData();
+}
+
+async function loadRealSessionsData() {
+  console.log('Loading real sessions data...');
+  
+  const unitId = getUnitId();
+  if (!unitId) {
+    console.warn('No unit ID available for loading sessions');
+    return;
+  }
+
+  try {
+    const response = await fetch(`/unitcoordinator/units/${unitId}/dashboard-sessions`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (!data.ok) {
+      throw new Error(data.error || 'Failed to load session data');
+    }
+
+    // Store for later re-render
+    window.__attData.today = data.today_sessions;
+    window.__attData.upcoming = data.upcoming_sessions;
+
+    updateTodaysSessions(data.today_sessions);
+    updateUpcomingSessions(data.upcoming_sessions);
+    updateMiniCalendar({ weekTotal: data.week_session_count, days: {} });
+    renderAttendanceGauge(data.today_sessions, data.upcoming_sessions);
+    renderFacilitatorBar(data.facilitator_counts);
+    renderSwapRequestsLine(data.swap_requests);
+    
+    // Update week session count
+    const weekCountElement = document.getElementById('weekSessionCount');
+    if (weekCountElement) {
+      weekCountElement.textContent = data.week_session_count;
+    }
+    
+    console.log('Real sessions data loaded successfully');
+  } catch (error) {
+    console.error('Error loading real sessions data:', error);
+    // Fallback to sample data if real data fails
+    showSampleSessionsData();
+  }
 }
 
 function showSampleSessionsData() {
@@ -2993,6 +3038,83 @@ window.setSwapRequestsData = function(dataArray) {
   window.__swapsData = Array.isArray(dataArray) ? dataArray : [];
   renderSwapRequestsLine(window.__swapsData);
 };
+
+// Facilitator Session Count Bar Chart
+let facilitatorBarChart = null;
+function renderFacilitatorBar(facilitatorData) {
+  const canvas = document.getElementById('facilitatorBarChart');
+  if (!canvas) {
+    console.warn('Facilitator bar chart canvas not found');
+    return;
+  }
+
+  // Handle empty data
+  if (!facilitatorData || facilitatorData.length === 0) {
+    if (facilitatorBarChart) {
+      facilitatorBarChart.destroy();
+      facilitatorBarChart = null;
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('No facilitator data available', canvas.width / 2, canvas.height / 2);
+    return;
+  }
+
+  ensureChartJs().then(Chart => {
+    if (facilitatorBarChart) {
+      facilitatorBarChart.destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+    const labels = facilitatorData.map(f => f.name);
+    const data = facilitatorData.map(f => f.session_count);
+
+    facilitatorBarChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Sessions',
+          data: data,
+          backgroundColor: '#3b82f6',
+          borderColor: '#2563eb',
+          borderWidth: 1,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.y} session${ctx.parsed.y === 1 ? '' : 's'}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { 
+              maxRotation: 45,
+              color: '#6b7280',
+              font: { size: 10 }
+            }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0, color: '#6b7280' },
+            grid: { color: 'rgba(0,0,0,.06)' }
+          }
+        }
+      }
+    });
+  }).catch(console.warn);
+}
 
 function updateUpcomingSessions(sessions) {
   const container = document.getElementById('upcomingSessionsList');

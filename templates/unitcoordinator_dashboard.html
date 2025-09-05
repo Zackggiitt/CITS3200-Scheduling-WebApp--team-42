@@ -19,6 +19,9 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
 
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+
   <!-- App CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}" />
   <style>
@@ -717,8 +720,8 @@
                     <h3 class="text-sm font-semibold">Facilitator Session Count</h3>
                     <span class="material-icons text-gray-500 text-sm">bar_chart</span>
                   </div>
-                  <div class="clone-content">
-                    This is a placeholder for the bar chart.
+                  <div class="facilitator-bar-wrap" style="height: 120px;">
+                    <canvas id="facilitatorBarChart"></canvas>
                   </div>
                 </section>
             </div>
