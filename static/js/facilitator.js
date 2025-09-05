@@ -339,13 +339,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // GLOBAL CLICK HANDLER - Only one for all click events
     document.addEventListener('click', function(e) {
+        // Handle session action buttons (more specific selector)
+        if (e.target.closest('.session-item .action-btn.accept')) {
+            const sessionItem = e.target.closest('.session-item');
+            const statusBadge = sessionItem.querySelector('.tag');
+            statusBadge.textContent = 'approved';
+            statusBadge.className = 'tag approved';
+            
+            // Remove action buttons
+            const actionsDiv = sessionItem.querySelector('.session-actions');
+            if (actionsDiv) {
+                actionsDiv.remove();
+            }
+            
+            alert('Session accepted successfully!');
+        } else if (e.target.closest('.session-item .action-btn.decline')) {
+            const sessionItem = e.target.closest('.session-item');
+            sessionItem.style.opacity = '0.5';
+            sessionItem.style.textDecoration = 'line-through';
+            
+            // Remove action buttons
+            const actionsDiv = sessionItem.querySelector('.session-actions');
+            if (actionsDiv) {
+                actionsDiv.remove();
+            }
+            
+            alert('Session declined.');
+        }
+        
         // Handle notification accept/decline buttons (legacy support)
-        if (e.target.closest('.action-btn.accept')) {
+        else if (e.target.closest('.notification-item .action-btn.accept')) {
             const notification = e.target.closest('.notification-item');
             notification.classList.remove('unread');
             updateNotificationBadge();
             alert('Shift accepted successfully!');
-        } else if (e.target.closest('.action-btn.decline')) {
+        } else if (e.target.closest('.notification-item .action-btn.decline')) {
             const notification = e.target.closest('.notification-item');
             notification.classList.remove('unread');
             notification.style.display = 'none';
@@ -495,11 +523,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 totalHours: 16,
                 activeSessions: 2
             },
-            upcomingSessions: [
-                { day: 'Monday, Sep 1', date: '01/09/2025', time: '9:00 AM - 11:00 AM', location: 'Stats Lab', topic: 'Statistics Review', status: 'approved' },
-                { day: 'Today (Sep 5)', date: '05/09/2025', time: '10:00 AM - 12:00 PM', location: 'Stats Lab', topic: 'R Programming', status: 'approved' },
-                { day: 'Monday, Sep 8', date: '08/09/2025', time: '2:00 PM - 4:00 PM', location: 'Computer Lab', topic: 'Data Visualization', status: 'approved' }
-            ]
+                         upcomingSessions: [
+                 { day: 'Monday, Sep 1', date: '01/09/2025', time: '9:00 AM - 11:00 AM', location: 'Stats Lab', topic: 'Statistics Review', status: 'approved' },
+                 { day: 'Today (Sep 5)', date: '05/09/2025', time: '10:00 AM - 12:00 PM', location: 'Stats Lab', topic: 'R Programming', status: 'approved' },
+                 { day: 'Friday, Sep 12', date: '12/09/2025', time: '10:00 AM - 12:00 PM', location: 'Stats Lab', topic: 'R Programming', status: 'pending' },
+                 { day: 'Monday, Sep 8', date: '08/09/2025', time: '2:00 PM - 4:00 PM', location: 'Computer Lab', topic: 'Data Visualization', status: 'approved' }
+             ]
         },
         2: {
             code: 'CITS1401',
@@ -832,17 +861,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (unit.status === 'active' && unit.upcomingSessions) {
             unit.upcomingSessions.forEach(session => {
+                const hasActions = session.status === 'pending';
                 sessionsHTML += `
                     <div class="session-item">
                         <div class="session-info">
                             <div class="session-title">
-                                <h4>${session.day}</h4>
-                                <span class="tag confirmed">${session.status}</span>
+                                <div>
+                                    <h4>${session.topic}</h4>
+                                    <p class="session-full-date">${session.date}</p>
+                                </div>
+                                <span class="tag ${session.status}">${session.status}</span>
                             </div>
                             <p class="session-time">${session.time}</p>
                             <p class="session-location">${session.location}</p>
-                            <p class="session-topic">${session.topic}</p>
                         </div>
+                        ${hasActions ? `
+                            <div class="session-actions">
+                                <button class="action-btn accept">
+                                    <span class="material-icons">check</span>
+                                    Accept
+                                </button>
+                                <button class="action-btn decline">
+                                    Decline
+                                </button>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             });
@@ -852,12 +895,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="session-item">
                         <div class="session-info">
                             <div class="session-title">
-                                <h4>${session.day}</h4>
+                                <div>
+                                    <h4>${session.topic}</h4>
+                                    <p class="session-full-date">${session.date}</p>
+                                </div>
                                 <span class="tag confirmed">${session.status}</span>
                             </div>
                             <p class="session-time">${session.time}</p>
                             <p class="session-location">${session.location}</p>
-                            <p class="session-topic">${session.topic}</p>
                         </div>
                     </div>
                 `;
@@ -899,17 +944,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 
                 unit.upcomingSessions.forEach(session => {
+                    const hasActions = session.status === 'pending';
                     sessionsHTML += `
                         <div class="session-item">
                             <div class="session-info">
                                 <div class="session-title">
-                                    <h4>${session.day}</h4>
-                                    <span class="tag confirmed">${session.status}</span>
+                                    <div>
+                                        <h4>${session.topic}</h4>
+                                        <p class="session-full-date">${session.date}</p>
+                                    </div>
+                                    <span class="tag ${session.status}">${session.status}</span>
                                 </div>
                                 <p class="session-time">${session.time}</p>
                                 <p class="session-location">${session.location}</p>
-                                <p class="session-topic">${session.topic}</p>
                             </div>
+                            ${hasActions ? `
+                                <div class="session-actions">
+                                    <button class="action-btn accept">
+                                        <span class="material-icons">check</span>
+                                        Accept
+                                    </button>
+                                    <button class="action-btn decline">
+                                        Decline
+                                    </button>
+                                </div>
+                            ` : ''}
                         </div>
                     `;
                 });

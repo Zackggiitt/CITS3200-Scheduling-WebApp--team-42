@@ -1794,24 +1794,239 @@ input:checked + .toggle-slider:before {
     flex-direction: column;
     gap: var(--gap-md);
 }
+/* Session List Styling */
+.session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
 .session-item {
+    background-color: var(--surface-primary);
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    transition: box-shadow 0.2s ease;
+    width: 100%;
+    max-width: none;
+    text-align: left;
+}
+
+.session-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Session Card Session Info - More Specific Selector */
+.session-item .session-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+    align-items: flex-start;
+}
+
+.session-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+    width: 100%;
+}
+
+.session-title > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.session-title h4 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0 0 4px 0;
+    line-height: 1.2;
+    text-align: left;
+    width: 100%;
+}
+
+.session-date {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.session-full-date {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    margin: 0 0 8px 0;
+    line-height: 1.2;
+    text-align: left;
+    width: 100%;
+}
+
+/* Status Badges */
+.tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tag.approved {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+.tag.pending {
+    background-color: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+}
+
+.tag.completed {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+.tag.confirmed {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+/* Session Details */
+.session-time {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin: 0;
+    font-weight: 400;
+    text-align: left;
+    width: 100%;
+}
+
+.session-location {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin: 0;
+    font-weight: 400;
+    text-align: left;
+    width: 100%;
+}
+
+.session-topic {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin: 0;
+    font-weight: 400;
+    text-align: left;
+    width: 100%;
+}
+
+/* Action Buttons for Pending Sessions */
+.session-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: 16px;
+}
+
+.action-btn {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    background-color: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.action-btn.accept {
+    background-color: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+}
+
+.action-btn.accept:hover {
+    background-color: #059669;
+    border-color: #059669;
+}
+
+.action-btn.decline {
+    background-color: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+}
+
+.action-btn.decline:hover {
+    background-color: #dc2626;
+    border-color: #dc2626;
+}
+
+.action-btn .material-icons {
+    font-size: 16px;
+}
+
+/* Session Group Headers */
+.session-group-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: var(--gap-md);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
 }
-.session-info { flex-grow: 1; }
-.session-title { display: flex; align-items: center; gap: var(--gap-sm); margin-bottom: 4px; }
-.session-title h4 { font-size: 14px; font-weight: 600; }
-.tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: capitalize; }
-.tag.confirmed { background-color: var(--surface-confirmed-dark); color: var(--color-text-white); }
-.tag.pending { background-color: var(--surface-pending-dark); color: var(--color-text-secondary); }
-.session-time { font-size: 12px; color: var(--color-text-tertiary); margin-bottom: 4px; }
-.session-location { font-size: 10px; color: var(--color-text-tertiary); }
-.session-actions { display: flex; gap: var(--gap-sm); }
-.action-btn { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 4px; }
+
+.session-group-header h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.session-count-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-tertiary);
+    background-color: #f3f4f6;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* Unit Session Groups */
+.unit-session-group {
+    margin-bottom: 24px;
+}
+
+.unit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 8px 0;
+}
+
+.unit-code-small {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
 .activity-item { display: flex; justify-content: space-between; align-items: center; }
 .activity-info { display: flex; align-items: center; gap: var(--gap-sm); }
 .activity-icon-wrapper { width: 24px; height: 24px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
@@ -1830,18 +2045,38 @@ input:checked + .toggle-slider:before {
         grid-template-columns: 1fr;
     }
 }
-@media (max-width: 480px) {
-    .session-item, .session-actions {
+/* Responsive Design for Session Cards */
+@media (max-width: 768px) {
+    .session-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .session-actions {
+        margin-left: 0;
+        justify-content: flex-end;
+    }
+    
+    .session-title {
         flex-direction: column;
         align-items: flex-start;
-        gap: var(--gap-sm);
+        gap: 8px;
     }
+}
+
+@media (max-width: 480px) {
+    .session-item {
+        padding: 12px;
+    }
+    
     .session-actions {
-        width: 100%;
-        flex-direction: row;
+        flex-direction: column;
+        gap: 8px;
     }
+    
     .action-btn {
-        flex-grow: 1;
+        width: 100%;
         justify-content: center;
     }
 }
@@ -2319,17 +2554,24 @@ input:checked + .toggle-slider:before {
   font-size: 0.875rem;
 }
 
-.session-info {
+/* Unit Context Card Session Info - More Specific Selector */
+.unit-details .session-info {
   display: flex;
   align-items: center;
   gap: 8px;
   color: #6b7280;
   font-size: 0.875rem;
+  margin-top: 0;
 }
 
-.session-info .material-icons {
+.unit-details .session-info .material-icons {
   font-size: 1rem;
   color: #9ca3af;
+}
+
+.unit-details .date-range {
+  color: #9ca3af;
+  font-size: 0.8125rem;
 }
 
 .date-range {
