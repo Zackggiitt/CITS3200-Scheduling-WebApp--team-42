@@ -29,16 +29,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 dashboardSections.forEach(section => section.style.display = 'none');
                 availabilityView.style.display = 'block';
                 calendarView.style.display = 'none';
+                // Hide unavailability alert in availability view
+                const unavailabilityAlert = document.getElementById('unavailability-alert');
+                if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
             } else if (href === '#schedule') {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
                 availabilityView.style.display = 'none';
                 calendarView.style.display = 'block';
                 initCalendar();
+                // Hide unavailability alert in schedule view
+                const unavailabilityAlert = document.getElementById('unavailability-alert');
+                if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
             } else {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
                 availabilityView.style.display = 'none';
+                // Show unavailability alert in dashboard view
+                const unavailabilityAlert = document.getElementById('unavailability-alert');
+                if (unavailabilityAlert) unavailabilityAlert.style.display = 'block';
                 calendarView.style.display = 'none';
             }
         });
@@ -455,6 +464,9 @@ document.addEventListener('DOMContentLoaded', function() {
             dashboardSections.forEach(section => section.style.display = 'none');
             availabilityView.style.display = 'block';
             calendarView.style.display = 'none';
+            // Hide unavailability alert in availability view
+            const unavailabilityAlert = document.getElementById('unavailability-alert');
+            if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
         }
     });
 
