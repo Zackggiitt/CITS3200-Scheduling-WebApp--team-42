@@ -19,6 +19,9 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
 
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+
   <!-- App CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}" />
   <style>
@@ -671,17 +674,20 @@
                 <div id="panel-dashboard">
                   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Today's Sessions -->
-                    <section class="bg-blue-50 border border-blue-200 rounded-2xl p-5">
-                      <div class="flex items-center justify-between mb-3">
+                    <section class="bg-blue-50 border border-blue-200 rounded-2xl p-5" style="height: 280px; width: 100%; position: relative;">
+                      <div class="flex items-center justify-between mb-1">
                         <h3 class="text-lg font-semibold">Today's Sessions</h3>
                         <span class="material-icons text-blue-500">event</span>
                       </div>
-                      <div id="todaySessionsList" class="flex gap-3"></div>
+                      <div class="text-sm text-gray-600 mb-0">
+                        <span id="todaySessionCount">0</span> sessions today
+                      </div>
+                      <div id="todaySessionsList" style="position: absolute; top: 80px; left: 20px; right: 20px; bottom: 20px; overflow: hidden;"></div>
                     </section>
 
                     <!-- Upcoming Sessions -->
-                    <section class="bg-purple-50 border border-purple-200 rounded-2xl p-5">
-                      <div class="flex items-center justify-between mb-1">
+                    <section class="bg-purple-50 border border-purple-200 rounded-2xl p-5" style="height: 280px; width: 100%; position: relative;">
+                      <div class="flex items-center justify-between mb-3">
                         <h3 class="text-lg font-semibold">Upcoming Sessions</h3>
                         <span class="material-icons text-purple-500">schedule</span>
                       </div>
@@ -693,7 +699,7 @@
                       <div id="miniCalendarDays" class="grid grid-cols-7 gap-2 mb-4"></div>
 
                       <!-- list -->
-                      <div id="upcomingSessionsList" class="space-y-2"></div>
+                      <div id="upcomingSessionsList" style="position: absolute; top: 120px; left: 20px; right: 20px; bottom: 20px; overflow: hidden;"></div>
                     </section>
 
                       <!-- Attendance Summary -->
@@ -717,8 +723,8 @@
                     <h3 class="text-sm font-semibold">Facilitator Session Count</h3>
                     <span class="material-icons text-gray-500 text-sm">bar_chart</span>
                   </div>
-                  <div class="clone-content">
-                    This is a placeholder for the bar chart.
+                  <div class="facilitator-bar-wrap" style="height: 120px;">
+                    <canvas id="facilitatorBarChart"></canvas>
                   </div>
                 </section>
             </div>

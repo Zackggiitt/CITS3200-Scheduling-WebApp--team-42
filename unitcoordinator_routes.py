@@ -2110,6 +2110,163 @@ def upload_cas_csv(unit_id: int):
         "created_session_ids": created_ids,
     })
 
+@unitcoordinator_bp.get("/units/<int:unit_id>/dashboard-sessions")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def get_dashboard_sessions(unit_id: int):
+    """Get session data for dashboard display - today's sessions, upcoming sessions, and statistics"""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+
+    from datetime import datetime, timedelta, date
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+    week_end = today + timedelta(days=7)
+
+    # Get today's sessions
+    today_sessions = (
+        db.session.query(Session, Module, Assignment, User)
+        .join(Module, Module.id == Session.module_id)
+        .outerjoin(Assignment, Assignment.session_id == Session.id)
+        .outerjoin(User, User.id == Assignment.facilitator_id)
+        .filter(
+            Module.unit_id == unit.id,
+            Session.start_time >= datetime.combine(today, datetime.min.time()),
+            Session.start_time < datetime.combine(tomorrow, datetime.min.time())
+        )
+        .order_by(Session.start_time.asc())
+        .all()
+    )
+
+    # Get upcoming sessions (next 7 days)
+    upcoming_sessions = (
+        db.session.query(Session, Module, Assignment, User)
+        .join(Module, Module.id == Session.module_id)
+        .outerjoin(Assignment, Assignment.session_id == Session.id)
+        .outerjoin(User, User.id == Assignment.facilitator_id)
+        .filter(
+            Module.unit_id == unit.id,
+            Session.start_time >= datetime.combine(tomorrow, datetime.min.time()),
+            Session.start_time < datetime.combine(week_end, datetime.min.time())
+        )
+        .order_by(Session.start_time.asc())
+        .all()
+    )
+
+    # Process today's sessions
+    today_data = []
+    for session, module, assignment, user in today_sessions:
+        facilitators = []
+        if assignment and user:
+            facilitators.append({
+                "name": f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email,
+                "initials": f"{user.first_name[0] if user.first_name else ''}{user.last_name[0] if user.last_name else ''}".upper() or user.email[0].upper()
+            })
+        
+        today_data.append({
+            "id": session.id,
+            "name": module.module_name or "Session",
+            "time": f"{session.start_time.strftime('%I:%M %p')} - {session.end_time.strftime('%I:%M %p')}",
+            "location": session.location or "TBA",
+            "status": "confirmed" if assignment else "unassigned",
+            "facilitators": facilitators
+        })
+
+    # Process upcoming sessions
+    upcoming_data = []
+    for session, module, assignment, user in upcoming_sessions:
+        facilitators = []
+        if assignment and user:
+            facilitators.append({
+                "name": f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email,
+                "initials": f"{user.first_name[0] if user.first_name else ''}{user.last_name[0] if user.last_name else ''}".upper() or user.email[0].upper()
+            })
+        
+        # Determine relative date
+        session_date = session.start_time.date()
+        if session_date == tomorrow:
+            relative_date = "Tomorrow"
+        else:
+            relative_date = session_date.strftime("%A")
+        
+        upcoming_data.append({
+            "id": session.id,
+            "name": module.module_name or "Session",
+            "date": relative_date,
+            "time": session.start_time.strftime("%I:%M %p"),
+            "location": session.location or "TBA",
+            "status": "confirmed" if assignment else "unassigned",
+            "facilitators": facilitators
+        })
+
+    # Get facilitator session counts for bar chart
+    facilitator_counts = (
+        db.session.query(
+            User.first_name,
+            User.last_name,
+            User.email,
+            func.count(Assignment.id).label('session_count')
+        )
+        .join(Assignment, Assignment.facilitator_id == User.id)
+        .join(Session, Session.id == Assignment.session_id)
+        .join(Module, Module.id == Session.module_id)
+        .filter(Module.unit_id == unit.id)
+        .group_by(User.id, User.first_name, User.last_name, User.email)
+        .order_by(func.count(Assignment.id).desc())
+        .limit(10)
+        .all()
+    )
+
+    facilitator_data = []
+    for first_name, last_name, email, count in facilitator_counts:
+        name = f"{first_name or ''} {last_name or ''}".strip() or email
+        facilitator_data.append({
+            "name": name,
+            "session_count": count
+        })
+
+    # Get swap requests over time (last 30 days)
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    swap_requests = (
+        db.session.query(SwapRequest.created_at)
+        .join(Assignment, Assignment.id == SwapRequest.requester_assignment_id)
+        .join(Session, Session.id == Assignment.session_id)
+        .join(Module, Module.id == Session.module_id)
+        .filter(
+            Module.unit_id == unit.id,
+            SwapRequest.created_at >= thirty_days_ago
+        )
+        .order_by(SwapRequest.created_at.asc())
+        .all()
+    )
+
+    # Group swap requests by date
+    swap_data = {}
+    for swap_request, in swap_requests:
+        date_key = swap_request.date().isoformat()
+        swap_data[date_key] = swap_data.get(date_key, 0) + 1
+
+    # Convert to array format for chart
+    swap_chart_data = []
+    for i in range(30):
+        date_obj = today - timedelta(days=29-i)
+        date_str = date_obj.isoformat()
+        swap_chart_data.append({
+            "date": date_str,
+            "count": swap_data.get(date_str, 0)
+        })
+
+    return jsonify({
+        "ok": True,
+        "today_sessions": today_data,
+        "upcoming_sessions": upcoming_data,
+        "facilitator_counts": facilitator_data,
+        "swap_requests": swap_chart_data,
+        "week_session_count": len(upcoming_data)
+    })
+
 @unitcoordinator_bp.get("/units/<int:unit_id>/bulk-staffing/filters")
 
 @login_required

@@ -2642,72 +2642,98 @@ document.addEventListener('DOMContentLoaded', initGreetingBanner);
 
 function updateTodaysSessions(sessions) {
   const container = document.getElementById('todaySessionsList');
+  const countElement = document.getElementById('todaySessionCount');
   console.log('Today sessions container found:', !!container);
-  
+  console.log('Number of sessions:', sessions?.length);
+
   if (!container) return;
-  
+
+  // Update session count
+  if (countElement) {
+    countElement.textContent = sessions?.length || 0;
+  }
+
   if (!sessions || sessions.length === 0) {
     container.innerHTML = '<div class="text-sm text-gray-500">No sessions today</div>';
     return;
   }
 
   container.innerHTML = `
-    <div class="flex gap-3 overflow-x-auto pb-2" style="scrollbar-width: none; -ms-overflow-style: none;">
+    <div class="flex gap-4 overflow-x-auto today-sessions-scroll" style="height: 100%; width: 100%;">
       ${sessions.map(session => {
         const isConfirmed = String(session.status || '').toLowerCase() === 'confirmed';
         const statusEl = isConfirmed
           ? `<span class="material-icons text-green-600 text-xs leading-none" title="Confirmed" aria-label="Confirmed">task_alt</span>`
           : `<span class="text-xs text-gray-500">${session.status || 'Scheduled'}</span>`;
         return `
-        <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm w-[280px] h-[140px] flex-shrink-0 flex flex-col justify-between">
+        <div class="session-card">
           <div>
-            <div class="flex items-start justify-between mb-3">
-              <h5 class="font-semibold text-gray-900 text-base truncate flex-1 pr-2">${session.name}</h5>
-              <div class="flex items-center flex-shrink-0">${statusEl}</div>
-            </div>
-            
-             <div class="space-y-1">
-              <!-- Time (Google Material Icon, smaller) -->
-              <div class="flex items-center gap-2 text-xs text-gray-700">
-                <span class="material-icons mi-sm text-gray-500" aria-hidden="true">schedule</span>
-                <span class="truncate">${session.time}</span>
+            <div class="session-card-header">
+              <div class="session-card-title-container">
+                <div class="session-card-dot"></div>
+                <h5 class="session-card-title">${session.name}</h5>
               </div>
-              <!-- Venue (Google Material Icon, smaller) -->
-              <div class="flex items-center gap-2 text-xs text-gray-700">
-                <span class="material-icons mi-sm text-gray-500" aria-hidden="true">location_on</span>
-                <span class="truncate">${session.location || 'TBA'}</span>
+              <div class="session-card-status">${statusEl}</div>
+            </div>
+
+            <div class="session-card-details">
+              <!-- Time -->
+              <div class="session-card-detail">
+                <span class="material-icons session-card-icon">schedule</span>
+                <span>${session.time}</span>
+              </div>
+              <!-- Venue -->
+              <div class="session-card-detail">
+                <span class="material-icons session-card-icon">location_on</span>
+                <span>${session.location || 'TBA'}</span>
               </div>
             </div>
           </div>
-          
-          <div class="mt-2">
-            <div class="flex items-start gap-2">
-              <span class="text-xs text-gray-600 flex-shrink-0">Facilitators:</span>
-              <div class="text-xs text-gray-700 truncate">
-                ${session.facilitators?.map(f => f.name || f.initials || 'Unknown').join(', ') || 'No facilitators assigned'}
-              </div>
+
+          <div class="session-card-facilitator">
+            <span class="session-card-fac-label">Facilitator:</span>
+            <div class="session-card-fac-value">
+              ${session.facilitators?.map(f => f.name || f.initials || 'Unknown').join(', ') || 'None'}
             </div>
           </div>
         </div>
         `;
       }).join('')}
       
-      ${sessions.length > 2 ? `
-        <div class="w-[60px] h-[140px] flex-shrink-0 flex items-center justify-center">
-          <button class="w-10 h-10 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors">
-            <span class="material-icons">chevron_right</span>
+      ${sessions.length >= 1 ? `
+        <div class="w-[40px] h-[45px] flex-shrink-0 flex items-center justify-center">
+          <button class="scroll-button w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors" title="Scroll to see more sessions">
+            <span class="material-icons text-sm">chevron_right</span>
           </button>
         </div>
       ` : ''}
     </div>
   `;
   
+  console.log('Scroll button should be visible:', sessions.length >= 2);
+  
   const scrollButton = container.querySelector('button');
-  if (scrollButton) {
+  const scrollContainer = container.querySelector('.today-sessions-scroll');
+  
+  console.log('Scroll button found:', !!scrollButton);
+  console.log('Scroll container found:', !!scrollContainer);
+  
+  if (scrollButton && scrollContainer) {
+    // Add scroll event listener to show/hide scroll button based on scroll position
+    const updateScrollButton = () => {
+      const isAtEnd = scrollContainer.scrollLeft >= (scrollContainer.scrollWidth - scrollContainer.clientWidth - 10);
+      scrollButton.style.opacity = isAtEnd ? '0.5' : '1';
+      scrollButton.disabled = isAtEnd;
+    };
+    
+    scrollContainer.addEventListener('scroll', updateScrollButton);
+    
     scrollButton.addEventListener('click', () => {
-      const scrollContainer = container.querySelector('.flex.gap-3');
       scrollContainer.scrollBy({ left: 300, behavior: 'smooth' });
     });
+    
+    // Initial check
+    updateScrollButton();
   }
 }
 function loadScriptOnce(src) {
@@ -2809,7 +2835,52 @@ function initSessionsOverview() {
     console.warn('Dashboard panel not found');
     return;
   }
-  showSampleSessionsData();
+  loadRealSessionsData();
+}
+
+async function loadRealSessionsData() {
+  console.log('Loading real sessions data...');
+  
+  const unitId = getUnitId();
+  if (!unitId) {
+    console.warn('No unit ID available for loading sessions');
+    return;
+  }
+
+  try {
+    const response = await fetch(`/unitcoordinator/units/${unitId}/dashboard-sessions`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (!data.ok) {
+      throw new Error(data.error || 'Failed to load session data');
+    }
+
+    // Store for later re-render
+    window.__attData.today = data.today_sessions;
+    window.__attData.upcoming = data.upcoming_sessions;
+
+    updateTodaysSessions(data.today_sessions);
+    updateUpcomingSessions(data.upcoming_sessions);
+    updateMiniCalendar({ weekTotal: data.week_session_count, days: {} });
+    renderAttendanceGauge(data.today_sessions, data.upcoming_sessions);
+    renderFacilitatorBar(data.facilitator_counts);
+    renderSwapRequestsLine(data.swap_requests);
+    
+    // Update week session count
+    const weekCountElement = document.getElementById('weekSessionCount');
+    if (weekCountElement) {
+      weekCountElement.textContent = data.week_session_count;
+    }
+    
+    console.log('Real sessions data loaded successfully');
+  } catch (error) {
+    console.error('Error loading real sessions data:', error);
+    // Fallback to sample data if real data fails
+    showSampleSessionsData();
+  }
 }
 
 function showSampleSessionsData() {
@@ -2994,6 +3065,83 @@ window.setSwapRequestsData = function(dataArray) {
   renderSwapRequestsLine(window.__swapsData);
 };
 
+// Facilitator Session Count Bar Chart
+let facilitatorBarChart = null;
+function renderFacilitatorBar(facilitatorData) {
+  const canvas = document.getElementById('facilitatorBarChart');
+  if (!canvas) {
+    console.warn('Facilitator bar chart canvas not found');
+    return;
+  }
+
+  // Handle empty data
+  if (!facilitatorData || facilitatorData.length === 0) {
+    if (facilitatorBarChart) {
+      facilitatorBarChart.destroy();
+      facilitatorBarChart = null;
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('No facilitator data available', canvas.width / 2, canvas.height / 2);
+    return;
+  }
+
+  ensureChartJs().then(Chart => {
+    if (facilitatorBarChart) {
+      facilitatorBarChart.destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+    const labels = facilitatorData.map(f => f.name);
+    const data = facilitatorData.map(f => f.session_count);
+
+    facilitatorBarChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Sessions',
+          data: data,
+          backgroundColor: '#3b82f6',
+          borderColor: '#2563eb',
+          borderWidth: 1,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.y} session${ctx.parsed.y === 1 ? '' : 's'}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { 
+              maxRotation: 45,
+              color: '#6b7280',
+              font: { size: 10 }
+            }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0, color: '#6b7280' },
+            grid: { color: 'rgba(0,0,0,.06)' }
+          }
+        }
+      }
+    });
+  }).catch(console.warn);
+}
+
 function updateUpcomingSessions(sessions) {
   const container = document.getElementById('upcomingSessionsList');
   console.log('Upcoming sessions container found:', !!container);
@@ -3005,20 +3153,58 @@ function updateUpcomingSessions(sessions) {
     return;
   }
   
-  container.innerHTML = sessions.slice(0, 3).map(session => `
-    <div class="bg-white rounded-md p-2 border border-purple-200">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <div class="w-2 h-2 rounded-full bg-purple-500"></div>
-          <span class="text-xs font-medium">${session.name}</span>
+  container.innerHTML = `
+    <div class="flex flex-col gap-2 overflow-y-auto upcoming-sessions-scroll" style="height: 100%; width: 100%;">
+      ${sessions.map(session => `
+        <div class="bg-white rounded-md p-2 border border-purple-200 flex-shrink-0 h-[50px] flex flex-col justify-center">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+              <span class="text-xs font-medium truncate">${session.name}</span>
+            </div>
+            <div class="text-xs text-gray-500">${session.date}</div>
+          </div>
+          <div class="text-xs text-gray-600 mt-1 truncate">
+            ${session.time} • ${session.location || 'TBA'}
+          </div>
         </div>
-        <div class="text-xs text-gray-500">${session.date}</div>
-      </div>
-      <div class="text-xs text-gray-600 mt-1">
-        ${session.time} • ${session.location || 'TBA'}
-      </div>
+      `).join('')}
+      
+      ${sessions.length > 3 ? `
+        <div class="w-full h-8 flex-shrink-0 flex items-center justify-center">
+          <button class="scroll-button-upcoming w-6 h-6 rounded-full bg-purple-100 hover:bg-purple-200 flex items-center justify-center text-purple-600 transition-colors" title="Scroll to see more sessions">
+            <span class="material-icons text-xs">expand_more</span>
+          </button>
+        </div>
+      ` : ''}
     </div>
-  `).join('');
+  `;
+  
+  console.log('Upcoming scroll button should be visible:', sessions.length > 3);
+  
+  const scrollButton = container.querySelector('.scroll-button-upcoming');
+  const scrollContainer = container.querySelector('.upcoming-sessions-scroll');
+  
+  console.log('Upcoming scroll button found:', !!scrollButton);
+  console.log('Upcoming scroll container found:', !!scrollContainer);
+  
+  if (scrollButton && scrollContainer) {
+    // Add scroll event listener to show/hide scroll button based on scroll position
+    const updateScrollButton = () => {
+      const isAtEnd = scrollContainer.scrollTop >= (scrollContainer.scrollHeight - scrollContainer.clientHeight - 10);
+      scrollButton.style.opacity = isAtEnd ? '0.5' : '1';
+      scrollButton.disabled = isAtEnd;
+    };
+    
+    scrollContainer.addEventListener('scroll', updateScrollButton);
+    
+    scrollButton.addEventListener('click', () => {
+      scrollContainer.scrollBy({ top: 100, behavior: 'smooth' });
+    });
+    
+    // Initial check
+    updateScrollButton();
+  }
 }
 
 function updateMiniCalendar(calendarData) {
@@ -3033,29 +3219,87 @@ function updateMiniCalendar(calendarData) {
   const startOfWeek = new Date(today);
   startOfWeek.setDate(today.getDate() - today.getDay() + 1);
   
+  const dayAbbreviations = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  
   let daysHTML = '';
   for (let i = 0; i < 7; i++) {
     const date = new Date(startOfWeek);
     date.setDate(startOfWeek.getDate() + i);
-    const dayNum = date.getDate();
+    const dayAbbr = dayAbbreviations[i];
     const isToday = date.toDateString() === today.toDateString();
     const hasSession = calendarData.days && calendarData.days[date.toISOString().split('T')[0]];
     
     const classes = [
-      'text-center py-1 rounded text-xs',
-      isToday ? 'bg-blue-600 text-white font-medium' : 'text-gray-700',
+      'text-center py-1 rounded text-xs font-medium cursor-pointer hover:bg-gray-100 transition-colors',
+      isToday ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-700',
       hasSession ? 'relative' : ''
     ].filter(Boolean).join(' ');
     
     daysHTML += `
-      <div class="${classes}">
-        ${dayNum}
+      <div class="${classes}" data-day-index="${i}" data-date="${date.toISOString().split('T')[0]}">
+        ${dayAbbr}
         ${hasSession ? '<div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-purple-500 rounded-full"></div>' : ''}
       </div>
     `;
   }
   
   daysContainer.innerHTML = daysHTML;
+  
+  // Add click event listeners to filter sessions by day
+  const dayElements = daysContainer.querySelectorAll('[data-day-index]');
+  dayElements.forEach(dayEl => {
+    dayEl.addEventListener('click', () => {
+      // Remove active class from all days
+      dayElements.forEach(el => el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700'));
+      
+      // Add active class to clicked day
+      dayEl.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+      
+      // Filter upcoming sessions by selected day
+      const selectedDate = dayEl.getAttribute('data-date');
+      filterUpcomingSessionsByDay(selectedDate);
+    });
+  });
+  
+  // Add double-click to show all sessions
+  dayElements.forEach(dayEl => {
+    dayEl.addEventListener('dblclick', () => {
+      // Remove active class from all days
+      dayElements.forEach(el => el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700'));
+      
+      // Show all upcoming sessions
+      const allSessions = window.__attData?.upcoming || [];
+      updateUpcomingSessions(allSessions);
+    });
+  });
+}
+
+// Function to filter upcoming sessions by selected day
+function filterUpcomingSessionsByDay(selectedDate) {
+  const container = document.getElementById('upcomingSessionsList');
+  if (!container) return;
+  
+  // Get the original upcoming sessions data
+  const upcomingSessions = window.__attData?.upcoming || [];
+  
+  // Convert selected date to day name
+  const selectedDayName = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' });
+  
+  console.log('Filtering sessions for:', selectedDayName, 'from date:', selectedDate);
+  console.log('Available sessions:', upcomingSessions);
+  
+  // Filter sessions for the selected day
+  const filteredSessions = upcomingSessions.filter(session => {
+    // Check if session.date matches the day name (e.g., "Tuesday", "Wednesday")
+    const sessionDay = session.date;
+    console.log('Comparing session day:', sessionDay, 'with selected day:', selectedDayName);
+    return sessionDay === selectedDayName;
+  });
+  
+  console.log('Filtered sessions:', filteredSessions);
+  
+  // Update the display with filtered sessions
+  updateUpcomingSessions(filteredSessions);
 }
 
 // ===== Schedule Panel Functionality =====
