@@ -954,6 +954,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
         activeUnits.forEach(unit => {
             if (unit.upcomingSessions) {
+                // Sort sessions by date and take only top 2
+                const sortedSessions = unit.upcomingSessions.sort((a, b) => {
+                    const dateA = new Date(a.date.split('/').reverse().join('-'));
+                    const dateB = new Date(b.date.split('/').reverse().join('-'));
+                    return dateA - dateB;
+                });
+                
+                const top2Sessions = sortedSessions.slice(0, 2);
+                const remainingCount = unit.upcomingSessions.length - 2;
+                
                 sessionsHTML += `
                     <div class="unit-session-group">
                         <div class="unit-header">
@@ -962,7 +972,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                 `;
                 
-                unit.upcomingSessions.forEach(session => {
+                top2Sessions.forEach(session => {
                     const hasActions = session.status === 'pending';
                     sessionsHTML += `
                         <div class="session-item">
@@ -991,6 +1001,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     `;
                 });
+                
+                // Add "more sessions" message if there are remaining sessions
+                if (remainingCount > 0) {
+                    sessionsHTML += `
+                        <div class="more-sessions-message">
+                            +${remainingCount} more session${remainingCount === 1 ? '' : 's'} in ${unit.code}. Click "View All" to see all sessions.
+                        </div>
+                    `;
+                }
                 
                 sessionsHTML += '</div>';
             }
