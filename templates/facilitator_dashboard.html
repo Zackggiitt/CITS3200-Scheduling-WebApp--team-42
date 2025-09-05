@@ -44,6 +44,19 @@
     </div>
 </header>
 
+<section id="welcome" class="main-content-wrapper">
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <h2>{{ greeting }}, {{ user.first_name }}! 👋</h2>
+      <p class="user-role">Lab Facilitator</p>
+      <p class="session-info">You have 3 upcoming sessions today.</p>
+    </div>
+    <div class="welcome-icon-wrapper">
+      <span class="material-icons" style="color: white; font-size: 24px;" aria-hidden="true">wb_sunny</span>
+    </div>
+  </div>
+</section>
+
 <section id="navigation" class="main-content-wrapper">
     <nav class="dashboard-nav">
         <a href="#dashboard" class="dashboard-nav-item active" id="dashboard-nav">
@@ -204,19 +217,6 @@
 
 <!-- Overlay for popup -->
 <div id="popup-overlay" class="popup-overlay"></div>
-
-<section id="welcome" class="main-content-wrapper">
-  <div class="welcome-banner">
-    <div class="welcome-text">
-      <h2>{{ greeting }}, {{ user.first_name }}! 👋</h2>
-      <p class="user-role">Lab Facilitator</p>
-      <p class="session-info">You have 3 upcoming sessions today.</p>
-    </div>
-    <div class="welcome-icon-wrapper">
-      <span class="material-icons" style="color: white; font-size: 24px;" aria-hidden="true">wb_sunny</span>
-    </div>
-  </div>
-</section>
 
 <!-- Unit Selector Section -->
 <section id="unit-selector" class="main-content-wrapper">
