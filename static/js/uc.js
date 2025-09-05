@@ -2642,49 +2642,56 @@ document.addEventListener('DOMContentLoaded', initGreetingBanner);
 
 function updateTodaysSessions(sessions) {
   const container = document.getElementById('todaySessionsList');
+  const countElement = document.getElementById('todaySessionCount');
   console.log('Today sessions container found:', !!container);
-  
+  console.log('Number of sessions:', sessions?.length);
+
   if (!container) return;
-  
+
+  // Update session count
+  if (countElement) {
+    countElement.textContent = sessions?.length || 0;
+  }
+
   if (!sessions || sessions.length === 0) {
     container.innerHTML = '<div class="text-sm text-gray-500">No sessions today</div>';
     return;
   }
 
   container.innerHTML = `
-    <div class="flex gap-3 overflow-x-auto pb-2" style="scrollbar-width: none; -ms-overflow-style: none;">
+    <div class="flex gap-2 overflow-x-auto today-sessions-scroll" style="height: 100%; width: 100%;">
       ${sessions.map(session => {
         const isConfirmed = String(session.status || '').toLowerCase() === 'confirmed';
         const statusEl = isConfirmed
           ? `<span class="material-icons text-green-600 text-xs leading-none" title="Confirmed" aria-label="Confirmed">task_alt</span>`
           : `<span class="text-xs text-gray-500">${session.status || 'Scheduled'}</span>`;
         return `
-        <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm w-[280px] h-[140px] flex-shrink-0 flex flex-col justify-between">
+        <div class="bg-white rounded-lg p-2 border border-gray-200 shadow-sm w-[180px] h-[100px] flex-shrink-0 flex flex-col justify-between">
           <div>
-            <div class="flex items-start justify-between mb-3">
-              <h5 class="font-semibold text-gray-900 text-base truncate flex-1 pr-2">${session.name}</h5>
+            <div class="flex items-start justify-between mb-1">
+              <h5 class="font-semibold text-gray-900 text-xs truncate flex-1 pr-2">${session.name}</h5>
               <div class="flex items-center flex-shrink-0">${statusEl}</div>
             </div>
-            
+
              <div class="space-y-1">
-              <!-- Time (Google Material Icon, smaller) -->
-              <div class="flex items-center gap-2 text-xs text-gray-700">
-                <span class="material-icons mi-sm text-gray-500" aria-hidden="true">schedule</span>
+              <!-- Time -->
+              <div class="flex items-center gap-1 text-xs text-gray-700">
+                <span class="material-icons text-xs text-gray-500">schedule</span>
                 <span class="truncate">${session.time}</span>
               </div>
-              <!-- Venue (Google Material Icon, smaller) -->
-              <div class="flex items-center gap-2 text-xs text-gray-700">
-                <span class="material-icons mi-sm text-gray-500" aria-hidden="true">location_on</span>
+              <!-- Venue -->
+              <div class="flex items-center gap-1 text-xs text-gray-700">
+                <span class="material-icons text-xs text-gray-500">location_on</span>
                 <span class="truncate">${session.location || 'TBA'}</span>
               </div>
             </div>
           </div>
-          
-          <div class="mt-2">
-            <div class="flex items-start gap-2">
-              <span class="text-xs text-gray-600 flex-shrink-0">Facilitators:</span>
+
+          <div class="mt-1">
+            <div class="flex items-start gap-1">
+              <span class="text-xs text-gray-600 flex-shrink-0">Fac:</span>
               <div class="text-xs text-gray-700 truncate">
-                ${session.facilitators?.map(f => f.name || f.initials || 'Unknown').join(', ') || 'No facilitators assigned'}
+                ${session.facilitators?.map(f => f.name || f.initials || 'Unknown').join(', ') || 'None'}
               </div>
             </div>
           </div>
@@ -2692,22 +2699,40 @@ function updateTodaysSessions(sessions) {
         `;
       }).join('')}
       
-      ${sessions.length > 2 ? `
-        <div class="w-[60px] h-[140px] flex-shrink-0 flex items-center justify-center">
-          <button class="w-10 h-10 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors">
-            <span class="material-icons">chevron_right</span>
+      ${sessions.length >= 1 ? `
+        <div class="w-[40px] h-[100px] flex-shrink-0 flex items-center justify-center">
+          <button class="scroll-button w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors" title="Scroll to see more sessions">
+            <span class="material-icons text-sm">chevron_right</span>
           </button>
         </div>
       ` : ''}
     </div>
   `;
   
+  console.log('Scroll button should be visible:', sessions.length >= 2);
+  
   const scrollButton = container.querySelector('button');
-  if (scrollButton) {
+  const scrollContainer = container.querySelector('.today-sessions-scroll');
+  
+  console.log('Scroll button found:', !!scrollButton);
+  console.log('Scroll container found:', !!scrollContainer);
+  
+  if (scrollButton && scrollContainer) {
+    // Add scroll event listener to show/hide scroll button based on scroll position
+    const updateScrollButton = () => {
+      const isAtEnd = scrollContainer.scrollLeft >= (scrollContainer.scrollWidth - scrollContainer.clientWidth - 10);
+      scrollButton.style.opacity = isAtEnd ? '0.5' : '1';
+      scrollButton.disabled = isAtEnd;
+    };
+    
+    scrollContainer.addEventListener('scroll', updateScrollButton);
+    
     scrollButton.addEventListener('click', () => {
-      const scrollContainer = container.querySelector('.flex.gap-3');
       scrollContainer.scrollBy({ left: 300, behavior: 'smooth' });
     });
+    
+    // Initial check
+    updateScrollButton();
   }
 }
 function loadScriptOnce(src) {
@@ -3127,20 +3152,58 @@ function updateUpcomingSessions(sessions) {
     return;
   }
   
-  container.innerHTML = sessions.slice(0, 3).map(session => `
-    <div class="bg-white rounded-md p-2 border border-purple-200">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <div class="w-2 h-2 rounded-full bg-purple-500"></div>
-          <span class="text-xs font-medium">${session.name}</span>
+  container.innerHTML = `
+    <div class="flex flex-col gap-2 overflow-y-auto upcoming-sessions-scroll" style="height: 100%; width: 100%;">
+      ${sessions.map(session => `
+        <div class="bg-white rounded-md p-2 border border-purple-200 flex-shrink-0 h-[50px] flex flex-col justify-center">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+              <span class="text-xs font-medium truncate">${session.name}</span>
+            </div>
+            <div class="text-xs text-gray-500">${session.date}</div>
+          </div>
+          <div class="text-xs text-gray-600 mt-1 truncate">
+            ${session.time} • ${session.location || 'TBA'}
+          </div>
         </div>
-        <div class="text-xs text-gray-500">${session.date}</div>
-      </div>
-      <div class="text-xs text-gray-600 mt-1">
-        ${session.time} • ${session.location || 'TBA'}
-      </div>
+      `).join('')}
+      
+      ${sessions.length > 3 ? `
+        <div class="w-full h-8 flex-shrink-0 flex items-center justify-center">
+          <button class="scroll-button-upcoming w-6 h-6 rounded-full bg-purple-100 hover:bg-purple-200 flex items-center justify-center text-purple-600 transition-colors" title="Scroll to see more sessions">
+            <span class="material-icons text-xs">expand_more</span>
+          </button>
+        </div>
+      ` : ''}
     </div>
-  `).join('');
+  `;
+  
+  console.log('Upcoming scroll button should be visible:', sessions.length > 3);
+  
+  const scrollButton = container.querySelector('.scroll-button-upcoming');
+  const scrollContainer = container.querySelector('.upcoming-sessions-scroll');
+  
+  console.log('Upcoming scroll button found:', !!scrollButton);
+  console.log('Upcoming scroll container found:', !!scrollContainer);
+  
+  if (scrollButton && scrollContainer) {
+    // Add scroll event listener to show/hide scroll button based on scroll position
+    const updateScrollButton = () => {
+      const isAtEnd = scrollContainer.scrollTop >= (scrollContainer.scrollHeight - scrollContainer.clientHeight - 10);
+      scrollButton.style.opacity = isAtEnd ? '0.5' : '1';
+      scrollButton.disabled = isAtEnd;
+    };
+    
+    scrollContainer.addEventListener('scroll', updateScrollButton);
+    
+    scrollButton.addEventListener('click', () => {
+      scrollContainer.scrollBy({ top: 100, behavior: 'smooth' });
+    });
+    
+    // Initial check
+    updateScrollButton();
+  }
 }
 
 function updateMiniCalendar(calendarData) {

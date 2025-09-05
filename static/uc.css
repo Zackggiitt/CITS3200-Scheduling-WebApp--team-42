@@ -2618,6 +2618,81 @@ main {
   max-width: 400px;
 }
 
+/* Today's Sessions Scroll Styles */
+.today-sessions-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  position: relative;
+}
+
+.today-sessions-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-button {
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.scroll-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.scroll-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Ensure scroll button is visible */
+.today-sessions-scroll .scroll-button {
+  margin-left: -10px;
+  margin-right: -50px;
+}
+
+/* Today's sessions scroll styles */
+.today-sessions-scroll {
+  position: relative;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  min-height: 0; /* Allow flex item to shrink below content size */
+}
+
+.today-sessions-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Upcoming sessions scroll styles */
+.upcoming-sessions-scroll {
+  position: relative;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  min-height: 0; /* Allow flex item to shrink below content size */
+}
+
+.upcoming-sessions-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.scroll-button-upcoming {
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.scroll-button-upcoming:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.scroll-button-upcoming:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive adjustments for list view */
 @media (max-width: 768px) {
   .filters-controls {
