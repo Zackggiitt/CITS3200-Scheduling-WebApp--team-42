@@ -689,6 +689,9 @@ document.addEventListener('DOMContentLoaded', function() {
         currentView = 'unit';
         currentUnitId = unitId;
         
+        // Show navigation tabs and unavailability alert for individual unit views
+        showElementsForUnitView();
+        
         // Update unit display
         unitCodeEl.textContent = unit.code;
         unitNameEl.textContent = unit.name;
@@ -727,6 +730,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function showAllUnitsView() {
         currentView = 'all';
         
+        // Hide navigation tabs and unavailability alert for "View All Units"
+        hideElementsForAllUnitsView();
+        
         // Update unit display for all units view
         unitCodeEl.textContent = 'All Units';
         unitNameEl.textContent = 'Overview';
@@ -750,6 +756,36 @@ document.addEventListener('DOMContentLoaded', function() {
         updateAllUnitsSessionsSection();
 
         console.log('Switched to All Units view');
+    }
+
+    function hideElementsForAllUnitsView() {
+        // Hide navigation tabs
+        const dashboardNav = document.getElementById('dashboard-nav');
+        const availabilityNav = document.getElementById('availability-nav');
+        const scheduleNav = document.getElementById('schedule-nav');
+        
+        // Hide unavailability alert
+        const unavailabilityAlert = document.getElementById('unavailability-alert');
+        
+        if (dashboardNav) dashboardNav.style.display = 'none';
+        if (availabilityNav) availabilityNav.style.display = 'none';
+        if (scheduleNav) scheduleNav.style.display = 'none';
+        if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
+    }
+
+    function showElementsForUnitView() {
+        // Show navigation tabs
+        const dashboardNav = document.getElementById('dashboard-nav');
+        const availabilityNav = document.getElementById('availability-nav');
+        const scheduleNav = document.getElementById('schedule-nav');
+        
+        // Show unavailability alert
+        const unavailabilityAlert = document.getElementById('unavailability-alert');
+        
+        if (dashboardNav) dashboardNav.style.display = 'flex';
+        if (availabilityNav) availabilityNav.style.display = 'flex';
+        if (scheduleNav) scheduleNav.style.display = 'flex';
+        if (unavailabilityAlert) unavailabilityAlert.style.display = 'block';
     }
 
     function updateKPICards(unit) {
@@ -946,7 +982,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add current & upcoming sessions from active units
         sessionsHTML += `
-            <div class="session-group-header">
+            <div class="session-group-header upcoming-sessions-header">
                 <h4>Current & Upcoming Sessions</h4>
                 <span class="session-count-badge">${activeUnits.reduce((sum, unit) => sum + (unit.upcomingSessions ? unit.upcomingSessions.length : 0), 0)} sessions</span>
             </div>
@@ -1019,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const pastUnits = Object.values(units).filter(unit => unit.status === 'completed');
         if (pastUnits.length > 0) {
             sessionsHTML += `
-                <div class="session-group-header">
+                <div class="session-group-header past-sessions-header">
                     <h4>Past Sessions</h4>
                     <span class="session-count-badge">${pastUnits.reduce((sum, unit) => sum + (unit.pastSessions ? unit.pastSessions.length : 0), 0)} sessions</span>
                 </div>
@@ -1221,7 +1257,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (activeUnits.length > 0) {
             modalHTML += `
                 <div class="modal-session-group">
-                    <div class="modal-group-header">
+                    <div class="modal-group-header upcoming-sessions-header">
                         <h4>Current & Upcoming Sessions</h4>
                         <span class="modal-session-count">${activeUnits.reduce((sum, unit) => sum + (unit.upcomingSessions ? unit.upcomingSessions.length : 0), 0)} sessions</span>
                     </div>
@@ -1285,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (completedUnits.length > 0) {
             modalHTML += `
                 <div class="modal-session-group">
-                    <div class="modal-group-header">
+                    <div class="modal-group-header past-sessions-header">
                         <h4>Past Sessions</h4>
                         <span class="modal-session-count">${completedUnits.reduce((sum, unit) => sum + (unit.pastSessions ? unit.pastSessions.length : 0), 0)} sessions</span>
                     </div>

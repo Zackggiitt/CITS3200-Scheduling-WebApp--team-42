@@ -2003,6 +2003,24 @@ input:checked + .toggle-slider:before {
     margin: 0;
 }
 
+/* Color coding for session group headers in View All Units */
+.upcoming-sessions-header h4 {
+    color: #059669;
+}
+
+.past-sessions-header h4 {
+    color: #dc2626;
+}
+
+/* Color coding for modal session group headers */
+.modal-group-header.upcoming-sessions-header h4 {
+    color: #059669;
+}
+
+.modal-group-header.past-sessions-header h4 {
+    color: #dc2626;
+}
+
 .session-count-badge {
     font-size: 12px;
     font-weight: 600;
