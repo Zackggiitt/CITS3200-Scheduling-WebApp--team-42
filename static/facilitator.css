@@ -1992,6 +1992,10 @@ input:checked + .toggle-slider:before {
     border-bottom: 1px solid #e5e7eb;
 }
 
+.session-group-header:not(:first-child) {
+    margin-top: 32px;
+}
+
 .session-group-header h4 {
     font-size: 16px;
     font-weight: 600;
@@ -2011,6 +2015,15 @@ input:checked + .toggle-slider:before {
 /* Unit Session Groups */
 .unit-session-group {
     margin-bottom: 24px;
+}
+
+.unit-session-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Add spacing between session group sections */
+.session-group-header + .unit-session-group {
+    margin-top: 16px;
 }
 
 .unit-header {

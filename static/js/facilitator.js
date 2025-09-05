@@ -977,6 +977,49 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
+        // Add past sessions from completed units
+        const pastUnits = Object.values(units).filter(unit => unit.status === 'completed');
+        if (pastUnits.length > 0) {
+            sessionsHTML += `
+                <div class="session-group-header">
+                    <h4>Past Sessions</h4>
+                    <span class="session-count-badge">${pastUnits.reduce((sum, unit) => sum + (unit.pastSessions ? unit.pastSessions.length : 0), 0)} sessions</span>
+                </div>
+            `;
+
+            pastUnits.forEach(unit => {
+                if (unit.pastSessions) {
+                    sessionsHTML += `
+                        <div class="unit-session-group">
+                            <div class="unit-header">
+                                <span class="unit-code-small">${unit.code}</span>
+                                <span class="unit-session-count">${unit.pastSessions.length} sessions</span>
+                            </div>
+                    `;
+                    
+                    unit.pastSessions.forEach(session => {
+                        sessionsHTML += `
+                            <div class="session-item">
+                                <div class="session-info">
+                                    <div class="session-title">
+                                        <div>
+                                            <h4>${session.topic}</h4>
+                                            <p class="session-full-date">${session.date}</p>
+                                        </div>
+                                        <span class="tag completed">${session.status}</span>
+                                    </div>
+                                    <p class="session-time">${session.time}</p>
+                                    <p class="session-location">${session.location}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    sessionsHTML += '</div>';
+                }
+            });
+        }
+
         sessionsHTML += '</div>';
         sessionsSection.innerHTML = sessionsHTML;
     }
