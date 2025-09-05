@@ -2659,40 +2659,41 @@ function updateTodaysSessions(sessions) {
   }
 
   container.innerHTML = `
-    <div class="flex gap-2 overflow-x-auto today-sessions-scroll" style="height: 100%; width: 100%;">
+    <div class="flex gap-4 overflow-x-auto today-sessions-scroll" style="height: 100%; width: 100%;">
       ${sessions.map(session => {
         const isConfirmed = String(session.status || '').toLowerCase() === 'confirmed';
         const statusEl = isConfirmed
           ? `<span class="material-icons text-green-600 text-xs leading-none" title="Confirmed" aria-label="Confirmed">task_alt</span>`
           : `<span class="text-xs text-gray-500">${session.status || 'Scheduled'}</span>`;
         return `
-        <div class="bg-white rounded-lg p-2 border border-gray-200 shadow-sm w-[180px] h-[100px] flex-shrink-0 flex flex-col justify-between">
+        <div class="session-card">
           <div>
-            <div class="flex items-start justify-between mb-1">
-              <h5 class="font-semibold text-gray-900 text-xs truncate flex-1 pr-2">${session.name}</h5>
-              <div class="flex items-center flex-shrink-0">${statusEl}</div>
+            <div class="session-card-header">
+              <div class="session-card-title-container">
+                <div class="session-card-dot"></div>
+                <h5 class="session-card-title">${session.name}</h5>
+              </div>
+              <div class="session-card-status">${statusEl}</div>
             </div>
 
-             <div class="space-y-1">
+            <div class="session-card-details">
               <!-- Time -->
-              <div class="flex items-center gap-1 text-xs text-gray-700">
-                <span class="material-icons text-xs text-gray-500">schedule</span>
-                <span class="truncate">${session.time}</span>
+              <div class="session-card-detail">
+                <span class="material-icons session-card-icon">schedule</span>
+                <span>${session.time}</span>
               </div>
               <!-- Venue -->
-              <div class="flex items-center gap-1 text-xs text-gray-700">
-                <span class="material-icons text-xs text-gray-500">location_on</span>
-                <span class="truncate">${session.location || 'TBA'}</span>
+              <div class="session-card-detail">
+                <span class="material-icons session-card-icon">location_on</span>
+                <span>${session.location || 'TBA'}</span>
               </div>
             </div>
           </div>
 
-          <div class="mt-1">
-            <div class="flex items-start gap-1">
-              <span class="text-xs text-gray-600 flex-shrink-0">Fac:</span>
-              <div class="text-xs text-gray-700 truncate">
-                ${session.facilitators?.map(f => f.name || f.initials || 'Unknown').join(', ') || 'None'}
-              </div>
+          <div class="session-card-facilitator">
+            <span class="session-card-fac-label">Facilitator:</span>
+            <div class="session-card-fac-value">
+              ${session.facilitators?.map(f => f.name || f.initials || 'Unknown').join(', ') || 'None'}
             </div>
           </div>
         </div>
@@ -2700,7 +2701,7 @@ function updateTodaysSessions(sessions) {
       }).join('')}
       
       ${sessions.length >= 1 ? `
-        <div class="w-[40px] h-[100px] flex-shrink-0 flex items-center justify-center">
+        <div class="w-[40px] h-[45px] flex-shrink-0 flex items-center justify-center">
           <button class="scroll-button w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors" title="Scroll to see more sessions">
             <span class="material-icons text-sm">chevron_right</span>
           </button>
@@ -3218,29 +3219,87 @@ function updateMiniCalendar(calendarData) {
   const startOfWeek = new Date(today);
   startOfWeek.setDate(today.getDate() - today.getDay() + 1);
   
+  const dayAbbreviations = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  
   let daysHTML = '';
   for (let i = 0; i < 7; i++) {
     const date = new Date(startOfWeek);
     date.setDate(startOfWeek.getDate() + i);
-    const dayNum = date.getDate();
+    const dayAbbr = dayAbbreviations[i];
     const isToday = date.toDateString() === today.toDateString();
     const hasSession = calendarData.days && calendarData.days[date.toISOString().split('T')[0]];
     
     const classes = [
-      'text-center py-1 rounded text-xs',
-      isToday ? 'bg-blue-600 text-white font-medium' : 'text-gray-700',
+      'text-center py-1 rounded text-xs font-medium cursor-pointer hover:bg-gray-100 transition-colors',
+      isToday ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-700',
       hasSession ? 'relative' : ''
     ].filter(Boolean).join(' ');
     
     daysHTML += `
-      <div class="${classes}">
-        ${dayNum}
+      <div class="${classes}" data-day-index="${i}" data-date="${date.toISOString().split('T')[0]}">
+        ${dayAbbr}
         ${hasSession ? '<div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-purple-500 rounded-full"></div>' : ''}
       </div>
     `;
   }
   
   daysContainer.innerHTML = daysHTML;
+  
+  // Add click event listeners to filter sessions by day
+  const dayElements = daysContainer.querySelectorAll('[data-day-index]');
+  dayElements.forEach(dayEl => {
+    dayEl.addEventListener('click', () => {
+      // Remove active class from all days
+      dayElements.forEach(el => el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700'));
+      
+      // Add active class to clicked day
+      dayEl.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+      
+      // Filter upcoming sessions by selected day
+      const selectedDate = dayEl.getAttribute('data-date');
+      filterUpcomingSessionsByDay(selectedDate);
+    });
+  });
+  
+  // Add double-click to show all sessions
+  dayElements.forEach(dayEl => {
+    dayEl.addEventListener('dblclick', () => {
+      // Remove active class from all days
+      dayElements.forEach(el => el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700'));
+      
+      // Show all upcoming sessions
+      const allSessions = window.__attData?.upcoming || [];
+      updateUpcomingSessions(allSessions);
+    });
+  });
+}
+
+// Function to filter upcoming sessions by selected day
+function filterUpcomingSessionsByDay(selectedDate) {
+  const container = document.getElementById('upcomingSessionsList');
+  if (!container) return;
+  
+  // Get the original upcoming sessions data
+  const upcomingSessions = window.__attData?.upcoming || [];
+  
+  // Convert selected date to day name
+  const selectedDayName = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' });
+  
+  console.log('Filtering sessions for:', selectedDayName, 'from date:', selectedDate);
+  console.log('Available sessions:', upcomingSessions);
+  
+  // Filter sessions for the selected day
+  const filteredSessions = upcomingSessions.filter(session => {
+    // Check if session.date matches the day name (e.g., "Tuesday", "Wednesday")
+    const sessionDay = session.date;
+    console.log('Comparing session day:', sessionDay, 'with selected day:', selectedDayName);
+    return sessionDay === selectedDayName;
+  });
+  
+  console.log('Filtered sessions:', filteredSessions);
+  
+  // Update the display with filtered sessions
+  updateUpcomingSessions(filteredSessions);
 }
 
 // ===== Schedule Panel Functionality =====
