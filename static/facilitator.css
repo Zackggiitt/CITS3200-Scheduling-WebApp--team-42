@@ -2040,6 +2040,324 @@ input:checked + .toggle-slider:before {
     color: var(--color-text-primary);
 }
 
+.unit-session-count {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+}
+
+/* More Sessions Message */
+.more-sessions-message {
+    text-align: center;
+    padding: 16px;
+    margin-top: 8px;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.more-sessions-message p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+}
+
+/* Sessions Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.modal-content {
+    background-color: var(--surface-primary);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.modal-close-btn .material-icons {
+    font-size: 24px;
+    color: var(--color-text-secondary);
+}
+
+.modal-body {
+    padding: 24px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.modal-subtitle {
+    margin: 0 0 24px 0;
+    font-size: 16px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+}
+
+.modal-sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Responsive Modal */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .modal-header {
+        padding: 16px;
+    }
+    
+    .modal-body {
+        padding: 16px;
+    }
+    
+    .modal-header h2 {
+        font-size: 20px;
+    }
+}
+
+/* Additional Modal Styles for All Units View */
+.modal-session-group {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.modal-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 8px;
+}
+
+.modal-group-header h4 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.modal-session-count {
+    background-color: #f3f4f6;
+    color: #374151;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* Modal Unit Groups */
+.modal-unit-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modal-unit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+    margin-bottom: 4px;
+}
+
+.modal-unit-code {
+    font-weight: 600;
+    color: #111827;
+    font-size: 0.875rem;
+}
+
+.modal-unit-session-count {
+    color: #6b7280;
+    font-size: 0.75rem;
+}
+
+/* Modal Session Items */
+.modal-session-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 16px;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.modal-session-item:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.modal-session-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.modal-session-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.modal-session-title h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.3;
+}
+
+.modal-session-date {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.modal-session-time {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.modal-session-location {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.modal-tag {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.modal-tag.approved {
+    background-color: #111827;
+    color: white;
+}
+
+.modal-tag.pending {
+    background-color: #fbbf24;
+    color: #92400e;
+}
+
+.modal-tag.completed {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+/* Modal Session Actions */
+.modal-session-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: 16px;
+}
+
+.modal-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-action-btn.accept {
+    background-color: #10b981;
+    color: white;
+}
+
+.modal-action-btn.accept:hover {
+    background-color: #059669;
+}
+
+.modal-action-btn.decline {
+    background-color: #ef4444;
+    color: white;
+}
+
+.modal-action-btn.decline:hover {
+    background-color: #dc2626;
+}
+
+.modal-action-btn .material-icons {
+    font-size: 16px;
+}
+
+/* Responsive Modal Updates */
+@media (max-width: 768px) {
+    .modal-session-item {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .modal-session-actions {
+        margin-left: 0;
+        align-self: flex-end;
+    }
+}
+
 .activity-item { display: flex; justify-content: space-between; align-items: center; }
 .activity-info { display: flex; align-items: center; gap: var(--gap-sm); }
 .activity-icon-wrapper { width: 24px; height: 24px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }

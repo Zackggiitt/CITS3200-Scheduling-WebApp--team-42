@@ -860,7 +860,17 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         if (unit.status === 'active' && unit.upcomingSessions) {
-            unit.upcomingSessions.forEach(session => {
+            // Sort sessions by date and take only top 3
+            const sortedSessions = unit.upcomingSessions.sort((a, b) => {
+                const dateA = new Date(a.date.split('/').reverse().join('-'));
+                const dateB = new Date(b.date.split('/').reverse().join('-'));
+                return dateA - dateB;
+            });
+            
+            const top3Sessions = sortedSessions.slice(0, 3);
+            const remainingCount = unit.upcomingSessions.length - 3;
+            
+            top3Sessions.forEach(session => {
                 const hasActions = session.status === 'pending';
                 sessionsHTML += `
                     <div class="session-item">
@@ -889,6 +899,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `;
             });
+            
+            // Add "more sessions" message if there are more than 3
+            if (remainingCount > 0) {
+                sessionsHTML += `
+                    <div class="more-sessions-message">
+                        <p>${remainingCount} more session${remainingCount > 1 ? 's' : ''} available. Click "View All" to see all sessions.</p>
+                    </div>
+                `;
+            }
         } else if (unit.status === 'completed' && unit.pastSessions) {
             unit.pastSessions.forEach(session => {
                 sessionsHTML += `
@@ -1022,5 +1041,345 @@ document.addEventListener('DOMContentLoaded', function() {
 
         sessionsHTML += '</div>';
         sessionsSection.innerHTML = sessionsHTML;
+        
+        // Add event listener for "View All" button with a small delay to ensure DOM is updated
+        setTimeout(() => {
+            const viewAllLink = sessionsSection.querySelector('.view-all-link');
+            console.log('Looking for View All link in All Units view:', viewAllLink);
+            if (viewAllLink) {
+                viewAllLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('View All clicked for All Units view');
+                    showAllUnitsSessionsModal();
+                });
+                console.log('View All event listener added for All Units view');
+            } else {
+                console.log('View All link not found for All Units view');
+            }
+        }, 100);
     }
+
+    // Modal Functions
+    function showSessionsModal(unit) {
+        console.log('showSessionsModal called for unit:', unit.code);
+        const modal = document.getElementById('sessions-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalSubtitle = document.getElementById('modal-subtitle');
+        const modalSessionsList = document.getElementById('modal-sessions-list');
+        
+        console.log('Modal elements found:', {
+            modal: !!modal,
+            modalTitle: !!modalTitle,
+            modalSubtitle: !!modalSubtitle,
+            modalSessionsList: !!modalSessionsList
+        });
+        
+        if (!modal) {
+            console.error('Modal element not found!');
+            return;
+        }
+        
+        // Set modal title
+        modalTitle.textContent = `All ${unit.code} Sessions`;
+        
+        // Set modal subtitle
+        const totalSessions = (unit.upcomingSessions ? unit.upcomingSessions.length : 0) + 
+                             (unit.pastSessions ? unit.pastSessions.length : 0);
+        modalSubtitle.textContent = `View all your sessions for ${unit.code}. You can accept or decline pending session assignments. Showing ${totalSessions} sessions for ${unit.code}`;
+        
+        // Generate sessions list
+        let modalSessionsHTML = '';
+        
+        // Add upcoming sessions if they exist
+        if (unit.upcomingSessions && unit.upcomingSessions.length > 0) {
+            const sortedUpcomingSessions = unit.upcomingSessions.sort((a, b) => {
+                const dateA = new Date(a.date.split('/').reverse().join('-'));
+                const dateB = new Date(b.date.split('/').reverse().join('-'));
+                return dateA - dateB;
+            });
+            
+            sortedUpcomingSessions.forEach(session => {
+                const hasActions = session.status === 'pending';
+                modalSessionsHTML += `
+                    <div class="session-item">
+                        <div class="session-info">
+                            <div class="session-title">
+                                <div>
+                                    <h4>${session.topic}</h4>
+                                    <p class="session-full-date">${session.date}</p>
+                                </div>
+                                <span class="tag ${session.status}">${session.status}</span>
+                            </div>
+                            <p class="session-time">${session.time}</p>
+                            <p class="session-location">${session.location}</p>
+                        </div>
+                        ${hasActions ? `
+                            <div class="session-actions">
+                                <button class="action-btn accept">
+                                    <span class="material-icons">check</span>
+                                    Accept
+                                </button>
+                                <button class="action-btn decline">
+                                    Decline
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+        }
+        
+        // Add past sessions if they exist
+        if (unit.pastSessions && unit.pastSessions.length > 0) {
+            const sortedPastSessions = unit.pastSessions.sort((a, b) => {
+                const dateA = new Date(a.date.split('/').reverse().join('-'));
+                const dateB = new Date(b.date.split('/').reverse().join('-'));
+                return dateB - dateA; // Reverse order for past sessions (most recent first)
+            });
+            
+            sortedPastSessions.forEach(session => {
+                modalSessionsHTML += `
+                    <div class="session-item">
+                        <div class="session-info">
+                            <div class="session-title">
+                                <div>
+                                    <h4>${session.topic}</h4>
+                                    <p class="session-full-date">${session.date}</p>
+                                </div>
+                                <span class="tag completed">${session.status}</span>
+                            </div>
+                            <p class="session-time">${session.time}</p>
+                            <p class="session-location">${session.location}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        modalSessionsList.innerHTML = modalSessionsHTML;
+        
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function hideSessionsModal() {
+        const modal = document.getElementById('sessions-modal');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function showAllUnitsSessionsModal() {
+        console.log('showAllUnitsSessionsModal called');
+        const modal = document.getElementById('sessions-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalSubtitle = document.getElementById('modal-subtitle');
+        const modalSessionsList = document.getElementById('modal-sessions-list');
+        
+        console.log('Modal elements found for All Units:', {
+            modal: !!modal,
+            modalTitle: !!modalTitle,
+            modalSubtitle: !!modalSubtitle,
+            modalSessionsList: !!modalSessionsList
+        });
+        
+        if (!modal) {
+            console.error('Modal element not found!');
+            return;
+        }
+
+        // Set modal title and subtitle
+        modalTitle.textContent = 'All Your Sessions';
+        modalSubtitle.textContent = 'View all your sessions across all units organized by status and unit. You can accept or decline pending session assignments.';
+
+        // Get all units data
+        const activeUnits = Object.values(units).filter(unit => unit.status === 'active');
+        const completedUnits = Object.values(units).filter(unit => unit.status === 'completed');
+        
+        let modalHTML = '';
+
+        // Add current & upcoming sessions from active units
+        if (activeUnits.length > 0) {
+            modalHTML += `
+                <div class="modal-session-group">
+                    <div class="modal-group-header">
+                        <h4>Current & Upcoming Sessions</h4>
+                        <span class="modal-session-count">${activeUnits.reduce((sum, unit) => sum + (unit.upcomingSessions ? unit.upcomingSessions.length : 0), 0)} sessions</span>
+                    </div>
+            `;
+
+            activeUnits.forEach(unit => {
+                if (unit.upcomingSessions && unit.upcomingSessions.length > 0) {
+                    modalHTML += `
+                        <div class="modal-unit-group">
+                            <div class="modal-unit-header">
+                                <span class="modal-unit-code">${unit.code}</span>
+                                <span class="modal-unit-session-count">${unit.upcomingSessions.length} sessions</span>
+                            </div>
+                    `;
+                    
+                    // Sort sessions by date
+                    const sortedSessions = unit.upcomingSessions.sort((a, b) => {
+                        const dateA = new Date(a.date.split('/').reverse().join('-'));
+                        const dateB = new Date(b.date.split('/').reverse().join('-'));
+                        return dateA - dateB;
+                    });
+                    
+                    sortedSessions.forEach(session => {
+                        const hasActions = session.status === 'pending';
+                        modalHTML += `
+                            <div class="modal-session-item">
+                                <div class="modal-session-info">
+                                    <div class="modal-session-title">
+                                        <div>
+                                            <h4>${session.topic}</h4>
+                                            <p class="modal-session-date">${session.date}</p>
+                                        </div>
+                                        <span class="modal-tag ${session.status}">${session.status}</span>
+                                    </div>
+                                    <p class="modal-session-time">${session.time}</p>
+                                    <p class="modal-session-location">${session.location}</p>
+                                </div>
+                                ${hasActions ? `
+                                    <div class="modal-session-actions">
+                                        <button class="modal-action-btn accept">
+                                            <span class="material-icons">check</span>
+                                            Accept
+                                        </button>
+                                        <button class="modal-action-btn decline">
+                                            Decline
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    modalHTML += '</div>';
+                }
+            });
+            
+            modalHTML += '</div>';
+        }
+
+        // Add past sessions from completed units
+        if (completedUnits.length > 0) {
+            modalHTML += `
+                <div class="modal-session-group">
+                    <div class="modal-group-header">
+                        <h4>Past Sessions</h4>
+                        <span class="modal-session-count">${completedUnits.reduce((sum, unit) => sum + (unit.pastSessions ? unit.pastSessions.length : 0), 0)} sessions</span>
+                    </div>
+            `;
+
+            completedUnits.forEach(unit => {
+                if (unit.pastSessions && unit.pastSessions.length > 0) {
+                    modalHTML += `
+                        <div class="modal-unit-group">
+                            <div class="modal-unit-header">
+                                <span class="modal-unit-code">${unit.code}</span>
+                                <span class="modal-unit-session-count">${unit.pastSessions.length} sessions</span>
+                            </div>
+                    `;
+                    
+                    // Sort sessions by date (most recent first)
+                    const sortedSessions = unit.pastSessions.sort((a, b) => {
+                        const dateA = new Date(a.date.split('/').reverse().join('-'));
+                        const dateB = new Date(b.date.split('/').reverse().join('-'));
+                        return dateB - dateA;
+                    });
+                    
+                    sortedSessions.forEach(session => {
+                        modalHTML += `
+                            <div class="modal-session-item">
+                                <div class="modal-session-info">
+                                    <div class="modal-session-title">
+                                        <div>
+                                            <h4>${session.topic}</h4>
+                                            <p class="modal-session-date">${session.date}</p>
+                                        </div>
+                                        <span class="modal-tag completed">${session.status}</span>
+                                    </div>
+                                    <p class="modal-session-time">${session.time}</p>
+                                    <p class="modal-session-location">${session.location}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    modalHTML += '</div>';
+                }
+            });
+            
+            modalHTML += '</div>';
+        }
+
+        modalSessionsList.innerHTML = modalHTML;
+        modal.style.display = 'flex';
+        
+        console.log('All Units modal displayed');
+    }
+
+    // Initialize modal event listeners
+    function initModalListeners() {
+        console.log('Initializing modal listeners...');
+        const modal = document.getElementById('sessions-modal');
+        const closeBtn = document.getElementById('modal-close-btn');
+        
+        console.log('Modal elements for listeners:', {
+            modal: !!modal,
+            closeBtn: !!closeBtn
+        });
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', hideSessionsModal);
+            console.log('Close button listener added');
+        }
+        
+        // Close modal when clicking outside
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    hideSessionsModal();
+                }
+            });
+            console.log('Modal overlay listener added');
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+                hideSessionsModal();
+            }
+        });
+        console.log('Escape key listener added');
+    }
+
+    // Initialize modal listeners when DOM is loaded
+    initModalListeners();
+    
+    // Add event delegation for "View All" buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.view-all-link')) {
+            e.preventDefault();
+            console.log('View All clicked via event delegation');
+            
+            // Find the sessions section
+            const sessionsSection = e.target.closest('#details .details-card');
+            if (sessionsSection) {
+                // Check if this is the "View All Units" view
+                if (currentView === 'all') {
+                    console.log('Opening modal for All Units view');
+                    showAllUnitsSessionsModal();
+                } else if (currentView === 'unit' && currentUnitId) {
+                    // Get the unit from the current view
+                    const unit = units[currentUnitId];
+                    if (unit) {
+                        console.log('Opening modal for unit:', unit.code);
+                        showSessionsModal(unit);
+                    }
+                }
+            }
+        }
+    });
 });
