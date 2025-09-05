@@ -217,6 +217,110 @@
     </div>
   </div>
 </section>
+
+<!-- Unit Selector Section -->
+<section id="unit-selector" class="main-content-wrapper">
+    <div class="unit-selector-container">
+        <!-- Left Side: Current Unit Information -->
+        <div class="unit-info-section">
+            <div class="unit-main-info">
+                <h2 class="unit-code">CITS1001</h2>
+                <h3 class="unit-name">Introduction to Computing</h3>
+            </div>
+            <div class="unit-details">
+                <div class="unit-badges">
+                    <span class="semester-badge">Semester 2, 2025</span>
+                    <span class="status-badge active">
+                        <span class="material-icons">check_circle</span>
+                        Active
+                    </span>
+                </div>
+                <div class="session-info">
+                    <span class="material-icons">calendar_today</span>
+                    <span>6 sessions</span>
+                    <span class="date-range">2/24/2025 - 6/13/2025</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Side: Control Buttons -->
+        <div class="unit-controls-section">
+            <button class="control-btn all-units-btn">
+                <span class="material-icons">list</span>
+                All Units
+            </button>
+            <div class="unit-dropdown-wrapper">
+                <button class="control-btn switch-unit-btn" id="switch-unit-trigger">
+                    Switch Unit
+                    <span class="material-icons dropdown-arrow">keyboard_arrow_down</span>
+                </button>
+                <div class="dropdown-menu" id="unit-dropdown-menu" style="display: none;">
+                    <!-- Active Units Group -->
+                    <div class="dropdown-group">
+                        <div class="group-header">
+                            <span class="group-title">Active Units</span>
+                            <span class="group-count">(3)</span>
+                        </div>
+                        <div class="group-items">
+                            <div class="unit-item" data-unit-id="1">
+                                <div class="unit-item-info">
+                                    <span class="unit-item-code">CITS1001</span>
+                                    <span class="unit-item-name">Introduction to Computing</span>
+                                </div>
+                                <span class="unit-item-badge active">Active</span>
+                            </div>
+                            <div class="unit-item" data-unit-id="2">
+                                <div class="unit-item-info">
+                                    <span class="unit-item-code">CITS1401</span>
+                                    <span class="unit-item-name">Computer Science</span>
+                                </div>
+                                <span class="unit-item-badge active">Active</span>
+                            </div>
+                            <div class="unit-item" data-unit-id="3">
+                                <div class="unit-item-info">
+                                    <span class="unit-item-code">CITS2000</span>
+                                    <span class="unit-item-name">Data Structures</span>
+                                </div>
+                                <span class="unit-item-badge active">Active</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Past Units Group -->
+                    <div class="dropdown-group">
+                        <div class="group-header">
+                            <span class="group-title">Past Units</span>
+                            <span class="group-count">(2)</span>
+                        </div>
+                        <div class="group-items">
+                            <div class="unit-item" data-unit-id="4">
+                                <div class="unit-item-info">
+                                    <span class="unit-item-code">CITS2200</span>
+                                    <span class="unit-item-name">Algorithms</span>
+                                </div>
+                                <span class="unit-item-badge completed">
+                                    <span class="material-icons">check_circle</span>
+                                    Completed
+                                </span>
+                            </div>
+                            <div class="unit-item" data-unit-id="5">
+                                <div class="unit-item-info">
+                                    <span class="unit-item-code">CITS3000</span>
+                                    <span class="unit-item-name">Software Engineering</span>
+                                </div>
+                                <span class="unit-item-badge completed">
+                                    <span class="material-icons">check_circle</span>
+                                    Completed
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section id="alert" class="main-content-wrapper">
     <div class="alert-bar">
         <div class="alert-content">
@@ -467,7 +571,174 @@
   </div>
 </section>
 
+<script>
+// Unit Selector JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Sample unit data
+    const units = {
+        1: {
+            code: 'CITS1001',
+            name: 'Introduction to Computing',
+            semester: 'Semester 2, 2025',
+            status: 'active',
+            sessions: 6,
+            dateRange: '2/24/2025 - 6/13/2025'
+        },
+        2: {
+            code: 'CITS1401',
+            name: 'Computer Science',
+            semester: 'Semester 1, 2025',
+            status: 'active',
+            sessions: 4,
+            dateRange: '1/15/2025 - 5/30/2025'
+        },
+        3: {
+            code: 'CITS2000',
+            name: 'Data Structures',
+            semester: 'Semester 2, 2025',
+            status: 'active',
+            sessions: 8,
+            dateRange: '2/24/2025 - 6/13/2025'
+        },
+        4: {
+            code: 'CITS2200',
+            name: 'Algorithms',
+            semester: 'Semester 1, 2025',
+            status: 'completed',
+            sessions: 5,
+            dateRange: '1/15/2025 - 5/30/2025'
+        },
+        5: {
+            code: 'CITS3000',
+            name: 'Software Engineering',
+            semester: 'Semester 2, 2024',
+            status: 'completed',
+            sessions: 7,
+            dateRange: '2/26/2024 - 6/14/2024'
+        }
+    };
 
+    let currentUnitId = 1; // Default to first unit
+
+    // DOM elements
+    const switchUnitBtn = document.getElementById('switch-unit-trigger');
+    const dropdownMenu = document.getElementById('unit-dropdown-menu');
+    const allUnitsBtn = document.querySelector('.all-units-btn');
+    
+    // Unit display elements
+    const unitCodeEl = document.querySelector('.unit-code');
+    const unitNameEl = document.querySelector('.unit-name');
+    const semesterBadgeEl = document.querySelector('.semester-badge');
+    const statusBadgeEl = document.querySelector('.status-badge');
+    const sessionInfoEl = document.querySelector('.session-info');
+
+    // Toggle dropdown
+    switchUnitBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const isOpen = dropdownMenu.style.display !== 'none';
+        
+        if (isOpen) {
+            closeDropdown();
+        } else {
+            openDropdown();
+        }
+    });
+
+    // Handle unit selection
+    document.querySelectorAll('.unit-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const unitId = parseInt(this.dataset.unitId);
+            selectUnit(unitId);
+            closeDropdown();
+        });
+    });
+
+    // All Units button
+    allUnitsBtn.addEventListener('click', function() {
+        showAllUnitsView();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!switchUnitBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+            closeDropdown();
+        }
+    });
+
+    // Functions
+    function openDropdown() {
+        // Calculate position relative to the button
+        const buttonRect = switchUnitBtn.getBoundingClientRect();
+        const dropdown = dropdownMenu;
+        
+        // Position dropdown below the button
+        dropdown.style.top = (buttonRect.bottom + 4) + 'px';
+        dropdown.style.right = (window.innerWidth - buttonRect.right) + 'px';
+        
+        dropdown.style.display = 'block';
+        switchUnitBtn.classList.add('active');
+    }
+
+    function closeDropdown() {
+        dropdownMenu.style.display = 'none';
+        switchUnitBtn.classList.remove('active');
+    }
+
+    function selectUnit(unitId) {
+        const unit = units[unitId];
+        if (!unit) return;
+
+        currentUnitId = unitId;
+        
+        // Update unit display
+        unitCodeEl.textContent = unit.code;
+        unitNameEl.textContent = unit.name;
+        semesterBadgeEl.textContent = unit.semester;
+        
+        // Update status badge
+        statusBadgeEl.className = `status-badge ${unit.status}`;
+        if (unit.status === 'active') {
+            statusBadgeEl.innerHTML = '<span class="material-icons">check_circle</span>Active';
+        } else {
+            statusBadgeEl.innerHTML = '<span class="material-icons">check_circle</span>Completed';
+        }
+        
+        // Update session info
+        sessionInfoEl.innerHTML = `
+            <span class="material-icons">calendar_today</span>
+            <span>${unit.sessions} sessions</span>
+            <span class="date-range">${unit.dateRange}</span>
+        `;
+
+        // Update active state in dropdown
+        document.querySelectorAll('.unit-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector(`[data-unit-id="${unitId}"]`).classList.add('active');
+
+        console.log(`Switched to unit: ${unit.code} - ${unit.name}`);
+    }
+
+    function showAllUnitsView() {
+        // For now, just log and show a simple alert
+        // In a real implementation, this would show aggregated data
+        const activeUnits = Object.values(units).filter(unit => unit.status === 'active');
+        const completedUnits = Object.values(units).filter(unit => unit.status === 'completed');
+        
+        console.log('All Units View:', {
+            active: activeUnits.length,
+            completed: completedUnits.length,
+            total: Object.keys(units).length
+        });
+        
+        // Simple feedback
+        alert(`All Units Summary:\n\nActive Units: ${activeUnits.length}\nCompleted Units: ${completedUnits.length}\nTotal Units: ${Object.keys(units).length}`);
+    }
+
+    // Initialize with default unit
+    selectUnit(currentUnitId);
+});
+</script>
 
 </body>
 </html>

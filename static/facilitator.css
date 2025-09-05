@@ -2217,3 +2217,301 @@ input:checked + .toggle-slider:before {
 }
 
 .notification-popup-header { position: relative; }
+
+/* Unit Selector Section - Unit Coordinator Style */
+.unit-selector-container {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+/* Left Side: Unit Information */
+.unit-info-section {
+  flex: 1;
+}
+
+.unit-main-info {
+  margin-bottom: 16px;
+}
+
+.unit-code {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.unit-name {
+  font-size: 1.125rem;
+  font-weight: 400;
+  color: #374151;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.unit-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.unit-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.semester-badge {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge .material-icons {
+  font-size: 0.875rem;
+}
+
+.session-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.session-info .material-icons {
+  font-size: 1rem;
+  color: #9ca3af;
+}
+
+.date-range {
+  color: #9ca3af;
+}
+
+/* Right Side: Control Buttons */
+.unit-controls-section {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.control-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.control-btn .material-icons {
+  font-size: 1rem;
+}
+
+/* Dropdown Wrapper */
+.unit-dropdown-wrapper {
+  position: relative;
+}
+
+.dropdown-arrow {
+  transition: transform 0.2s ease;
+}
+
+.switch-unit-btn.active .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  position: fixed;
+  top: auto;
+  right: 24px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  margin-top: 4px;
+  min-width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.dropdown-group {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dropdown-group:last-child {
+  border-bottom: none;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 6px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.group-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.group-count {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.group-items {
+  padding: 4px 0;
+}
+
+.unit-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.unit-item:hover {
+  background: #f3f4f6;
+}
+
+.unit-item.active {
+  background: #e0f2fe;
+  border-left: 3px solid #0ea5e9;
+}
+
+.unit-item.active:hover {
+  background: #e0f2fe;
+}
+
+.unit-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.unit-item-code {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1f2937;
+  font-family: 'Courier New', monospace;
+}
+
+.unit-item-name {
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1.3;
+}
+
+.unit-item-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.625rem;
+  font-weight: 500;
+  padding: 3px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.unit-item-badge.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.unit-item-badge.completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.unit-item-badge .material-icons {
+  font-size: 0.75rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .unit-selector-container {
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .unit-controls-section {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .control-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .dropdown-menu {
+    right: 16px;
+    left: auto;
+    min-width: 280px;
+    max-height: 350px;
+  }
+  
+  .unit-code {
+    font-size: 1.5rem;
+  }
+  
+  .unit-name {
+    font-size: 1rem;
+  }
+}
