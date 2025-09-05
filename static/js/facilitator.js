@@ -476,4 +476,449 @@ document.addEventListener('DOMContentLoaded', function() {
             badge.textContent = unreadCount;
         }
     }
+
+    // ... existing code ...
+
+    // Unit Selector Functionality
+    // Sample unit data with more detailed information
+    const units = {
+        1: {
+            code: 'CITS1001',
+            name: 'Introduction to Computing',
+            semester: 'Semester 2, 2025',
+            status: 'active',
+            sessions: 6,
+            dateRange: '2/24/2025 - 6/13/2025',
+            kpis: {
+                thisWeekHours: 4,
+                remainingHours: 12,
+                totalHours: 16,
+                activeSessions: 2
+            },
+            upcomingSessions: [
+                { day: 'Monday, Sep 1', date: '01/09/2025', time: '9:00 AM - 11:00 AM', location: 'Stats Lab', topic: 'Statistics Review', status: 'approved' },
+                { day: 'Today (Sep 5)', date: '05/09/2025', time: '10:00 AM - 12:00 PM', location: 'Stats Lab', topic: 'R Programming', status: 'approved' },
+                { day: 'Monday, Sep 8', date: '08/09/2025', time: '2:00 PM - 4:00 PM', location: 'Computer Lab', topic: 'Data Visualization', status: 'approved' }
+            ]
+        },
+        2: {
+            code: 'CITS1401',
+            name: 'Computer Science',
+            semester: 'Semester 1, 2025',
+            status: 'active',
+            sessions: 4,
+            dateRange: '1/15/2025 - 5/30/2025',
+            kpis: {
+                thisWeekHours: 6,
+                remainingHours: 8,
+                totalHours: 14,
+                activeSessions: 3
+            },
+            upcomingSessions: [
+                { day: 'Wednesday, Sep 3', date: '03/09/2025', time: '1:00 PM - 3:00 PM', location: 'CS Lab', topic: 'Algorithms', status: 'approved' },
+                { day: 'Friday, Sep 6', date: '06/09/2025', time: '11:00 AM - 1:00 PM', location: 'CS Lab', topic: 'Data Structures', status: 'approved' }
+            ]
+        },
+        3: {
+            code: 'CITS2000',
+            name: 'Data Structures',
+            semester: 'Semester 2, 2025',
+            status: 'active',
+            sessions: 8,
+            dateRange: '2/24/2025 - 6/13/2025',
+            kpis: {
+                thisWeekHours: 8,
+                remainingHours: 16,
+                totalHours: 24,
+                activeSessions: 4
+            },
+            upcomingSessions: [
+                { day: 'Tuesday, Sep 2', date: '02/09/2025', time: '9:00 AM - 11:00 AM', location: 'DS Lab', topic: 'Linked Lists', status: 'approved' },
+                { day: 'Thursday, Sep 4', date: '04/09/2025', time: '2:00 PM - 4:00 PM', location: 'DS Lab', topic: 'Trees', status: 'approved' },
+                { day: 'Monday, Sep 8', date: '08/09/2025', time: '10:00 AM - 12:00 PM', location: 'DS Lab', topic: 'Graphs', status: 'approved' }
+            ]
+        },
+        4: {
+            code: 'CITS2200',
+            name: 'Algorithms',
+            semester: 'Semester 1, 2025',
+            status: 'completed',
+            sessions: 5,
+            dateRange: '1/15/2025 - 5/30/2025',
+            kpis: {
+                totalHours: 20,
+                totalSessions: 5
+            },
+            pastSessions: [
+                { day: 'Monday, Jul 7', date: '07/07/2025', time: '10:00 AM - 12:00 PM', location: 'Algo Lab', topic: 'Sorting Algorithms', status: 'completed' },
+                { day: 'Wednesday, Jul 9', date: '09/07/2025', time: '2:00 PM - 4:00 PM', location: 'Algo Lab', topic: 'Search Algorithms', status: 'completed' },
+                { day: 'Friday, Jul 11', date: '11/07/2025', time: '9:00 AM - 11:00 AM', location: 'Algo Lab', topic: 'Dynamic Programming', status: 'completed' }
+            ]
+        },
+        5: {
+            code: 'CITS3000',
+            name: 'Software Engineering',
+            semester: 'Semester 2, 2024',
+            status: 'completed',
+            sessions: 7,
+            dateRange: '2/26/2024 - 6/14/2024',
+            kpis: {
+                totalHours: 28,
+                totalSessions: 7
+            },
+            pastSessions: [
+                { day: 'Monday, Jul 7', date: '07/07/2024', time: '10:00 AM - 12:00 PM', location: 'SE Lab', topic: 'Design Patterns', status: 'completed' },
+                { day: 'Wednesday, Jul 9', date: '09/07/2024', time: '2:00 PM - 4:00 PM', location: 'SE Lab', topic: 'Testing', status: 'completed' }
+            ]
+        }
+    };
+
+    let currentView = 'unit'; // 'unit', 'all'
+    let currentUnitId = 1; // Default to first unit
+
+    // DOM elements for unit selector
+    const switchUnitBtn = document.getElementById('switch-unit-trigger');
+    const dropdownMenu = document.getElementById('unit-dropdown-menu');
+    const allUnitsBtn = document.querySelector('.all-units-btn');
+    
+    // Unit display elements
+    const unitCodeEl = document.querySelector('.unit-code');
+    const unitNameEl = document.querySelector('.unit-name');
+    const semesterBadgeEl = document.querySelector('.semester-badge');
+    const statusBadgeEl = document.querySelector('.status-badge');
+    const sessionInfoEl = document.querySelector('.session-info');
+
+    // KPI and Sessions elements
+    const statsGrid = document.querySelector('.stats-grid');
+    const sessionsSection = document.querySelector('#details .details-card');
+
+    // Initialize unit selector if elements exist
+    if (switchUnitBtn && dropdownMenu && allUnitsBtn) {
+        initUnitSelector();
+    }
+
+    function initUnitSelector() {
+        // Toggle dropdown
+        switchUnitBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isOpen = dropdownMenu.style.display !== 'none';
+            
+            if (isOpen) {
+                closeDropdown();
+            } else {
+                openDropdown();
+            }
+        });
+
+        // Handle unit selection
+        document.querySelectorAll('.unit-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const unitId = parseInt(this.dataset.unitId);
+                selectUnit(unitId);
+                closeDropdown();
+            });
+        });
+
+        // All Units button
+        allUnitsBtn.addEventListener('click', function() {
+            showAllUnitsView();
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!switchUnitBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                closeDropdown();
+            }
+        });
+
+        // Initialize with default unit
+        selectUnit(currentUnitId);
+    }
+
+    function openDropdown() {
+        // Calculate position relative to the button
+        const buttonRect = switchUnitBtn.getBoundingClientRect();
+        const dropdown = dropdownMenu;
+        
+        // Position dropdown below the button
+        dropdown.style.top = (buttonRect.bottom + 4) + 'px';
+        dropdown.style.right = (window.innerWidth - buttonRect.right) + 'px';
+        
+        dropdown.style.display = 'block';
+        switchUnitBtn.classList.add('active');
+    }
+
+    function closeDropdown() {
+        dropdownMenu.style.display = 'none';
+        switchUnitBtn.classList.remove('active');
+    }
+
+    function selectUnit(unitId) {
+        const unit = units[unitId];
+        if (!unit) return;
+
+        currentView = 'unit';
+        currentUnitId = unitId;
+        
+        // Update unit display
+        unitCodeEl.textContent = unit.code;
+        unitNameEl.textContent = unit.name;
+        semesterBadgeEl.textContent = unit.semester;
+        
+        // Update status badge
+        statusBadgeEl.className = `status-badge ${unit.status}`;
+        if (unit.status === 'active') {
+            statusBadgeEl.innerHTML = '<span class="material-icons">check_circle</span>Active';
+        } else {
+            statusBadgeEl.innerHTML = '<span class="material-icons">check_circle</span>Completed';
+        }
+        
+        // Update session info
+        sessionInfoEl.innerHTML = `
+            <span class="material-icons">calendar_today</span>
+            <span>${unit.sessions} sessions</span>
+            <span class="date-range">${unit.dateRange}</span>
+        `;
+
+        // Update KPI cards based on unit status
+        updateKPICards(unit);
+        
+        // Update sessions section
+        updateSessionsSection(unit);
+
+        // Update active state in dropdown
+        document.querySelectorAll('.unit-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector(`[data-unit-id="${unitId}"]`).classList.add('active');
+
+        console.log(`Switched to unit: ${unit.code} - ${unit.name}`);
+    }
+
+    function showAllUnitsView() {
+        currentView = 'all';
+        
+        // Update unit display for all units view
+        unitCodeEl.textContent = 'All Units';
+        unitNameEl.textContent = 'Overview';
+        semesterBadgeEl.textContent = 'Multiple Semesters';
+        statusBadgeEl.className = 'status-badge active';
+        statusBadgeEl.innerHTML = '<span class="material-icons">check_circle</span>Active';
+        
+        // Update session info for all units
+        const activeUnits = Object.values(units).filter(unit => unit.status === 'active');
+        const totalSessions = activeUnits.reduce((sum, unit) => sum + unit.sessions, 0);
+        sessionInfoEl.innerHTML = `
+            <span class="material-icons">calendar_today</span>
+            <span>${totalSessions} sessions</span>
+            <span class="date-range">Across all units</span>
+        `;
+
+        // Update KPI cards for all units view
+        updateAllUnitsKPICards();
+        
+        // Update sessions section for all units view
+        updateAllUnitsSessionsSection();
+
+        console.log('Switched to All Units view');
+    }
+
+    function updateKPICards(unit) {
+        if (unit.status === 'active') {
+            // Active unit KPIs: This Week Hours, Remaining Hours, Total Hours, Active Sessions
+            statsGrid.className = 'stats-grid four-cards';
+            statsGrid.innerHTML = `
+                <div class="stat-card purple">
+                    <div class="stat-header">
+                        <h4>This Week Hours</h4>
+                        <span class="material-icons" aria-hidden="true">schedule</span>
+                    </div>
+                    <p class="stat-value">${unit.kpis.thisWeekHours}</p>
+                    <p class="stat-subtext">2 sessions</p>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-header">
+                        <h4>Remaining Hours</h4>
+                        <span class="material-icons" aria-hidden="true">pending_actions</span>
+                    </div>
+                    <p class="stat-value">${unit.kpis.remainingHours}</p>
+                    <p class="stat-subtext">Total hours - this week hours</p>
+                </div>
+                <div class="stat-card gray">
+                    <div class="stat-header">
+                        <h4>Total Hours</h4>
+                        <span class="material-icons" aria-hidden="true">calendar_today</span>
+                    </div>
+                    <p class="stat-value">${unit.kpis.totalHours}</p>
+                    <p class="stat-subtext">For this unit</p>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-header">
+                        <h4>Active Sessions</h4>
+                        <span class="material-icons" aria-hidden="true">event_available</span>
+                    </div>
+                    <p class="stat-value">${unit.kpis.activeSessions}</p>
+                    <p class="stat-subtext">This week</p>
+                </div>
+            `;
+        } else {
+            // Past unit KPIs: Total Hours, Total Sessions
+            statsGrid.className = 'stats-grid two-cards';
+            statsGrid.innerHTML = `
+                <div class="stat-card purple">
+                    <div class="stat-header">
+                        <h4>Total Hours</h4>
+                        <span class="material-icons" aria-hidden="true">schedule</span>
+                    </div>
+                    <p class="stat-value">${unit.kpis.totalHours}</p>
+                    <p class="stat-subtext">For this unit</p>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-header">
+                        <h4>Total Sessions</h4>
+                        <span class="material-icons" aria-hidden="true">calendar_today</span>
+                    </div>
+                    <p class="stat-value">${unit.kpis.totalSessions}</p>
+                    <p class="stat-subtext">Completed</p>
+                </div>
+            `;
+        }
+    }
+
+    function updateAllUnitsKPICards() {
+        const activeUnits = Object.values(units).filter(unit => unit.status === 'active');
+        const totalThisWeekHours = activeUnits.reduce((sum, unit) => sum + unit.kpis.thisWeekHours, 0);
+        const totalHours = activeUnits.reduce((sum, unit) => sum + unit.kpis.totalHours, 0);
+        const totalActiveSessions = activeUnits.reduce((sum, unit) => sum + unit.kpis.activeSessions, 0);
+
+        statsGrid.className = 'stats-grid three-cards';
+        statsGrid.innerHTML = `
+            <div class="stat-card purple">
+                <div class="stat-header">
+                    <h4>This Week Hours</h4>
+                    <span class="material-icons" aria-hidden="true">schedule</span>
+                </div>
+                <p class="stat-value">${totalThisWeekHours}</p>
+                <p class="stat-subtext">Across all units</p>
+            </div>
+            <div class="stat-card blue">
+                <div class="stat-header">
+                    <h4>Total Hours</h4>
+                    <span class="material-icons" aria-hidden="true">calendar_today</span>
+                </div>
+                <p class="stat-value">${totalHours}</p>
+                <p class="stat-subtext">Across all units</p>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-header">
+                    <h4>Active Sessions</h4>
+                    <span class="material-icons" aria-hidden="true">event_available</span>
+                </div>
+                <p class="stat-value">${totalActiveSessions}</p>
+                <p class="stat-subtext">This week</p>
+            </div>
+        `;
+    }
+
+    function updateSessionsSection(unit) {
+        const sessionsTitle = `${unit.code} Sessions`;
+        let sessionsHTML = `
+            <div class="card-header">
+                <h3>${sessionsTitle}</h3>
+                <a href="#" class="view-all-link">View All</a>
+            </div>
+            <div class="session-list">
+        `;
+
+        if (unit.status === 'active' && unit.upcomingSessions) {
+            unit.upcomingSessions.forEach(session => {
+                sessionsHTML += `
+                    <div class="session-item">
+                        <div class="session-info">
+                            <div class="session-title">
+                                <h4>${session.day}</h4>
+                                <span class="tag confirmed">${session.status}</span>
+                            </div>
+                            <p class="session-time">${session.time}</p>
+                            <p class="session-location">${session.location}</p>
+                            <p class="session-topic">${session.topic}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        } else if (unit.status === 'completed' && unit.pastSessions) {
+            unit.pastSessions.forEach(session => {
+                sessionsHTML += `
+                    <div class="session-item">
+                        <div class="session-info">
+                            <div class="session-title">
+                                <h4>${session.day}</h4>
+                                <span class="tag confirmed">${session.status}</span>
+                            </div>
+                            <p class="session-time">${session.time}</p>
+                            <p class="session-location">${session.location}</p>
+                            <p class="session-topic">${session.topic}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        sessionsHTML += '</div>';
+        sessionsSection.innerHTML = sessionsHTML;
+    }
+
+    function updateAllUnitsSessionsSection() {
+        const activeUnits = Object.values(units).filter(unit => unit.status === 'active');
+        const completedUnits = Object.values(units).filter(unit => unit.status === 'completed');
+        
+        let sessionsHTML = `
+            <div class="card-header">
+                <h3>Your Sessions</h3>
+                <a href="#" class="view-all-link">View All</a>
+            </div>
+            <div class="session-list">
+        `;
+
+        // Add current & upcoming sessions from active units
+        sessionsHTML += `
+            <div class="session-group-header">
+                <h4>Current & Upcoming Sessions</h4>
+                <span class="session-count-badge">${activeUnits.reduce((sum, unit) => sum + (unit.upcomingSessions ? unit.upcomingSessions.length : 0), 0)} sessions</span>
+            </div>
+        `;
+
+        activeUnits.forEach(unit => {
+            if (unit.upcomingSessions) {
+                sessionsHTML += `
+                    <div class="unit-session-group">
+                        <div class="unit-header">
+                            <span class="unit-code-small">${unit.code}</span>
+                            <span class="unit-session-count">${unit.upcomingSessions.length} sessions</span>
+                        </div>
+                `;
+                
+                unit.upcomingSessions.forEach(session => {
+                    sessionsHTML += `
+                        <div class="session-item">
+                            <div class="session-info">
+                                <div class="session-title">
+                                    <h4>${session.day}</h4>
+                                    <span class="tag confirmed">${session.status}</span>
+                                </div>
+                                <p class="session-time">${session.time}</p>
+                                <p class="session-location">${session.location}</p>
+                                <p class="session-topic">${session.topic}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                sessionsHTML += '</div>';
+            }
+        });
+
+        sessionsHTML += '</div>';
+        sessionsSection.innerHTML = sessionsHTML;
+    }
 });

@@ -1624,6 +1624,24 @@ input:checked + .toggle-slider:before {
     grid-template-columns: repeat(4, 1fr);
     gap: var(--gap-lg);
 }
+
+/* Grid layouts for different numbers of cards */
+.stats-grid.two-cards {
+    grid-template-columns: 1fr 1fr;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.stats-grid.three-cards {
+    grid-template-columns: 1fr 1fr 1fr;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.stats-grid.four-cards {
+    grid-template-columns: repeat(4, 1fr);
+}
+
 .stat-card {
     background-color: var(--surface-primary);
     border: 1px solid var(--border-color);
