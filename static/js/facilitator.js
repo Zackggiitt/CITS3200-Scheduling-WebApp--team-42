@@ -581,12 +581,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const dropdownMenu = document.getElementById('unit-dropdown-menu');
     const allUnitsBtn = document.querySelector('.all-units-btn');
     
-    // Unit display elements
-    const unitCodeEl = document.querySelector('.unit-code');
-    const unitNameEl = document.querySelector('.unit-name');
-    const semesterBadgeEl = document.querySelector('.semester-badge');
-    const statusBadgeEl = document.querySelector('.status-badge');
-    const sessionInfoEl = document.querySelector('.session-info');
+    // Update the DOM element selectors to be more specific
+    const unitCodeEl = document.querySelector('#unit-selector .unit-code');
+    const unitNameEl = document.querySelector('#unit-selector .unit-name');
+    const semesterBadgeEl = document.querySelector('#unit-selector .semester-badge');
+    const statusBadgeEl = document.querySelector('#unit-selector .status-badge');
+    const sessionInfoEl = document.querySelector('#unit-selector .session-info');
 
     // KPI and Sessions elements
     const statsGrid = document.querySelector('.stats-grid');
