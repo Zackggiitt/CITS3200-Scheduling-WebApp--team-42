@@ -1,0 +1,89 @@
+/* Admin Topbar Styles */
+.admin-topbar { 
+  width: 100%;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+  font-family: 'Roboto', sans-serif;
+}
+
+.admin-topbar__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-topbar__left { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+}
+.admin-topbar__logo { color: #111827; }
+.admin-topbar__title { 
+  font-weight: 700; 
+  color: #111827; 
+}
+
+.admin-topbar__right { 
+  display: flex; 
+  align-items: center; 
+  gap: 14px; 
+}
+
+.admin-topbar__icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+}
+.admin-topbar__icon-btn:hover { background: #f9fafb; }
+
+.notif-badge { 
+  position: absolute;
+  top: -6px; 
+  right: -6px; 
+  background: #dc2626; 
+  color: #fff; 
+  border-radius: 999px; 
+  padding: 2px 6px; 
+  font-size: 12px; 
+  font-weight: 700; 
+}
+
+.admin-topbar__user { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 6px; 
+  color: #111827; 
+}
+.admin-topbar__name { font-weight: 600; }
+
+.role-chip {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #fca5a5;
+  background: #fee2e2;
+  color: #991b1b;
+}
+.role-chip--admin { /* semantic hook for future overrides */ }
+
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.logout-btn:hover { background: #f9fafb; }

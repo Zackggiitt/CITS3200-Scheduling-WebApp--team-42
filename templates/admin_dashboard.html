@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedule Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body>
+  <!-- Topbar -->
+  <header class="admin-topbar">
+    <div class="admin-topbar__container">
+      <div class="admin-topbar__left">
+        <span class="material-icons admin-topbar__logo" aria-hidden="true">event</span>
+        <span class="admin-topbar__title">Schedule Manager</span>
+      </div>
+      <div class="admin-topbar__right">
+        <button class="admin-topbar__icon-btn" type="button" aria-label="Notifications" id="adminNotifBtn">
+          <span class="material-icons" aria-hidden="true">notifications</span>
+          {% if pending_swaps and pending_swaps > 0 %}
+            <span class="notif-badge">{{ pending_swaps }}</span>
+          {% else %}
+            <span class="notif-badge">1</span>
+          {% endif %}
+        </button>
+        <div class="admin-topbar__user" aria-label="Current user">
+          <span class="material-icons" aria-hidden="true">person</span>
+          <span class="admin-topbar__name">{{ user.full_name if user else 'Admin User' }}</span>
+        </div>
+        <span class="role-chip role-chip--admin">System Admin</span>
+        <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form" style="display: inline;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <button type="submit" class="logout-btn">
+            <span class="material-icons" aria-hidden="true">logout</span>
+            <span>Logout</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  <!-- You can add admin content below -->
+  <main class="container" style="max-width:1200px;margin:24px auto;padding:0 16px;">
+    <h2 style="font-family: 'Roboto', sans-serif; font-weight: 600;">Admin Dashboard</h2>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
+</body>
+</html>
+
+
