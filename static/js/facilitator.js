@@ -1437,8 +1437,6 @@ function initUnavailabilityView() {
     // Initialize AJAX features
     initializeAJAXFeatures();
     
-    // Update summary statistics
-    updateUnavailabilitySummary();
 }
 
 function updateUnavailabilityViewForUnit(unit) {
@@ -1468,8 +1466,6 @@ function updateUnavailabilityViewForUnit(unit) {
     // Regenerate calendar with new unit data
     regenerateUnavailabilityCalendar();
     
-    // Update summary statistics
-    updateUnavailabilitySummary();
     
     // Update recent unavailability list
     updateRecentUnavailabilityList();
@@ -1521,7 +1517,6 @@ function loadUnavailabilityData() {
             
             unavailabilityData = data.unavailabilities || [];
             updateCalendarDisplay();
-            updateUnavailabilitySummary();
             updateRecentUnavailabilityList();
         })
         .catch(error => {
@@ -1907,7 +1902,6 @@ function initUnavailabilityControls() {
         refreshBtn.addEventListener('click', function() {
             loadUnavailabilityData();
             generateCalendar();
-            updateUnavailabilitySummary();
             updateRecentUnavailabilityList();
         });
     }
@@ -1927,22 +1921,6 @@ function initUnavailabilityControls() {
             navigateCalendar(1);
         });
     }
-}
-
-function updateUnavailabilitySummary() {
-    if (!unavailabilityData) return;
-    
-    const totalDays = unavailabilityData.length;
-    const recurringPatterns = unavailabilityData.filter(unav => unav.recurring_pattern).length;
-    const partialDays = unavailabilityData.filter(unav => !unav.is_full_day).length;
-    
-    const totalDaysElement = document.getElementById('total-unavailable-days');
-    const recurringElement = document.getElementById('recurring-patterns');
-    const partialElement = document.getElementById('partial-days');
-    
-    if (totalDaysElement) totalDaysElement.textContent = totalDays;
-    if (recurringElement) recurringElement.textContent = recurringPatterns;
-    if (partialElement) partialElement.textContent = partialDays;
 }
 
 function updateRecentUnavailabilityList() {
