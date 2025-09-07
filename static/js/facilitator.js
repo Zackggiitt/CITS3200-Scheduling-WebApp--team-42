@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
     const calendarView = document.getElementById('calendar-view');
-    const availabilityView = document.getElementById('availability-view');
+    const unavailabilityView = document.getElementById('unavailability-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
     
     // Notification popup elements
@@ -24,18 +24,20 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show/hide sections
             const href = this.getAttribute('href');
 
-            if (href === '#availability') {
-                // Show availability view
+            if (href === '#unavailability') {
+                // Show unavailability view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                availabilityView.style.display = 'block';
+                unavailabilityView.style.display = 'block';
                 calendarView.style.display = 'none';
-                // Hide unavailability alert in availability view
+                // Hide unavailability alert in unavailability view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
+                // Initialize unavailability functionality
+                initUnavailabilityView();
             } else if (href === '#schedule') {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                availabilityView.style.display = 'none';
+                unavailabilityView.style.display = 'none';
                 calendarView.style.display = 'block';
                 initCalendar();
                 // Hide unavailability alert in schedule view
@@ -44,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
-                availabilityView.style.display = 'none';
+                unavailabilityView.style.display = 'none';
                 // Show unavailability alert in dashboard view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'block';
@@ -1450,3 +1452,683 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Unavailability functionality
+let currentUnitId = null;
+let currentUnit = null;
+let unavailabilityData = [];
+
+function initUnavailabilityView() {
+    console.log('Initializing unavailability view');
+    
+    // Get current unit from window data
+    if (window.currentUnit) {
+        currentUnitId = window.currentUnit.id;
+        currentUnit = window.currentUnit;
+    } else {
+        console.error('No current unit found');
+        return;
+    }
+    
+    // Update unit information display
+    updateUnitInfo();
+    
+    // Load unavailability data
+    loadUnavailabilityData();
+    
+    // Initialize calendar
+    initUnavailabilityCalendar();
+    
+    // Initialize modal functionality
+    initUnavailabilityModal();
+    
+    // Initialize additional functionality
+    initUnavailabilityControls();
+    
+    // Initialize advanced modal features
+    initAdvancedModalFeatures();
+    
+    // Initialize AJAX features
+    initializeAJAXFeatures();
+    
+    // Update summary statistics
+    updateUnavailabilitySummary();
+}
+
+function updateUnitInfo() {
+    if (!currentUnit) return;
+    
+    const unitNameElement = document.getElementById('current-unit-name');
+    const unitCodeElement = document.getElementById('unit-code-display');
+    const unitDateRangeElement = document.getElementById('unit-date-range');
+    
+    if (unitNameElement) unitNameElement.textContent = currentUnit.code;
+    if (unitCodeElement) unitCodeElement.textContent = currentUnit.code;
+    
+    if (unitDateRangeElement && currentUnit.start_date && currentUnit.end_date) {
+        const startDate = new Date(currentUnit.start_date);
+        const endDate = new Date(currentUnit.end_date);
+        const formattedStart = startDate.toLocaleDateString('en-GB');
+        const formattedEnd = endDate.toLocaleDateString('en-GB');
+        unitDateRangeElement.textContent = `${formattedStart} - ${formattedEnd}`;
+    }
+}
+
+function loadUnavailabilityData() {
+    if (!currentUnitId) {
+        console.error('No current unit ID available');
+        return;
+    }
+    
+    fetch(`/facilitator/unavailability?unit_id=${currentUnitId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error loading unavailability:', data.error);
+                return;
+            }
+            
+            unavailabilityData = data.unavailabilities || [];
+            updateCalendarDisplay();
+            updateUnavailabilitySummary();
+            updateRecentUnavailabilityList();
+        })
+        .catch(error => {
+            console.error('Error loading unavailability data:', error);
+        });
+}
+
+function initUnavailabilityCalendar() {
+    const calendarDays = document.getElementById('unavailability-calendar-days');
+    if (!calendarDays) return;
+    
+    // Generate calendar for current month
+    generateCalendar();
+    
+    // Add click handlers for calendar days
+    calendarDays.addEventListener('click', function(e) {
+        const dayElement = e.target.closest('.calendar-day');
+        if (!dayElement) return;
+        
+        const date = dayElement.dataset.date;
+        if (!date) return;
+        
+        // Check if date is within unit period
+        if (!isDateInUnitPeriod(date)) {
+            alert('You can only set unavailability for dates within the unit period');
+            return;
+        }
+        
+        // Open modal for this date
+        openUnavailabilityModal(date);
+    });
+}
+
+function generateCalendar() {
+    const calendarDays = document.getElementById('unavailability-calendar-days');
+    if (!calendarDays) return;
+    
+    // Get current calendar state
+    const currentDate = window.calendarCurrentDate || new Date();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    // Update month title
+    const monthTitle = document.getElementById('current-month-unavailability');
+    if (monthTitle) {
+        monthTitle.textContent = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+    
+    // Clear existing days
+    calendarDays.innerHTML = '';
+    
+    // Get first day of month and number of days
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    // Add empty cells for days before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+        const emptyDay = document.createElement('div');
+        emptyDay.className = 'calendar-day empty';
+        calendarDays.appendChild(emptyDay);
+    }
+    
+    // Add days of month
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        dayElement.textContent = day;
+        
+        const date = new Date(year, month, day);
+        const dateString = date.toISOString().split('T')[0];
+        dayElement.dataset.date = dateString;
+        
+        // Check if date is in unit period
+        if (isDateInUnitPeriod(dateString)) {
+            dayElement.classList.add('unit-period');
+        } else {
+            dayElement.classList.add('outside-period');
+        }
+        
+        // Check if date has unavailability
+        if (hasUnavailability(dateString)) {
+            dayElement.classList.add('unavailable');
+        }
+        
+        // Add today indicator
+        const today = new Date();
+        if (dateString === today.toISOString().split('T')[0]) {
+            dayElement.classList.add('today');
+        }
+        
+        calendarDays.appendChild(dayElement);
+    }
+    
+    // Update calendar display after generation
+    updateCalendarDisplay();
+}
+
+function isDateInUnitPeriod(dateString) {
+    if (!currentUnit || !currentUnit.start_date || !currentUnit.end_date) return false;
+    
+    const date = new Date(dateString);
+    const startDate = new Date(currentUnit.start_date);
+    const endDate = new Date(currentUnit.end_date);
+    
+    return date >= startDate && date <= endDate;
+}
+
+function hasUnavailability(dateString) {
+    return unavailabilityData.some(unav => unav.date === dateString);
+}
+
+function updateCalendarDisplay() {
+    const calendarDays = document.querySelectorAll('.calendar-day');
+    calendarDays.forEach(dayElement => {
+        const date = dayElement.dataset.date;
+        if (!date) return;
+        
+        dayElement.classList.remove('unavailable');
+        if (hasUnavailability(date)) {
+            dayElement.classList.add('unavailable');
+        }
+    });
+}
+
+function openUnavailabilityModal(date) {
+    const modal = document.getElementById('unavailability-modal');
+    const subtitle = document.getElementById('modal-date-subtitle');
+    
+    if (!modal || !subtitle) return;
+    
+    // Update modal subtitle
+    const dateObj = new Date(date);
+    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+    const formattedDate = dateObj.toLocaleDateString('en-US', { 
+        month: 'long', 
+        day: 'numeric', 
+        year: 'numeric' 
+    });
+    subtitle.textContent = `Configure your unavailable times for ${dayName}, ${formattedDate}`;
+    
+    // Store current date for saving
+    modal.dataset.currentDate = date;
+    
+    // Reset form
+    resetUnavailabilityForm();
+    
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+function resetUnavailabilityForm() {
+    document.getElementById('full-day-toggle').checked = false;
+    document.getElementById('recurring-toggle').checked = false;
+    document.getElementById('repeat-every').value = 'weekly';
+    document.getElementById('custom-recurrence').style.display = 'none';
+    document.getElementById('recurring-options').style.display = 'none';
+    document.getElementById('until-date').value = '';
+    document.getElementById('unavailability-reason').value = '';
+    
+    // Clear time ranges
+    const container = document.getElementById('time-ranges-container');
+    container.innerHTML = '<div class="no-time-ranges"><span class="material-icons">schedule</span><p>No specific time ranges set. Click \'Add Time Range\' to specify unavailable hours</p></div>';
+}
+
+function initUnavailabilityModal() {
+    const modal = document.getElementById('unavailability-modal');
+    const closeBtn = document.getElementById('unavailability-modal-close');
+    const cancelBtn = document.getElementById('cancel-unavailability');
+    const saveBtn = document.getElementById('save-unavailability');
+    const fullDayToggle = document.getElementById('full-day-toggle');
+    const recurringToggle = document.getElementById('recurring-toggle');
+    const repeatEverySelect = document.getElementById('repeat-every');
+    const addTimeRangeBtn = document.getElementById('add-time-range');
+    
+    // Close modal function
+    function closeModal() {
+        modal.style.display = 'none';
+        resetUnavailabilityForm();
+    }
+    
+    // Close modal handlers
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    
+    // Close on overlay click
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+    
+    // Full day toggle functionality
+    if (fullDayToggle) {
+        fullDayToggle.addEventListener('change', function() {
+            const timeRangesContainer = document.getElementById('time-ranges-container');
+            const addTimeRangeBtn = document.getElementById('add-time-range');
+            
+            if (this.checked) {
+                // Hide time ranges when full day is selected
+                timeRangesContainer.style.display = 'none';
+                if (addTimeRangeBtn) addTimeRangeBtn.style.display = 'none';
+            } else {
+                // Show time ranges when partial day is selected
+                timeRangesContainer.style.display = 'block';
+                if (addTimeRangeBtn) addTimeRangeBtn.style.display = 'block';
+                
+                // Add default time range if none exist
+                if (timeRangesContainer.children.length === 0) {
+                    addTimeRange();
+                }
+            }
+        });
+    }
+    
+    // Recurring toggle functionality
+    if (recurringToggle) {
+        recurringToggle.addEventListener('change', function() {
+            const recurringOptions = document.getElementById('recurring-options');
+            
+            if (this.checked) {
+                recurringOptions.style.display = 'block';
+            } else {
+                recurringOptions.style.display = 'none';
+            }
+        });
+    }
+    
+    // Repeat every select functionality
+    if (repeatEverySelect) {
+        repeatEverySelect.addEventListener('change', function() {
+            const customRecurrence = document.getElementById('custom-recurrence');
+            
+            if (this.value === 'custom') {
+                customRecurrence.style.display = 'block';
+            } else {
+                customRecurrence.style.display = 'none';
+            }
+        });
+    }
+    
+    // Add time range functionality
+    if (addTimeRangeBtn) {
+        addTimeRangeBtn.addEventListener('click', addTimeRange);
+    }
+    
+    // Save unavailability functionality
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveUnavailability);
+    }
+}
+
+function addTimeRange() {
+    const container = document.getElementById('time-ranges-container');
+    
+    // Remove "no time ranges" message
+    const noTimeRanges = container.querySelector('.no-time-ranges');
+    if (noTimeRanges) {
+        noTimeRanges.remove();
+    }
+    
+    const timeRangeDiv = document.createElement('div');
+    timeRangeDiv.className = 'time-range-item';
+    
+    timeRangeDiv.innerHTML = `
+        <div class="time-range-controls">
+            <div class="time-input-group">
+                <label>Start Time</label>
+                <input type="time" class="time-input" value="09:00">
+            </div>
+            <div class="time-input-group">
+                <label>End Time</label>
+                <input type="time" class="time-input" value="17:00">
+            </div>
+            <button class="remove-time-range" type="button">
+                <span class="material-icons">delete</span>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(timeRangeDiv);
+    
+    // Add event listeners for the new time range
+    const removeBtn = timeRangeDiv.querySelector('.remove-time-range');
+    
+    // Remove button functionality
+    removeBtn.addEventListener('click', function() {
+        timeRangeDiv.remove();
+        
+        // Show "no time ranges" message if no ranges left
+        if (container.children.length === 0) {
+            container.innerHTML = '<div class="no-time-ranges"><span class="material-icons">schedule</span><p>No specific time ranges set. Click \'Add Time Range\' to specify unavailable hours</p></div>';
+        }
+    });
+}
+
+function saveUnavailability() {
+    const modal = document.getElementById('unavailability-modal');
+    const date = modal.dataset.currentDate;
+    
+    if (!date || !currentUnitId) return;
+    
+    const isFullDay = document.getElementById('full-day-toggle').checked;
+    const isRecurring = document.getElementById('recurring-toggle').checked;
+    const reason = document.getElementById('unavailability-reason').value;
+    
+    let startTime = null;
+    let endTime = null;
+    
+    if (!isFullDay) {
+        const timeRanges = document.querySelectorAll('.time-range-item');
+        if (timeRanges.length > 0) {
+            // For now, just use the first time range
+            const firstRange = timeRanges[0];
+            const startInput = firstRange.querySelector('input[type="time"]');
+            const endInput = firstRange.querySelectorAll('input[type="time"]')[1];
+            startTime = startInput.value;
+            endTime = endInput.value;
+        }
+    }
+    
+    const data = {
+        unit_id: currentUnitId,
+        date: date,
+        is_full_day: isFullDay,
+        start_time: startTime,
+        end_time: endTime,
+        reason: reason
+    };
+    
+    if (isRecurring) {
+        data.recurring_pattern = document.getElementById('repeat-every').value;
+        data.recurring_end_date = document.getElementById('until-date').value;
+        
+        const customInterval = document.getElementById('custom-interval');
+        if (customInterval && customInterval.value) {
+            data.recurring_interval = parseInt(customInterval.value);
+        }
+    }
+    
+    fetch('/facilitator/unavailability', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.error) {
+            alert('Error saving unavailability: ' + result.error);
+            return;
+        }
+        
+        // Reload unavailability data
+        loadUnavailabilityData();
+        
+        // Close modal
+        modal.style.display = 'none';
+        
+        console.log('Unavailability saved successfully');
+    })
+    .catch(error => {
+        console.error('Error saving unavailability:', error);
+        alert('Error saving unavailability');
+    });
+}
+
+// Additional unavailability functionality
+function initUnavailabilityControls() {
+    // Refresh button
+    const refreshBtn = document.getElementById('refresh-unavailability');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            loadUnavailabilityData();
+            generateCalendar();
+            updateUnavailabilitySummary();
+            updateRecentUnavailabilityList();
+        });
+    }
+    
+    // Calendar navigation
+    const prevBtn = document.getElementById('prev-month-unavailability');
+    const nextBtn = document.getElementById('next-month-unavailability');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function() {
+            navigateCalendar(-1);
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function() {
+            navigateCalendar(1);
+        });
+    }
+}
+
+function updateUnavailabilitySummary() {
+    if (!unavailabilityData) return;
+    
+    const totalDays = unavailabilityData.length;
+    const recurringPatterns = unavailabilityData.filter(unav => unav.recurring_pattern).length;
+    const partialDays = unavailabilityData.filter(unav => !unav.is_full_day).length;
+    
+    const totalDaysElement = document.getElementById('total-unavailable-days');
+    const recurringElement = document.getElementById('recurring-patterns');
+    const partialElement = document.getElementById('partial-days');
+    
+    if (totalDaysElement) totalDaysElement.textContent = totalDays;
+    if (recurringElement) recurringElement.textContent = recurringPatterns;
+    if (partialElement) partialElement.textContent = partialDays;
+}
+
+function updateRecentUnavailabilityList() {
+    const listContainer = document.getElementById('recent-unavailability-list');
+    if (!listContainer) return;
+    
+    if (unavailabilityData.length === 0) {
+        listContainer.innerHTML = `
+            <div class="no-unavailability">
+                <span class="material-icons">event_available</span>
+                <p>No unavailability set yet. Click on calendar dates to get started.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Sort by date (most recent first) and take first 5
+    const recentUnavailability = unavailabilityData
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 5);
+    
+    listContainer.innerHTML = recentUnavailability.map(unav => {
+        const date = new Date(unav.date);
+        const formattedDate = date.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        let timeInfo = '';
+        if (unav.is_full_day) {
+            timeInfo = '<span class="time-info full-day">Full Day</span>';
+        } else if (unav.start_time && unav.end_time) {
+            timeInfo = `<span class="time-info partial">${unav.start_time} - ${unav.end_time}</span>`;
+        }
+        
+        let recurringInfo = '';
+        if (unav.recurring_pattern) {
+            recurringInfo = `<span class="recurring-info">${unav.recurring_pattern}</span>`;
+        }
+        
+        return `
+            <div class="unavailability-item">
+                <div class="item-date">
+                    <span class="material-icons">event_busy</span>
+                    <span class="date-text">${formattedDate}</span>
+                </div>
+                <div class="item-details">
+                    ${timeInfo}
+                    ${recurringInfo}
+                </div>
+                <div class="item-actions">
+                    <button class="edit-btn" onclick="editUnavailability(${unav.id})">
+                        <span class="material-icons">edit</span>
+                    </button>
+                    <button class="delete-btn" onclick="deleteUnavailability(${unav.id})">
+                        <span class="material-icons">delete</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function navigateCalendar(direction) {
+    // Initialize calendar current date if not set
+    if (!window.calendarCurrentDate) {
+        window.calendarCurrentDate = new Date();
+    }
+    
+    // Navigate to previous/next month
+    const currentDate = window.calendarCurrentDate;
+    const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + direction, 1);
+    
+    // Update calendar current date
+    window.calendarCurrentDate = newDate;
+    
+    // Regenerate calendar
+    generateCalendar();
+}
+
+function editUnavailability(unavailabilityId) {
+    // Find the unavailability record
+    const unav = unavailabilityData.find(u => u.id === unavailabilityId);
+    if (!unav) return;
+    
+    // Open the modal with existing data
+    openUnavailabilityModal(unav.date);
+    
+    // Pre-populate the form with existing data
+    setTimeout(() => {
+        populateUnavailabilityForm(unav);
+    }, 100);
+}
+
+function deleteUnavailability(unavailabilityId) {
+    if (!confirm('Are you sure you want to delete this unavailability?')) {
+        return;
+    }
+    
+    fetch(`/facilitator/unavailability/${unavailabilityId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.error) {
+            alert('Error deleting unavailability: ' + result.error);
+            return;
+        }
+        
+        // Reload unavailability data
+        loadUnavailabilityData();
+        console.log('Unavailability deleted successfully');
+    })
+    .catch(error => {
+        console.error('Error deleting unavailability:', error);
+        alert('Error deleting unavailability');
+    });
+}
+
+function populateUnavailabilityForm(unav) {
+    // Pre-populate the modal form with existing unavailability data
+    const fullDayToggle = document.getElementById('full-day-toggle');
+    const recurringToggle = document.getElementById('recurring-toggle');
+    const reasonField = document.getElementById('unavailability-reason');
+    
+    if (fullDayToggle) fullDayToggle.checked = unav.is_full_day;
+    if (recurringToggle) recurringToggle.checked = !!unav.recurring_pattern;
+    if (reasonField) reasonField.value = unav.reason || '';
+    
+    // Handle recurring options
+    if (unav.recurring_pattern) {
+        const recurringOptions = document.getElementById('recurring-options');
+        if (recurringOptions) recurringOptions.style.display = 'block';
+        
+        const repeatSelect = document.getElementById('repeat-every');
+        if (repeatSelect) repeatSelect.value = unav.recurring_pattern;
+        
+        const untilDate = document.getElementById('until-date');
+        if (untilDate && unav.recurring_end_date) {
+            untilDate.value = unav.recurring_end_date;
+        }
+    }
+    
+    // Handle time ranges
+    if (!unav.is_full_day && unav.start_time && unav.end_time) {
+        const container = document.getElementById('time-ranges-container');
+        container.innerHTML = `
+            <div class="time-range-item">
+                <div class="time-range-controls">
+                    <div class="time-input-group">
+                        <label>Start Time</label>
+                        <input type="time" class="time-input" value="${unav.start_time}">
+                    </div>
+                    <div class="time-input-group">
+                        <label>End Time</label>
+                        <input type="time" class="time-input" value="${unav.end_time}">
+                    </div>
+                    <button class="remove-time-range" type="button">
+                        <span class="material-icons">delete</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Placeholder functions for advanced features
+function initAdvancedModalFeatures() {
+    // Advanced options toggle
+    const toggleAdvancedBtn = document.getElementById('toggle-advanced');
+    const advancedOptions = document.getElementById('advanced-options');
+    
+    if (toggleAdvancedBtn && advancedOptions) {
+        toggleAdvancedBtn.addEventListener('click', function() {
+            const isVisible = advancedOptions.style.display !== 'none';
+            advancedOptions.style.display = isVisible ? 'none' : 'block';
+            
+            const icon = toggleAdvancedBtn.querySelector('.material-icons');
+            icon.textContent = isVisible ? 'expand_more' : 'expand_less';
+        });
+    }
+}
+
+function initializeAJAXFeatures() {
+    // Set up global error handling
+    window.addEventListener('unhandledrejection', function(event) {
+        console.error('Unhandled promise rejection:', event.reason);
+    });
+}

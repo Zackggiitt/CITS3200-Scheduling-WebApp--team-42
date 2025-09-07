@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import db, User, Session, Assignment, SwapRequest, Availability, SwapStatus, FacilitatorSkill, SkillLevel, Unit, Module, UnitFacilitator
+from models import db, User, Session, Assignment, SwapRequest, Unavailability, SwapStatus, FacilitatorSkill, SkillLevel, Unit, Module, UnitFacilitator, RecurringPattern
 from auth import facilitator_required, get_current_user, login_required
 from datetime import datetime, time, date, timedelta
 from utils import role_required
@@ -202,7 +202,40 @@ def dashboard():
 
     # Fallback to HTML dashboard when no unit_id is provided
     greeting = get_greeting()
-    return render_template("facilitator_dashboard.html", user=user, greeting=greeting)
+    
+    # Get user's units for the dashboard
+    units = (
+        Unit.query
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(UnitFacilitator.user_id == user.id)
+        .order_by(Unit.start_date.desc())
+        .all()
+    )
+    
+    # Get current active unit (most recent with future sessions or current date range)
+    current_unit = None
+    today = date.today()
+    
+    for unit in units:
+        # Check if unit is currently active
+        if (unit.start_date and unit.end_date and 
+            unit.start_date <= today <= unit.end_date):
+            current_unit = unit
+            break
+        elif (unit.start_date and not unit.end_date and 
+              unit.start_date <= today):
+            current_unit = unit
+            break
+    
+    # If no active unit found, use the most recent unit
+    if not current_unit and units:
+        current_unit = units[0]
+    
+    return render_template("facilitator_dashboard.html", 
+                         user=user, 
+                         greeting=greeting,
+                         units=units,
+                         current_unit=current_unit)
 
 
 @facilitator_bp.route("/")
@@ -218,78 +251,369 @@ def view_schedule():
     assignments = Assignment.query.filter_by(facilitator_id=user.id).join(Session).order_by(Session.start_time).all()
     return render_template('view_schedule.html', user=user, assignments=assignments)
 
-@facilitator_bp.route('/availability', methods=['GET', 'POST'])
+@facilitator_bp.route('/unit-info', methods=['GET'])
 @facilitator_required
-def manage_availability():
+def get_unit_info():
+    """Get unit information for unavailability system"""
     user = get_current_user()
+    unit_id = request.args.get('unit_id', type=int)
     
-    if request.method == 'POST':
-        # Clear existing availability
-        Availability.query.filter_by(user_id=user.id).delete()
+    if not unit_id:
+        return jsonify({"error": "unit_id is required"}), 400
+    
+    # Verify user has access to this unit
+    unit = (
+        db.session.query(Unit)
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(Unit.id == unit_id, UnitFacilitator.user_id == user.id)
+        .first()
+    )
+    
+    if not unit:
+        return jsonify({"error": "forbidden"}), 403
+    
+    # Serialize unit data
+    unit_data = {
+        "id": unit.id,
+        "code": unit.unit_code,
+        "name": unit.unit_name,
+        "start_date": unit.start_date.isoformat() if unit.start_date else None,
+        "end_date": unit.end_date.isoformat() if unit.end_date else None,
+        "year": unit.year,
+        "semester": unit.semester
+    }
+    
+    return jsonify({"unit": unit_data})
+
+@facilitator_bp.route('/unavailability', methods=['GET'])
+@facilitator_required
+def get_unavailability():
+    """Get unavailability for a specific unit"""
+    user = get_current_user()
+    unit_id = request.args.get('unit_id', type=int)
+    
+    if not unit_id:
+        return jsonify({"error": "unit_id is required"}), 400
+    
+    # Verify user has access to this unit
+    access = (
+        db.session.query(Unit)
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(Unit.id == unit_id, UnitFacilitator.user_id == user.id)
+        .first()
+    )
+    if not access:
+        return jsonify({"error": "forbidden"}), 403
+    
+    # Get unavailability records for this user and unit
+    unavailabilities = Unavailability.query.filter_by(
+        user_id=user.id, 
+        unit_id=unit_id
+    ).all()
+    
+    # Serialize unavailability data
+    unavailability_data = []
+    for unav in unavailabilities:
+        unavailability_data.append({
+            'id': unav.id,
+            'date': unav.date.isoformat(),
+            'start_time': unav.start_time.isoformat() if unav.start_time else None,
+            'end_time': unav.end_time.isoformat() if unav.end_time else None,
+            'is_full_day': unav.is_full_day,
+            'recurring_pattern': unav.recurring_pattern.value if unav.recurring_pattern else None,
+            'recurring_end_date': unav.recurring_end_date.isoformat() if unav.recurring_end_date else None,
+            'recurring_interval': unav.recurring_interval,
+            'reason': unav.reason
+        })
+    
+    return jsonify({
+        'unit': {
+            'id': access.id,
+            'code': access.unit_code,
+            'name': access.unit_name,
+            'start_date': access.start_date.isoformat() if access.start_date else None,
+            'end_date': access.end_date.isoformat() if access.end_date else None
+        },
+        'unavailabilities': unavailability_data
+    })
+
+@facilitator_bp.route('/unavailability', methods=['POST'])
+@facilitator_required
+def create_unavailability():
+    """Create or update unavailability for a specific unit"""
+    user = get_current_user()
+    data = request.get_json()
+    
+    unit_id = data.get('unit_id')
+    if not unit_id:
+        return jsonify({"error": "unit_id is required"}), 400
+    
+    # Verify user has access to this unit
+    access = (
+        db.session.query(Unit)
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(Unit.id == unit_id, UnitFacilitator.user_id == user.id)
+        .first()
+    )
+    if not access:
+        return jsonify({"error": "forbidden"}), 403
+    
+    # Validate date format and range
+    try:
+        unavailability_date = datetime.strptime(data.get('date'), '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
+    
+    if access.start_date and unavailability_date < access.start_date:
+        return jsonify({"error": "Date is before unit start date"}), 400
+    if access.end_date and unavailability_date > access.end_date:
+        return jsonify({"error": "Date is after unit end date"}), 400
+    
+    # Parse time data
+    start_time = None
+    end_time = None
+    is_full_day = data.get('is_full_day', False)
+    
+    if not is_full_day:
+        start_time_str = data.get('start_time')
+        end_time_str = data.get('end_time')
         
-        # Process individual time slots
-        # Get all availability values from the form
-        availability_values = request.form.getlist('availability')
+        if not start_time_str or not end_time_str:
+            return jsonify({"error": "Start time and end time are required for partial day unavailability"}), 400
         
-        # Convert to a more structured format
-        availability_slots = {}
-        for value in availability_values:
-            day_time = value.split('_')
-            if len(day_time) == 2:
-                day = day_time[0]
-                time_str = day_time[1]
-                if day not in availability_slots:
-                    availability_slots[day] = []
-                availability_slots[day].append(time_str)
+        try:
+            start_time = datetime.strptime(start_time_str, '%H:%M').time()
+            end_time = datetime.strptime(end_time_str, '%H:%M').time()
+        except ValueError:
+            return jsonify({"error": "Invalid time format. Use HH:MM"}), 400
         
-        # Create availability records for each selected slot
-        days_map = {
-            'monday': 0,
-            'tuesday': 1,
-            'wednesday': 2,
-            'thursday': 3,
-            'friday': 4,
-            'saturday': 5,
-            'sunday': 6
-        }
+        if start_time >= end_time:
+            return jsonify({"error": "End time must be after start time"}), 400
+    
+    # Parse recurring pattern
+    recurring_pattern = None
+    recurring_end_date = None
+    recurring_interval = 1
+    
+    if data.get('recurring_pattern'):
+        recurring_pattern_str = data.get('recurring_pattern')
+        if recurring_pattern_str not in [pattern.value for pattern in RecurringPattern]:
+            return jsonify({"error": "Invalid recurring pattern"}), 400
         
-        for day, times in availability_slots.items():
-            day_index = days_map.get(day)
-            if day_index is not None:
-                for time_str in times:
-                    # Convert time string to time object
-                    hour = int(time_str[:2])
-                    minute = int(time_str[2:])
-                    slot_time = time(hour, minute)
-                    
-                    # Create availability record for this specific time slot
-                    availability = Availability(
-                        user_id=user.id,
-                        day_of_week=day_index,
-                        start_time=slot_time,
-                        end_time=slot_time
-                    )
-                    db.session.add(availability)
+        recurring_pattern = RecurringPattern(recurring_pattern_str)
+        
+        if not data.get('recurring_end_date'):
+            return jsonify({"error": "Recurring end date is required for recurring unavailability"}), 400
+        
+        try:
+            recurring_end_date = datetime.strptime(data.get('recurring_end_date'), '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({"error": "Invalid recurring end date format. Use YYYY-MM-DD"}), 400
+        
+        if recurring_end_date <= unavailability_date:
+            return jsonify({"error": "Recurring end date must be after the start date"}), 400
+        
+        recurring_interval = data.get('recurring_interval', 1)
+        if not isinstance(recurring_interval, int) or recurring_interval < 1 or recurring_interval > 52:
+            return jsonify({"error": "Recurring interval must be between 1 and 52"}), 400
+    
+    # Validate reason length
+    reason = data.get('reason', '')
+    if len(reason) > 500:
+        return jsonify({"error": "Reason must be 500 characters or less"}), 400
+    
+    # Check for existing unavailability on the same date
+    existing = Unavailability.query.filter_by(
+        user_id=user.id,
+        unit_id=unit_id,
+        date=unavailability_date
+    ).first()
+    
+    if existing:
+        return jsonify({"error": "Unavailability already exists for this date"}), 409
+    
+    # Create unavailability record
+    unavailability = Unavailability(
+        user_id=user.id,
+        unit_id=unit_id,
+        date=unavailability_date,
+        start_time=start_time,
+        end_time=end_time,
+        is_full_day=is_full_day,
+        recurring_pattern=recurring_pattern,
+        recurring_end_date=recurring_end_date,
+        recurring_interval=recurring_interval,
+        reason=reason if reason else None
+    )
+    
+    try:
+        db.session.add(unavailability)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Unavailability created successfully",
+            "unavailability": {
+                "id": unavailability.id,
+                "date": unavailability.date.isoformat(),
+                "is_full_day": unavailability.is_full_day,
+                "start_time": unavailability.start_time.isoformat() if unavailability.start_time else None,
+                "end_time": unavailability.end_time.isoformat() if unavailability.end_time else None,
+                "recurring_pattern": unavailability.recurring_pattern.value if unavailability.recurring_pattern else None,
+                "reason": unavailability.reason
+            }
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to create unavailability"}), 500
+
+@facilitator_bp.route('/unavailability/<int:unavailability_id>', methods=['PUT'])
+@facilitator_required
+def update_unavailability(unavailability_id):
+    """Update an existing unavailability record"""
+    user = get_current_user()
+    data = request.get_json()
+    
+    # Get the unavailability record
+    unavailability = Unavailability.query.filter_by(
+        id=unavailability_id, 
+        user_id=user.id
+    ).first()
+    
+    if not unavailability:
+        return jsonify({"error": "Unavailability not found"}), 404
+    
+    # Update fields
+    if 'date' in data:
+        unavailability.date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+    
+    if 'start_time' in data:
+        unavailability.start_time = datetime.strptime(data['start_time'], '%H:%M').time() if data['start_time'] else None
+    
+    if 'end_time' in data:
+        unavailability.end_time = datetime.strptime(data['end_time'], '%H:%M').time() if data['end_time'] else None
+    
+    if 'is_full_day' in data:
+        unavailability.is_full_day = data['is_full_day']
+    
+    if 'recurring_pattern' in data:
+        unavailability.recurring_pattern = RecurringPattern(data['recurring_pattern']) if data['recurring_pattern'] else None
+    
+    if 'recurring_end_date' in data:
+        unavailability.recurring_end_date = datetime.strptime(data['recurring_end_date'], '%Y-%m-%d').date() if data['recurring_end_date'] else None
+    
+    if 'recurring_interval' in data:
+        unavailability.recurring_interval = data['recurring_interval']
+    
+    if 'reason' in data:
+        unavailability.reason = data['reason']
         
         db.session.commit()
-        flash('Availability updated successfully!')
-        return redirect(url_for('facilitator.manage_availability'))
     
-    # Get current availability
-    current_availability = Availability.query.filter_by(user_id=user.id).all()
+    return jsonify({"message": "Unavailability updated successfully"})
+
+@facilitator_bp.route('/unavailability/<int:unavailability_id>', methods=['DELETE'])
+@facilitator_required
+def delete_unavailability(unavailability_id):
+    """Delete an unavailability record"""
+    user = get_current_user()
     
-    # Convert to a format that the frontend can use
-    availability_dict = {}
-    for avail in current_availability:
-        day_key = avail.day_of_week
-        time_key = f"{avail.start_time.hour:02d}{avail.start_time.minute:02d}"
-        if day_key not in availability_dict:
-            availability_dict[day_key] = []
-        availability_dict[day_key].append(time_key)
+    # Get the unavailability record
+    unavailability = Unavailability.query.filter_by(
+        id=unavailability_id, 
+        user_id=user.id
+    ).first()
     
-    return render_template('manage_availability.html', 
-                         user=user,
-                         availability=availability_dict)
+    if not unavailability:
+        return jsonify({"error": "Unavailability not found"}), 404
+    
+    db.session.delete(unavailability)
+    db.session.commit()
+    
+    return jsonify({"message": "Unavailability deleted successfully"})
+
+@facilitator_bp.route('/unavailability/generate-recurring', methods=['POST'])
+@facilitator_required
+def generate_recurring_unavailability():
+    """Generate recurring unavailability entries based on pattern"""
+    user = get_current_user()
+    data = request.get_json()
+    
+    unit_id = data.get('unit_id')
+    if not unit_id:
+        return jsonify({"error": "unit_id is required"}), 400
+    
+    # Verify user has access to this unit
+    access = (
+        db.session.query(Unit)
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(Unit.id == unit_id, UnitFacilitator.user_id == user.id)
+        .first()
+    )
+    if not access:
+        return jsonify({"error": "forbidden"}), 403
+    
+    # Parse the base unavailability data
+    base_date = datetime.strptime(data.get('date'), '%Y-%m-%d').date()
+    recurring_pattern = RecurringPattern(data.get('recurring_pattern'))
+    recurring_end_date = datetime.strptime(data.get('recurring_end_date'), '%Y-%m-%d').date()
+    recurring_interval = data.get('recurring_interval', 1)
+    
+    # Generate all dates for the recurring pattern
+    dates = []
+    current_date = base_date
+    
+    while current_date <= recurring_end_date:
+        dates.append(current_date)
+        
+        if recurring_pattern == RecurringPattern.DAILY:
+            current_date += timedelta(days=recurring_interval)
+        elif recurring_pattern == RecurringPattern.WEEKLY:
+            current_date += timedelta(weeks=recurring_interval)
+        elif recurring_pattern == RecurringPattern.MONTHLY:
+            # Simple monthly increment
+            year = current_date.year
+            month = current_date.month + recurring_interval
+            if month > 12:
+                year += 1
+                month -= 12
+            try:
+                current_date = current_date.replace(year=year, month=month)
+            except ValueError:
+                current_date = current_date.replace(year=year, month=month, day=1) - timedelta(days=1)
+    
+    # Create unavailability records for each date
+    created_count = 0
+    for date in dates:
+        # Check if unavailability already exists for this date
+        existing = Unavailability.query.filter_by(
+            user_id=user.id,
+            unit_id=unit_id,
+            date=date
+        ).first()
+        
+        if not existing:
+            unavailability = Unavailability(
+                user_id=user.id,
+                unit_id=unit_id,
+                date=date,
+                start_time=datetime.strptime(data.get('start_time'), '%H:%M').time() if data.get('start_time') else None,
+                end_time=datetime.strptime(data.get('end_time'), '%H:%M').time() if data.get('end_time') else None,
+                is_full_day=data.get('is_full_day', False),
+                recurring_pattern=recurring_pattern,
+                recurring_end_date=recurring_end_date,
+                recurring_interval=recurring_interval,
+                reason=data.get('reason')
+            )
+            db.session.add(unavailability)
+            created_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        "message": f"Created {created_count} recurring unavailability entries",
+        "total_dates": len(dates),
+        "created_count": created_count
+    })
 
 @facilitator_bp.route('/skills', methods=['GET', 'POST'])
 @facilitator_required
