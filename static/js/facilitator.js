@@ -740,13 +740,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const unavailabilityNav = document.getElementById('unavailability-nav');
         const scheduleNav = document.getElementById('schedule-nav');
         
-        // Show unavailability alert
+        // Show unavailability alert only if we're on the dashboard tab
         const unavailabilityAlert = document.getElementById('unavailability-alert');
+        const unavailabilityView = document.getElementById('unavailability-view');
         
         if (dashboardNav) dashboardNav.style.display = 'flex';
         if (unavailabilityNav) unavailabilityNav.style.display = 'flex';
         if (scheduleNav) scheduleNav.style.display = 'flex';
-        if (unavailabilityAlert) unavailabilityAlert.style.display = 'block';
+        
+        // Only show alert if we're on dashboard tab (unavailability view is hidden)
+        if (unavailabilityAlert) {
+            if (unavailabilityView && unavailabilityView.style.display === 'block') {
+                // We're on unavailability tab, hide the alert
+                unavailabilityAlert.style.display = 'none';
+            } else {
+                // We're on dashboard tab, show the alert
+                unavailabilityAlert.style.display = 'block';
+            }
+        }
     }
 
     function updateKPICards(unit) {
