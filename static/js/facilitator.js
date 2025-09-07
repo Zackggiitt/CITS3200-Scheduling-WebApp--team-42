@@ -456,19 +456,22 @@ document.addEventListener('DOMContentLoaded', function() {
             // Remove active state from all nav items
             navItems.forEach(nav => nav.classList.remove('active'));
             
-            // Add active state to availability tab
-            const availabilityNavItem = document.querySelector('a[href="#availability"]');
-            if (availabilityNavItem) {
-                availabilityNavItem.classList.add('active');
+            // Add active state to unavailability tab
+            const unavailabilityNavItem = document.querySelector('a[href="#unavailability"]');
+            if (unavailabilityNavItem) {
+                unavailabilityNavItem.classList.add('active');
             }
             
-            // Hide all sections and show availability
+            // Hide all sections and show unavailability
             dashboardSections.forEach(section => section.style.display = 'none');
-            availabilityView.style.display = 'block';
+            unavailabilityView.style.display = 'block';
             calendarView.style.display = 'none';
-            // Hide unavailability alert in availability view
+            // Hide unavailability alert in unavailability view
             const unavailabilityAlert = document.getElementById('unavailability-alert');
             if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
+            
+            // Initialize unavailability functionality
+            initUnavailabilityView();
         }
     });
 
