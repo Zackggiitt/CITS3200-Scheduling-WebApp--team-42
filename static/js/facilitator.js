@@ -867,67 +867,118 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="session-list">
         `;
 
-        // Show only upcoming sessions for both active and past units
-        if (unit.upcomingSessions && unit.upcomingSessions.length > 0) {
-            // Sort upcoming sessions by date
-            const sortedUpcomingSessions = unit.upcomingSessions.sort((a, b) => {
-                const dateA = new Date(a.date.split('/').reverse().join('-'));
-                const dateB = new Date(b.date.split('/').reverse().join('-'));
-                return dateA - dateB;
-            });
-            
-            // Show only top 5 upcoming sessions
-            const top5Sessions = sortedUpcomingSessions.slice(0, 5);
-            const remainingCount = sortedUpcomingSessions.length - 5;
-            
-            top5Sessions.forEach(session => {
-                const hasActions = session.status === 'pending';
-                const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
-                const statusText = session.status === 'confirmed' ? 'Confirmed' : 'Pending';
+        // Show sessions based on unit status
+        if (unit.status === 'active') {
+            // For active units: show upcoming sessions
+            if (unit.upcomingSessions && unit.upcomingSessions.length > 0) {
+                // Sort upcoming sessions by date
+                const sortedUpcomingSessions = unit.upcomingSessions.sort((a, b) => {
+                    const dateA = new Date(a.date.split('/').reverse().join('-'));
+                    const dateB = new Date(b.date.split('/').reverse().join('-'));
+                    return dateA - dateB;
+                });
                 
-                sessionsHTML += `
-                    <div class="session-item">
-                        <div class="session-info">
-                            <div class="session-title">
-                                <div>
-                                    <h4>${session.topic}</h4>
-                                    <p class="session-full-date">${session.date}</p>
+                // Show only top 5 upcoming sessions
+                const top5Sessions = sortedUpcomingSessions.slice(0, 5);
+                const remainingCount = sortedUpcomingSessions.length - 5;
+                
+                top5Sessions.forEach(session => {
+                    const hasActions = session.status === 'pending';
+                    const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
+                    const statusText = session.status === 'confirmed' ? 'Confirmed' : 'Pending';
+                    
+                    sessionsHTML += `
+                        <div class="session-item">
+                            <div class="session-info">
+                                <div class="session-title">
+                                    <div>
+                                        <h4>${session.topic}</h4>
+                                        <p class="session-full-date">${session.date}</p>
+                                    </div>
+                                    <span class="tag ${statusClass}">${statusText}</span>
                                 </div>
-                                <span class="tag ${statusClass}">${statusText}</span>
+                                <p class="session-time">${session.time}</p>
+                                <p class="session-location">${session.location}</p>
                             </div>
-                            <p class="session-time">${session.time}</p>
-                            <p class="session-location">${session.location}</p>
+                            ${hasActions ? `
+                                <div class="session-actions">
+                                    <button class="action-btn accept">
+                                        <span class="material-icons">check</span>
+                                        Accept
+                                    </button>
+                                    <button class="action-btn decline">
+                                        Decline
+                                    </button>
+                                </div>
+                            ` : ''}
                         </div>
-                        ${hasActions ? `
-                            <div class="session-actions">
-                                <button class="action-btn accept">
-                                    <span class="material-icons">check</span>
-                                    Accept
-                                </button>
-                                <button class="action-btn decline">
-                                    Decline
-                                </button>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            });
-            
-            // Add "more sessions" message if there are more than 5 upcoming sessions
-            if (remainingCount > 0) {
+                    `;
+                });
+                
+                // Add "more sessions" message if there are more than 5 upcoming sessions
+                if (remainingCount > 0) {
+                    sessionsHTML += `
+                        <div class="more-sessions-message">
+                            <p>+${remainingCount} more session${remainingCount > 1 ? 's' : ''} in ${unit.code}. Click "View All" to see all sessions.</p>
+                        </div>
+                    `;
+                }
+            } else {
+                // No upcoming sessions for active unit
                 sessionsHTML += `
-                    <div class="more-sessions-message">
-                        <p>+${remainingCount} more session${remainingCount > 1 ? 's' : ''} in ${unit.code}. Click "View All" to see all sessions.</p>
+                    <div class="no-sessions-message">
+                        <p>No upcoming sessions for ${unit.code}.</p>
                     </div>
                 `;
             }
-        } else {
-            // No upcoming sessions - show a message
-            sessionsHTML += `
-                <div class="no-sessions-message">
-                    <p>No upcoming sessions for ${unit.code}.</p>
-                </div>
-            `;
+        } else if (unit.status === 'completed') {
+            // For past units: show past sessions
+            if (unit.pastSessions && unit.pastSessions.length > 0) {
+                // Sort past sessions by date (most recent first)
+                const sortedPastSessions = unit.pastSessions.sort((a, b) => {
+                    const dateA = new Date(a.date.split('/').reverse().join('-'));
+                    const dateB = new Date(b.date.split('/').reverse().join('-'));
+                    return dateB - dateA; // Reverse order for most recent first
+                });
+                
+                // Show only top 5 most recent past sessions
+                const top5Sessions = sortedPastSessions.slice(0, 5);
+                const remainingCount = sortedPastSessions.length - 5;
+                
+                top5Sessions.forEach(session => {
+                    sessionsHTML += `
+                        <div class="session-item">
+                            <div class="session-info">
+                                <div class="session-title">
+                                    <div>
+                                        <h4>${session.topic}</h4>
+                                        <p class="session-full-date">${session.date}</p>
+                                    </div>
+                                    <span class="tag completed">Completed</span>
+                                </div>
+                                <p class="session-time">${session.time}</p>
+                                <p class="session-location">${session.location}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Add "more sessions" message if there are more than 5 past sessions
+                if (remainingCount > 0) {
+                    sessionsHTML += `
+                        <div class="more-sessions-message">
+                            <p>+${remainingCount} more session${remainingCount > 1 ? 's' : ''} in ${unit.code}. Click "View All" to see all sessions.</p>
+                        </div>
+                    `;
+                }
+            } else {
+                // No past sessions for completed unit
+                sessionsHTML += `
+                    <div class="no-sessions-message">
+                        <p>No sessions found for ${unit.code}.</p>
+                    </div>
+                `;
+            }
         }
 
         sessionsHTML += '</div>';
