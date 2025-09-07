@@ -759,7 +759,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="material-icons" aria-hidden="true">schedule</span>
                     </div>
                     <p class="stat-value">${unit.kpis.thisWeekHours}</p>
-                    <p class="stat-subtext">2 sessions</p>
+                    <p class="stat-subtext">${unit.kpis.activeSessions} sessions this week</p>
                 </div>
                 <div class="stat-card blue">
                     <div class="stat-header">
@@ -850,24 +850,31 @@ document.addEventListener('DOMContentLoaded', function() {
         let sessionsHTML = `
             <div class="card-header">
                 <h3>${sessionsTitle}</h3>
-                <a href="#" class="view-all-link">View All</a>
+                <a href="#" class="view-all-link">View Details</a>
             </div>
             <div class="session-list">
         `;
 
-        if (unit.status === 'active' && unit.upcomingSessions) {
-            // Sort sessions by date and take only top 3
-            const sortedSessions = unit.upcomingSessions.sort((a, b) => {
+        if (unit.status === 'active' && (unit.upcomingSessions || unit.pastSessions)) {
+            // Combine all sessions (past + upcoming)
+            const allSessions = [
+                ...(unit.pastSessions || []).map(s => ({...s, isPast: true})),
+                ...(unit.upcomingSessions || []).map(s => ({...s, isPast: false}))
+            ];
+            
+            // Sort sessions by date
+            const sortedSessions = allSessions.sort((a, b) => {
                 const dateA = new Date(a.date.split('/').reverse().join('-'));
                 const dateB = new Date(b.date.split('/').reverse().join('-'));
                 return dateA - dateB;
             });
             
-            const top3Sessions = sortedSessions.slice(0, 3);
-            const remainingCount = unit.upcomingSessions.length - 3;
-            
-            top3Sessions.forEach(session => {
-                const hasActions = session.status === 'pending';
+            // Show all sessions (remove the 3-session limit)
+            sortedSessions.forEach(session => {
+                const hasActions = !session.isPast && session.status === 'pending';
+                const statusClass = session.isPast ? 'completed' : (session.status === 'confirmed' ? 'confirmed' : 'pending');
+                const statusText = session.isPast ? 'Completed' : (session.status === 'confirmed' ? 'Confirmed' : 'Pending');
+                
                 sessionsHTML += `
                     <div class="session-item">
                         <div class="session-info">
@@ -876,7 +883,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <h4>${session.topic}</h4>
                                     <p class="session-full-date">${session.date}</p>
                                 </div>
-                                <span class="tag ${session.status}">${session.status}</span>
+                                <span class="tag ${statusClass}">${statusText}</span>
                             </div>
                             <p class="session-time">${session.time}</p>
                             <p class="session-location">${session.location}</p>
@@ -896,14 +903,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             });
             
-            // Add "more sessions" message if there are more than 3
-            if (remainingCount > 0) {
-                sessionsHTML += `
-                    <div class="more-sessions-message">
-                        <p>${remainingCount} more session${remainingCount > 1 ? 's' : ''} available. Click "View All" to see all sessions.</p>
-                    </div>
-                `;
-            }
+            // Remove the "more sessions" message since we're showing all sessions
         } else if (unit.status === 'completed' && unit.pastSessions) {
             unit.pastSessions.forEach(session => {
                 sessionsHTML += `

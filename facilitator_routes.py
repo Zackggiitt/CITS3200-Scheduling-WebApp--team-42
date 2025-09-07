@@ -130,7 +130,7 @@ def dashboard():
         now = datetime.utcnow()
         start_of_week = (now.replace(hour=0, minute=0, second=0, microsecond=0)
                          - timedelta(days=now.weekday()))
-        end_of_week = start_of_week + timedelta(days=7)
+        end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
 
         # Base query for user's assignments within this unit
         base_q = (
@@ -272,7 +272,7 @@ def dashboard():
         now = datetime.utcnow()
         start_of_week = (now.replace(hour=0, minute=0, second=0, microsecond=0)
                          - timedelta(days=now.weekday()))
-        end_of_week = start_of_week + timedelta(days=7)
+        end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
         
         this_week_hours = sum(
             (s.end_time - s.start_time).total_seconds() / 3600.0 
@@ -355,8 +355,8 @@ def dashboard():
                 'active_sessions': active_sessions,
                 'remaining_hours': round(total_hours - this_week_hours, 1)
             },
-            'upcoming_sessions': upcoming_sessions[:5],  # Limit to 5 for display
-            'past_sessions': past_sessions[:5]  # Limit to 5 for display
+            'upcoming_sessions': upcoming_sessions,  # Show all upcoming sessions
+            'past_sessions': past_sessions  # Show all past sessions
         }
         units_data.append(unit_data)
     
