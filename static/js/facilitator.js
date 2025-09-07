@@ -542,7 +542,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     thisWeekHours: unitData.kpis.this_week_hours,
                     remainingHours: unitData.kpis.remaining_hours,
                     totalHours: unitData.kpis.total_hours,
-                    activeSessions: unitData.kpis.active_sessions
+                    activeSessions: unitData.kpis.active_sessions,
+                    totalSessions: unitData.kpis.total_sessions
                 },
                 upcomingSessions: unitData.upcoming_sessions || [],
                 pastSessions: unitData.past_sessions || []

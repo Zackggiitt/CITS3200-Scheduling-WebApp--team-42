@@ -248,14 +248,6 @@ def dashboard():
     # Get units data for JavaScript
     units_data = []
     for unit in units:
-        # Get session count for this unit
-        session_count = (
-            db.session.query(Session)
-            .join(Module, Session.module_id == Module.id)
-            .filter(Module.unit_id == unit.id)
-            .count()
-        )
-        
         # Get assignments for this unit
         assignments = (
             db.session.query(Assignment, Session, Module)
@@ -264,6 +256,9 @@ def dashboard():
             .filter(Assignment.facilitator_id == user.id, Module.unit_id == unit.id)
             .all()
         )
+        
+        # Get session count for this unit (sessions assigned to this facilitator)
+        session_count = len(assignments)
         
         # Calculate KPIs
         total_hours = sum((s.end_time - s.start_time).total_seconds() / 3600.0 for _, s, _ in assignments)
@@ -353,7 +348,8 @@ def dashboard():
                 'this_week_hours': round(this_week_hours, 1),
                 'total_hours': round(total_hours, 1),
                 'active_sessions': active_sessions,
-                'remaining_hours': round(total_hours - this_week_hours, 1)
+                'remaining_hours': round(total_hours - this_week_hours, 1),
+                'total_sessions': session_count
             },
             'upcoming_sessions': upcoming_sessions,  # Show all upcoming sessions
             'past_sessions': past_sessions  # Show all past sessions
