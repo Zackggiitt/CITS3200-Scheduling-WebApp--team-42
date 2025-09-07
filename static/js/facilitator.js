@@ -862,30 +862,28 @@ document.addEventListener('DOMContentLoaded', function() {
         let sessionsHTML = `
             <div class="card-header">
                 <h3>${sessionsTitle}</h3>
-                <a href="#" class="view-all-link">View Details</a>
+                <a href="#" class="view-all-link">View All</a>
             </div>
             <div class="session-list">
         `;
 
-        if (unit.status === 'active' && (unit.upcomingSessions || unit.pastSessions)) {
-            // Combine all sessions (past + upcoming)
-            const allSessions = [
-                ...(unit.pastSessions || []).map(s => ({...s, isPast: true})),
-                ...(unit.upcomingSessions || []).map(s => ({...s, isPast: false}))
-            ];
-            
-            // Sort sessions by date
-            const sortedSessions = allSessions.sort((a, b) => {
+        // Show only upcoming sessions for both active and past units
+        if (unit.upcomingSessions && unit.upcomingSessions.length > 0) {
+            // Sort upcoming sessions by date
+            const sortedUpcomingSessions = unit.upcomingSessions.sort((a, b) => {
                 const dateA = new Date(a.date.split('/').reverse().join('-'));
                 const dateB = new Date(b.date.split('/').reverse().join('-'));
                 return dateA - dateB;
             });
             
-            // Show all sessions (remove the 3-session limit)
-            sortedSessions.forEach(session => {
-                const hasActions = !session.isPast && session.status === 'pending';
-                const statusClass = session.isPast ? 'completed' : (session.status === 'confirmed' ? 'confirmed' : 'pending');
-                const statusText = session.isPast ? 'Completed' : (session.status === 'confirmed' ? 'Confirmed' : 'Pending');
+            // Show only top 5 upcoming sessions
+            const top5Sessions = sortedUpcomingSessions.slice(0, 5);
+            const remainingCount = sortedUpcomingSessions.length - 5;
+            
+            top5Sessions.forEach(session => {
+                const hasActions = session.status === 'pending';
+                const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
+                const statusText = session.status === 'confirmed' ? 'Confirmed' : 'Pending';
                 
                 sessionsHTML += `
                     <div class="session-item">
@@ -915,25 +913,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             });
             
-            // Remove the "more sessions" message since we're showing all sessions
-        } else if (unit.status === 'completed' && unit.pastSessions) {
-            unit.pastSessions.forEach(session => {
+            // Add "more sessions" message if there are more than 5 upcoming sessions
+            if (remainingCount > 0) {
                 sessionsHTML += `
-                    <div class="session-item">
-                        <div class="session-info">
-                            <div class="session-title">
-                                <div>
-                                    <h4>${session.topic}</h4>
-                                    <p class="session-full-date">${session.date}</p>
-                                </div>
-                                <span class="tag confirmed">${session.status}</span>
-                            </div>
-                            <p class="session-time">${session.time}</p>
-                            <p class="session-location">${session.location}</p>
-                        </div>
+                    <div class="more-sessions-message">
+                        <p>+${remainingCount} more session${remainingCount > 1 ? 's' : ''} in ${unit.code}. Click "View All" to see all sessions.</p>
                     </div>
                 `;
-            });
+            }
+        } else {
+            // No upcoming sessions - show a message
+            sessionsHTML += `
+                <div class="no-sessions-message">
+                    <p>No upcoming sessions for ${unit.code}.</p>
+                </div>
+            `;
         }
 
         sessionsHTML += '</div>';
