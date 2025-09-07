@@ -2,10 +2,10 @@
 """
 Script to create comprehensive test data for unavailability system testing.
 This script creates:
-- Test facilitator user (fac_demo@example.com)
-- Sample units with proper date ranges
+- Test facilitator user (fac_demo@example.com) - password should be set by existing facilitator creation script
+- Sample units with proper date ranges (3 active units, 2 past units)
 - Modules for those units
-- Sessions for the modules
+- Sessions for the modules (past sessions for past units, future sessions for active units)
 - Unit assignments for the facilitator
 - Session assignments for the facilitator
 
@@ -39,12 +39,12 @@ def create_test_facilitator():
         print(f"✓ Test facilitator already exists: {email}")
         return existing_user
     
-    # Create new facilitator user
+    # Create new facilitator user (password will be set by existing facilitator creation script)
     user = User(
         first_name='Demo',
         last_name='Facilitator',
         email=email,
-        password_hash=generate_password_hash('password123'),
+        password_hash='',  # Empty password - should be set by existing facilitator creation script
         role=UserRole.FACILITATOR
     )
     
@@ -52,6 +52,7 @@ def create_test_facilitator():
     db.session.commit()
     
     print(f"✓ Created test facilitator: {email}")
+    print(f"  Note: Password should be set by existing facilitator creation script")
     return user
 
 def create_sample_units():
@@ -79,7 +80,7 @@ def create_sample_units():
         {
             'unit_code': 'CITS1001',
             'unit_name': 'Computer Science Fundamentals',
-            'year': 2024,
+            'year': 2025,
             'semester': 'Semester 1',
             'start_date': today - timedelta(days=30),  # Started 30 days ago
             'end_date': today + timedelta(days=60),    # Ends in 60 days
@@ -88,7 +89,7 @@ def create_sample_units():
         {
             'unit_code': 'CITS2002',
             'unit_name': 'Systems Programming',
-            'year': 2024,
+            'year': 2025,
             'semester': 'Semester 1',
             'start_date': today - timedelta(days=20),  # Started 20 days ago
             'end_date': today + timedelta(days=70),    # Ends in 70 days
@@ -97,11 +98,30 @@ def create_sample_units():
         {
             'unit_code': 'CITS3003',
             'unit_name': 'Computer Networks',
-            'year': 2024,
+            'year': 2025,
             'semester': 'Semester 2',
             'start_date': today + timedelta(days=30),   # Starts in 30 days
             'end_date': today + timedelta(days=120),   # Ends in 120 days
             'description': 'Network protocols, architecture, and security'
+        },
+        # Past Units
+        {
+            'unit_code': 'CITS2200',
+            'unit_name': 'Algorithms and Data Structures',
+            'year': 2024,
+            'semester': 'Semester 2',
+            'start_date': today - timedelta(days=200),  # Started 200 days ago
+            'end_date': today - timedelta(days=50),    # Ended 50 days ago
+            'description': 'Advanced algorithms and data structure implementations'
+        },
+        {
+            'unit_code': 'CITS3000',
+            'unit_name': 'Software Engineering Project',
+            'year': 2025,
+            'semester': 'Semester 1',
+            'start_date': today - timedelta(days=300),  # Started 300 days ago
+            'end_date': today - timedelta(days=100),   # Ended 100 days ago
+            'description': 'Large-scale software development project management'
         }
     ]
     
@@ -165,6 +185,20 @@ def create_sample_modules(units):
             {'name': 'Security Workshop', 'type': 'workshop'},
             {'name': 'Protocol Tutorial', 'type': 'tutorial'},
             {'name': 'Network Theory', 'type': 'lecture'}
+        ],
+        'CITS2200': [
+            {'name': 'Algorithm Lab 1', 'type': 'lab'},
+            {'name': 'Algorithm Lab 2', 'type': 'lab'},
+            {'name': 'Data Structures Workshop', 'type': 'workshop'},
+            {'name': 'Complexity Analysis Tutorial', 'type': 'tutorial'},
+            {'name': 'Algorithm Theory', 'type': 'lecture'}
+        ],
+        'CITS3000': [
+            {'name': 'Project Lab 1', 'type': 'lab'},
+            {'name': 'Project Lab 2', 'type': 'lab'},
+            {'name': 'Software Design Workshop', 'type': 'workshop'},
+            {'name': 'Project Management Tutorial', 'type': 'tutorial'},
+            {'name': 'Software Engineering Principles', 'type': 'lecture'}
         ]
     }
     
@@ -209,15 +243,23 @@ def create_sample_sessions(modules):
     Session.query.delete()
     
     created_sessions = []
-    base_date = datetime.now() + timedelta(days=1)  # Start from tomorrow
+    today = datetime.now()
     
     for module in modules:
+        # Get the unit for this module to determine if it's past or current/future
+        unit = db.session.get(Unit, module.unit_id)
+        is_past_unit = unit.end_date and unit.end_date < today.date()
+        
         # Create 2-3 sessions per module
         sessions_per_module = 2 if module.module_type == 'lecture' else 3
         
         for i in range(sessions_per_module):
-            # Calculate session date (spread across the week)
-            session_date = base_date + timedelta(days=i * 2)
+            if is_past_unit:
+                # For past units, create sessions in the past
+                session_date = unit.end_date - timedelta(days=(sessions_per_module - i) * 7)
+            else:
+                # For current/future units, create sessions starting from tomorrow
+                session_date = today.date() + timedelta(days=1 + i * 2)
             
             # Different time slots based on module type
             if module.module_type == 'lab':
@@ -240,8 +282,8 @@ def create_sample_sessions(modules):
             session = Session(
                 module_id=module.id,
                 day_of_week=session_date.weekday(),
-                start_time=datetime.combine(session_date.date(), start_time),
-                end_time=datetime.combine(session_date.date(), end_time),
+                start_time=datetime.combine(session_date, start_time),
+                end_time=datetime.combine(session_date, end_time),
                 max_facilitators=2 if module.module_type == 'lab' else 1,
                 location=f"Room {100 + i}" if module.module_type != 'lecture' else "Lecture Theatre A"
             )
@@ -397,7 +439,8 @@ def create_all_test_data():
         print(f"   • Session assignments: {session_assignments}")
         print(f"   • Sample unavailability: {unavailability_count}")
         print("\n🎯 You can now test the unavailability system!")
-        print(f"   Login with: {facilitator.email} / password123")
+        print(f"   Login with: {facilitator.email}")
+        print(f"   Note: Password should be set by existing facilitator creation script")
 
 def clear_test_data():
     """Clear all test data"""

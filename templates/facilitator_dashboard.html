@@ -13,33 +13,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='facilitator.css') }}">
   <script src="{{ url_for('static', filename='js/facilitator.js') }}" defer></script>
-  
-  <!-- Unit Data for JavaScript -->
-  <script>
-    window.units = {
-      {% for unit in units %}
-      {{ unit.id }}: {
-        id: {{ unit.id }},
-        code: "{{ unit.unit_code }}",
-        name: "{{ unit.unit_name }}",
-        start_date: "{{ unit.start_date.isoformat() if unit.start_date else '' }}",
-        end_date: "{{ unit.end_date.isoformat() if unit.end_date else '' }}",
-        year: {{ unit.year }},
-        semester: "{{ unit.semester }}"
-      }{% if not loop.last %},{% endif %}
-      {% endfor %}
-    };
-    
-    window.currentUnit = {% if current_unit %}{
-      id: {{ current_unit.id }},
-      code: "{{ current_unit.unit_code }}",
-      name: "{{ current_unit.unit_name }}",
-      start_date: "{{ current_unit.start_date.isoformat() if current_unit.start_date else '' }}",
-      end_date: "{{ current_unit.end_date.isoformat() if current_unit.end_date else '' }}",
-      year: {{ current_unit.year }},
-      semester: "{{ current_unit.semester }}"
-    }{% else %}null{% endif %};
-  </script>
 </head>
 <body>
 <header class="site-header">
@@ -251,12 +224,12 @@
         <!-- Left Side: Current Unit Information -->
         <div class="unit-info-section">
             <div class="unit-main-info">
-                <h2 class="unit-code">CITS1001</h2>
-                <h3 class="unit-name">Introduction to Computing</h3>
+                <h2 class="unit-code">{{ current_unit.unit_code if current_unit else 'No Unit' }}</h2>
+                <h3 class="unit-name">{{ current_unit.unit_name if current_unit else 'No Unit Selected' }}</h3>
             </div>
             <div class="unit-details">
                 <div class="unit-badges">
-                    <span class="semester-badge">Semester 2, 2025</span>
+                    <span class="semester-badge">{{ current_unit.semester if current_unit else 'No Semester' }}</span>
                     <span class="status-badge active">
                         <span class="material-icons">check_circle</span>
                         Active
@@ -264,8 +237,12 @@
                 </div>
                 <div class="session-info">
                     <span class="material-icons">calendar_today</span>
-                    <span>6 sessions</span>
-                    <span class="date-range">2/24/2025 - 6/13/2025</span>
+                    <span>{{ units_data|selectattr('id', 'equalto', current_unit.id)|map(attribute='sessions')|first if current_unit else 0 }} sessions</span>
+                    <span class="date-range">
+                        {% if current_unit and current_unit.start_date and current_unit.end_date %}
+                            {{ current_unit.start_date.strftime('%d/%m/%Y') }} - {{ current_unit.end_date.strftime('%d/%m/%Y') }}
+                        {% else %}No date range{% endif %}
+                    </span>
                 </div>
             </div>
         </div>
@@ -283,65 +260,51 @@
                 </button>
                 <div class="dropdown-menu" id="unit-dropdown-menu" style="display: none;">
                     <!-- Active Units Group -->
+                    {% set active_units = units_data|selectattr('status', 'equalto', 'active')|list %}
+                    {% if active_units %}
                     <div class="dropdown-group">
                         <div class="group-header">
                             <span class="group-title">Active Units</span>
-                            <span class="group-count">(3)</span>
+                            <span class="group-count">({{ active_units|length }})</span>
                         </div>
                         <div class="group-items">
-                            <div class="unit-item" data-unit-id="1">
+                            {% for unit in active_units %}
+                            <div class="unit-item" data-unit-id="{{ unit.id }}">
                                 <div class="unit-item-info">
-                                    <span class="unit-item-code">CITS1001</span>
-                                    <span class="unit-item-name">Introduction to Computing</span>
+                                    <span class="unit-item-code">{{ unit.code }}</span>
+                                    <span class="unit-item-name">{{ unit.name }}</span>
                                 </div>
                                 <span class="unit-item-badge active">Active</span>
                             </div>
-                            <div class="unit-item" data-unit-id="2">
-                                <div class="unit-item-info">
-                                    <span class="unit-item-code">CITS1401</span>
-                                    <span class="unit-item-name">Computer Science</span>
-                                </div>
-                                <span class="unit-item-badge active">Active</span>
-                            </div>
-                            <div class="unit-item" data-unit-id="3">
-                                <div class="unit-item-info">
-                                    <span class="unit-item-code">CITS2000</span>
-                                    <span class="unit-item-name">Data Structures</span>
-                                </div>
-                                <span class="unit-item-badge active">Active</span>
-                            </div>
+                            {% endfor %}
                         </div>
                     </div>
+                    {% endif %}
                     
                     <!-- Past Units Group -->
+                    {% set past_units = units_data|selectattr('status', 'equalto', 'completed')|list %}
+                    {% if past_units %}
                     <div class="dropdown-group">
                         <div class="group-header">
                             <span class="group-title">Past Units</span>
-                            <span class="group-count">(2)</span>
+                            <span class="group-count">({{ past_units|length }})</span>
                         </div>
                         <div class="group-items">
-                            <div class="unit-item" data-unit-id="4">
+                            {% for unit in past_units %}
+                            <div class="unit-item" data-unit-id="{{ unit.id }}">
                                 <div class="unit-item-info">
-                                    <span class="unit-item-code">CITS2200</span>
-                                    <span class="unit-item-name">Algorithms</span>
+                                    <span class="unit-item-code">{{ unit.code }}</span>
+                                    <span class="unit-item-name">{{ unit.name }}</span>
                                 </div>
                                 <span class="unit-item-badge completed">
                                     <span class="material-icons">check_circle</span>
                                     Completed
                                 </span>
                             </div>
-                            <div class="unit-item" data-unit-id="5">
-                                <div class="unit-item-info">
-                                    <span class="unit-item-code">CITS3000</span>
-                                    <span class="unit-item-name">Software Engineering</span>
-                                </div>
-                                <span class="unit-item-badge completed">
-                                    <span class="material-icons">check_circle</span>
-                                    Completed
-                                </span>
-                            </div>
+                            {% endfor %}
                         </div>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -362,38 +325,52 @@
 </section>
 <section id="stats" class="main-content-wrapper">
     <div class="stats-grid">
-        <div class="stat-card purple">
-            <div class="stat-header">
-                <h4>This Week Hours</h4>
-                <span class="material-icons" aria-hidden="true">schedule</span>
+        {% if current_unit %}
+            {% set current_unit_data = units_data|selectattr('id', 'equalto', current_unit.id)|first %}
+            {% if current_unit_data %}
+                <div class="stat-card purple">
+                    <div class="stat-header">
+                        <h4>This Week Hours</h4>
+                        <span class="material-icons" aria-hidden="true">schedule</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.this_week_hours }}</p>
+                    <p class="stat-subtext">{{ current_unit_data.kpis.active_sessions }} sessions</p>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-header">
+                        <h4>Remaining Hours</h4>
+                        <span class="material-icons" aria-hidden="true">pending_actions</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.remaining_hours }}</p>
+                    <p class="stat-subtext">Total - this week</p>
+                </div>
+                <div class="stat-card gray">
+                    <div class="stat-header">
+                        <h4>Total Hours</h4>
+                        <span class="material-icons" aria-hidden="true">calendar_today</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.total_hours }}</p>
+                    <p class="stat-subtext">For this unit</p>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-header">
+                        <h4>Active Sessions</h4>
+                        <span class="material-icons" aria-hidden="true">event_available</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.active_sessions }}</p>
+                    <p class="stat-subtext">This week</p>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="stat-card purple">
+                <div class="stat-header">
+                    <h4>No Unit Selected</h4>
+                    <span class="material-icons" aria-hidden="true">schedule</span>
+                </div>
+                <p class="stat-value">0</p>
+                <p class="stat-subtext">Select a unit to view stats</p>
             </div>
-            <p class="stat-value">32</p>
-            <p class="stat-subtext">4 sessions</p>
-        </div>
-        <div class="stat-card blue">
-            <div class="stat-header">
-                <h4>Pending Approvals</h4>
-                <span class="material-icons" aria-hidden="true">pending_actions</span>
-            </div>
-            <p class="stat-value">1</p>
-            <p class="stat-subtext">Needs response</p>
-        </div>
-        <div class="stat-card gray">
-            <div class="stat-header">
-                <h4>Total Hours (Month)</h4>
-                <span class="material-icons" aria-hidden="true">calendar_today</span>
-            </div>
-            <p class="stat-value">156</p>
-            <p class="stat-subtext">This month</p>
-        </div>
-        <div class="stat-card green">
-            <div class="stat-header">
-                <h4>Available Days</h4>
-                <span class="material-icons" aria-hidden="true">event_available</span>
-            </div>
-            <p class="stat-value" id="available-days-count">4</p>
-            <p class="stat-subtext">Per week</p>
-        </div>
+        {% endif %}
     </div>
 </section>
 <section id="details" class="main-content-wrapper">
@@ -404,31 +381,50 @@
                 <a href="#" class="view-all-link">View All</a>
             </div>
             <div class="session-list">
-                <div class="session-item">
-                    <div class="session-info">
-                        <div class="session-title">
-                            <h4>Today</h4>
-                            <span class="tag confirmed">confirmed</span>
+                {% if current_unit %}
+                    {% set current_unit_data = units_data|selectattr('id', 'equalto', current_unit.id)|first %}
+                    {% if current_unit_data and current_unit_data.upcoming_sessions %}
+                        {% for session in current_unit_data.upcoming_sessions[:3] %}
+                        <div class="session-item">
+                            <div class="session-info">
+                                <div class="session-title">
+                                    <div>
+                                        <h4>{{ session.topic }}</h4>
+                                        <p class="session-full-date">{{ session.date }}</p>
+                                    </div>
+                                    <span class="tag {{ session.status }}">{{ session.status }}</span>
+                                </div>
+                                <p class="session-time">{{ session.time }}</p>
+                                <p class="session-location">{{ session.location }}</p>
+                            </div>
+                            {% if session.status == 'pending' %}
+                            <div class="session-actions">
+                                <button class="action-btn accept">
+                                    <span class="material-icons">check</span>
+                                    Accept
+                                </button>
+                                <button class="action-btn decline">Decline</button>
+                            </div>
+                            {% endif %}
                         </div>
-                        <p class="session-time">8:00 AM - 4:00 PM</p>
-                        <p class="session-location">Main Store</p>
-                    </div>
-                </div>
-                <div class="session-item">
-                    <div class="session-info">
-                        <div class="session-title">
-                            <h4>Tomorrow</h4>
-                            <span class="tag pending">pending</span>
+                        {% endfor %}
+                        {% if current_unit_data.upcoming_sessions|length > 3 %}
+                        <div class="more-sessions-message">
+                            <p>{{ current_unit_data.upcoming_sessions|length - 3 }} more session{{ 's' if current_unit_data.upcoming_sessions|length - 3 > 1 else '' }} available. Click "View All" to see all sessions.</p>
                         </div>
-                        <p class="session-time">8:00 AM - 4:00 PM</p>
+                        {% endif %}
+                    {% else %}
+                    <div class="no-sessions">
+                        <span class="material-icons">event_available</span>
+                        <p>No upcoming sessions for this unit.</p>
                     </div>
-                    <div class="session-actions">
-                        <a href="#" class="action-btn accept">
-                            <img src="images/2_111.svg" alt=""> Accept
-                        </a>
-                        <a href="#" class="action-btn decline">Decline</a>
-                    </div>
+                    {% endif %}
+                {% else %}
+                <div class="no-sessions">
+                    <span class="material-icons">event_available</span>
+                    <p>Select a unit to view sessions.</p>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -437,480 +433,153 @@
 <section id="unavailability-view" class="main-content-wrapper" style="display: none;">
   <div class="unavailability-container">
     <div class="unavailability-header">
-      <div class="header-content">
+      <div>
         <h2>My Unavailability</h2>
-        <p class="unavailability-subtitle">Manage your unavailable dates for <span id="current-unit-name">CITS1001</span></p>
+        <p class="unavailability-subtitle">Set your unavailable days and times for <span id="unit-date-range-display">
+          {% if current_unit and current_unit.start_date and current_unit.end_date %}
+            {{ current_unit.start_date.strftime('%d/%m/%Y') }} - {{ current_unit.end_date.strftime('%d/%m/%Y') }}
+          {% else %}No date range{% endif %}
+        </span></p>
       </div>
-      <div class="header-actions">
-        <button id="refresh-unavailability" class="btn-secondary">
+      <div class="unavailability-actions">
+        <button id="refresh-unavailability" class="action-btn">
           <span class="material-icons">refresh</span>
           Refresh
         </button>
       </div>
     </div>
     
-    <!-- Unit Information Card -->
-    <div class="unit-info-card">
-      <div class="unit-info-content">
-        <span class="material-icons unit-icon">calendar_today</span>
-        <div class="unit-info-text">
-          <p><strong id="unit-code-display">CITS1001</strong> is scheduled for <span id="unit-date-range">01/09/2025 - 26/09/2025</span></p>
-          <p class="unit-info-note">You can only set unavailability for dates within this period</p>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Unavailability Summary -->
-    <div class="unavailability-summary">
-      <div class="summary-stats">
-        <div class="stat-item">
-          <span class="material-icons">event_busy</span>
-          <div class="stat-content">
-            <span class="stat-number" id="total-unavailable-days">0</span>
-            <span class="stat-label">Unavailable Days</span>
-          </div>
-        </div>
-        <div class="stat-item">
-          <span class="material-icons">repeat</span>
-          <div class="stat-content">
-            <span class="stat-number" id="recurring-patterns">0</span>
-            <span class="stat-label">Recurring Patterns</span>
-          </div>
-        </div>
-        <div class="stat-item">
-          <span class="material-icons">schedule</span>
-          <div class="stat-content">
-            <span class="stat-number" id="partial-days">0</span>
-            <span class="stat-label">Partial Days</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Unavailable Dates Section -->
-    <div class="unavailable-dates-section">
-      <div class="section-header">
-        <span class="material-icons">event_busy</span>
-        <h3>Unavailable Dates</h3>
-        <div class="section-actions">
-          <button id="bulk-edit-btn" class="btn-outline">
-            <span class="material-icons">edit</span>
-            Bulk Edit
+    <div class="unavailability-content">
+      <div class="unavailability-calendar-section">
+        <div class="calendar-header">
+          <button id="prev-month-unavailability" class="calendar-btn">
+            <span class="material-icons">chevron_left</span>
+          </button>
+          <h3 id="current-month-unavailability">Current Month</h3>
+          <button id="next-month-unavailability" class="calendar-btn">
+            <span class="material-icons">chevron_right</span>
           </button>
         </div>
-      </div>
-      <p class="section-description">
-        Mark specific dates when you will not be available for scheduling. The system will consider you available for this unit on all other dates where you have not indicated your unavailability. Please make sure that your unavailabilities for each unit is up to date.
-      </p>
-      
-      <!-- Calendar Container -->
-      <div class="calendar-container">
-        <div class="calendar-header">
-          <div class="calendar-controls">
-            <button id="prev-month-unavailability" class="calendar-btn">
-              <span class="material-icons">chevron_left</span>
-            </button>
-            <span id="current-month-unavailability" class="month-title">September 2025</span>
-            <button id="next-month-unavailability" class="calendar-btn">
-              <span class="material-icons">chevron_right</span>
-            </button>
-          </div>
-          <div class="calendar-view-options">
-            <button id="month-view" class="view-btn active">Month</button>
-            <button id="week-view" class="view-btn">Week</button>
-          </div>
-        </div>
         
-        <div class="calendar-grid" id="unavailability-calendar-grid">
+        <div class="calendar-grid">
           <div class="calendar-weekdays">
-            <div class="weekday">Su</div>
-            <div class="weekday">Mo</div>
-            <div class="weekday">Tu</div>
-            <div class="weekday">We</div>
-            <div class="weekday">Th</div>
-            <div class="weekday">Fr</div>
-            <div class="weekday">Sa</div>
+            <div class="weekday">Sun</div>
+            <div class="weekday">Mon</div>
+            <div class="weekday">Tue</div>
+            <div class="weekday">Wed</div>
+            <div class="weekday">Thu</div>
+            <div class="weekday">Fri</div>
+            <div class="weekday">Sat</div>
           </div>
           
           <div class="calendar-days" id="unavailability-calendar-days">
             <!-- Calendar days will be generated by JavaScript -->
           </div>
         </div>
-        
-        <div class="calendar-footer">
-          <div class="calendar-legend">
-            <div class="legend-item">
-              <div class="legend-color unit-period"></div>
-              <span>Unit Period</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color unavailable"></div>
-              <span>Unavailable</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color outside-period"></div>
-              <span>Outside Period</span>
-            </div>
-          </div>
-          <p class="calendar-instruction">Click on calendar dates within the unit period to set specific unavailable times</p>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Recent Unavailability List -->
-    <div class="recent-unavailability-section">
-      <div class="section-header">
-        <span class="material-icons">history</span>
-        <h3>Recent Unavailability</h3>
-        <div class="section-actions">
-          <button id="view-all-unavailability" class="btn-outline">
-            <span class="material-icons">list</span>
-            View All
-          </button>
-        </div>
       </div>
       
-      <div class="unavailability-list" id="recent-unavailability-list">
-        <div class="no-unavailability">
-          <span class="material-icons">event_available</span>
-          <p>No unavailability set yet. Click on calendar dates to get started.</p>
+      <div class="unavailability-summary-section">
+        <div class="summary-card">
+          <h3>Summary</h3>
+          <div class="summary-stats">
+            <div class="stat-item">
+              <span class="stat-label">Total Unavailable Days</span>
+              <span class="stat-value" id="total-unavailable-days">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Recurring Patterns</span>
+              <span class="stat-value" id="recurring-patterns">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Partial Days</span>
+              <span class="stat-value" id="partial-days">0</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="recent-unavailability-card">
+          <h3>Recent Unavailability</h3>
+          <div id="recent-unavailability-list">
+            <!-- Recent unavailability will be populated by JavaScript -->
+          </div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Set Unavailable Times Modal -->
+<!-- Unavailability Modal -->
 <div id="unavailability-modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content unavailability-modal-content">
+  <div class="modal-content">
     <div class="modal-header">
-      <div class="modal-title-section">
-        <span class="material-icons">event_busy</span>
-        <h2>Set Unavailable Times</h2>
-      </div>
+      <h2>Set Unavailability</h2>
       <button id="unavailability-modal-close" class="modal-close-btn">
         <span class="material-icons">close</span>
       </button>
     </div>
-    
     <div class="modal-body">
-      <p class="modal-subtitle" id="modal-date-subtitle">Configure your unavailable times for Monday, September 8, 2025</p>
+      <p id="modal-date-subtitle" class="modal-subtitle">Select your unavailable times</p>
       
-      <!-- Full Day Unavailable -->
-      <div class="modal-section">
-        <div class="section-header">
-          <h3>Full Day Unavailable</h3>
-          <label class="toggle-switch">
-            <input type="checkbox" id="full-day-toggle">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <p class="section-description">Mark this entire day as unavailable</p>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="full-day-toggle">
+          <span class="checkbox-custom"></span>
+          Full day unavailability
+        </label>
       </div>
       
-      <!-- Recurring Unavailability -->
-      <div class="modal-section">
-        <div class="section-header">
-          <h3>Recurring Unavailability</h3>
-          <label class="toggle-switch">
-            <input type="checkbox" id="recurring-toggle">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <p class="section-description">Apply this unavailability pattern repeatedly</p>
-        
-        <!-- Recurring Pattern Options (hidden by default) -->
-        <div id="recurring-options" class="recurring-options" style="display: none;">
-          <div class="recurring-controls">
-            <div class="control-group">
-              <label for="repeat-every">Repeat Every</label>
-              <select id="repeat-every">
-                <option value="weekly">Weekly (every 7 days)</option>
-                <option value="monthly">Monthly</option>
-                <option value="custom">Custom...</option>
-              </select>
-            </div>
-            
-            <div class="control-group" id="custom-recurrence" style="display: none;">
-              <label for="custom-interval">Repeat every</label>
-              <input type="number" id="custom-interval" value="1" min="1">
-              <select id="custom-unit">
-                <option value="week">Week</option>
-                <option value="month">Month</option>
-              </select>
-            </div>
-            
-            <div class="control-group">
-              <label for="until-date">Until Date</label>
-              <input type="date" id="until-date">
-            </div>
-          </div>
-          
-          <div class="recurring-preview" id="recurring-preview">
-            <div class="preview-content">
-              <p id="preview-text">This will create unavailability on 3 dates (every Monday) from 08/09/2025 to 26/09/2025</p>
-            </div>
-          </div>
+      <div id="time-ranges-container" class="time-ranges-container">
+        <div class="no-time-ranges">
+          <span class="material-icons">schedule</span>
+          <p>No specific time ranges set. Click 'Add Time Range' to specify unavailable hours</p>
         </div>
       </div>
       
-      <!-- Specific Time Ranges -->
-      <div class="modal-section">
-        <div class="section-header">
-          <h3>Specific Time Ranges</h3>
-          <button id="add-time-range" class="add-btn">
-            <span class="material-icons">add</span>
-            Add Time Range
-          </button>
-        </div>
-        
-        <div id="time-ranges-container">
-          <div class="no-time-ranges">
-            <span class="material-icons">schedule</span>
-            <p>No specific time ranges set. Click 'Add Time Range' to specify unavailable hours</p>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Reason Section -->
-      <div class="modal-section">
-        <div class="section-header">
-          <h3>Reason (Optional)</h3>
-        </div>
-        <textarea id="unavailability-reason" placeholder="e.g., Doctor appointment, Personal commitment" rows="3"></textarea>
-      </div>
-      
-      <!-- Advanced Options -->
-      <div class="modal-section advanced-section">
-        <div class="section-header">
-          <h3>Advanced Options</h3>
-          <button id="toggle-advanced" class="toggle-btn">
-            <span class="material-icons">expand_more</span>
-          </button>
-        </div>
-        
-        <div id="advanced-options" class="advanced-options" style="display: none;">
-          <div class="control-group">
-            <label for="priority-level">Priority Level</label>
-            <select id="priority-level">
-              <option value="normal">Normal</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
-          </div>
-          
-          <div class="control-group">
-            <label for="notification-settings">Notification Settings</label>
-            <div class="checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="notify-admin" checked>
-                <span class="checkmark"></span>
-                Notify administrators
-              </label>
-              <label class="checkbox-label">
-                <input type="checkbox" id="notify-peers">
-                <span class="checkmark"></span>
-                Notify peer facilitators
-              </label>
-            </div>
-          </div>
-          
-          <div class="control-group">
-            <label for="auto-approve">Auto-approve scheduling conflicts</label>
-            <label class="toggle-switch">
-              <input type="checkbox" id="auto-approve">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="modal-footer">
-      <div class="footer-actions">
-        <button id="cancel-unavailability" class="btn-secondary">Cancel</button>
-        <button id="save-unavailability" class="btn-primary">
-          <span class="material-icons">save</span>
-          Save Configuration
-        </button>
-      </div>
-      <div class="footer-info">
-        <span class="material-icons">info</span>
-        <span>Changes will be applied immediately and visible to administrators</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Bulk Edit Modal -->
-<div id="bulk-edit-modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content bulk-edit-modal-content">
-    <div class="modal-header">
-      <div class="modal-title-section">
-        <span class="material-icons">edit</span>
-        <h2>Bulk Edit Unavailability</h2>
-      </div>
-      <button id="bulk-edit-modal-close" class="modal-close-btn">
-        <span class="material-icons">close</span>
+      <button id="add-time-range" class="action-btn">
+        <span class="material-icons">add</span>
+        Add Time Range
       </button>
-    </div>
-    
-    <div class="modal-body">
-      <p class="modal-subtitle">Select multiple dates and apply unavailability settings to all of them</p>
       
-      <!-- Date Range Selection -->
-      <div class="modal-section">
-        <div class="section-header">
-          <h3>Date Range</h3>
-        </div>
-        <div class="date-range-controls">
-          <div class="control-group">
-            <label for="bulk-start-date">Start Date</label>
-            <input type="date" id="bulk-start-date">
-          </div>
-          <div class="control-group">
-            <label for="bulk-end-date">End Date</label>
-            <input type="date" id="bulk-end-date">
-          </div>
-          <div class="control-group">
-            <label for="bulk-days-of-week">Days of Week</label>
-            <div class="days-checkbox-group">
-              <label class="day-checkbox-label">
-                <input type="checkbox" value="monday"> Mon
-              </label>
-              <label class="day-checkbox-label">
-                <input type="checkbox" value="tuesday"> Tue
-              </label>
-              <label class="day-checkbox-label">
-                <input type="checkbox" value="wednesday"> Wed
-              </label>
-              <label class="day-checkbox-label">
-                <input type="checkbox" value="thursday"> Thu
-              </label>
-              <label class="day-checkbox-label">
-                <input type="checkbox" value="friday"> Fri
-              </label>
-              <label class="day-checkbox-label">
-                <input type="checkbox" value="saturday"> Sat
-              </label>
-              <label class="day-checkbox-label">
-                <input type="checkbox" value="sunday"> Sun
-              </label>
-            </div>
-          </div>
-        </div>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="recurring-toggle">
+          <span class="checkbox-custom"></span>
+          Recurring unavailability
+        </label>
       </div>
       
-      <!-- Bulk Settings -->
-      <div class="modal-section">
-        <div class="section-header">
-          <h3>Unavailability Settings</h3>
-        </div>
-        
-        <div class="control-group">
-          <label for="bulk-full-day">Full Day Unavailable</label>
-          <label class="toggle-switch">
-            <input type="checkbox" id="bulk-full-day">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        
-        <div class="control-group" id="bulk-time-range" style="display: none;">
-          <label for="bulk-start-time">Start Time</label>
-          <input type="time" id="bulk-start-time" value="09:00">
-          <label for="bulk-end-time">End Time</label>
-          <input type="time" id="bulk-end-time" value="17:00">
-        </div>
-        
-        <div class="control-group">
-          <label for="bulk-reason">Reason (Optional)</label>
-          <textarea id="bulk-reason" placeholder="e.g., Vacation, Conference, Personal commitment" rows="2"></textarea>
-        </div>
-      </div>
-      
-      <!-- Preview -->
-      <div class="modal-section">
-        <div class="section-header">
-          <h3>Preview</h3>
-        </div>
-        <div class="bulk-preview" id="bulk-preview">
-          <p>Select date range and settings to see preview</p>
-        </div>
-      </div>
-    </div>
-    
-    <div class="modal-footer">
-      <div class="footer-actions">
-        <button id="cancel-bulk-edit" class="btn-secondary">Cancel</button>
-        <button id="apply-bulk-edit" class="btn-primary">
-          <span class="material-icons">check</span>
-          Apply to Selected Dates
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- View All Unavailability Modal -->
-<div id="view-all-modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content view-all-modal-content">
-    <div class="modal-header">
-      <div class="modal-title-section">
-        <span class="material-icons">list</span>
-        <h2>All Unavailability</h2>
-      </div>
-      <button id="view-all-modal-close" class="modal-close-btn">
-        <span class="material-icons">close</span>
-      </button>
-    </div>
-    
-    <div class="modal-body">
-      <div class="view-all-controls">
-        <div class="filter-controls">
-          <select id="unavailability-filter">
-            <option value="all">All Unavailability</option>
-            <option value="full-day">Full Day Only</option>
-            <option value="partial">Partial Day Only</option>
-            <option value="recurring">Recurring Only</option>
-          </select>
-          <input type="text" id="unavailability-search" placeholder="Search by reason...">
-        </div>
-        <div class="sort-controls">
-          <select id="unavailability-sort">
-            <option value="date-desc">Date (Newest First)</option>
-            <option value="date-asc">Date (Oldest First)</option>
-            <option value="reason">Reason (A-Z)</option>
+      <div id="recurring-options" class="recurring-options" style="display: none;">
+        <div class="form-group">
+          <label for="repeat-every">Repeat every</label>
+          <select id="repeat-every">
+            <option value="weekly">Week</option>
+            <option value="monthly">Month</option>
+            <option value="custom">Custom</option>
           </select>
         </div>
+        
+        <div id="custom-recurrence" class="custom-recurrence" style="display: none;">
+          <div class="form-group">
+            <label for="custom-interval">Every</label>
+            <input type="number" id="custom-interval" min="1" max="52" value="1">
+            <span>weeks</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="until-date">Until</label>
+          <input type="date" id="until-date">
+        </div>
       </div>
       
-      <div class="unavailability-table-container">
-        <table class="unavailability-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Time Range</th>
-              <th>Recurring</th>
-              <th>Reason</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="unavailability-table-body">
-            <!-- Table rows will be populated by JavaScript -->
-          </tbody>
-        </table>
+      <div class="form-group">
+        <label for="unavailability-reason">Reason (optional)</label>
+        <textarea id="unavailability-reason" rows="3" placeholder="Enter reason for unavailability..."></textarea>
       </div>
     </div>
-    
     <div class="modal-footer">
-      <div class="footer-actions">
-        <button id="close-view-all" class="btn-secondary">Close</button>
-        <button id="export-unavailability" class="btn-outline">
-          <span class="material-icons">download</span>
-          Export
-        </button>
-      </div>
+      <button id="cancel-unavailability" class="btn-secondary">Cancel</button>
+      <button id="save-unavailability" class="btn-primary">Save Unavailability</button>
     </div>
   </div>
 </div>
@@ -980,6 +649,13 @@
         </div>
       </div>
     </div>
+
+<script>
+    // Pass units data from backend to JavaScript
+    window.unitsData = {{ units_data|tojson }};
+    window.currentUnitId = {{ current_unit_dict.id if current_unit_dict else 'null' }};
+    window.currentUnit = {{ current_unit_dict|tojson if current_unit_dict else 'null' }};
+</script>
 
 </body>
 </html>

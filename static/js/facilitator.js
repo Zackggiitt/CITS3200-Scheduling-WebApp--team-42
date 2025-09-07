@@ -522,102 +522,36 @@ document.addEventListener('DOMContentLoaded', function() {
     // ... existing code ...
 
     // Unit Selector Functionality
-    // Sample unit data with more detailed information
-    const units = {
-        1: {
-            code: 'CITS1001',
-            name: 'Introduction to Computing',
-            semester: 'Semester 2, 2025',
-            status: 'active',
-            sessions: 6,
-            dateRange: '2/24/2025 - 6/13/2025',
-            kpis: {
-                thisWeekHours: 4,
-                remainingHours: 12,
-                totalHours: 16,
-                activeSessions: 2
-            },
-                         upcomingSessions: [
-                 { day: 'Monday, Sep 1', date: '01/09/2025', time: '9:00 AM - 11:00 AM', location: 'Stats Lab', topic: 'Statistics Review', status: 'approved' },
-                 { day: 'Today (Sep 5)', date: '05/09/2025', time: '10:00 AM - 12:00 PM', location: 'Stats Lab', topic: 'R Programming', status: 'approved' },
-                 { day: 'Friday, Sep 12', date: '12/09/2025', time: '10:00 AM - 12:00 PM', location: 'Stats Lab', topic: 'R Programming', status: 'pending' },
-                 { day: 'Monday, Sep 8', date: '08/09/2025', time: '2:00 PM - 4:00 PM', location: 'Computer Lab', topic: 'Data Visualization', status: 'approved' }
-             ]
-        },
-        2: {
-            code: 'CITS1401',
-            name: 'Computer Science',
-            semester: 'Semester 1, 2025',
-            status: 'active',
-            sessions: 4,
-            dateRange: '1/15/2025 - 5/30/2025',
-            kpis: {
-                thisWeekHours: 6,
-                remainingHours: 8,
-                totalHours: 14,
-                activeSessions: 3
-            },
-            upcomingSessions: [
-                { day: 'Wednesday, Sep 3', date: '03/09/2025', time: '1:00 PM - 3:00 PM', location: 'CS Lab', topic: 'Algorithms', status: 'approved' },
-                { day: 'Friday, Sep 6', date: '06/09/2025', time: '11:00 AM - 1:00 PM', location: 'CS Lab', topic: 'Data Structures', status: 'approved' }
-            ]
-        },
-        3: {
-            code: 'CITS2000',
-            name: 'Data Structures',
-            semester: 'Semester 2, 2025',
-            status: 'active',
-            sessions: 8,
-            dateRange: '2/24/2025 - 6/13/2025',
-            kpis: {
-                thisWeekHours: 8,
-                remainingHours: 16,
-                totalHours: 24,
-                activeSessions: 4
-            },
-            upcomingSessions: [
-                { day: 'Tuesday, Sep 2', date: '02/09/2025', time: '9:00 AM - 11:00 AM', location: 'DS Lab', topic: 'Linked Lists', status: 'approved' },
-                { day: 'Thursday, Sep 4', date: '04/09/2025', time: '2:00 PM - 4:00 PM', location: 'DS Lab', topic: 'Trees', status: 'approved' },
-                { day: 'Monday, Sep 8', date: '08/09/2025', time: '10:00 AM - 12:00 PM', location: 'DS Lab', topic: 'Graphs', status: 'approved' }
-            ]
-        },
-        4: {
-            code: 'CITS2200',
-            name: 'Algorithms',
-            semester: 'Semester 1, 2025',
-            status: 'completed',
-            sessions: 5,
-            dateRange: '1/15/2025 - 5/30/2025',
-            kpis: {
-                totalHours: 20,
-                totalSessions: 5
-            },
-            pastSessions: [
-                { day: 'Monday, Jul 7', date: '07/07/2025', time: '10:00 AM - 12:00 PM', location: 'Algo Lab', topic: 'Sorting Algorithms', status: 'completed' },
-                { day: 'Wednesday, Jul 9', date: '09/07/2025', time: '2:00 PM - 4:00 PM', location: 'Algo Lab', topic: 'Search Algorithms', status: 'completed' },
-                { day: 'Friday, Jul 11', date: '11/07/2025', time: '9:00 AM - 11:00 AM', location: 'Algo Lab', topic: 'Dynamic Programming', status: 'completed' }
-            ]
-        },
-        5: {
-            code: 'CITS3000',
-            name: 'Software Engineering',
-            semester: 'Semester 2, 2024',
-            status: 'completed',
-            sessions: 7,
-            dateRange: '2/26/2024 - 6/14/2024',
-            kpis: {
-                totalHours: 28,
-                totalSessions: 7
-            },
-            pastSessions: [
-                { day: 'Monday, Jul 7', date: '07/07/2024', time: '10:00 AM - 12:00 PM', location: 'SE Lab', topic: 'Design Patterns', status: 'completed' },
-                { day: 'Wednesday, Jul 9', date: '09/07/2024', time: '2:00 PM - 4:00 PM', location: 'SE Lab', topic: 'Testing', status: 'completed' }
-            ]
-        }
-    };
+    // Use dynamic data from backend instead of hardcoded values
+    const units = {};
+    
+    // Convert backend data to the format expected by the frontend
+    if (window.unitsData) {
+        window.unitsData.forEach(unitData => {
+            units[unitData.id] = {
+                id: unitData.id,
+                code: unitData.code,
+                name: unitData.name,
+                semester: unitData.semester,
+                status: unitData.status,
+                sessions: unitData.sessions,
+                dateRange: unitData.date_range,
+                start_date: unitData.start_date,
+                end_date: unitData.end_date,
+                kpis: {
+                    thisWeekHours: unitData.kpis.this_week_hours,
+                    remainingHours: unitData.kpis.remaining_hours,
+                    totalHours: unitData.kpis.total_hours,
+                    activeSessions: unitData.kpis.active_sessions
+                },
+                upcomingSessions: unitData.upcoming_sessions || [],
+                pastSessions: unitData.past_sessions || []
+            };
+        });
+    }
 
     let currentView = 'unit'; // 'unit', 'all'
-    let currentUnitId = 1; // Default to first unit
+    let currentUnitId = window.currentUnitId || null; // Use current unit from backend
 
     // DOM elements for unit selector
     const switchUnitBtn = document.getElementById('switch-unit-trigger');
@@ -674,8 +608,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Initialize with default unit
-        selectUnit(currentUnitId);
+        // Initialize with current unit or first available unit
+        if (currentUnitId && units[currentUnitId]) {
+            selectUnit(currentUnitId);
+        } else if (Object.keys(units).length > 0) {
+            // Use first available unit if no current unit
+            const firstUnitId = Object.keys(units)[0];
+            selectUnit(firstUnitId);
+        }
     }
 
     function openDropdown() {
@@ -698,7 +638,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function selectUnit(unitId) {
         const unit = units[unitId];
-        if (!unit) return;
+        if (!unit) {
+            console.warn(`Unit with ID ${unitId} not found`);
+            return;
+        }
 
         currentView = 'unit';
         currentUnitId = unitId;
@@ -731,6 +674,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update sessions section
         updateSessionsSection(unit);
+
+        // Update unavailability view if it's currently visible
+        updateUnavailabilityViewForUnit(unit);
 
         // Update active state in dropdown
         document.querySelectorAll('.unit-item').forEach(item => {
@@ -775,14 +721,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function hideElementsForAllUnitsView() {
         // Hide navigation tabs
         const dashboardNav = document.getElementById('dashboard-nav');
-        const availabilityNav = document.getElementById('availability-nav');
+        const unavailabilityNav = document.getElementById('unavailability-nav');
         const scheduleNav = document.getElementById('schedule-nav');
         
         // Hide unavailability alert
         const unavailabilityAlert = document.getElementById('unavailability-alert');
         
         if (dashboardNav) dashboardNav.style.display = 'none';
-        if (availabilityNav) availabilityNav.style.display = 'none';
+        if (unavailabilityNav) unavailabilityNav.style.display = 'none';
         if (scheduleNav) scheduleNav.style.display = 'none';
         if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
     }
@@ -790,14 +736,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function showElementsForUnitView() {
         // Show navigation tabs
         const dashboardNav = document.getElementById('dashboard-nav');
-        const availabilityNav = document.getElementById('availability-nav');
+        const unavailabilityNav = document.getElementById('unavailability-nav');
         const scheduleNav = document.getElementById('schedule-nav');
         
         // Show unavailability alert
         const unavailabilityAlert = document.getElementById('unavailability-alert');
         
         if (dashboardNav) dashboardNav.style.display = 'flex';
-        if (availabilityNav) availabilityNav.style.display = 'flex';
+        if (unavailabilityNav) unavailabilityNav.style.display = 'flex';
         if (scheduleNav) scheduleNav.style.display = 'flex';
         if (unavailabilityAlert) unavailabilityAlert.style.display = 'block';
     }
@@ -820,7 +766,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <h4>Remaining Hours</h4>
                         <span class="material-icons" aria-hidden="true">pending_actions</span>
                     </div>
-                    <p class="stat-value">${unit.kpis.remainingHours}</p>
+                    <p class="stat-value">${unit.kpis.remainingHours || 0}</p>
                     <p class="stat-subtext">Total hours - this week hours</p>
                 </div>
                 <div class="stat-card gray">
@@ -1495,22 +1441,67 @@ function initUnavailabilityView() {
     updateUnavailabilitySummary();
 }
 
+function updateUnavailabilityViewForUnit(unit) {
+    console.log('Updating unavailability view for unit:', unit.code);
+    console.log('Unit data:', unit);
+    console.log('Unit start_date:', unit.start_date);
+    console.log('Unit end_date:', unit.end_date);
+    
+    // Update current unit information
+    currentUnitId = unit.id;
+    currentUnit = {
+        id: unit.id,
+        code: unit.code,
+        name: unit.name,
+        start_date: unit.start_date,
+        end_date: unit.end_date
+    };
+    
+    console.log('Updated currentUnit:', currentUnit);
+    
+    // Update unit information display in unavailability view
+    updateUnitInfo();
+    
+    // Reload unavailability data for the new unit
+    loadUnavailabilityData();
+    
+    // Regenerate calendar with new unit data
+    regenerateUnavailabilityCalendar();
+    
+    // Update summary statistics
+    updateUnavailabilitySummary();
+    
+    // Update recent unavailability list
+    updateRecentUnavailabilityList();
+}
+
 function updateUnitInfo() {
-    if (!currentUnit) return;
+    if (!currentUnit) {
+        console.log('updateUnitInfo: No currentUnit available');
+        return;
+    }
     
-    const unitNameElement = document.getElementById('current-unit-name');
-    const unitCodeElement = document.getElementById('unit-code-display');
-    const unitDateRangeElement = document.getElementById('unit-date-range');
+    console.log('updateUnitInfo: Updating with currentUnit:', currentUnit);
     
-    if (unitNameElement) unitNameElement.textContent = currentUnit.code;
-    if (unitCodeElement) unitCodeElement.textContent = currentUnit.code;
+    // Update the date range display element
+    const unitDateRangeDisplayElement = document.getElementById('unit-date-range-display');
     
-    if (unitDateRangeElement && currentUnit.start_date && currentUnit.end_date) {
-        const startDate = new Date(currentUnit.start_date);
-        const endDate = new Date(currentUnit.end_date);
-        const formattedStart = startDate.toLocaleDateString('en-GB');
-        const formattedEnd = endDate.toLocaleDateString('en-GB');
-        unitDateRangeElement.textContent = `${formattedStart} - ${formattedEnd}`;
+    if (unitDateRangeDisplayElement) {
+        if (currentUnit.start_date && currentUnit.end_date) {
+            const startDate = new Date(currentUnit.start_date);
+            const endDate = new Date(currentUnit.end_date);
+            const formattedStart = startDate.toLocaleDateString('en-GB');
+            const formattedEnd = endDate.toLocaleDateString('en-GB');
+            const dateRangeText = `${formattedStart} - ${formattedEnd}`;
+            
+            console.log('updateUnitInfo: Setting date range to:', dateRangeText);
+            unitDateRangeDisplayElement.textContent = dateRangeText;
+        } else {
+            console.log('updateUnitInfo: No start_date or end_date available');
+            unitDateRangeDisplayElement.textContent = 'No date range';
+        }
+    } else {
+        console.log('updateUnitInfo: unit-date-range-display element not found');
     }
 }
 
@@ -1545,23 +1536,32 @@ function initUnavailabilityCalendar() {
     // Generate calendar for current month
     generateCalendar();
     
-    // Add click handlers for calendar days
-    calendarDays.addEventListener('click', function(e) {
-        const dayElement = e.target.closest('.calendar-day');
-        if (!dayElement) return;
+    // Add click handlers for calendar days (only if not already added)
+    if (!calendarDays.hasAttribute('data-listeners-added')) {
+        calendarDays.addEventListener('click', function(e) {
+            const dayElement = e.target.closest('.calendar-day');
+            if (!dayElement) return;
+            
+            const date = dayElement.dataset.date;
+            if (!date) return;
+            
+            // Check if date is within unit period
+            if (!isDateInUnitPeriod(date)) {
+                alert('You can only set unavailability for dates within the unit period');
+                return;
+            }
+            
+            // Open modal for this date
+            openUnavailabilityModal(date);
+        });
         
-        const date = dayElement.dataset.date;
-        if (!date) return;
-        
-        // Check if date is within unit period
-        if (!isDateInUnitPeriod(date)) {
-            alert('You can only set unavailability for dates within the unit period');
-            return;
-        }
-        
-        // Open modal for this date
-        openUnavailabilityModal(date);
-    });
+        calendarDays.setAttribute('data-listeners-added', 'true');
+    }
+}
+
+function regenerateUnavailabilityCalendar() {
+    // Generate calendar for current month without re-adding event listeners
+    generateCalendar();
 }
 
 function generateCalendar() {
@@ -1602,7 +1602,7 @@ function generateCalendar() {
         dayElement.textContent = day;
         
         const date = new Date(year, month, day);
-        const dateString = date.toISOString().split('T')[0];
+        const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         dayElement.dataset.date = dateString;
         
         // Check if date is in unit period
@@ -1619,7 +1619,8 @@ function generateCalendar() {
         
         // Add today indicator
         const today = new Date();
-        if (dateString === today.toISOString().split('T')[0]) {
+        const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        if (dateString === todayString) {
             dayElement.classList.add('today');
         }
         

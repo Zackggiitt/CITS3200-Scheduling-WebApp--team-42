@@ -231,11 +231,142 @@ def dashboard():
     if not current_unit and units:
         current_unit = units[0]
     
+    # Convert current_unit to dictionary for JSON serialization
+    current_unit_dict = None
+    if current_unit:
+        current_unit_dict = {
+            'id': current_unit.id,
+            'unit_code': current_unit.unit_code,
+            'unit_name': current_unit.unit_name,
+            'year': current_unit.year,
+            'semester': current_unit.semester,
+            'start_date': current_unit.start_date.isoformat() if current_unit.start_date else None,
+            'end_date': current_unit.end_date.isoformat() if current_unit.end_date else None,
+            'description': current_unit.description
+        }
+    
+    # Get units data for JavaScript
+    units_data = []
+    for unit in units:
+        # Get session count for this unit
+        session_count = (
+            db.session.query(Session)
+            .join(Module, Session.module_id == Module.id)
+            .filter(Module.unit_id == unit.id)
+            .count()
+        )
+        
+        # Get assignments for this unit
+        assignments = (
+            db.session.query(Assignment, Session, Module)
+            .join(Session, Assignment.session_id == Session.id)
+            .join(Module, Session.module_id == Module.id)
+            .filter(Assignment.facilitator_id == user.id, Module.unit_id == unit.id)
+            .all()
+        )
+        
+        # Calculate KPIs
+        total_hours = sum((s.end_time - s.start_time).total_seconds() / 3600.0 for _, s, _ in assignments)
+        
+        # This week hours
+        now = datetime.utcnow()
+        start_of_week = (now.replace(hour=0, minute=0, second=0, microsecond=0)
+                         - timedelta(days=now.weekday()))
+        end_of_week = start_of_week + timedelta(days=7)
+        
+        this_week_hours = sum(
+            (s.end_time - s.start_time).total_seconds() / 3600.0 
+            for _, s, _ in assignments 
+            if start_of_week <= s.start_time < end_of_week
+        )
+        
+        # Active sessions this week
+        active_sessions = len([
+            s for _, s, _ in assignments 
+            if start_of_week <= s.start_time < end_of_week
+        ])
+        
+        # Upcoming sessions
+        upcoming_sessions = [
+            {
+                'id': a.id,
+                'session_id': s.id,
+                'module': m.module_name,
+                'session_type': s.session_type,
+                'start_time': s.start_time.isoformat(),
+                'end_time': s.end_time.isoformat(),
+                'location': s.location,
+                'is_confirmed': bool(a.is_confirmed),
+                'date': s.start_time.strftime('%d/%m/%Y'),
+                'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
+                'topic': m.module_name,
+                'status': 'confirmed' if a.is_confirmed else 'pending'
+            }
+            for a, s, m in assignments
+            if s.start_time >= now
+        ]
+        
+        # Past sessions
+        past_sessions = [
+            {
+                'id': a.id,
+                'session_id': s.id,
+                'module': m.module_name,
+                'session_type': s.session_type,
+                'start_time': s.start_time.isoformat(),
+                'end_time': s.end_time.isoformat(),
+                'location': s.location,
+                'is_confirmed': bool(a.is_confirmed),
+                'date': s.start_time.strftime('%d/%m/%Y'),
+                'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
+                'topic': m.module_name,
+                'status': 'completed'
+            }
+            for a, s, m in assignments
+            if s.start_time < now
+        ]
+        
+        # Determine if unit is active
+        today = date.today()
+        is_active = False
+        if unit.start_date and unit.end_date:
+            is_active = (today <= unit.end_date)
+        elif unit.start_date and not unit.end_date:
+            is_active = (unit.start_date <= today)
+        elif not unit.start_date and unit.end_date:
+            is_active = (today <= unit.end_date)
+        else:
+            is_active = len(upcoming_sessions) > 0
+        
+        unit_data = {
+            'id': unit.id,
+            'code': unit.unit_code,
+            'name': unit.unit_name,
+            'year': unit.year,
+            'semester': unit.semester,
+            'start_date': unit.start_date.isoformat() if unit.start_date else None,
+            'end_date': unit.end_date.isoformat() if unit.end_date else None,
+            'status': 'active' if is_active else 'completed',
+            'sessions': session_count,
+            'date_range': f"{unit.start_date.strftime('%d/%m/%Y')} - {unit.end_date.strftime('%d/%m/%Y')}" if unit.start_date and unit.end_date else 'No date range',
+            'kpis': {
+                'this_week_hours': round(this_week_hours, 1),
+                'total_hours': round(total_hours, 1),
+                'active_sessions': active_sessions,
+                'remaining_hours': round(total_hours - this_week_hours, 1)
+            },
+            'upcoming_sessions': upcoming_sessions[:5],  # Limit to 5 for display
+            'past_sessions': past_sessions[:5]  # Limit to 5 for display
+        }
+        units_data.append(unit_data)
+    
     return render_template("facilitator_dashboard.html", 
                          user=user, 
                          greeting=greeting,
                          units=units,
-                         current_unit=current_unit)
+                         current_unit=current_unit,
+                         current_unit_dict=current_unit_dict,
+                         units_data=units_data)
 
 
 @facilitator_bp.route("/")
