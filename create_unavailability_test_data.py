@@ -95,15 +95,6 @@ def create_sample_units():
             'end_date': today + timedelta(days=70),    # Ends in 70 days
             'description': 'Systems programming and low-level software development'
         },
-        {
-            'unit_code': 'CITS3003',
-            'unit_name': 'Computer Networks',
-            'year': 2025,
-            'semester': 'Semester 2',
-            'start_date': today + timedelta(days=30),   # Starts in 30 days
-            'end_date': today + timedelta(days=120),   # Ends in 120 days
-            'description': 'Network protocols, architecture, and security'
-        },
         # Past Units
         {
             'unit_code': 'CITS2200',
@@ -179,13 +170,6 @@ def create_sample_modules(units):
             {'name': 'Workshop B', 'type': 'workshop'},
             {'name': 'Core Lectures', 'type': 'lecture'}
         ],
-        'CITS3003': [
-            {'name': 'Network Lab 1', 'type': 'lab'},
-            {'name': 'Network Lab 2', 'type': 'lab'},
-            {'name': 'Security Workshop', 'type': 'workshop'},
-            {'name': 'Protocol Tutorial', 'type': 'tutorial'},
-            {'name': 'Network Theory', 'type': 'lecture'}
-        ],
         'CITS2200': [
             {'name': 'Algorithm Lab 1', 'type': 'lab'},
             {'name': 'Algorithm Lab 2', 'type': 'lab'},
@@ -250,16 +234,24 @@ def create_sample_sessions(modules):
         unit = db.session.get(Unit, module.unit_id)
         is_past_unit = unit.end_date and unit.end_date < today.date()
         
-        # Create 2-3 sessions per module
-        sessions_per_module = 2 if module.module_type == 'lecture' else 3
+        # Create 4-5 sessions per module for better testing
+        sessions_per_module = 2 if module.module_type == 'lecture' else 4
         
         for i in range(sessions_per_module):
             if is_past_unit:
                 # For past units, create sessions in the past
                 session_date = unit.end_date - timedelta(days=(sessions_per_module - i) * 7)
             else:
-                # For current/future units, create sessions starting from tomorrow
-                session_date = today.date() + timedelta(days=1 + i * 2)
+                # For current/future units, create sessions across different weeks
+                if i < 2:
+                    # First 2 sessions: this week (tomorrow and day after)
+                    session_date = today.date() + timedelta(days=1 + i)
+                elif i == 2:
+                    # Third session: next week
+                    session_date = today.date() + timedelta(days=7 + i)
+                else:
+                    # Fourth session: week after next
+                    session_date = today.date() + timedelta(days=14 + i)
             
             # Different time slots based on module type
             if module.module_type == 'lab':
