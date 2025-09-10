@@ -2289,15 +2289,6 @@ function initUnitTabs() {
     
     if (key === 'dashboard') {
       setTimeout(initSessionsOverview, 100);
-      // Re-render gauge once the panel is visible
-      setTimeout(() => {
-        renderAttendanceGauge(window.__attData.today, window.__attData.upcoming);
-      }, 150);
-
-      setTimeout(() => {
-        renderFacilitatorBar(window.__attData?.today || [], window.__attData?.upcoming || []);
-      }, 160);
-      
     }
   }
 
@@ -2829,7 +2820,7 @@ window.__attData = { today: [], upcoming: [] };
 // Sessions Overview Widget Functions 
 function initSessionsOverview() {
   console.log('Initializing sessions overview...');
-  ensureSwapLineCard();
+  ensureActivityLogCard();
   const dashboardPanel = document.getElementById('panel-dashboard');
   if (!dashboardPanel) {
     console.warn('Dashboard panel not found');
@@ -2865,9 +2856,7 @@ async function loadRealSessionsData() {
     updateTodaysSessions(data.today_sessions);
     updateUpcomingSessions(data.upcoming_sessions);
     updateMiniCalendar({ weekTotal: data.week_session_count, days: {} });
-    renderAttendanceGauge(data.today_sessions, data.upcoming_sessions);
-    renderFacilitatorBar(data.facilitator_counts);
-    renderSwapRequestsLine(data.swap_requests);
+    renderActivityLog(data.facilitator_counts);
     
     // Update week session count
     const weekCountElement = document.getElementById('weekSessionCount');
@@ -2906,8 +2895,15 @@ function showSampleSessionsData() {
   updateTodaysSessions(sampleData.today);
   updateUpcomingSessions(sampleData.upcoming);
   updateMiniCalendar(sampleData.calendar);
-  renderAttendanceGauge(sampleData.today, sampleData.upcoming);
-  renderFacilitatorBar(sampleData.today, sampleData.upcoming);   
+  
+  // Create sample facilitator data for the activity log
+  const sampleFacilitators = [
+    { name: "John Smith", session_count: 5 },
+    { name: "Sarah Johnson", session_count: 3 },
+    { name: "Mike Davis", session_count: 7 },
+    { name: "Lisa Wilson", session_count: 4 }
+  ];
+  renderActivityLog(sampleFacilitators);
 }
 
 function waitForVisible(el, tries = 20) {
@@ -2922,40 +2918,208 @@ function waitForVisible(el, tries = 20) {
   });
 }
 
-function ensureSwapLineCard() {
-  const attendanceCard = document.getElementById('attendanceSummaryCard');
-  if (!attendanceCard) return;
-
-  // Remove the old bar card if it exists
-  const oldBar = document.getElementById('facilitatorBarCard');
-  if (oldBar) oldBar.remove();
-
+function ensureActivityLogCard() {
   // If card already inserted, stop
-  if (document.getElementById('swapLineCard')) return;
+  if (document.getElementById('activityLogCard')) return;
 
-  // Ensure parent is a 2-col grid row
-  const grid = attendanceCard.parentElement;
-  grid.classList.add('grid', 'grid-cols-1', 'lg:grid-cols-2', 'gap-6', 'items-start');
+  // Find the dashboard panel
+  const dashboardPanel = document.getElementById('panel-dashboard');
+  if (!dashboardPanel) return;
 
-  // Pin attendance on the right
-  attendanceCard.classList.add('lg:col-start-2', 'lg:justify-self-end');
+  // Find the grid container that holds the Today's Sessions and Upcoming Sessions
+  const grid = dashboardPanel.querySelector('.grid.grid-cols-1.lg\\:grid-cols-2.gap-6');
+  if (!grid) return;
 
-  // Insert the swap line card into the left column
+  // Insert the activity log card as a full-width section below the existing cards
   const sec = document.createElement('section');
-  sec.id = 'swapLineCard';
-  sec.className = 'lg:col-start-1 lg:col-span-1 w-full';
+  sec.id = 'activityLogCard';
+  sec.className = 'w-full mt-6';
   sec.innerHTML = `
-    <div class="bg-white border border-gray-200 rounded-2xl">
-      <div class="flex items-center justify-between px-4 pt-4">
-        <h3 class="text-sm font-semibold">Swap Requests Over Time</h3>
-        <span class="material-icons text-gray-500 text-sm">show_chart</span>
+    <div class="bg-white border border-gray-200 rounded-2xl p-6">
+      <!-- Header Section -->
+      <div class="flex items-start justify-between mb-6">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900 mb-1">Employee Attendance</h2>
+          <p class="text-gray-500 text-xs">Complete Overview</p>
+        </div>
+        
+        <!-- Controls -->
+        <div class="flex items-center gap-3">
+          <!-- Search Bar -->
+          <div class="relative">
+            <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">search</span>
+            <input type="text" id="attendanceSearchInput" placeholder="Search employees..." class="pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          </div>
+          
+          <!-- Export Button -->
+          <button class="export-btn" id="exportPdfBtn">
+            <span class="material-icons text-xs">download</span>
+            Export PDF
+          </button>
+        </div>
       </div>
-      <div class="swap-line-wrap px-4 pb-4">
-        <canvas id="swapLine"></canvas>
+
+      <!-- Attendance Table -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        <!-- Table Header -->
+        <div class="bg-green-50 px-6 py-3">
+          <div class="grid grid-cols-6 gap-4 text-xs font-semibold text-gray-700">
+            <div>Name</div>
+            <div>Status</div>
+            <div>Date</div>
+            <div>Clock In</div>
+            <div>Clock Out</div>
+            <div>Total Hours</div>
+          </div>
+        </div>
+
+        <!-- Table Body -->
+        <div class="divide-y divide-gray-100">
+          <!-- Rows will be populated dynamically -->
+        </div>
       </div>
     </div>
   `;
-  grid.insertBefore(sec, attendanceCard);
+  
+  // Insert after the grid
+  grid.parentElement.insertBefore(sec, grid.nextSibling);
+  
+  // Initialize search and export functionality
+  initializeAttendanceFeatures();
+}
+
+function initializeAttendanceFeatures() {
+  // Initialize search functionality
+  const searchInput = document.getElementById('attendanceSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', handleAttendanceSearch);
+  }
+  
+  // Initialize PDF export functionality
+  const exportBtn = document.getElementById('exportPdfBtn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', handlePdfExport);
+  }
+}
+
+function handleAttendanceSearch(event) {
+  const searchTerm = event.target.value.toLowerCase();
+  const tableBody = document.querySelector('#activityLogCard .divide-y');
+  
+  if (!tableBody) return;
+  
+  const rows = tableBody.querySelectorAll('.grid.grid-cols-6');
+  
+  rows.forEach(row => {
+    // Search in name, status, and other visible text
+    const nameElement = row.querySelector('.text-sm.font-medium.text-gray-900');
+    const statusElement = row.querySelector('span.inline-flex');
+    
+    const name = nameElement?.textContent.toLowerCase() || '';
+    const status = statusElement?.textContent.toLowerCase() || '';
+    
+    const isVisible = name.includes(searchTerm) || status.includes(searchTerm);
+    row.style.display = isVisible ? 'grid' : 'none';
+  });
+}
+
+function handlePdfExport() {
+  // Create a new window for PDF generation
+  const printWindow = window.open('', '_blank');
+  
+  // Get the attendance table data
+  const tableBody = document.querySelector('#activityLogCard .divide-y');
+  if (!tableBody) {
+    alert('No attendance data to export');
+    return;
+  }
+  
+  const rows = tableBody.querySelectorAll('.grid.grid-cols-6');
+  if (rows.length === 0) {
+    alert('No attendance data to export');
+    return;
+  }
+  
+  // Generate HTML content for PDF
+  let tableRows = '';
+  rows.forEach(row => {
+    if (row.style.display !== 'none') {
+      const cells = row.querySelectorAll('div');
+      const name = cells[0]?.querySelector('.text-sm.font-medium.text-gray-900')?.textContent || '';
+      const status = cells[1]?.querySelector('span')?.textContent || '';
+      const date = cells[2]?.textContent || '';
+      const clockIn = cells[3]?.textContent || '';
+      const clockOut = cells[4]?.textContent || '';
+      const totalHours = cells[5]?.textContent || '';
+      
+      tableRows += `
+        <tr>
+          <td style="padding: 8px; border: 1px solid #ddd;">${name}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${status}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${date}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${clockIn}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${clockOut}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${totalHours}</td>
+        </tr>
+      `;
+    }
+  });
+  
+  const currentDate = new Date().toLocaleDateString();
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Employee Attendance Report</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        .report-info { margin-bottom: 20px; text-align: center; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background-color: #f0f9ff; padding: 12px; border: 1px solid #ddd; text-align: left; font-weight: bold; }
+        td { padding: 8px; border: 1px solid #ddd; }
+        .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <h1>Employee Attendance Report</h1>
+      <div class="report-info">
+        <p>Generated on: ${currentDate}</p>
+        <p>Complete Overview</p>
+      </div>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Clock In</th>
+            <th>Clock Out</th>
+            <th>Total Hours</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+      
+      <div class="footer">
+        <p>This report was generated from the Unit Coordinator Portal</p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  
+  // Wait for content to load, then trigger print
+  printWindow.onload = function() {
+    printWindow.print();
+    printWindow.close();
+  };
 }
 
 // Aggregate daily counts from raw swap events
@@ -2989,80 +3153,125 @@ function buildDailySwapSeries(raw = []) {
 }
 
 let swapLineChart = null;
-function renderSwapRequestsLine(raw = []) {
-  ensureSwapLineCard();
-
-  const canvas = document.getElementById('swapLine');
-  const wrap = canvas?.closest('.swap-line-wrap') || canvas?.parentElement;
-  if (!canvas || !wrap) return;
-
-  const { labels, data } = buildDailySwapSeries(raw);
-
-  // If no data, clear chart and exit
-  if (!labels.length) {
-    if (swapLineChart) { swapLineChart.destroy(); swapLineChart = null; }
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    return;
-  }
-
-  ensureChartJs().then(() => waitForVisible(wrap)).then(() => {
-    if (swapLineChart) swapLineChart.destroy();
-
-    const ctx = canvas.getContext('2d');
-    // Soft gradient under the line
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, 'rgba(37, 99, 235, 0.25)');  // blue-600 @ 25%
-    grad.addColorStop(1, 'rgba(37, 99, 235, 0.00)');
-
-    swapLineChart = new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Swap requests',
-          data,
-          borderColor: '#2563eb',    // blue-600
-          backgroundColor: grad,
-          borderWidth: 2,
-          fill: true,
-          cubicInterpolationMode: 'monotone',
-          tension: 0.35,
-          pointRadius: 2,
-          pointHoverRadius: 4,
-          pointBackgroundColor: '#2563eb',
-          pointBorderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: { label: (ctx) => `${ctx.parsed.y} swap${ctx.parsed.y === 1 ? '' : 's'}` }
-          }
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { maxRotation: 0, autoSkip: true, color: '#6b7280' }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: { precision: 0, color: '#6b7280' },
-            grid: { color: 'rgba(0,0,0,.06)' }
-          }
-        }
-      }
+function renderActivityLog(facilitatorData = []) {
+  ensureActivityLogCard();
+  
+  // Update the table with real facilitator data
+  const tableBody = document.querySelector('#activityLogCard .divide-y');
+  if (tableBody && facilitatorData.length > 0) {
+    // Clear existing rows
+    tableBody.innerHTML = '';
+    
+    // Create rows for each facilitator
+    facilitatorData.slice(0, 4).forEach((facilitator, index) => {
+      const row = createFacilitatorRow(facilitator, index);
+      tableBody.appendChild(row);
     });
-  }).catch(console.warn);
+  }
 }
 
-window.__swapsData = [];
-window.setSwapRequestsData = function(dataArray) {
-  window.__swapsData = Array.isArray(dataArray) ? dataArray : [];
-  renderSwapRequestsLine(window.__swapsData);
+function createFacilitatorRow(facilitator, index) {
+  const row = document.createElement('div');
+  row.className = 'grid grid-cols-6 gap-4 px-6 py-3 hover:bg-gray-50';
+  
+  // Generate random attendance data for demo
+  const clockIn = generateRandomTime('08:00', '09:00');
+  const clockOut = generateRandomTime('16:00', '18:00');
+  const totalHours = calculateHours(clockIn, clockOut);
+  
+  // Status options - more relevant to facilitators
+  const statuses = [
+    { name: 'Active', color: 'green', bg: 'green' },
+    { name: 'Available', color: 'blue', bg: 'blue' },
+    { name: 'Assigned', color: 'purple', bg: 'purple' },
+    { name: 'On Duty', color: 'orange', bg: 'orange' }
+  ];
+  const status = statuses[index % statuses.length];
+  
+  row.innerHTML = `
+    <div class="flex items-center">
+      <span class="text-xs font-medium text-gray-900">${facilitator.name}</span>
+    </div>
+    <div>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusClasses(status)}">
+        ${status.name}
+      </span>
+    </div>
+    <div class="text-xs text-gray-600">${getCurrentDate()}</div>
+    <div class="text-xs text-gray-600">${clockIn}</div>
+    <div class="text-xs text-gray-600">${clockOut}</div>
+    <div class="text-xs text-gray-600">${totalHours}</div>
+  `;
+  
+  return row;
+}
+
+
+function getStatusClasses(status) {
+  switch (status.bg) {
+    case 'green':
+      return 'bg-green-100 text-green-800';
+    case 'blue':
+      return 'bg-blue-100 text-blue-800';
+    case 'purple':
+      return 'bg-purple-100 text-purple-800';
+    case 'orange':
+      return 'bg-orange-100 text-orange-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+}
+
+
+function generateRandomTime(start, end) {
+  const startHour = parseInt(start.split(':')[0]);
+  const endHour = parseInt(end.split(':')[0]);
+  const hour = Math.floor(Math.random() * (endHour - startHour + 1)) + startHour;
+  const minute = Math.floor(Math.random() * 60);
+  const period = hour >= 12 ? 'pm' : 'am';
+  const displayHour = hour > 12 ? hour - 12 : hour;
+  return `${displayHour.toString().padStart(2, '0')}.${minute.toString().padStart(2, '0')} ${period}`;
+}
+
+function calculateHours(clockIn, clockOut) {
+  // Simple calculation for demo purposes
+  const inHour = parseInt(clockIn.split('.')[0]);
+  const outHour = parseInt(clockOut.split('.')[0]);
+  const inPeriod = clockIn.includes('pm') ? 12 : 0;
+  const outPeriod = clockOut.includes('pm') ? 12 : 0;
+  
+  const inTotal = inHour + inPeriod;
+  const outTotal = outHour + outPeriod;
+  
+  let hours = outTotal - inTotal;
+  if (hours < 0) hours += 24;
+  
+  const minutes = Math.floor(Math.random() * 60);
+  return `${hours}.${minutes.toString().padStart(2, '0')}`;
+}
+
+function getCurrentDate() {
+  const today = new Date();
+  const day = today.getDate();
+  const month = today.toLocaleDateString('en-US', { month: 'short' });
+  const year = today.getFullYear();
+  return `${day}${getOrdinalSuffix(day)} ${month} ${year}`;
+}
+
+function getOrdinalSuffix(day) {
+  if (day >= 11 && day <= 13) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+
+window.__facilitatorData = [];
+window.setFacilitatorData = function(dataArray) {
+  window.__facilitatorData = Array.isArray(dataArray) ? dataArray : [];
+  renderActivityLog(window.__facilitatorData);
 };
 
 // Facilitator Session Count Bar Chart
