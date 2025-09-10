@@ -32,12 +32,10 @@ def generate_sample_facilitator_data(num_facilitators: int = 12) -> List[Dict[st
         "Thompson", "Moore", "Young", "Allen", "King", "Wright", "Scott", "Torres"
     ]
     
-    # Status options relevant to facilitators
+    # Status options - only Active or Inactive
     statuses = [
         {"name": "Active", "color": "green", "bg": "green"},
-        {"name": "Available", "color": "blue", "bg": "blue"},
-        {"name": "Assigned", "color": "purple", "bg": "purple"},
-        {"name": "On Duty", "color": "orange", "bg": "orange"}
+        {"name": "Inactive", "color": "red", "bg": "red"}
     ]
     
     facilitators = []

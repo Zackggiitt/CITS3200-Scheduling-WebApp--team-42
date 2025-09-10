@@ -3204,12 +3204,10 @@ function createFacilitatorRow(facilitator, index) {
   const assignedHours = generateAssignedHours();
   const totalHours = generateTotalHours();
   
-  // Status options - more relevant to facilitators
+  // Status options - only Active or Inactive
   const statuses = [
     { name: 'Active', color: 'green', bg: 'green' },
-    { name: 'Available', color: 'blue', bg: 'blue' },
-    { name: 'Assigned', color: 'purple', bg: 'purple' },
-    { name: 'On Duty', color: 'orange', bg: 'orange' }
+    { name: 'Inactive', color: 'red', bg: 'red' }
   ];
   const status = statuses[index % statuses.length];
   
@@ -3235,12 +3233,8 @@ function getStatusClasses(status) {
   switch (status.bg) {
     case 'green':
       return 'bg-green-100 text-green-800';
-    case 'blue':
-      return 'bg-blue-100 text-blue-800';
-    case 'purple':
-      return 'bg-purple-100 text-purple-800';
-    case 'orange':
-      return 'bg-orange-100 text-orange-800';
+    case 'red':
+      return 'bg-red-100 text-red-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
@@ -4207,165 +4201,166 @@ document.addEventListener('DOMContentLoaded', () => {
     initListView();
   }
 });
+
   // Sample facilitator data for attendance summary
   const sampleFacilitatorData = [
     {
-      name: "Kate Moore",
+      name: "Sophie Garcia",
       session_count: 3,
-      status: "On Duty",
-      status_color: "orange",
-      status_bg: "orange",
-      assigned_hours: 5,
-      total_hours: 6,
-      date: "2025-09-11",
-      email: "kate.moore@university.edu",
-      phone: "0457108725"
-    },
-    {
-      name: "Paul Harris",
-      session_count: 10,
       status: "Active",
       status_color: "green",
       status_bg: "green",
-      assigned_hours: 8,
-      total_hours: 9,
-      date: "2025-09-09",
-      email: "paul.harris@university.edu",
-      phone: "0468727470"
+      assigned_hours: 5,
+      total_hours: 7,
+      date: "2025-09-12",
+      email: "sophie.garcia@university.edu",
+      phone: "0467503446"
     },
     {
-      name: "Kate Torres",
-      session_count: 10,
-      status: "On Duty",
-      status_color: "orange",
-      status_bg: "orange",
+      name: "Elena Martinez",
+      session_count: 8,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 6,
+      total_hours: 9,
+      date: "2025-09-08",
+      email: "elena.martinez@university.edu",
+      phone: "0413211238"
+    },
+    {
+      name: "Maya Harris",
+      session_count: 3,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
       assigned_hours: 3,
       total_hours: 4,
       date: "2025-09-14",
-      email: "kate.torres@university.edu",
-      phone: "0472221866"
+      email: "maya.harris@university.edu",
+      phone: "0443863292"
     },
     {
-      name: "James Thomas",
-      session_count: 3,
-      status: "On Duty",
-      status_color: "orange",
-      status_bg: "orange",
-      assigned_hours: 8,
-      total_hours: 10,
-      date: "2025-09-11",
-      email: "james.thomas@university.edu",
-      phone: "0440928188"
-    },
-    {
-      name: "John Wilson",
-      session_count: 6,
+      name: "Mark Brown",
+      session_count: 5,
       status: "Active",
       status_color: "green",
       status_bg: "green",
       assigned_hours: 8,
-      total_hours: 8,
-      date: "2025-09-14",
-      email: "john.wilson@university.edu",
-      phone: "0494628093"
+      total_hours: 10,
+      date: "2025-09-13",
+      email: "mark.brown@university.edu",
+      phone: "0475368218"
     },
     {
-      name: "Chris Brown",
-      session_count: 4,
-      status: "On Duty",
-      status_color: "orange",
-      status_bg: "orange",
-      assigned_hours: 8,
-      total_hours: 9,
-      date: "2025-09-08",
-      email: "chris.brown@university.edu",
-      phone: "0442990484"
-    },
-    {
-      name: "Ben Brown",
+      name: "Paul Thompson",
       session_count: 1,
-      status: "Assigned",
-      status_color: "purple",
-      status_bg: "purple",
-      assigned_hours: 4,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 3,
       total_hours: 4,
-      date: "2025-09-11",
-      email: "ben.brown@university.edu",
-      phone: "0411116124"
+      date: "2025-09-08",
+      email: "paul.thompson@university.edu",
+      phone: "0412814688"
     },
     {
-      name: "Kate Torres",
-      session_count: 9,
-      status: "Available",
-      status_color: "blue",
-      status_bg: "blue",
+      name: "Steve Garcia",
+      session_count: 10,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
       assigned_hours: 1,
       total_hours: 2,
-      date: "2025-09-13",
-      email: "kate.torres@university.edu",
-      phone: "0460714599"
-    },
-    {
-      name: "Elena Torres",
-      session_count: 5,
-      status: "Assigned",
-      status_color: "purple",
-      status_bg: "purple",
-      assigned_hours: 8,
-      total_hours: 11,
-      date: "2025-09-09",
-      email: "elena.torres@university.edu",
-      phone: "0482852137"
-    },
-    {
-      name: "Kate Davis",
-      session_count: 6,
-      status: "On Duty",
-      status_color: "orange",
-      status_bg: "orange",
-      assigned_hours: 8,
-      total_hours: 9,
-      date: "2025-09-10",
-      email: "kate.davis@university.edu",
-      phone: "0481027286"
-    },
-    {
-      name: "Steve Scott",
-      session_count: 7,
-      status: "Assigned",
-      status_color: "purple",
-      status_bg: "purple",
-      assigned_hours: 8,
-      total_hours: 10,
-      date: "2025-09-12",
-      email: "steve.scott@university.edu",
-      phone: "0446123549"
-    },
-    {
-      name: "Steve Davis",
-      session_count: 3,
-      status: "Assigned",
-      status_color: "purple",
-      status_bg: "purple",
-      assigned_hours: 1,
-      total_hours: 1,
       date: "2025-09-08",
-      email: "steve.davis@university.edu",
-      phone: "0423973711"
+      email: "steve.garcia@university.edu",
+      phone: "0410093604"
+    },
+    {
+      name: "John Smith",
+      session_count: 8,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 7,
+      total_hours: 10,
+      date: "2025-09-09",
+      email: "john.smith@university.edu",
+      phone: "0494534426"
+    },
+    {
+      name: "Paul Smith",
+      session_count: 5,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 3,
+      total_hours: 5,
+      date: "2025-09-10",
+      email: "paul.smith@university.edu",
+      phone: "0411143528"
+    },
+    {
+      name: "Tom Anderson",
+      session_count: 10,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 1,
+      total_hours: 2,
+      date: "2025-09-14",
+      email: "tom.anderson@university.edu",
+      phone: "0461761191"
+    },
+    {
+      name: "Chris Wilson",
+      session_count: 7,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 5,
+      total_hours: 7,
+      date: "2025-09-11",
+      email: "chris.wilson@university.edu",
+      phone: "0414186549"
+    },
+    {
+      name: "Ben Rodriguez",
+      session_count: 7,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 7,
+      total_hours: 9,
+      date: "2025-09-12",
+      email: "ben.rodriguez@university.edu",
+      phone: "0440942452"
+    },
+    {
+      name: "Ryan Allen",
+      session_count: 1,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 5,
+      total_hours: 8,
+      date: "2025-09-08",
+      email: "ryan.allen@university.edu",
+      phone: "0461097619"
     }
   ];
 
   // Inject sample data into attendance summary
   if (window.__attData) {
     window.__attData.sampleFacilitators = sampleFacilitatorData;
-    console.log('✅ Sample facilitator data injected:', sampleFacilitatorData.length, 'facilitators');
+    console.log('Sample facilitator data injected:', sampleFacilitatorData.length, 'facilitators');
   }
 
   // Auto-populate attendance summary if empty
   setTimeout(() => {
     const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
     if (tableBody && tableBody.textContent.includes('No facilitator data available')) {
-      console.log('🔄 Auto-populating attendance summary with sample data...');
+      console.log('Auto-populating attendance summary with sample data...');
       renderActivityLog(sampleFacilitatorData);
     }
   }, 1000);
