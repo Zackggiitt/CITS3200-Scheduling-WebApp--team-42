@@ -2851,10 +2851,14 @@ async function loadRealSessionsData() {
     
     renderActivityLog(data.facilitator_counts);
     
-    // Update week session count
+    // Update week session count in both cards
     const weekCountElement = document.getElementById('weekSessionCount');
+    const todayCountElement = document.getElementById('todaySessionCount');
     if (weekCountElement) {
       weekCountElement.textContent = data.week_session_count;
+    }
+    if (todayCountElement) {
+      todayCountElement.textContent = data.today_sessions.length;
     }
     
     console.log('Real sessions data loaded successfully');
@@ -2888,6 +2892,16 @@ function showSampleSessionsData() {
   updateTodaysSessions(sampleData.today);
   updateUpcomingSessions(sampleData.upcoming);
   updateMiniCalendar(sampleData.calendar);
+  
+  // Update week session count in both cards
+  const weekCountElement = document.getElementById('weekSessionCount');
+  const todayCountElement = document.getElementById('todaySessionCount');
+  if (weekCountElement) {
+    weekCountElement.textContent = sampleData.calendar.weekTotal;
+  }
+  if (todayCountElement) {
+    todayCountElement.textContent = sampleData.today.length;
+  }
   
   // Create sample facilitator data for the activity log
   const sampleFacilitators = [
@@ -2940,10 +2954,10 @@ function ensureActivityLogCard() {
       <!-- Header Section -->
       <div class="flex items-start justify-between mb-6">
         <div>
-          <h2 class="text-lg font-bold text-gray-900 mb-1">Employee Attendance</h2>
+          <h2 class="text-lg font-bold text-gray-900 mb-1">Attendance Summary</h2>
           <p class="text-gray-500 text-xs">Complete Overview</p>
           <p class="text-gray-400 text-xs mt-1">Week of ${getCurrentWeek()}</p>
-        </div>
+      </div>
         
         <!-- Controls -->
         <div class="flex items-center gap-3">
@@ -3070,7 +3084,7 @@ function handlePdfExport() {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Employee Attendance Report</title>
+      <title>Attendance Summary Report</title>
       <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         h1 { color: #333; text-align: center; margin-bottom: 30px; }
@@ -3082,7 +3096,7 @@ function handlePdfExport() {
       </style>
     </head>
     <body>
-      <h1>Employee Attendance Report</h1>
+      <h1>Attendance Summary Report</h1>
       <div class="report-info">
         <p>Generated on: ${currentDate}</p>
         <p>Complete Overview</p>
@@ -3414,18 +3428,18 @@ function updateUpcomingSessions(sessions) {
         
         // Handle regular sessions
         return `
-          <div class="bg-white rounded-md p-2 border border-purple-200 flex-shrink-0 h-[50px] flex flex-col justify-center">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <div class="w-2 h-2 rounded-full bg-purple-500"></div>
-                <span class="text-xs font-medium truncate">${session.name}</span>
-              </div>
-              <div class="text-xs text-gray-500">${session.date}</div>
+        <div class="bg-white rounded-md p-2 border border-purple-200 flex-shrink-0 h-[50px] flex flex-col justify-center">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+              <span class="text-xs font-medium truncate">${session.name}</span>
             </div>
-            <div class="text-xs text-gray-600 mt-1 truncate">
-              ${session.time} • ${session.location || 'TBA'}
-            </div>
+            <div class="text-xs text-gray-500">${session.date}</div>
           </div>
+          <div class="text-xs text-gray-600 mt-1 truncate">
+            ${session.time} • ${session.location || 'TBA'}
+          </div>
+        </div>
         `;
       }).join('')}
       
@@ -3633,8 +3647,8 @@ function filterUpcomingSessionsByDay(selectedDate) {
     updateUpcomingSessions(emptyState);
   } else {
     console.log('Found sessions, updating display');
-    // Update the display with filtered sessions
-    updateUpcomingSessions(filteredSessions);
+  // Update the display with filtered sessions
+  updateUpcomingSessions(filteredSessions);
   }
 }
 
@@ -4193,3 +4207,165 @@ document.addEventListener('DOMContentLoaded', () => {
     initListView();
   }
 });
+  // Sample facilitator data for attendance summary
+  const sampleFacilitatorData = [
+    {
+      name: "Kate Moore",
+      session_count: 3,
+      status: "On Duty",
+      status_color: "orange",
+      status_bg: "orange",
+      assigned_hours: 5,
+      total_hours: 6,
+      date: "2025-09-11",
+      email: "kate.moore@university.edu",
+      phone: "0457108725"
+    },
+    {
+      name: "Paul Harris",
+      session_count: 10,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 8,
+      total_hours: 9,
+      date: "2025-09-09",
+      email: "paul.harris@university.edu",
+      phone: "0468727470"
+    },
+    {
+      name: "Kate Torres",
+      session_count: 10,
+      status: "On Duty",
+      status_color: "orange",
+      status_bg: "orange",
+      assigned_hours: 3,
+      total_hours: 4,
+      date: "2025-09-14",
+      email: "kate.torres@university.edu",
+      phone: "0472221866"
+    },
+    {
+      name: "James Thomas",
+      session_count: 3,
+      status: "On Duty",
+      status_color: "orange",
+      status_bg: "orange",
+      assigned_hours: 8,
+      total_hours: 10,
+      date: "2025-09-11",
+      email: "james.thomas@university.edu",
+      phone: "0440928188"
+    },
+    {
+      name: "John Wilson",
+      session_count: 6,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 8,
+      total_hours: 8,
+      date: "2025-09-14",
+      email: "john.wilson@university.edu",
+      phone: "0494628093"
+    },
+    {
+      name: "Chris Brown",
+      session_count: 4,
+      status: "On Duty",
+      status_color: "orange",
+      status_bg: "orange",
+      assigned_hours: 8,
+      total_hours: 9,
+      date: "2025-09-08",
+      email: "chris.brown@university.edu",
+      phone: "0442990484"
+    },
+    {
+      name: "Ben Brown",
+      session_count: 1,
+      status: "Assigned",
+      status_color: "purple",
+      status_bg: "purple",
+      assigned_hours: 4,
+      total_hours: 4,
+      date: "2025-09-11",
+      email: "ben.brown@university.edu",
+      phone: "0411116124"
+    },
+    {
+      name: "Kate Torres",
+      session_count: 9,
+      status: "Available",
+      status_color: "blue",
+      status_bg: "blue",
+      assigned_hours: 1,
+      total_hours: 2,
+      date: "2025-09-13",
+      email: "kate.torres@university.edu",
+      phone: "0460714599"
+    },
+    {
+      name: "Elena Torres",
+      session_count: 5,
+      status: "Assigned",
+      status_color: "purple",
+      status_bg: "purple",
+      assigned_hours: 8,
+      total_hours: 11,
+      date: "2025-09-09",
+      email: "elena.torres@university.edu",
+      phone: "0482852137"
+    },
+    {
+      name: "Kate Davis",
+      session_count: 6,
+      status: "On Duty",
+      status_color: "orange",
+      status_bg: "orange",
+      assigned_hours: 8,
+      total_hours: 9,
+      date: "2025-09-10",
+      email: "kate.davis@university.edu",
+      phone: "0481027286"
+    },
+    {
+      name: "Steve Scott",
+      session_count: 7,
+      status: "Assigned",
+      status_color: "purple",
+      status_bg: "purple",
+      assigned_hours: 8,
+      total_hours: 10,
+      date: "2025-09-12",
+      email: "steve.scott@university.edu",
+      phone: "0446123549"
+    },
+    {
+      name: "Steve Davis",
+      session_count: 3,
+      status: "Assigned",
+      status_color: "purple",
+      status_bg: "purple",
+      assigned_hours: 1,
+      total_hours: 1,
+      date: "2025-09-08",
+      email: "steve.davis@university.edu",
+      phone: "0423973711"
+    }
+  ];
+
+  // Inject sample data into attendance summary
+  if (window.__attData) {
+    window.__attData.sampleFacilitators = sampleFacilitatorData;
+    console.log('✅ Sample facilitator data injected:', sampleFacilitatorData.length, 'facilitators');
+  }
+
+  // Auto-populate attendance summary if empty
+  setTimeout(() => {
+    const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
+    if (tableBody && tableBody.textContent.includes('No facilitator data available')) {
+      console.log('🔄 Auto-populating attendance summary with sample data...');
+      renderActivityLog(sampleFacilitatorData);
+    }
+  }, 1000);
