@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Set up Flask app and database
 from flask import Flask
-from models import db, User, UserRole, Unit, Module, FacilitatorSkill, Session, Availability, Assignment, SwapRequest
+from models import db, User, UserRole, Unit, Module, FacilitatorSkill, Session, Unavailability, Assignment, SwapRequest
 
 app = Flask(__name__)
 app.secret_key = "dev-secret"

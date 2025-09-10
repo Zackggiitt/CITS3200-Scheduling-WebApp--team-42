@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 db = SQLAlchemy()
@@ -21,6 +21,13 @@ class SkillLevel(Enum):
     LEADER = "leader"
     INTERESTED = "interested"
     UNINTERESTED = "uninterested"
+
+# Add enum for recurring patterns
+class RecurringPattern(Enum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    CUSTOM = "custom"
 
 # Add new models for units and modules
 class Unit(db.Model):
@@ -189,6 +196,72 @@ class Availability(db.Model):
     
     def __repr__(self):
         return f'<Availability {self.user.email} - Day {self.day_of_week}>'
+
+class Unavailability(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)  # Specific date instead of day_of_week
+    start_time = db.Column(db.Time, nullable=True)  # Nullable for full day unavailability
+    end_time = db.Column(db.Time, nullable=True)  # Nullable for full day unavailability
+    is_full_day = db.Column(db.Boolean, default=False)  # Flag for full day unavailability
+    recurring_pattern = db.Column(db.Enum(RecurringPattern), nullable=True)  # Enum for recurring pattern
+    recurring_end_date = db.Column(db.Date, nullable=True)  # When recurring pattern ends
+    recurring_interval = db.Column(db.Integer, default=1)  # For custom patterns (e.g., every 2 weeks)
+    reason = db.Column(db.Text, nullable=True)  # Optional reason for unavailability
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref='unavailabilities')
+    unit = db.relationship('Unit', backref='unavailabilities')
+    
+    # Constraints
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'unit_id', 'date', 'start_time', 'end_time', name='unique_unavailability_slot'),
+    )
+    
+    def __repr__(self):
+        if self.is_full_day:
+            return f'<Unavailability {self.user.email} - {self.unit.unit_code} - {self.date} (Full Day)>'
+        else:
+            return f'<Unavailability {self.user.email} - {self.unit.unit_code} - {self.date} ({self.start_time}-{self.end_time})>'
+    
+    @property
+    def is_recurring(self):
+        """Check if this unavailability is part of a recurring pattern"""
+        return self.recurring_pattern is not None
+    
+    def get_recurring_dates(self):
+        """Generate all dates for this recurring unavailability pattern"""
+        if not self.is_recurring or not self.recurring_end_date:
+            return [self.date]
+        
+        dates = [self.date]
+        current_date = self.date
+        
+        while current_date < self.recurring_end_date:
+            if self.recurring_pattern == RecurringPattern.DAILY:
+                current_date = current_date + timedelta(days=self.recurring_interval)
+            elif self.recurring_pattern == RecurringPattern.WEEKLY:
+                current_date = current_date + timedelta(weeks=self.recurring_interval)
+            elif self.recurring_pattern == RecurringPattern.MONTHLY:
+                # Simple monthly increment (doesn't handle month-end edge cases)
+                year = current_date.year
+                month = current_date.month + self.recurring_interval
+                if month > 12:
+                    year += 1
+                    month -= 12
+                try:
+                    current_date = current_date.replace(year=year, month=month)
+                except ValueError:
+                    # Handle month-end edge cases
+                    current_date = current_date.replace(year=year, month=month, day=1) - timedelta(days=1)
+            
+            if current_date <= self.recurring_end_date:
+                dates.append(current_date)
+        
+        return dates
 
 class Assignment(db.Model):
     id = db.Column(db.Integer, primary_key=True)

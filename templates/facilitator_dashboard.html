@@ -12,7 +12,7 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='facilitator.css') }}">
-  <script src="global.js" defer></script>
+  <script src="{{ url_for('static', filename='js/facilitator.js') }}" defer></script>
 </head>
 <body>
 <header class="site-header">
@@ -22,7 +22,10 @@
             <h1>Facilitator Portal</h1>
         </div>
         <nav class="user-nav">
-            <span class="material-icons notification-icon" aria-hidden="true">notifications</span>
+            <div class="notification-wrapper">
+                <span class="material-icons notification-icon" aria-hidden="true" id="bell-icon">notifications</span>
+                <span class="notification-badge" id="header-notification-badge">3</span>
+            </div>
             <div class="user-info">
                 <span class="material-icons profile-icon" aria-hidden="true">account_circle</span>
                 <span class="user-name">facilitator Test</span>
@@ -41,29 +44,6 @@
     </div>
 </header>
 
-<section id="navigation" class="main-content-wrapper">
-    <nav class="dashboard-nav">
-        <a href="#dashboard" class="dashboard-nav-item active">
-            <span class="material-icons" aria-hidden="true">dashboard</span>
-            <span>Dashboard</span>
-        </a>
-        <a href="#availability" class="dashboard-nav-item">
-            <span class="material-icons" aria-hidden="true">event_available</span>
-            <span>Availability</span>
-        </a>
-        <a href="#schedule" class="dashboard-nav-item">
-            <span class="material-icons" aria-hidden="true">calendar_today</span>
-            <span>My Schedule</span>
-        </a>
-        <a href="#notifications" class="dashboard-nav-item notification">
-            <span class="material-icons" aria-hidden="true">notifications</span>
-            <span>Notifications</span>
-            <span class="notification-badge">3</span>
-        </a>
-    </nav>
-</section>
-
-
 <section id="welcome" class="main-content-wrapper">
   <div class="welcome-banner">
     <div class="welcome-text">
@@ -76,11 +56,266 @@
     </div>
   </div>
 </section>
-<section id="alert" class="main-content-wrapper">
+
+<section id="navigation" class="main-content-wrapper">
+    <nav class="dashboard-nav">
+        <a href="#dashboard" class="dashboard-nav-item active" id="dashboard-nav">
+            <span class="material-icons" aria-hidden="true">dashboard</span>
+            <span>Dashboard</span>
+        </a>
+        <a href="#unavailability" class="dashboard-nav-item" id="unavailability-nav">
+            <span class="material-icons" aria-hidden="true">event_busy</span>
+            <span>Unavailability</span>
+        </a>
+        <a href="#schedule" class="dashboard-nav-item" id="schedule-nav">
+            <span class="material-icons" aria-hidden="true">calendar_today</span>
+            <span>My Schedule</span>
+        </a>
+    </nav>
+</section>
+
+<!-- Notification Popup Modal -->
+<div id="notification-popup" class="notification-popup">
+    <div class="notification-popup-content">
+        <div class="notification-popup-header">
+            <button id="popup-close" class="popup-close-btn" aria-label="Close notifications">
+                <span class="material-icons">close</span>
+            </button>
+            <div class="popup-header-row">
+                <h3>Notifications <span class="notification-count">3</span></h3>
+            </div>
+            <div class="popup-subheader-row">
+                <p>View all your notifications and important updates.</p>
+                <div class="notification-popup-actions">
+                    <button id="popup-mark-all-read" class="notification-action-btn">
+                        <span class="material-icons">done_all</span>
+                        Mark All Read
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="notification-popup-filters">
+            <button class="popup-filter-btn active" data-filter="all">All 6</button>
+            <button class="popup-filter-btn" data-filter="unread">Unread 3</button>
+            <button class="popup-filter-btn" data-filter="action">Action Required 3</button>
+        </div>
+        
+        <div class="notification-popup-list" id="popup-notifications-list">
+            <!-- Shift Notifications -->
+            <div class="popup-notification-item unread" data-type="shifts">
+                <div class="popup-notification-icon shift">
+                    <span class="material-icons">schedule</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>New Shift Allocated</h4>
+                        <span class="popup-notification-time">5 minutes ago</span>
+                    </div>
+                    <p class="popup-notification-message">You have been assigned to Lab Session CITS3200 on Friday, August 25, 2025 from 2:00 PM - 6:00 PM in Building 314, Room 105.</p>
+                    <div class="popup-notification-actions-inline">
+                        <button class="popup-action-btn accept">
+                            <span class="material-icons">check</span>
+                            Accept
+                        </button>
+                        <button class="popup-action-btn decline">
+                            <span class="material-icons">close</span>
+                            Decline
+                        </button>
+                    </div>
+                </div>
+                <div class="popup-notification-status unread-indicator"></div>
+            </div>
+
+            <div class="popup-notification-item unread" data-type="updates">
+                <div class="popup-notification-icon update">
+                    <span class="material-icons">info</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>Class Information Updated</h4>
+                        <span class="popup-notification-time">2 hours ago</span>
+                    </div>
+                    <p class="popup-notification-message">CITS3200 Software Engineering Project - Location changed from Building 314 Room 105 to Building 314 Room 208. Session time remains 2:00 PM - 6:00 PM.</p>
+                    <div class="popup-notification-meta">
+                        <span class="popup-tag update">Location Change</span>
+                    </div>
+                </div>
+                <div class="popup-notification-status unread-indicator"></div>
+            </div>
+
+            <div class="popup-notification-item" data-type="shifts">
+                <div class="popup-notification-icon shift">
+                    <span class="material-icons">event_available</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>Shift Confirmed</h4>
+                        <span class="popup-notification-time">1 day ago</span>
+                    </div>
+                    <p class="popup-notification-message">Your shift for CITS1001 Object-Oriented Programming on Thursday, August 24, 2025 from 9:00 AM - 1:00 PM has been confirmed.</p>
+                    <div class="popup-notification-meta">
+                        <span class="popup-tag confirmed">Confirmed</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="popup-notification-item unread" data-type="alerts">
+                <div class="popup-notification-icon alert">
+                    <span class="material-icons">warning</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>Availability Update Required</h4>
+                        <span class="popup-notification-time">3 days ago</span>
+                    </div>
+                    <p class="popup-notification-message">Your availability hasn't been updated in 2 weeks. Please update your available times to ensure optimal shift assignments.</p>
+                    <div class="popup-notification-actions-inline">
+                        <button class="popup-action-btn primary">
+                            <span class="material-icons">edit_calendar</span>
+                            Update Now
+                        </button>
+                    </div>
+                </div>
+                <div class="popup-notification-status unread-indicator"></div>
+            </div>
+
+            <div class="popup-notification-item" data-type="updates">
+                <div class="popup-notification-icon update">
+                    <span class="material-icons">schedule_send</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>Session Time Changed</h4>
+                        <span class="popup-notification-time">1 week ago</span>
+                    </div>
+                    <p class="popup-notification-message">CITS2200 Data Structures session time updated from 10:00 AM - 2:00 PM to 11:00 AM - 3:00 PM for Wednesday, August 30, 2025.</p>
+                    <div class="popup-notification-meta">
+                        <span class="popup-tag update">Time Change</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="popup-notification-item" data-type="shifts">
+                <div class="popup-notification-icon shift">
+                    <span class="material-icons">assignment_turned_in</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>Shift Completed</h4>
+                        <span class="popup-notification-time">1 week ago</span>
+                    </div>
+                    <p class="popup-notification-message">Your shift for CITS1402 Relational Database Management Systems on August 15, 2025 has been marked as completed. Thank you for your service!</p>
+                    <div class="popup-notification-meta">
+                        <span class="popup-tag completed">Completed</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Overlay for popup -->
+<div id="popup-overlay" class="popup-overlay"></div>
+
+<!-- Unit Selector Section -->
+<section id="unit-selector" class="main-content-wrapper">
+    <div class="unit-selector-container">
+        <!-- Left Side: Current Unit Information -->
+        <div class="unit-info-section">
+            <div class="unit-main-info">
+                <h2 class="unit-code">{{ current_unit.unit_code if current_unit else 'No Unit' }}</h2>
+                <h3 class="unit-name">{{ current_unit.unit_name if current_unit else 'No Unit Selected' }}</h3>
+            </div>
+            <div class="unit-details">
+                <div class="unit-badges">
+                    <span class="semester-badge">{{ current_unit.semester if current_unit else 'No Semester' }}</span>
+                    <span class="status-badge active">
+                        <span class="material-icons">check_circle</span>
+                        Active
+                    </span>
+                </div>
+                <div class="session-info">
+                    <span class="material-icons">calendar_today</span>
+                    <span>{{ units_data|selectattr('id', 'equalto', current_unit.id)|map(attribute='sessions')|first if current_unit else 0 }} sessions</span>
+                    <span class="date-range">
+                        {% if current_unit and current_unit.start_date and current_unit.end_date %}
+                            {{ current_unit.start_date.strftime('%d/%m/%Y') }} - {{ current_unit.end_date.strftime('%d/%m/%Y') }}
+                        {% else %}No date range{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Side: Control Buttons -->
+        <div class="unit-controls-section">
+            <button class="control-btn all-units-btn">
+                <span class="material-icons">list</span>
+                All Units
+            </button>
+            <div class="unit-dropdown-wrapper">
+                <button class="control-btn switch-unit-btn" id="switch-unit-trigger">
+                    Switch Unit
+                    <span class="material-icons dropdown-arrow">keyboard_arrow_down</span>
+                </button>
+                <div class="dropdown-menu" id="unit-dropdown-menu" style="display: none;">
+                    <!-- Active Units Group -->
+                    {% set active_units = units_data|selectattr('status', 'equalto', 'active')|list %}
+                    {% if active_units %}
+                    <div class="dropdown-group">
+                        <div class="group-header">
+                            <span class="group-title">Active Units</span>
+                            <span class="group-count">({{ active_units|length }})</span>
+                        </div>
+                        <div class="group-items">
+                            {% for unit in active_units %}
+                            <div class="unit-item" data-unit-id="{{ unit.id }}">
+                                <div class="unit-item-info">
+                                    <span class="unit-item-code">{{ unit.code }}</span>
+                                    <span class="unit-item-name">{{ unit.name }}</span>
+                                </div>
+                                <span class="unit-item-badge active">Active</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Past Units Group -->
+                    {% set past_units = units_data|selectattr('status', 'equalto', 'completed')|list %}
+                    {% if past_units %}
+                    <div class="dropdown-group">
+                        <div class="group-header">
+                            <span class="group-title">Past Units</span>
+                            <span class="group-count">({{ past_units|length }})</span>
+                        </div>
+                        <div class="group-items">
+                            {% for unit in past_units %}
+                            <div class="unit-item" data-unit-id="{{ unit.id }}">
+                                <div class="unit-item-info">
+                                    <span class="unit-item-code">{{ unit.code }}</span>
+                                    <span class="unit-item-name">{{ unit.name }}</span>
+                                </div>
+                                <span class="unit-item-badge completed">
+                                    <span class="material-icons">check_circle</span>
+                                    Completed
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="unavailability-alert" class="main-content-wrapper">
     <div class="alert-bar">
         <div class="alert-content">
             <span class="material-icons" aria-hidden="true">warning</span>
-            <p><strong>Availability Update Needed!</strong> Your availability was last updated 2 weeks ago. Please update it to receive better session assignments.</p>
+            <p><strong>Unavailability Update!</strong> Ensure your unavailabilities is up to date across all units.</p>
         </div>
         <a href="#" class="alert-button" id="update-now-btn">
             <span>Update Now</span>
@@ -90,38 +325,52 @@
 </section>
 <section id="stats" class="main-content-wrapper">
     <div class="stats-grid">
-        <div class="stat-card purple">
-            <div class="stat-header">
-                <h4>This Week Hours</h4>
-                <span class="material-icons" aria-hidden="true">schedule</span>
+        {% if current_unit %}
+            {% set current_unit_data = units_data|selectattr('id', 'equalto', current_unit.id)|first %}
+            {% if current_unit_data %}
+                <div class="stat-card purple">
+                    <div class="stat-header">
+                        <h4>This Week Hours</h4>
+                        <span class="material-icons" aria-hidden="true">schedule</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.this_week_hours }}</p>
+                    <p class="stat-subtext">{{ current_unit_data.kpis.active_sessions }} sessions</p>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-header">
+                        <h4>Remaining Hours</h4>
+                        <span class="material-icons" aria-hidden="true">pending_actions</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.remaining_hours }}</p>
+                    <p class="stat-subtext">Total - this week</p>
+                </div>
+                <div class="stat-card gray">
+                    <div class="stat-header">
+                        <h4>Total Hours</h4>
+                        <span class="material-icons" aria-hidden="true">calendar_today</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.total_hours }}</p>
+                    <p class="stat-subtext">For this unit</p>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-header">
+                        <h4>Active Sessions</h4>
+                        <span class="material-icons" aria-hidden="true">event_available</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.active_sessions }}</p>
+                    <p class="stat-subtext">This week</p>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="stat-card purple">
+                <div class="stat-header">
+                    <h4>No Unit Selected</h4>
+                    <span class="material-icons" aria-hidden="true">schedule</span>
+                </div>
+                <p class="stat-value">0</p>
+                <p class="stat-subtext">Select a unit to view stats</p>
             </div>
-            <p class="stat-value">32</p>
-            <p class="stat-subtext">4 sessions</p>
-        </div>
-        <div class="stat-card blue">
-            <div class="stat-header">
-                <h4>Pending Approvals</h4>
-                <span class="material-icons" aria-hidden="true">pending_actions</span>
-            </div>
-            <p class="stat-value">1</p>
-            <p class="stat-subtext">Needs response</p>
-        </div>
-        <div class="stat-card gray">
-            <div class="stat-header">
-                <h4>Total Hours (Month)</h4>
-                <span class="material-icons" aria-hidden="true">calendar_today</span>
-            </div>
-            <p class="stat-value">156</p>
-            <p class="stat-subtext">This month</p>
-        </div>
-        <div class="stat-card green">
-            <div class="stat-header">
-                <h4>Available Days</h4>
-                <span class="material-icons" aria-hidden="true">event_available</span>
-            </div>
-            <p class="stat-value" id="available-days-count">4</p>
-            <p class="stat-subtext">Per week</p>
-        </div>
+        {% endif %}
     </div>
 </section>
 <section id="details" class="main-content-wrapper">
@@ -132,151 +381,190 @@
                 <a href="#" class="view-all-link">View All</a>
             </div>
             <div class="session-list">
-                <div class="session-item">
-                    <div class="session-info">
-                        <div class="session-title">
-                            <h4>Today</h4>
-                            <span class="tag confirmed">confirmed</span>
+                {% if current_unit %}
+                    {% set current_unit_data = units_data|selectattr('id', 'equalto', current_unit.id)|first %}
+                    {% if current_unit_data and current_unit_data.upcoming_sessions %}
+                        {% for session in current_unit_data.upcoming_sessions[:3] %}
+                        <div class="session-item">
+                            <div class="session-info">
+                                <div class="session-title">
+                                    <div>
+                                        <h4>{{ session.topic }}</h4>
+                                        <p class="session-full-date">{{ session.date }}</p>
+                                    </div>
+                                    <span class="tag {{ session.status }}">{{ session.status }}</span>
+                                </div>
+                                <p class="session-time">{{ session.time }}</p>
+                                <p class="session-location">{{ session.location }}</p>
+                            </div>
+                            {% if session.status == 'pending' %}
+                            <div class="session-actions">
+                                <button class="action-btn accept">
+                                    <span class="material-icons">check</span>
+                                    Accept
+                                </button>
+                                <button class="action-btn decline">Decline</button>
+                            </div>
+                            {% endif %}
                         </div>
-                        <p class="session-time">8:00 AM - 4:00 PM</p>
-                        <p class="session-location">Main Store</p>
-                    </div>
-                </div>
-                <div class="session-item">
-                    <div class="session-info">
-                        <div class="session-title">
-                            <h4>Tomorrow</h4>
-                            <span class="tag pending">pending</span>
+                        {% endfor %}
+                        {% if current_unit_data.upcoming_sessions|length > 3 %}
+                        <div class="more-sessions-message">
+                            <p>{{ current_unit_data.upcoming_sessions|length - 3 }} more session{{ 's' if current_unit_data.upcoming_sessions|length - 3 > 1 else '' }} available. Click "View All" to see all sessions.</p>
                         </div>
-                        <p class="session-time">8:00 AM - 4:00 PM</p>
+                        {% endif %}
+                    {% else %}
+                    <div class="no-sessions">
+                        <span class="material-icons">event_available</span>
+                        <p>No upcoming sessions for this unit.</p>
                     </div>
-                    <div class="session-actions">
-                        <a href="#" class="action-btn accept">
-                            <img src="images/2_111.svg" alt=""> Accept
-                        </a>
-                        <a href="#" class="action-btn decline">Decline</a>
-                    </div>
+                    {% endif %}
+                {% else %}
+                <div class="no-sessions">
+                    <span class="material-icons">event_available</span>
+                    <p>Select a unit to view sessions.</p>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </section>
-<!-- Availability View  -->
-<section id="availability-view" class="main-content-wrapper" style="display: none;">
-  <div class="availability-container">
-    <div class="availability-header">
+<!-- Unavailability View -->
+<section id="unavailability-view" class="main-content-wrapper" style="display: none;">
+  <div class="unavailability-container">
+    <div class="unavailability-header">
       <div>
-        <h2>My Availability</h2>
-        <p class="availability-subtitle">Set your available days and hours for scheduling</p>
+        <h2>My Unavailability</h2>
+        <p class="unavailability-subtitle">Set your unavailable days and times for <span id="unit-date-range-display">
+          {% if current_unit and current_unit.start_date and current_unit.end_date %}
+            {{ current_unit.start_date.strftime('%d/%m/%Y') }} - {{ current_unit.end_date.strftime('%d/%m/%Y') }}
+          {% else %}No date range{% endif %}
+        </span></p>
+      </div>
+      <div class="unavailability-actions">
+        <button id="refresh-unavailability" class="action-btn">
+          <span class="material-icons">refresh</span>
+          Refresh
+        </button>
       </div>
     </div>
     
-    <div class="availability-days">
-      <div class="day-row">
-        <div class="day-toggle">
-          <label class="toggle-switch">
-            <input type="checkbox" class="day-checkbox" data-day="monday" checked>
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="day-label">Monday</span>
+    <div class="unavailability-content">
+      <div class="unavailability-calendar-section">
+        <div class="calendar-header">
+          <button id="prev-month-unavailability" class="calendar-btn">
+            <span class="material-icons">chevron_left</span>
+          </button>
+          <h3 id="current-month-unavailability">Current Month</h3>
+          <button id="next-month-unavailability" class="calendar-btn">
+            <span class="material-icons">chevron_right</span>
+          </button>
         </div>
-        <div class="time-inputs">
-          <input type="time" class="time-input" value="08:00">
-          <span class="time-separator">to</span>
-          <input type="time" class="time-input" value="18:00">
-        </div>
-      </div>
-
-      <div class="day-row">
-        <div class="day-toggle">
-          <label class="toggle-switch">
-            <input type="checkbox" class="day-checkbox" data-day="tuesday" checked>
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="day-label">Tuesday</span>
-        </div>
-        <div class="time-inputs">
-          <input type="time" class="time-input" value="08:00">
-          <span class="time-separator">to</span>
-          <input type="time" class="time-input" value="18:00">
+        
+        <div class="calendar-grid">
+          <div class="calendar-weekdays">
+            <div class="weekday">Sun</div>
+            <div class="weekday">Mon</div>
+            <div class="weekday">Tue</div>
+            <div class="weekday">Wed</div>
+            <div class="weekday">Thu</div>
+            <div class="weekday">Fri</div>
+            <div class="weekday">Sat</div>
+          </div>
+          
+          <div class="calendar-days" id="unavailability-calendar-days">
+            <!-- Calendar days will be generated by JavaScript -->
+          </div>
         </div>
       </div>
-
-      <div class="day-row">
-        <div class="day-toggle">
-          <label class="toggle-switch">
-            <input type="checkbox" class="day-checkbox" data-day="wednesday">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="day-label">Wednesday</span>
-        </div>
-        <div class="time-inputs disabled">
-          <span class="not-available">Not available</span>
+      
+      <div class="unavailability-summary-section">
+        <div class="recent-unavailability-card">
+          <h3>Recent Unavailability</h3>
+          <div id="recent-unavailability-list">
+            <!-- Recent unavailability will be populated by JavaScript -->
+          </div>
         </div>
       </div>
-
-      <div class="day-row">
-        <div class="day-toggle">
-          <label class="toggle-switch">
-            <input type="checkbox" class="day-checkbox" data-day="thursday" checked>
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="day-label">Thursday</span>
-        </div>
-        <div class="time-inputs">
-          <input type="time" class="time-input" value="08:00">
-          <span class="time-separator">to</span>
-          <input type="time" class="time-input" value="18:00">
-        </div>
-      </div>
-
-      <div class="day-row">
-        <div class="day-toggle">
-          <label class="toggle-switch">
-            <input type="checkbox" class="day-checkbox" data-day="friday" checked>
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="day-label">Friday</span>
-        </div>
-        <div class="time-inputs">
-          <input type="time" class="time-input" value="08:00">
-          <span class="time-separator">to</span>
-          <input type="time" class="time-input" value="16:00">
-        </div>
-      </div>
-
-      <div class="day-row">
-        <div class="day-toggle">
-          <label class="toggle-switch">
-            <input type="checkbox" class="day-checkbox" data-day="saturday">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="day-label">Saturday</span>
-        </div>
-        <div class="time-inputs disabled">
-          <span class="not-available">Not available</span>
-        </div>
-      </div>
-
-      <div class="day-row">
-        <div class="day-toggle">
-          <label class="toggle-switch">
-            <input type="checkbox" class="day-checkbox" data-day="sunday">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="day-label">Sunday</span>
-        </div>
-        <div class="time-inputs disabled">
-          <span class="not-available">Not available</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="availability-footer">
-      <button class="update-btn">Update Availability</button>
     </div>
   </div>
 </section>
+
+<!-- Unavailability Modal -->
+<div id="unavailability-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Set Unavailability</h2>
+      <button id="unavailability-modal-close" class="modal-close-btn">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p id="modal-date-subtitle" class="modal-subtitle">Select your unavailable times</p>
+      
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="full-day-toggle">
+          <span class="checkbox-custom"></span>
+          Full day unavailability
+        </label>
+      </div>
+      
+      <div id="time-ranges-container" class="time-ranges-container">
+        <div class="no-time-ranges">
+          <span class="material-icons">schedule</span>
+          <p>No specific time ranges set. Click 'Add Time Range' to specify unavailable hours</p>
+        </div>
+      </div>
+      
+      <button id="add-time-range" class="action-btn">
+        <span class="material-icons">add</span>
+        Add Time Range
+      </button>
+      
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="recurring-toggle">
+          <span class="checkbox-custom"></span>
+          Recurring unavailability
+        </label>
+      </div>
+      
+      <div id="recurring-options" class="recurring-options" style="display: none;">
+        <div class="form-group">
+          <label for="repeat-every">Repeat every</label>
+          <select id="repeat-every">
+            <option value="weekly">Week</option>
+            <option value="monthly">Month</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        
+        <div id="custom-recurrence" class="custom-recurrence" style="display: none;">
+          <div class="form-group">
+            <label for="custom-interval">Every</label>
+            <input type="number" id="custom-interval" min="1" max="52" value="1">
+            <span>weeks</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="until-date">Until</label>
+          <input type="date" id="until-date">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="unavailability-reason">Reason (optional)</label>
+        <textarea id="unavailability-reason" rows="3" placeholder="Enter reason for unavailability..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="cancel-unavailability" class="btn-secondary">Cancel</button>
+      <button id="save-unavailability" class="btn-primary">Save Unavailability</button>
+    </div>
+  </div>
+</div>
 
 <!-- Calendar View -->
 <section id="calendar-view" class="main-content-wrapper" style="display: none;">
@@ -326,564 +614,31 @@
   </div>
 </section>
 
-<!-- Notifications View  -->
-<section id="notifications-view" class="main-content-wrapper" style="display: none;">
-  <div class="notifications-container">
-    <div class="notifications-header">
-      <h2>Notifications</h2>
-      <div class="notification-actions">
-        <button id="mark-all-read" class="notification-action-btn">
-          <span class="material-icons">done_all</span>
-          Mark All Read
-        </button>
-        <button id="clear-all" class="notification-action-btn secondary">
-          <span class="material-icons">clear_all</span>
-          Clear All
-        </button>
-      </div>
-    </div>
-    
-    <div class="notification-filters">
-      <button class="filter-btn active" data-filter="all">All</button>
-      <button class="filter-btn" data-filter="shifts">Shifts</button>
-      <button class="filter-btn" data-filter="updates">Updates</button>
-      <button class="filter-btn" data-filter="alerts">Alerts</button>
-    </div>
-    
-    <div class="notifications-list" id="notifications-list">
-      
-      <!-- Shift Notifications -->
-      <div class="notification-item unread" data-type="shifts">
-        <div class="notification-icon shift">
-          <span class="material-icons">schedule</span>
-        </div>
-        <div class="notification-content">
-          <div class="notification-header">
-            <h4>New Shift Allocated</h4>
-            <span class="notification-time">5 minutes ago</span>
-          </div>
-          <p class="notification-message">You have been assigned to Lab Session CITS3200 on Friday, August 25, 2025 from 2:00 PM - 6:00 PM in Building 314, Room 105.</p>
-          <div class="notification-actions-inline">
-            <button class="action-btn accept">
-              <span class="material-icons">check</span>
-              Accept
-            </button>
-            <button class="action-btn decline">
+<!-- Sessions Modal -->
+<div id="sessions-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">All Sessions</h2>
+            <button id="modal-close-btn" class="modal-close-btn">
               <span class="material-icons">close</span>
-              Decline
             </button>
-          </div>
         </div>
-        <div class="notification-status unread-indicator"></div>
-      </div>
-
-      <div class="notification-item unread" data-type="updates">
-        <div class="notification-icon update">
-          <span class="material-icons">info</span>
-        </div>
-        <div class="notification-content">
-          <div class="notification-header">
-            <h4>Class Information Updated</h4>
-            <span class="notification-time">2 hours ago</span>
-          </div>
-          <p class="notification-message">CITS3200 Software Engineering Project - Location changed from Building 314 Room 105 to Building 314 Room 208. Session time remains 2:00 PM - 6:00 PM.</p>
-          <div class="notification-meta">
-            <span class="tag update">Location Change</span>
-          </div>
-        </div>
-        <div class="notification-status unread-indicator"></div>
-      </div>
-
-      <div class="notification-item" data-type="shifts">
-        <div class="notification-icon shift">
-          <span class="material-icons">event_available</span>
-        </div>
-        <div class="notification-content">
-          <div class="notification-header">
-            <h4>Shift Confirmed</h4>
-            <span class="notification-time">1 day ago</span>
-          </div>
-          <p class="notification-message">Your shift for CITS1001 Object-Oriented Programming on Thursday, August 24, 2025 from 9:00 AM - 1:00 PM has been confirmed.</p>
-          <div class="notification-meta">
-            <span class="tag confirmed">Confirmed</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="notification-item unread" data-type="alerts">
-        <div class="notification-icon alert">
-          <span class="material-icons">warning</span>
-        </div>
-        <div class="notification-content">
-          <div class="notification-header">
-            <h4>Availability Update Required</h4>
-            <span class="notification-time">3 days ago</span>
-          </div>
-          <p class="notification-message">Your availability hasn't been updated in 2 weeks. Please update your available times to ensure optimal shift assignments.</p>
-          <div class="notification-actions-inline">
-            <button class="action-btn primary">
-              <span class="material-icons">edit_calendar</span>
-              Update Now
-            </button>
-          </div>
-        </div>
-        <div class="notification-status unread-indicator"></div>
-      </div>
-
-      <div class="notification-item" data-type="updates">
-        <div class="notification-icon update">
-          <span class="material-icons">schedule_send</span>
-        </div>
-        <div class="notification-content">
-          <div class="notification-header">
-            <h4>Session Time Changed</h4>
-            <span class="notification-time">1 week ago</span>
-          </div>
-          <p class="notification-message">CITS2200 Data Structures session time updated from 10:00 AM - 2:00 PM to 11:00 AM - 3:00 PM for Wednesday, August 30, 2025.</p>
-          <div class="notification-meta">
-            <span class="tag update">Time Change</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="notification-item" data-type="shifts">
-        <div class="notification-icon shift">
-          <span class="material-icons">assignment_turned_in</span>
-        </div>
-        <div class="notification-content">
-          <div class="notification-header">
-            <h4>Shift Completed</h4>
-            <span class="notification-time">1 week ago</span>
-          </div>
-          <p class="notification-message">Your shift for CITS1402 Relational Database Management Systems on August 15, 2025 has been marked as completed. Thank you for your service!</p>
-          <div class="notification-meta">
-            <span class="tag completed">Completed</span>
+        <div class="modal-body">
+            <p id="modal-subtitle" class="modal-subtitle"></p>
+            <div id="modal-sessions-list" class="modal-sessions-list">
+                <!-- Sessions will be populated here -->
           </div>
         </div>
       </div>
     </div>
-
-    <div class="notifications-empty" id="notifications-empty" style="display: none;">
-      <div class="empty-state">
-        <span class="material-icons">notifications_off</span>
-        <h3>No notifications</h3>
-        <p>You're all caught up! Check back later for updates.</p>
-      </div>
-    </div>
-  </div>
-</section>
 
 <script>
-  
-// Navigation between dashboard, calendar, and notifications
-document.addEventListener('DOMContentLoaded', function() {
-    const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
-    const calendarView = document.getElementById('calendar-view');
-    const notificationsView = document.getElementById('notifications-view');
-    const availabilityView = document.getElementById('availability-view');
-    const navItems = document.querySelectorAll('.dashboard-nav-item');
-    
-    // Navigation click handlers
-    navItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Update active state
-            navItems.forEach(nav => nav.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Show/hide sections
-            const href = this.getAttribute('href');
-
-            if (href === '#availability') {
-                // Show availability view
-                dashboardSections.forEach(section => section.style.display = 'none');
-                availabilityView.style.display = 'block';
-                calendarView.style.display = 'none';
-                notificationsView.style.display = 'none';
-            } else if (href === '#schedule') {
-                // Show calendar view
-                dashboardSections.forEach(section => section.style.display = 'none');
-                availabilityView.style.display = 'none';
-                calendarView.style.display = 'block';
-                notificationsView.style.display = 'none';
-                initCalendar();
-            } else if (href === '#notifications') {
-                // Show notifications view
-                dashboardSections.forEach(section => section.style.display = 'none');
-                availabilityView.style.display = 'none';
-                calendarView.style.display = 'none';
-                notificationsView.style.display = 'block';
-            } else {
-                // Show dashboard view
-                dashboardSections.forEach(section => section.style.display = 'block');
-                availabilityView.style.display = 'none';
-                calendarView.style.display = 'none';
-                notificationsView.style.display = 'none';
-            }
-        });
-    });
-
-    // Update greeting icon based on time of day
-    function updateGreetingIcon() {
-        const now = new Date();
-        const hour = now.getHours();
-        const iconElement = document.querySelector('.welcome-icon-wrapper .material-icons');
-        
-        if (iconElement) {
-            if (hour >= 5 && hour < 12) {
-                // Morning (5 AM - 11:59 AM)
-                iconElement.textContent = 'wb_sunny';
-            } else if (hour >= 12 && hour < 17) {
-                // Afternoon (12 PM - 4:59 PM)
-                iconElement.textContent = 'wb_sunny';
-            } else {
-                // Night (9 PM - 4:59 AM)
-                iconElement.textContent = 'nights_stay';
-            }
-        }
-    }
-
-    // Call the function when page loads
-    updateGreetingIcon();
-    updateAvailableDaysCounter();
-
-    // Calendar functionality
-    let currentDate = new Date();
-    const monthNames = ["January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"];
-    
-    function initCalendar() {
-        updateCalendarHeader();
-        generateCalendarDays();
-    }
-    
-    function updateCalendarHeader() {
-        const monthTitle = document.getElementById('current-month');
-        if (monthTitle) {
-            monthTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-        }
-    }
-    
-    function generateCalendarDays() {
-        const calendarDays = document.getElementById('calendar-days');
-        if (!calendarDays) return;
-        
-        calendarDays.innerHTML = '';
-        
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        
-        // First day of the month and how many days in month
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const daysInMonth = lastDay.getDate();
-        const startingDayOfWeek = firstDay.getDay();
-        
-        // Previous month's trailing days
-        const prevMonth = new Date(year, month, 0);
-        const daysInPrevMonth = prevMonth.getDate();
-        
-        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-            const dayElement = createDayElement(daysInPrevMonth - i, true);
-            calendarDays.appendChild(dayElement);
-        }
-        
-        // Current month days
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dayElement = createDayElement(day, false);
-            calendarDays.appendChild(dayElement);
-        }
-        
-        // Next month's leading days
-        const totalCells = calendarDays.children.length;
-        const remainingCells = 42 - totalCells; // 6 rows × 7 days
-        
-        for (let day = 1; day <= remainingCells; day++) {
-            const dayElement = createDayElement(day, true);
-            calendarDays.appendChild(dayElement);
-        }
-    }
-    
-    function createDayElement(dayNumber, isOtherMonth) {
-        const dayElement = document.createElement('div');
-        dayElement.className = 'calendar-day';
-        
-        if (isOtherMonth) {
-            dayElement.classList.add('other-month');
-        }
-        
-        // Check if it's today
-        const today = new Date();
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        
-        if (!isOtherMonth && 
-            dayNumber === today.getDate() && 
-            month === today.getMonth() && 
-            year === today.getFullYear()) {
-            dayElement.classList.add('today');
-        }
-        
-        dayElement.innerHTML = `
-            <div class="day-number">${dayNumber}</div>
-            <div class="day-events">
-                ${generateEvents(dayNumber, isOtherMonth)}
-            </div>
-        `;
-        
-        return dayElement;
-    }
-    
-    function generateEvents(dayNumber, isOtherMonth) {
-        if (isOtherMonth) return '';
-        
-        // Sample events (replace with real data)
-        const events = [];
-        
-        if (dayNumber === 22) { // Today
-            events.push('<div class="event confirmed">Lab Session 9-5</div>');
-        }
-        if (dayNumber === 23) { // Tomorrow
-            events.push('<div class="event pending">Lab Session 9-5</div>');
-        }
-        if (dayNumber === 25) {
-            events.push('<div class="event available">Available</div>');
-        }
-        if (dayNumber === 28) {
-            events.push('<div class="event confirmed">Lab Session 2-6</div>');
-        }
-        
-        return events.join('');
-    }
-    
-    // Month navigation
-    const prevMonthBtn = document.getElementById('prev-month');
-    const nextMonthBtn = document.getElementById('next-month');
-    
-    if (prevMonthBtn) {
-        prevMonthBtn.addEventListener('click', function() {
-            currentDate.setMonth(currentDate.getMonth() - 1);
-            updateCalendarHeader();
-            generateCalendarDays();
-        });
-    }
-    
-    if (nextMonthBtn) {
-        nextMonthBtn.addEventListener('click', function() {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            updateCalendarHeader();
-            generateCalendarDays();
-        });
-    }
-
-    // NOTIFICATIONS FUNCTIONALITY
-    // Notification filters
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const notificationItems = document.querySelectorAll('.notification-item');
-
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            // Update active filter
-            filterBtns.forEach(f => f.classList.remove('active'));
-            this.classList.add('active');
-            
-            const filter = this.getAttribute('data-filter');
-            
-            // Filter notifications
-            notificationItems.forEach(item => {
-                if (filter === 'all' || item.getAttribute('data-type') === filter) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
-    });
-
-    // Mark all as read
-    const markAllReadBtn = document.getElementById('mark-all-read');
-    if (markAllReadBtn) {
-        markAllReadBtn.addEventListener('click', function() {
-            const unreadItems = document.querySelectorAll('.notification-item.unread');
-            unreadItems.forEach(item => {
-                item.classList.remove('unread');
-            });
-            
-            // Remove notification badge completely
-            const badge = document.querySelector('.notification-badge');
-            if (badge) {
-                badge.remove();
-            }
-        });
-    }
-
-    // Clear all notifications
-    const clearAllBtn = document.getElementById('clear-all');
-    if (clearAllBtn) {
-        clearAllBtn.addEventListener('click', function() {
-            if (confirm('Are you sure you want to clear all notifications?')) {
-                const notificationsList = document.getElementById('notifications-list');
-                const emptyState = document.getElementById('notifications-empty');
-                
-                if (notificationsList) notificationsList.style.display = 'none';
-                if (emptyState) emptyState.style.display = 'block';
-                
-                // Update notification badge
-                const badge = document.querySelector('.notification-badge');
-                if (badge) {
-                    badge.remove();
-                }
-            }
-        });
-    }
-        
-    // Function to check if there are any unread notifications and update badge
-    function updateNotificationBadge() {
-        const unreadCount = document.querySelectorAll('.notification-item.unread').length;
-        const badge = document.querySelector('.notification-badge');
-        
-        if (unreadCount === 0 && badge) {
-            badge.remove();
-        } else if (badge) {
-            badge.textContent = unreadCount;
-        }
-    }
-
-    // GLOBAL CLICK HANDLER - Only one for all click events
-    document.addEventListener('click', function(e) {
-        // Handle notification accept/decline buttons
-        if (e.target.closest('.action-btn.accept')) {
-            const notification = e.target.closest('.notification-item');
-            notification.classList.remove('unread');
-            updateNotificationBadge();
-            alert('Shift accepted successfully!');
-        } else if (e.target.closest('.action-btn.decline')) {
-            const notification = e.target.closest('.notification-item');
-            notification.classList.remove('unread');
-            notification.style.display = 'none';
-            updateNotificationBadge();
-            alert('Shift declined.');
-        }
-        
-        // Handle update availability button
-        else if (e.target.classList.contains('update-btn')) {
-            // Collect all availability data
-            const availability = [];
-            document.querySelectorAll('.day-checkbox').forEach(checkbox => {
-                const dayRow = checkbox.closest('.day-row');
-                const dayName = checkbox.getAttribute('data-day');
-                const isAvailable = checkbox.checked;
-                
-                if (isAvailable) {
-                    const timeInputs = dayRow.querySelectorAll('.time-input');
-                    const startTime = timeInputs[0] ? timeInputs[0].value : '';
-                    const endTime = timeInputs[1] ? timeInputs[1].value : '';
-                    availability.push({
-                        day: dayName,
-                        available: true,
-                        startTime: startTime,
-                        endTime: endTime
-                    });
-                } else {
-                    availability.push({
-                        day: dayName,
-                        available: false
-                    });
-                }
-            });
-            
-            console.log('Saving availability:', availability);
-            alert('All up to date!');
-
-            // Update the alert box message and icon
-            const alertContent = document.querySelector('.alert-content p');
-            const alertIcon = document.querySelector('.alert-content .material-icons');
-
-            if (alertContent) {
-                alertContent.innerHTML = '<strong>All up to date!</strong> Your availability has been successfully updated.';
-            }
-
-            if (alertIcon) {
-                alertIcon.textContent = 'checklist';
-            }
-
-            // Change alert styling to success
-            const alertBar = document.querySelector('.alert-bar');
-            if (alertBar) {
-                alertBar.style.backgroundColor = '#d1fae5';
-                alertBar.style.borderColor = '#10b981';
-                alertBar.style.color = '#065f46';
-            }
-
-            // Hide the "Update Now" button
-            const updateBtn = document.getElementById('update-now-btn');
-            if (updateBtn) {
-                updateBtn.style.display = 'none';
-            }
-        }
-        
-        // Handle "Update Now" button in alert section
-        else if (e.target.closest('#update-now-btn')) {
-            e.preventDefault();
-            
-            // Remove active state from all nav items
-            navItems.forEach(nav => nav.classList.remove('active'));
-            
-            // Add active state to availability tab
-            const availabilityNavItem = document.querySelector('a[href="#availability"]');
-            if (availabilityNavItem) {
-                availabilityNavItem.classList.add('active');
-            }
-            
-            // Hide all sections and show availability
-            dashboardSections.forEach(section => section.style.display = 'none');
-            availabilityView.style.display = 'block';
-            calendarView.style.display = 'none';
-            notificationsView.style.display = 'none';
-        }
-    });
-
-    // AVAILABILITY TOGGLE FUNCTIONALITY
-    document.addEventListener('change', function(e) {
-        if (e.target.classList.contains('day-checkbox')) {
-            const dayRow = e.target.closest('.day-row');
-            const timeInputs = dayRow.querySelector('.time-inputs');
-            
-            if (e.target.checked) {
-                // Show time inputs when toggle is ON
-                timeInputs.classList.remove('disabled');
-                timeInputs.innerHTML = `
-                    <input type="time" class="time-input" value="08:00">
-                    <span class="time-separator">to</span>
-                    <input type="time" class="time-input" value="18:00">
-                `;
-            } else {
-                // Show "Not available" when toggle is OFF
-                timeInputs.classList.add('disabled');
-                timeInputs.innerHTML = '<span class="not-available">Not available</span>';
-            }
-
-            // Update available days counter
-            updateAvailableDaysCounter();
-        }
-    });
-
-
-    // Function to update the available days counter
-    function updateAvailableDaysCounter() {
-        const checkedDays = document.querySelectorAll('.day-checkbox:checked').length;
-        const availableDaysElement = document.getElementById('available-days-count');
-        
-        if (availableDaysElement) {
-            availableDaysElement.textContent = checkedDays;
-        }
-    }
-
-
-
-});
+    // Pass units data from backend to JavaScript
+    window.unitsData = {{ units_data|tojson }};
+    window.currentUnitId = {{ current_unit_dict.id if current_unit_dict else 'null' }};
+    window.currentUnit = {{ current_unit_dict|tojson if current_unit_dict else 'null' }};
 </script>
+
 </body>
 </html>
 
