@@ -2963,12 +2963,11 @@ function ensureActivityLogCard() {
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <!-- Table Header -->
         <div class="bg-green-50 px-6 py-3">
-          <div class="grid grid-cols-6 gap-4 text-xs font-semibold text-gray-700">
+          <div class="grid grid-cols-5 gap-4 text-xs font-semibold text-gray-700">
             <div>Name</div>
             <div>Status</div>
             <div>Date</div>
-            <div>Clock In</div>
-            <div>Clock Out</div>
+            <div>Assigned Hours</div>
             <div>Total Hours</div>
           </div>
         </div>
@@ -3008,7 +3007,7 @@ function handleAttendanceSearch(event) {
   
   if (!tableBody) return;
   
-  const rows = tableBody.querySelectorAll('.grid.grid-cols-6');
+  const rows = tableBody.querySelectorAll('.grid.grid-cols-5');
   
   rows.forEach(row => {
     // Search in name, status, and other visible text
@@ -3034,7 +3033,7 @@ function handlePdfExport() {
     return;
   }
   
-  const rows = tableBody.querySelectorAll('.grid.grid-cols-6');
+  const rows = tableBody.querySelectorAll('.grid.grid-cols-5');
   if (rows.length === 0) {
     alert('No attendance data to export');
     return;
@@ -3045,20 +3044,18 @@ function handlePdfExport() {
   rows.forEach(row => {
     if (row.style.display !== 'none') {
       const cells = row.querySelectorAll('div');
-      const name = cells[0]?.querySelector('.text-sm.font-medium.text-gray-900')?.textContent || '';
+      const name = cells[0]?.querySelector('.text-xs.font-medium.text-gray-900')?.textContent || '';
       const status = cells[1]?.querySelector('span')?.textContent || '';
       const date = cells[2]?.textContent || '';
-      const clockIn = cells[3]?.textContent || '';
-      const clockOut = cells[4]?.textContent || '';
-      const totalHours = cells[5]?.textContent || '';
+      const assignedHours = cells[3]?.textContent || '';
+      const totalHours = cells[4]?.textContent || '';
       
       tableRows += `
         <tr>
           <td style="padding: 8px; border: 1px solid #ddd;">${name}</td>
           <td style="padding: 8px; border: 1px solid #ddd;">${status}</td>
           <td style="padding: 8px; border: 1px solid #ddd;">${date}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${clockIn}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${clockOut}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${assignedHours}</td>
           <td style="padding: 8px; border: 1px solid #ddd;">${totalHours}</td>
         </tr>
       `;
@@ -3095,8 +3092,7 @@ function handlePdfExport() {
             <th>Name</th>
             <th>Status</th>
             <th>Date</th>
-            <th>Clock In</th>
-            <th>Clock Out</th>
+            <th>Assigned Hours</th>
             <th>Total Hours</th>
           </tr>
         </thead>
@@ -3172,12 +3168,11 @@ function renderActivityLog(facilitatorData = []) {
 
 function createFacilitatorRow(facilitator, index) {
   const row = document.createElement('div');
-  row.className = 'grid grid-cols-6 gap-4 px-6 py-3 hover:bg-gray-50';
+  row.className = 'grid grid-cols-5 gap-4 px-6 py-3 hover:bg-gray-50';
   
-  // Generate random attendance data for demo
-  const clockIn = generateRandomTime('08:00', '09:00');
-  const clockOut = generateRandomTime('16:00', '18:00');
-  const totalHours = calculateHours(clockIn, clockOut);
+  // Generate random assigned hours data for demo
+  const assignedHours = generateAssignedHours();
+  const totalHours = generateTotalHours();
   
   // Status options - more relevant to facilitators
   const statuses = [
@@ -3198,8 +3193,7 @@ function createFacilitatorRow(facilitator, index) {
       </span>
     </div>
     <div class="text-xs text-gray-600">${getCurrentDate()}</div>
-    <div class="text-xs text-gray-600">${clockIn}</div>
-    <div class="text-xs text-gray-600">${clockOut}</div>
+    <div class="text-xs text-gray-600">${assignedHours}</div>
     <div class="text-xs text-gray-600">${totalHours}</div>
   `;
   
@@ -3266,6 +3260,20 @@ function getOrdinalSuffix(day) {
     case 3: return 'rd';
     default: return 'th';
   }
+}
+
+function generateAssignedHours() {
+  // Generate realistic assigned hours (typically 6-8 hours for facilitators)
+  const hours = Math.floor(Math.random() * 3) + 6; // 6, 7, or 8 hours
+  const minutes = Math.floor(Math.random() * 60);
+  return `${hours}.${minutes.toString().padStart(2, '0')}`;
+}
+
+function generateTotalHours() {
+  // Generate total hours worked (usually slightly more than assigned)
+  const hours = Math.floor(Math.random() * 4) + 7; // 7, 8, 9, or 10 hours
+  const minutes = Math.floor(Math.random() * 60);
+  return `${hours}.${minutes.toString().padStart(2, '0')}`;
 }
 
 window.__facilitatorData = [];
