@@ -926,6 +926,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     `;
                 }
+                
+                // Also check if there are completed sessions for active units
+                if (unit.pastSessions && unit.pastSessions.length > 0) {
+                    sessionsHTML += `
+                        <div class="more-sessions-message">
+                            <p>+${unit.pastSessions.length} more session${unit.pastSessions.length > 1 ? 's' : ''} that are completed in ${unit.code}. Click "View All" to see all sessions.</p>
+                        </div>
+                    `;
+                }
             } else {
                 // No upcoming sessions for active unit
                 sessionsHTML += `
