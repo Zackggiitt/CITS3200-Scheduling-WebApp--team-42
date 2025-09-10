@@ -2691,41 +2691,9 @@ function updateTodaysSessions(sessions) {
         `;
       }).join('')}
       
-      ${sessions.length >= 1 ? `
-        <div class="w-[40px] h-[45px] flex-shrink-0 flex items-center justify-center">
-          <button class="scroll-button w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors" title="Scroll to see more sessions">
-            <span class="material-icons text-sm">chevron_right</span>
-          </button>
-        </div>
-      ` : ''}
     </div>
   `;
   
-  console.log('Scroll button should be visible:', sessions.length >= 2);
-  
-  const scrollButton = container.querySelector('button');
-  const scrollContainer = container.querySelector('.today-sessions-scroll');
-  
-  console.log('Scroll button found:', !!scrollButton);
-  console.log('Scroll container found:', !!scrollContainer);
-  
-  if (scrollButton && scrollContainer) {
-    // Add scroll event listener to show/hide scroll button based on scroll position
-    const updateScrollButton = () => {
-      const isAtEnd = scrollContainer.scrollLeft >= (scrollContainer.scrollWidth - scrollContainer.clientWidth - 10);
-      scrollButton.style.opacity = isAtEnd ? '0.5' : '1';
-      scrollButton.disabled = isAtEnd;
-    };
-    
-    scrollContainer.addEventListener('scroll', updateScrollButton);
-    
-    scrollButton.addEventListener('click', () => {
-      scrollContainer.scrollBy({ left: 300, behavior: 'smooth' });
-    });
-    
-    // Initial check
-    updateScrollButton();
-  }
 }
 function loadScriptOnce(src) {
   return new Promise((resolve, reject) => {
@@ -2856,6 +2824,31 @@ async function loadRealSessionsData() {
     updateTodaysSessions(data.today_sessions);
     updateUpcomingSessions(data.upcoming_sessions);
     updateMiniCalendar({ weekTotal: data.week_session_count, days: {} });
+    
+    console.log('=== INITIAL DATA LOAD ===');
+    console.log('Today sessions:', data.today_sessions);
+    console.log('Upcoming sessions:', data.upcoming_sessions);
+    console.log('Facilitator counts data:', data.facilitator_counts);
+    
+    // Log each upcoming session in detail
+    if (data.upcoming_sessions && data.upcoming_sessions.length > 0) {
+      console.log('=== DETAILED UPCOMING SESSIONS ===');
+      data.upcoming_sessions.forEach((session, index) => {
+        console.log(`Session ${index}:`, {
+          id: session.id,
+          name: session.name,
+          date: session.date,
+          time: session.time,
+          location: session.location,
+          status: session.status,
+          facilitators: session.facilitators
+        });
+      });
+      console.log('=== END DETAILED UPCOMING SESSIONS ===');
+    }
+    
+    console.log('=== END INITIAL DATA LOAD ===');
+    
     renderActivityLog(data.facilitator_counts);
     
     // Update week session count
@@ -2901,7 +2894,15 @@ function showSampleSessionsData() {
     { name: "John Smith", session_count: 5 },
     { name: "Sarah Johnson", session_count: 3 },
     { name: "Mike Davis", session_count: 7 },
-    { name: "Lisa Wilson", session_count: 4 }
+    { name: "Lisa Wilson", session_count: 4 },
+    { name: "Alex Chen", session_count: 6 },
+    { name: "Emma Rodriguez", session_count: 4 },
+    { name: "David Kim", session_count: 8 },
+    { name: "Maria Garcia", session_count: 5 },
+    { name: "James Wilson", session_count: 7 },
+    { name: "Sophie Brown", session_count: 3 },
+    { name: "Ryan Taylor", session_count: 6 },
+    { name: "Olivia Martinez", session_count: 4 }
   ];
   renderActivityLog(sampleFacilitators);
 }
@@ -2941,6 +2942,7 @@ function ensureActivityLogCard() {
         <div>
           <h2 class="text-lg font-bold text-gray-900 mb-1">Employee Attendance</h2>
           <p class="text-gray-500 text-xs">Complete Overview</p>
+          <p class="text-gray-400 text-xs mt-1">Week of ${getCurrentWeek()}</p>
         </div>
         
         <!-- Controls -->
@@ -2962,7 +2964,7 @@ function ensureActivityLogCard() {
       <!-- Attendance Table -->
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <!-- Table Header -->
-        <div class="bg-green-50 px-6 py-3">
+        <div class="bg-green-50 px-6 py-3 sticky top-0 z-10">
           <div class="grid grid-cols-5 gap-4 text-xs font-semibold text-gray-700">
             <div>Name</div>
             <div>Status</div>
@@ -2972,8 +2974,8 @@ function ensureActivityLogCard() {
           </div>
         </div>
 
-        <!-- Table Body -->
-        <div class="divide-y divide-gray-100">
+        <!-- Scrollable Table Body -->
+        <div class="max-h-80 overflow-y-auto divide-y divide-gray-100">
           <!-- Rows will be populated dynamically -->
         </div>
       </div>
@@ -3003,7 +3005,7 @@ function initializeAttendanceFeatures() {
 
 function handleAttendanceSearch(event) {
   const searchTerm = event.target.value.toLowerCase();
-  const tableBody = document.querySelector('#activityLogCard .divide-y');
+  const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
   
   if (!tableBody) return;
   
@@ -3011,7 +3013,7 @@ function handleAttendanceSearch(event) {
   
   rows.forEach(row => {
     // Search in name, status, and other visible text
-    const nameElement = row.querySelector('.text-sm.font-medium.text-gray-900');
+    const nameElement = row.querySelector('.text-xs.font-medium.text-gray-900');
     const statusElement = row.querySelector('span.inline-flex');
     
     const name = nameElement?.textContent.toLowerCase() || '';
@@ -3150,19 +3152,33 @@ function buildDailySwapSeries(raw = []) {
 
 let swapLineChart = null;
 function renderActivityLog(facilitatorData = []) {
+  console.log('renderActivityLog called with:', facilitatorData);
   ensureActivityLogCard();
   
   // Update the table with real facilitator data
-  const tableBody = document.querySelector('#activityLogCard .divide-y');
+  const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
+  console.log('Table body found:', !!tableBody);
+  
   if (tableBody && facilitatorData.length > 0) {
+    console.log('Rendering', facilitatorData.length, 'facilitators');
     // Clear existing rows
     tableBody.innerHTML = '';
     
     // Create rows for each facilitator
-    facilitatorData.slice(0, 4).forEach((facilitator, index) => {
+    facilitatorData.forEach((facilitator, index) => {
       const row = createFacilitatorRow(facilitator, index);
       tableBody.appendChild(row);
     });
+  } else if (tableBody && facilitatorData.length === 0) {
+    console.log('No facilitator data, showing empty state');
+    // Show empty state
+    tableBody.innerHTML = `
+      <div class="px-6 py-8 text-center">
+        <div class="text-xs text-gray-500">No facilitator data available</div>
+      </div>
+    `;
+  } else {
+    console.log('Table body not found or no data');
   }
 }
 
@@ -3276,6 +3292,20 @@ function generateTotalHours() {
   return `${hours}.${minutes.toString().padStart(2, '0')}`;
 }
 
+function getCurrentWeek() {
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  startOfWeek.setDate(diff);
+  
+  const month = startOfWeek.toLocaleDateString('en-US', { month: 'short' });
+  const dayOfMonth = startOfWeek.getDate();
+  const year = startOfWeek.getFullYear();
+  
+  return `${month} ${dayOfMonth}, ${year}`;
+}
+
 window.__facilitatorData = [];
 window.setFacilitatorData = function(dataArray) {
   window.__facilitatorData = Array.isArray(dataArray) ? dataArray : [];
@@ -3372,22 +3402,34 @@ function updateUpcomingSessions(sessions) {
   
   container.innerHTML = `
     <div class="flex flex-col gap-2 overflow-y-auto upcoming-sessions-scroll" style="height: 100%; width: 100%;">
-      ${sessions.map(session => `
-        <div class="bg-white rounded-md p-2 border border-purple-200 flex-shrink-0 h-[50px] flex flex-col justify-center">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-2 h-2 rounded-full bg-purple-500"></div>
-              <span class="text-xs font-medium truncate">${session.name}</span>
+      ${sessions.map(session => {
+        // Handle placeholder sessions (empty state)
+        if (session.isPlaceholder) {
+          return `
+            <div class="bg-white rounded-md p-4 border border-purple-200 flex-shrink-0 text-center">
+              <div class="text-xs text-gray-500">${session.title}</div>
             </div>
-            <div class="text-xs text-gray-500">${session.date}</div>
+          `;
+        }
+        
+        // Handle regular sessions
+        return `
+          <div class="bg-white rounded-md p-2 border border-purple-200 flex-shrink-0 h-[50px] flex flex-col justify-center">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+                <span class="text-xs font-medium truncate">${session.name}</span>
+              </div>
+              <div class="text-xs text-gray-500">${session.date}</div>
+            </div>
+            <div class="text-xs text-gray-600 mt-1 truncate">
+              ${session.time} • ${session.location || 'TBA'}
+            </div>
           </div>
-          <div class="text-xs text-gray-600 mt-1 truncate">
-            ${session.time} • ${session.location || 'TBA'}
-          </div>
-        </div>
-      `).join('')}
+        `;
+      }).join('')}
       
-      ${sessions.length > 3 ? `
+      ${sessions.length > 3 && !sessions.some(s => s.isPlaceholder) ? `
         <div class="w-full h-8 flex-shrink-0 flex items-center justify-center">
           <button class="scroll-button-upcoming w-6 h-6 rounded-full bg-purple-100 hover:bg-purple-200 flex items-center justify-center text-purple-600 transition-colors" title="Scroll to see more sessions">
             <span class="material-icons text-xs">expand_more</span>
@@ -3496,27 +3538,104 @@ function filterUpcomingSessionsByDay(selectedDate) {
   const container = document.getElementById('upcomingSessionsList');
   if (!container) return;
   
-  // Get the original upcoming sessions data
+  // Get both today's and upcoming sessions data
   const upcomingSessions = window.__attData?.upcoming || [];
+  const todaySessions = window.__attData?.today || [];
   
   // Convert selected date to day name
   const selectedDayName = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' });
   
-  console.log('Filtering sessions for:', selectedDayName, 'from date:', selectedDate);
-  console.log('Available sessions:', upcomingSessions);
+  console.log('=== FILTERING DEBUG ===');
+  console.log('Selected date:', selectedDate);
+  console.log('Selected day name:', selectedDayName);
+  console.log('Today sessions:', todaySessions);
+  console.log('Upcoming sessions:', upcomingSessions);
   
-  // Filter sessions for the selected day
-  const filteredSessions = upcomingSessions.filter(session => {
-    // Check if session.date matches the day name (e.g., "Tuesday", "Wednesday")
-    const sessionDay = session.date;
-    console.log('Comparing session day:', sessionDay, 'with selected day:', selectedDayName);
-    return sessionDay === selectedDayName;
+  // Calculate what "Tomorrow" actually means
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const tomorrowDayName = tomorrow.toLocaleDateString('en-US', { weekday: 'long' });
+  const todayDayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+  
+  console.log('Today:', today.toDateString());
+  console.log('Today day name:', todayDayName);
+  console.log('Tomorrow date:', tomorrow.toDateString());
+  console.log('Tomorrow day name:', tomorrowDayName);
+  
+  // Combine sessions from both today and upcoming
+  let allSessions = [];
+  
+  // Add today's sessions with "Today" as the date
+  todaySessions.forEach(session => {
+    allSessions.push({
+      ...session,
+      date: 'Today'
+    });
   });
   
-  console.log('Filtered sessions:', filteredSessions);
+  // Add upcoming sessions as-is
+  allSessions = allSessions.concat(upcomingSessions);
   
-  // Update the display with filtered sessions
-  updateUpcomingSessions(filteredSessions);
+  console.log('All combined sessions:', allSessions);
+  
+  // Filter sessions for the selected day
+  const filteredSessions = allSessions.filter(session => {
+    const sessionDay = session.date;
+    
+    console.log(`Checking session "${session.name}":`, {
+      sessionDay: sessionDay,
+      selectedDayName: selectedDayName,
+      todayDayName: todayDayName,
+      tomorrowDayName: tomorrowDayName,
+      matchesToday: sessionDay === 'Today' && selectedDayName === todayDayName,
+      matchesTomorrow: sessionDay === 'Tomorrow' && selectedDayName === tomorrowDayName,
+      matchesDayName: sessionDay === selectedDayName
+    });
+    
+    // Multiple matching strategies:
+    // 1. "Today" match if selected day is today
+    // 2. "Tomorrow" match if selected day is tomorrow
+    // 3. Exact day name match
+    // 4. Case-insensitive match
+    const todayMatch = sessionDay === 'Today' && selectedDayName === todayDayName;
+    const tomorrowMatch = sessionDay === 'Tomorrow' && selectedDayName === tomorrowDayName;
+    const exactMatch = sessionDay === selectedDayName;
+    const caseInsensitiveMatch = sessionDay && sessionDay.toLowerCase() === selectedDayName.toLowerCase();
+    
+    const matches = todayMatch || tomorrowMatch || exactMatch || caseInsensitiveMatch;
+    
+    console.log(`Session "${session.name}" matches:`, {
+      todayMatch,
+      tomorrowMatch,
+      exactMatch,
+      caseInsensitiveMatch,
+      finalMatch: matches
+    });
+    
+    return matches;
+  });
+  
+  console.log('Filtered sessions result:', filteredSessions);
+  console.log('=== END FILTERING DEBUG ===');
+  
+  // Always use updateUpcomingSessions to maintain proper structure
+  if (filteredSessions.length === 0) {
+    console.log('No sessions found, showing empty state');
+    // Create a temporary empty state that still uses the proper structure
+    const emptyState = [{
+      title: `No sessions scheduled for ${selectedDayName}`,
+      time: '',
+      location: '',
+      facilitator: '',
+      isPlaceholder: true
+    }];
+    updateUpcomingSessions(emptyState);
+  } else {
+    console.log('Found sessions, updating display');
+    // Update the display with filtered sessions
+    updateUpcomingSessions(filteredSessions);
+  }
 }
 
 // ===== Schedule Panel Functionality =====

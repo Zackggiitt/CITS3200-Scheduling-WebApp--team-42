@@ -2264,7 +2264,7 @@ def get_dashboard_sessions(unit_id: int):
         "upcoming_sessions": upcoming_data,
         "facilitator_counts": facilitator_data,
         "swap_requests": swap_chart_data,
-        "week_session_count": len(upcoming_data)
+        "week_session_count": len(today_data) + len(upcoming_data)
     })
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/bulk-staffing/filters")
