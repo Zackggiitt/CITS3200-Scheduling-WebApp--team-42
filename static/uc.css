@@ -3164,6 +3164,12 @@ main {
   color: #6b7280;
 }
 
+/* Align numbers in Assigned Hours and Total Hours columns */
+.attendance-table-row div:nth-child(4),
+.attendance-table-row div:nth-child(5) {
+  text-align: center;
+}
+
 .sortable-header {
   display: flex;
   align-items: center;

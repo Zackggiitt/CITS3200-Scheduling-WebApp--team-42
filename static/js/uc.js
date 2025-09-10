@@ -2645,7 +2645,7 @@ function updateTodaysSessions(sessions) {
   }
 
   if (!sessions || sessions.length === 0) {
-    container.innerHTML = '<div class="text-sm text-gray-500">No sessions today</div>';
+    container.innerHTML = '';
     return;
   }
 
@@ -4202,151 +4202,152 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+
   // Sample facilitator data for attendance summary
   const sampleFacilitatorData = [
     {
-      name: "Sophie Garcia",
-      session_count: 3,
+      name: "Lisa Harris",
+      session_count: 2,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 2,
+      total_hours: 5,
+      date: "2025-09-13",
+      email: "lisa.harris@university.edu",
+      phone: "0491906336"
+    },
+    {
+      name: "Nina White",
+      session_count: 9,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 4,
+      total_hours: 6,
+      date: "2025-09-10",
+      email: "nina.white@university.edu",
+      phone: "0414275542"
+    },
+    {
+      name: "James Anderson",
+      session_count: 9,
       status: "Active",
       status_color: "green",
       status_bg: "green",
-      assigned_hours: 5,
-      total_hours: 7,
-      date: "2025-09-12",
-      email: "sophie.garcia@university.edu",
-      phone: "0467503446"
+      assigned_hours: 1,
+      total_hours: 1,
+      date: "2025-09-14",
+      email: "james.anderson@university.edu",
+      phone: "0443533914"
     },
     {
-      name: "Elena Martinez",
-      session_count: 8,
+      name: "Tom Jackson",
+      session_count: 10,
       status: "Inactive",
       status_color: "red",
       status_bg: "red",
       assigned_hours: 6,
-      total_hours: 9,
-      date: "2025-09-08",
-      email: "elena.martinez@university.edu",
-      phone: "0413211238"
+      total_hours: 6,
+      date: "2025-09-11",
+      email: "tom.jackson@university.edu",
+      phone: "0470697723"
     },
     {
-      name: "Maya Harris",
-      session_count: 3,
+      name: "Mike King",
+      session_count: 6,
       status: "Inactive",
       status_color: "red",
       status_bg: "red",
-      assigned_hours: 3,
-      total_hours: 4,
-      date: "2025-09-14",
-      email: "maya.harris@university.edu",
-      phone: "0443863292"
-    },
-    {
-      name: "Mark Brown",
-      session_count: 5,
-      status: "Active",
-      status_color: "green",
-      status_bg: "green",
-      assigned_hours: 8,
+      assigned_hours: 7,
       total_hours: 10,
       date: "2025-09-13",
-      email: "mark.brown@university.edu",
-      phone: "0475368218"
+      email: "mike.king@university.edu",
+      phone: "0422129858"
     },
     {
-      name: "Paul Thompson",
-      session_count: 1,
+      name: "Sophie Wilson",
+      session_count: 2,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 7,
+      total_hours: 10,
+      date: "2025-09-13",
+      email: "sophie.wilson@university.edu",
+      phone: "0477938279"
+    },
+    {
+      name: "David Scott",
+      session_count: 6,
       status: "Active",
       status_color: "green",
       status_bg: "green",
-      assigned_hours: 3,
-      total_hours: 4,
-      date: "2025-09-08",
-      email: "paul.thompson@university.edu",
-      phone: "0412814688"
+      assigned_hours: 2,
+      total_hours: 3,
+      date: "2025-09-11",
+      email: "david.scott@university.edu",
+      phone: "0421506942"
     },
     {
-      name: "Steve Garcia",
-      session_count: 10,
+      name: "John Anderson",
+      session_count: 9,
       status: "Active",
       status_color: "green",
       status_bg: "green",
       assigned_hours: 1,
-      total_hours: 2,
-      date: "2025-09-08",
-      email: "steve.garcia@university.edu",
-      phone: "0410093604"
+      total_hours: 1,
+      date: "2025-09-11",
+      email: "john.anderson@university.edu",
+      phone: "0450349575"
     },
     {
-      name: "John Smith",
+      name: "Kate Brown",
+      session_count: 4,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 4,
+      total_hours: 6,
+      date: "2025-09-14",
+      email: "kate.brown@university.edu",
+      phone: "0413618118"
+    },
+    {
+      name: "Sophie Rodriguez",
+      session_count: 1,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 3,
+      total_hours: 3,
+      date: "2025-09-14",
+      email: "sophie.rodriguez@university.edu",
+      phone: "0464382546"
+    },
+    {
+      name: "Anna Young",
       session_count: 8,
       status: "Active",
       status_color: "green",
       status_bg: "green",
       assigned_hours: 7,
-      total_hours: 10,
+      total_hours: 8,
       date: "2025-09-09",
-      email: "john.smith@university.edu",
-      phone: "0494534426"
+      email: "anna.young@university.edu",
+      phone: "0480974701"
     },
     {
-      name: "Paul Smith",
-      session_count: 5,
-      status: "Active",
-      status_color: "green",
-      status_bg: "green",
-      assigned_hours: 3,
-      total_hours: 5,
-      date: "2025-09-10",
-      email: "paul.smith@university.edu",
-      phone: "0411143528"
-    },
-    {
-      name: "Tom Anderson",
-      session_count: 10,
-      status: "Inactive",
-      status_color: "red",
-      status_bg: "red",
-      assigned_hours: 1,
-      total_hours: 2,
-      date: "2025-09-14",
-      email: "tom.anderson@university.edu",
-      phone: "0461761191"
-    },
-    {
-      name: "Chris Wilson",
-      session_count: 7,
-      status: "Active",
-      status_color: "green",
-      status_bg: "green",
-      assigned_hours: 5,
-      total_hours: 7,
-      date: "2025-09-11",
-      email: "chris.wilson@university.edu",
-      phone: "0414186549"
-    },
-    {
-      name: "Ben Rodriguez",
-      session_count: 7,
-      status: "Inactive",
-      status_color: "red",
-      status_bg: "red",
-      assigned_hours: 7,
-      total_hours: 9,
-      date: "2025-09-12",
-      email: "ben.rodriguez@university.edu",
-      phone: "0440942452"
-    },
-    {
-      name: "Ryan Allen",
-      session_count: 1,
+      name: "Emma Scott",
+      session_count: 8,
       status: "Active",
       status_color: "green",
       status_bg: "green",
       assigned_hours: 5,
       total_hours: 8,
       date: "2025-09-08",
-      email: "ryan.allen@university.edu",
-      phone: "0461097619"
+      email: "emma.scott@university.edu",
+      phone: "0428507758"
     }
   ];
 
