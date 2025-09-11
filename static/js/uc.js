@@ -2289,15 +2289,6 @@ function initUnitTabs() {
     
     if (key === 'dashboard') {
       setTimeout(initSessionsOverview, 100);
-      // Re-render gauge once the panel is visible
-      setTimeout(() => {
-        renderAttendanceGauge(window.__attData.today, window.__attData.upcoming);
-      }, 150);
-
-      setTimeout(() => {
-        renderFacilitatorBar(window.__attData?.today || [], window.__attData?.upcoming || []);
-      }, 160);
-      
     }
   }
 
@@ -2654,7 +2645,7 @@ function updateTodaysSessions(sessions) {
   }
 
   if (!sessions || sessions.length === 0) {
-    container.innerHTML = '<div class="text-sm text-gray-500">No sessions today</div>';
+    container.innerHTML = '';
     return;
   }
 
@@ -2700,41 +2691,9 @@ function updateTodaysSessions(sessions) {
         `;
       }).join('')}
       
-      ${sessions.length >= 1 ? `
-        <div class="w-[40px] h-[45px] flex-shrink-0 flex items-center justify-center">
-          <button class="scroll-button w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors" title="Scroll to see more sessions">
-            <span class="material-icons text-sm">chevron_right</span>
-          </button>
-        </div>
-      ` : ''}
     </div>
   `;
   
-  console.log('Scroll button should be visible:', sessions.length >= 2);
-  
-  const scrollButton = container.querySelector('button');
-  const scrollContainer = container.querySelector('.today-sessions-scroll');
-  
-  console.log('Scroll button found:', !!scrollButton);
-  console.log('Scroll container found:', !!scrollContainer);
-  
-  if (scrollButton && scrollContainer) {
-    // Add scroll event listener to show/hide scroll button based on scroll position
-    const updateScrollButton = () => {
-      const isAtEnd = scrollContainer.scrollLeft >= (scrollContainer.scrollWidth - scrollContainer.clientWidth - 10);
-      scrollButton.style.opacity = isAtEnd ? '0.5' : '1';
-      scrollButton.disabled = isAtEnd;
-    };
-    
-    scrollContainer.addEventListener('scroll', updateScrollButton);
-    
-    scrollButton.addEventListener('click', () => {
-      scrollContainer.scrollBy({ left: 300, behavior: 'smooth' });
-    });
-    
-    // Initial check
-    updateScrollButton();
-  }
 }
 function loadScriptOnce(src) {
   return new Promise((resolve, reject) => {
@@ -2829,7 +2788,7 @@ window.__attData = { today: [], upcoming: [] };
 // Sessions Overview Widget Functions 
 function initSessionsOverview() {
   console.log('Initializing sessions overview...');
-  ensureSwapLineCard();
+  ensureActivityLogCard();
   const dashboardPanel = document.getElementById('panel-dashboard');
   if (!dashboardPanel) {
     console.warn('Dashboard panel not found');
@@ -2865,14 +2824,41 @@ async function loadRealSessionsData() {
     updateTodaysSessions(data.today_sessions);
     updateUpcomingSessions(data.upcoming_sessions);
     updateMiniCalendar({ weekTotal: data.week_session_count, days: {} });
-    renderAttendanceGauge(data.today_sessions, data.upcoming_sessions);
-    renderFacilitatorBar(data.facilitator_counts);
-    renderSwapRequestsLine(data.swap_requests);
     
-    // Update week session count
+    console.log('=== INITIAL DATA LOAD ===');
+    console.log('Today sessions:', data.today_sessions);
+    console.log('Upcoming sessions:', data.upcoming_sessions);
+    console.log('Facilitator counts data:', data.facilitator_counts);
+    
+    // Log each upcoming session in detail
+    if (data.upcoming_sessions && data.upcoming_sessions.length > 0) {
+      console.log('=== DETAILED UPCOMING SESSIONS ===');
+      data.upcoming_sessions.forEach((session, index) => {
+        console.log(`Session ${index}:`, {
+          id: session.id,
+          name: session.name,
+          date: session.date,
+          time: session.time,
+          location: session.location,
+          status: session.status,
+          facilitators: session.facilitators
+        });
+      });
+      console.log('=== END DETAILED UPCOMING SESSIONS ===');
+    }
+    
+    console.log('=== END INITIAL DATA LOAD ===');
+    
+    renderActivityLog(data.facilitator_counts);
+    
+    // Update week session count in both cards
     const weekCountElement = document.getElementById('weekSessionCount');
+    const todayCountElement = document.getElementById('todaySessionCount');
     if (weekCountElement) {
       weekCountElement.textContent = data.week_session_count;
+    }
+    if (todayCountElement) {
+      todayCountElement.textContent = data.today_sessions.length;
     }
     
     console.log('Real sessions data loaded successfully');
@@ -2906,8 +2892,33 @@ function showSampleSessionsData() {
   updateTodaysSessions(sampleData.today);
   updateUpcomingSessions(sampleData.upcoming);
   updateMiniCalendar(sampleData.calendar);
-  renderAttendanceGauge(sampleData.today, sampleData.upcoming);
-  renderFacilitatorBar(sampleData.today, sampleData.upcoming);   
+  
+  // Update week session count in both cards
+  const weekCountElement = document.getElementById('weekSessionCount');
+  const todayCountElement = document.getElementById('todaySessionCount');
+  if (weekCountElement) {
+    weekCountElement.textContent = sampleData.calendar.weekTotal;
+  }
+  if (todayCountElement) {
+    todayCountElement.textContent = sampleData.today.length;
+  }
+  
+  // Create sample facilitator data for the activity log
+  const sampleFacilitators = [
+    { name: "John Smith", session_count: 5 },
+    { name: "Sarah Johnson", session_count: 3 },
+    { name: "Mike Davis", session_count: 7 },
+    { name: "Lisa Wilson", session_count: 4 },
+    { name: "Alex Chen", session_count: 6 },
+    { name: "Emma Rodriguez", session_count: 4 },
+    { name: "David Kim", session_count: 8 },
+    { name: "Maria Garcia", session_count: 5 },
+    { name: "James Wilson", session_count: 7 },
+    { name: "Sophie Brown", session_count: 3 },
+    { name: "Ryan Taylor", session_count: 6 },
+    { name: "Olivia Martinez", session_count: 4 }
+  ];
+  renderActivityLog(sampleFacilitators);
 }
 
 function waitForVisible(el, tries = 20) {
@@ -2922,40 +2933,205 @@ function waitForVisible(el, tries = 20) {
   });
 }
 
-function ensureSwapLineCard() {
-  const attendanceCard = document.getElementById('attendanceSummaryCard');
-  if (!attendanceCard) return;
-
-  // Remove the old bar card if it exists
-  const oldBar = document.getElementById('facilitatorBarCard');
-  if (oldBar) oldBar.remove();
-
+function ensureActivityLogCard() {
   // If card already inserted, stop
-  if (document.getElementById('swapLineCard')) return;
+  if (document.getElementById('activityLogCard')) return;
 
-  // Ensure parent is a 2-col grid row
-  const grid = attendanceCard.parentElement;
-  grid.classList.add('grid', 'grid-cols-1', 'lg:grid-cols-2', 'gap-6', 'items-start');
+  // Find the dashboard panel
+  const dashboardPanel = document.getElementById('panel-dashboard');
+  if (!dashboardPanel) return;
 
-  // Pin attendance on the right
-  attendanceCard.classList.add('lg:col-start-2', 'lg:justify-self-end');
+  // Find the grid container that holds the Today's Sessions and Upcoming Sessions
+  const grid = dashboardPanel.querySelector('.grid.grid-cols-1.lg\\:grid-cols-2.gap-6');
+  if (!grid) return;
 
-  // Insert the swap line card into the left column
+  // Insert the activity log card as a full-width section below the existing cards
   const sec = document.createElement('section');
-  sec.id = 'swapLineCard';
-  sec.className = 'lg:col-start-1 lg:col-span-1 w-full';
+  sec.id = 'activityLogCard';
+  sec.className = 'w-full mt-6';
   sec.innerHTML = `
-    <div class="bg-white border border-gray-200 rounded-2xl">
-      <div class="flex items-center justify-between px-4 pt-4">
-        <h3 class="text-sm font-semibold">Swap Requests Over Time</h3>
-        <span class="material-icons text-gray-500 text-sm">show_chart</span>
+    <div class="bg-white border border-gray-200 rounded-2xl p-6">
+      <!-- Header Section -->
+      <div class="flex items-start justify-between mb-6">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900 mb-1">Attendance Summary</h2>
+          <p class="text-gray-500 text-xs">Complete Overview</p>
+          <p class="text-gray-400 text-xs mt-1">Week of ${getCurrentWeek()}</p>
       </div>
-      <div class="swap-line-wrap px-4 pb-4">
-        <canvas id="swapLine"></canvas>
+        
+        <!-- Controls -->
+        <div class="flex items-center gap-3">
+          <!-- Search Bar -->
+          <div class="relative">
+            <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">search</span>
+            <input type="text" id="attendanceSearchInput" placeholder="Search employees..." class="pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          </div>
+          
+          <!-- Export Button -->
+          <button class="export-btn" id="exportPdfBtn">
+            <span class="material-icons text-xs">download</span>
+            Export PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- Attendance Table -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        <!-- Table Header -->
+        <div class="bg-green-50 px-6 py-3 sticky top-0 z-10">
+          <div class="grid grid-cols-5 gap-4 text-xs font-semibold text-gray-700">
+            <div>Name</div>
+            <div>Status</div>
+            <div>Date</div>
+            <div>Assigned Hours</div>
+            <div>Total Hours</div>
+          </div>
+        </div>
+
+        <!-- Scrollable Table Body -->
+        <div class="max-h-80 overflow-y-auto divide-y divide-gray-100">
+          <!-- Rows will be populated dynamically -->
+        </div>
       </div>
     </div>
   `;
-  grid.insertBefore(sec, attendanceCard);
+  
+  // Insert after the grid
+  grid.parentElement.insertBefore(sec, grid.nextSibling);
+  
+  // Initialize search and export functionality
+  initializeAttendanceFeatures();
+}
+
+function initializeAttendanceFeatures() {
+  // Initialize search functionality
+  const searchInput = document.getElementById('attendanceSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', handleAttendanceSearch);
+  }
+  
+  // Initialize PDF export functionality
+  const exportBtn = document.getElementById('exportPdfBtn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', handlePdfExport);
+  }
+}
+
+function handleAttendanceSearch(event) {
+  const searchTerm = event.target.value.toLowerCase();
+  const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
+  
+  if (!tableBody) return;
+  
+  const rows = tableBody.querySelectorAll('.grid.grid-cols-5');
+  
+  rows.forEach(row => {
+    // Search in name, status, and other visible text
+    const nameElement = row.querySelector('.text-xs.font-medium.text-gray-900');
+    const statusElement = row.querySelector('span.inline-flex');
+    
+    const name = nameElement?.textContent.toLowerCase() || '';
+    const status = statusElement?.textContent.toLowerCase() || '';
+    
+    const isVisible = name.includes(searchTerm) || status.includes(searchTerm);
+    row.style.display = isVisible ? 'grid' : 'none';
+  });
+}
+
+function handlePdfExport() {
+  // Create a new window for PDF generation
+  const printWindow = window.open('', '_blank');
+  
+  // Get the attendance table data
+  const tableBody = document.querySelector('#activityLogCard .divide-y');
+  if (!tableBody) {
+    alert('No attendance data to export');
+    return;
+  }
+  
+  const rows = tableBody.querySelectorAll('.grid.grid-cols-5');
+  if (rows.length === 0) {
+    alert('No attendance data to export');
+    return;
+  }
+  
+  // Generate HTML content for PDF
+  let tableRows = '';
+  rows.forEach(row => {
+    if (row.style.display !== 'none') {
+      const cells = row.querySelectorAll('div');
+      const name = cells[0]?.querySelector('.text-xs.font-medium.text-gray-900')?.textContent || '';
+      const status = cells[1]?.querySelector('span')?.textContent || '';
+      const date = cells[2]?.textContent || '';
+      const assignedHours = cells[3]?.textContent || '';
+      const totalHours = cells[4]?.textContent || '';
+      
+      tableRows += `
+        <tr>
+          <td style="padding: 8px; border: 1px solid #ddd;">${name}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${status}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${date}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${assignedHours}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${totalHours}</td>
+        </tr>
+      `;
+    }
+  });
+  
+  const currentDate = new Date().toLocaleDateString();
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Attendance Summary Report</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        .report-info { margin-bottom: 20px; text-align: center; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background-color: #f0f9ff; padding: 12px; border: 1px solid #ddd; text-align: left; font-weight: bold; }
+        td { padding: 8px; border: 1px solid #ddd; }
+        .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <h1>Attendance Summary Report</h1>
+      <div class="report-info">
+        <p>Generated on: ${currentDate}</p>
+        <p>Complete Overview</p>
+      </div>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Assigned Hours</th>
+            <th>Total Hours</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+      
+      <div class="footer">
+        <p>This report was generated from the Unit Coordinator Portal</p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  
+  // Wait for content to load, then trigger print
+  printWindow.onload = function() {
+    printWindow.print();
+    printWindow.close();
+  };
 }
 
 // Aggregate daily counts from raw swap events
@@ -2989,80 +3165,159 @@ function buildDailySwapSeries(raw = []) {
 }
 
 let swapLineChart = null;
-function renderSwapRequestsLine(raw = []) {
-  ensureSwapLineCard();
-
-  const canvas = document.getElementById('swapLine');
-  const wrap = canvas?.closest('.swap-line-wrap') || canvas?.parentElement;
-  if (!canvas || !wrap) return;
-
-  const { labels, data } = buildDailySwapSeries(raw);
-
-  // If no data, clear chart and exit
-  if (!labels.length) {
-    if (swapLineChart) { swapLineChart.destroy(); swapLineChart = null; }
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    return;
-  }
-
-  ensureChartJs().then(() => waitForVisible(wrap)).then(() => {
-    if (swapLineChart) swapLineChart.destroy();
-
-    const ctx = canvas.getContext('2d');
-    // Soft gradient under the line
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, 'rgba(37, 99, 235, 0.25)');  // blue-600 @ 25%
-    grad.addColorStop(1, 'rgba(37, 99, 235, 0.00)');
-
-    swapLineChart = new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Swap requests',
-          data,
-          borderColor: '#2563eb',    // blue-600
-          backgroundColor: grad,
-          borderWidth: 2,
-          fill: true,
-          cubicInterpolationMode: 'monotone',
-          tension: 0.35,
-          pointRadius: 2,
-          pointHoverRadius: 4,
-          pointBackgroundColor: '#2563eb',
-          pointBorderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: { label: (ctx) => `${ctx.parsed.y} swap${ctx.parsed.y === 1 ? '' : 's'}` }
-          }
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { maxRotation: 0, autoSkip: true, color: '#6b7280' }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: { precision: 0, color: '#6b7280' },
-            grid: { color: 'rgba(0,0,0,.06)' }
-          }
-        }
-      }
+function renderActivityLog(facilitatorData = []) {
+  console.log('renderActivityLog called with:', facilitatorData);
+  ensureActivityLogCard();
+  
+  // Update the table with real facilitator data
+  const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
+  console.log('Table body found:', !!tableBody);
+  
+  if (tableBody && facilitatorData.length > 0) {
+    console.log('Rendering', facilitatorData.length, 'facilitators');
+    // Clear existing rows
+    tableBody.innerHTML = '';
+    
+    // Create rows for each facilitator
+    facilitatorData.forEach((facilitator, index) => {
+      const row = createFacilitatorRow(facilitator, index);
+      tableBody.appendChild(row);
     });
-  }).catch(console.warn);
+  } else if (tableBody && facilitatorData.length === 0) {
+    console.log('No facilitator data, showing empty state');
+    // Show empty state
+    tableBody.innerHTML = `
+      <div class="px-6 py-8 text-center">
+        <div class="text-xs text-gray-500">No facilitator data available</div>
+      </div>
+    `;
+  } else {
+    console.log('Table body not found or no data');
+  }
 }
 
-window.__swapsData = [];
-window.setSwapRequestsData = function(dataArray) {
-  window.__swapsData = Array.isArray(dataArray) ? dataArray : [];
-  renderSwapRequestsLine(window.__swapsData);
+function createFacilitatorRow(facilitator, index) {
+  const row = document.createElement('div');
+  row.className = 'grid grid-cols-5 gap-4 px-6 py-3 hover:bg-gray-50';
+  
+  // Generate random assigned hours data for demo
+  const assignedHours = generateAssignedHours();
+  const totalHours = generateTotalHours();
+  
+  // Status options - only Active or Inactive
+  const statuses = [
+    { name: 'Active', color: 'green', bg: 'green' },
+    { name: 'Inactive', color: 'red', bg: 'red' }
+  ];
+  const status = statuses[index % statuses.length];
+  
+  row.innerHTML = `
+    <div class="flex items-center">
+      <span class="text-xs font-medium text-gray-900">${facilitator.name}</span>
+    </div>
+    <div>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusClasses(status)}">
+        ${status.name}
+      </span>
+    </div>
+    <div class="text-xs text-gray-600">${getCurrentDate()}</div>
+    <div class="text-xs text-gray-600">${assignedHours}</div>
+    <div class="text-xs text-gray-600">${totalHours}</div>
+  `;
+  
+  return row;
+}
+
+
+function getStatusClasses(status) {
+  switch (status.bg) {
+    case 'green':
+      return 'bg-green-100 text-green-800';
+    case 'red':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+}
+
+
+function generateRandomTime(start, end) {
+  const startHour = parseInt(start.split(':')[0]);
+  const endHour = parseInt(end.split(':')[0]);
+  const hour = Math.floor(Math.random() * (endHour - startHour + 1)) + startHour;
+  const minute = Math.floor(Math.random() * 60);
+  const period = hour >= 12 ? 'pm' : 'am';
+  const displayHour = hour > 12 ? hour - 12 : hour;
+  return `${displayHour.toString().padStart(2, '0')}.${minute.toString().padStart(2, '0')} ${period}`;
+}
+
+function calculateHours(clockIn, clockOut) {
+  // Simple calculation for demo purposes
+  const inHour = parseInt(clockIn.split('.')[0]);
+  const outHour = parseInt(clockOut.split('.')[0]);
+  const inPeriod = clockIn.includes('pm') ? 12 : 0;
+  const outPeriod = clockOut.includes('pm') ? 12 : 0;
+  
+  const inTotal = inHour + inPeriod;
+  const outTotal = outHour + outPeriod;
+  
+  let hours = outTotal - inTotal;
+  if (hours < 0) hours += 24;
+  
+  const minutes = Math.floor(Math.random() * 60);
+  return `${hours}.${minutes.toString().padStart(2, '0')}`;
+}
+
+function getCurrentDate() {
+  const today = new Date();
+  const day = today.getDate();
+  const month = today.toLocaleDateString('en-US', { month: 'short' });
+  const year = today.getFullYear();
+  return `${day}${getOrdinalSuffix(day)} ${month} ${year}`;
+}
+
+function getOrdinalSuffix(day) {
+  if (day >= 11 && day <= 13) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+
+function generateAssignedHours() {
+  // Generate realistic assigned hours (typically 6-8 hours for facilitators)
+  const hours = Math.floor(Math.random() * 3) + 6; // 6, 7, or 8 hours
+  const minutes = Math.floor(Math.random() * 60);
+  return `${hours}.${minutes.toString().padStart(2, '0')}`;
+}
+
+function generateTotalHours() {
+  // Generate total hours worked (usually slightly more than assigned)
+  const hours = Math.floor(Math.random() * 4) + 7; // 7, 8, 9, or 10 hours
+  const minutes = Math.floor(Math.random() * 60);
+  return `${hours}.${minutes.toString().padStart(2, '0')}`;
+}
+
+function getCurrentWeek() {
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  startOfWeek.setDate(diff);
+  
+  const month = startOfWeek.toLocaleDateString('en-US', { month: 'short' });
+  const dayOfMonth = startOfWeek.getDate();
+  const year = startOfWeek.getFullYear();
+  
+  return `${month} ${dayOfMonth}, ${year}`;
+}
+
+window.__facilitatorData = [];
+window.setFacilitatorData = function(dataArray) {
+  window.__facilitatorData = Array.isArray(dataArray) ? dataArray : [];
+  renderActivityLog(window.__facilitatorData);
 };
 
 // Facilitator Session Count Bar Chart
@@ -3155,7 +3410,18 @@ function updateUpcomingSessions(sessions) {
   
   container.innerHTML = `
     <div class="flex flex-col gap-2 overflow-y-auto upcoming-sessions-scroll" style="height: 100%; width: 100%;">
-      ${sessions.map(session => `
+      ${sessions.map(session => {
+        // Handle placeholder sessions (empty state)
+        if (session.isPlaceholder) {
+          return `
+            <div class="bg-white rounded-md p-4 border border-purple-200 flex-shrink-0 text-center">
+              <div class="text-xs text-gray-500">${session.title}</div>
+            </div>
+          `;
+        }
+        
+        // Handle regular sessions
+        return `
         <div class="bg-white rounded-md p-2 border border-purple-200 flex-shrink-0 h-[50px] flex flex-col justify-center">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -3168,9 +3434,10 @@ function updateUpcomingSessions(sessions) {
             ${session.time} • ${session.location || 'TBA'}
           </div>
         </div>
-      `).join('')}
+        `;
+      }).join('')}
       
-      ${sessions.length > 3 ? `
+      ${sessions.length > 3 && !sessions.some(s => s.isPlaceholder) ? `
         <div class="w-full h-8 flex-shrink-0 flex items-center justify-center">
           <button class="scroll-button-upcoming w-6 h-6 rounded-full bg-purple-100 hover:bg-purple-200 flex items-center justify-center text-purple-600 transition-colors" title="Scroll to see more sessions">
             <span class="material-icons text-xs">expand_more</span>
@@ -3279,27 +3546,104 @@ function filterUpcomingSessionsByDay(selectedDate) {
   const container = document.getElementById('upcomingSessionsList');
   if (!container) return;
   
-  // Get the original upcoming sessions data
+  // Get both today's and upcoming sessions data
   const upcomingSessions = window.__attData?.upcoming || [];
+  const todaySessions = window.__attData?.today || [];
   
   // Convert selected date to day name
   const selectedDayName = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' });
   
-  console.log('Filtering sessions for:', selectedDayName, 'from date:', selectedDate);
-  console.log('Available sessions:', upcomingSessions);
+  console.log('=== FILTERING DEBUG ===');
+  console.log('Selected date:', selectedDate);
+  console.log('Selected day name:', selectedDayName);
+  console.log('Today sessions:', todaySessions);
+  console.log('Upcoming sessions:', upcomingSessions);
   
-  // Filter sessions for the selected day
-  const filteredSessions = upcomingSessions.filter(session => {
-    // Check if session.date matches the day name (e.g., "Tuesday", "Wednesday")
-    const sessionDay = session.date;
-    console.log('Comparing session day:', sessionDay, 'with selected day:', selectedDayName);
-    return sessionDay === selectedDayName;
+  // Calculate what "Tomorrow" actually means
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const tomorrowDayName = tomorrow.toLocaleDateString('en-US', { weekday: 'long' });
+  const todayDayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+  
+  console.log('Today:', today.toDateString());
+  console.log('Today day name:', todayDayName);
+  console.log('Tomorrow date:', tomorrow.toDateString());
+  console.log('Tomorrow day name:', tomorrowDayName);
+  
+  // Combine sessions from both today and upcoming
+  let allSessions = [];
+  
+  // Add today's sessions with "Today" as the date
+  todaySessions.forEach(session => {
+    allSessions.push({
+      ...session,
+      date: 'Today'
+    });
   });
   
-  console.log('Filtered sessions:', filteredSessions);
+  // Add upcoming sessions as-is
+  allSessions = allSessions.concat(upcomingSessions);
   
+  console.log('All combined sessions:', allSessions);
+  
+  // Filter sessions for the selected day
+  const filteredSessions = allSessions.filter(session => {
+    const sessionDay = session.date;
+    
+    console.log(`Checking session "${session.name}":`, {
+      sessionDay: sessionDay,
+      selectedDayName: selectedDayName,
+      todayDayName: todayDayName,
+      tomorrowDayName: tomorrowDayName,
+      matchesToday: sessionDay === 'Today' && selectedDayName === todayDayName,
+      matchesTomorrow: sessionDay === 'Tomorrow' && selectedDayName === tomorrowDayName,
+      matchesDayName: sessionDay === selectedDayName
+    });
+    
+    // Multiple matching strategies:
+    // 1. "Today" match if selected day is today
+    // 2. "Tomorrow" match if selected day is tomorrow
+    // 3. Exact day name match
+    // 4. Case-insensitive match
+    const todayMatch = sessionDay === 'Today' && selectedDayName === todayDayName;
+    const tomorrowMatch = sessionDay === 'Tomorrow' && selectedDayName === tomorrowDayName;
+    const exactMatch = sessionDay === selectedDayName;
+    const caseInsensitiveMatch = sessionDay && sessionDay.toLowerCase() === selectedDayName.toLowerCase();
+    
+    const matches = todayMatch || tomorrowMatch || exactMatch || caseInsensitiveMatch;
+    
+    console.log(`Session "${session.name}" matches:`, {
+      todayMatch,
+      tomorrowMatch,
+      exactMatch,
+      caseInsensitiveMatch,
+      finalMatch: matches
+    });
+    
+    return matches;
+  });
+  
+  console.log('Filtered sessions result:', filteredSessions);
+  console.log('=== END FILTERING DEBUG ===');
+  
+  // Always use updateUpcomingSessions to maintain proper structure
+  if (filteredSessions.length === 0) {
+    console.log('No sessions found, showing empty state');
+    // Create a temporary empty state that still uses the proper structure
+    const emptyState = [{
+      title: `No sessions scheduled for ${selectedDayName}`,
+      time: '',
+      location: '',
+      facilitator: '',
+      isPlaceholder: true
+    }];
+    updateUpcomingSessions(emptyState);
+  } else {
+    console.log('Found sessions, updating display');
   // Update the display with filtered sessions
   updateUpcomingSessions(filteredSessions);
+  }
 }
 
 // ===== Schedule Panel Functionality =====
@@ -3857,3 +4201,167 @@ document.addEventListener('DOMContentLoaded', () => {
     initListView();
   }
 });
+
+
+  // Sample facilitator data for attendance summary
+  const sampleFacilitatorData = [
+    {
+      name: "Lisa Harris",
+      session_count: 2,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 2,
+      total_hours: 5,
+      date: "2025-09-13",
+      email: "lisa.harris@university.edu",
+      phone: "0491906336"
+    },
+    {
+      name: "Nina White",
+      session_count: 9,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 4,
+      total_hours: 6,
+      date: "2025-09-10",
+      email: "nina.white@university.edu",
+      phone: "0414275542"
+    },
+    {
+      name: "James Anderson",
+      session_count: 9,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 1,
+      total_hours: 1,
+      date: "2025-09-14",
+      email: "james.anderson@university.edu",
+      phone: "0443533914"
+    },
+    {
+      name: "Tom Jackson",
+      session_count: 10,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 6,
+      total_hours: 6,
+      date: "2025-09-11",
+      email: "tom.jackson@university.edu",
+      phone: "0470697723"
+    },
+    {
+      name: "Mike King",
+      session_count: 6,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 7,
+      total_hours: 10,
+      date: "2025-09-13",
+      email: "mike.king@university.edu",
+      phone: "0422129858"
+    },
+    {
+      name: "Sophie Wilson",
+      session_count: 2,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 7,
+      total_hours: 10,
+      date: "2025-09-13",
+      email: "sophie.wilson@university.edu",
+      phone: "0477938279"
+    },
+    {
+      name: "David Scott",
+      session_count: 6,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 2,
+      total_hours: 3,
+      date: "2025-09-11",
+      email: "david.scott@university.edu",
+      phone: "0421506942"
+    },
+    {
+      name: "John Anderson",
+      session_count: 9,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 1,
+      total_hours: 1,
+      date: "2025-09-11",
+      email: "john.anderson@university.edu",
+      phone: "0450349575"
+    },
+    {
+      name: "Kate Brown",
+      session_count: 4,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 4,
+      total_hours: 6,
+      date: "2025-09-14",
+      email: "kate.brown@university.edu",
+      phone: "0413618118"
+    },
+    {
+      name: "Sophie Rodriguez",
+      session_count: 1,
+      status: "Inactive",
+      status_color: "red",
+      status_bg: "red",
+      assigned_hours: 3,
+      total_hours: 3,
+      date: "2025-09-14",
+      email: "sophie.rodriguez@university.edu",
+      phone: "0464382546"
+    },
+    {
+      name: "Anna Young",
+      session_count: 8,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 7,
+      total_hours: 8,
+      date: "2025-09-09",
+      email: "anna.young@university.edu",
+      phone: "0480974701"
+    },
+    {
+      name: "Emma Scott",
+      session_count: 8,
+      status: "Active",
+      status_color: "green",
+      status_bg: "green",
+      assigned_hours: 5,
+      total_hours: 8,
+      date: "2025-09-08",
+      email: "emma.scott@university.edu",
+      phone: "0428507758"
+    }
+  ];
+
+  // Inject sample data into attendance summary
+  if (window.__attData) {
+    window.__attData.sampleFacilitators = sampleFacilitatorData;
+    console.log('Sample facilitator data injected:', sampleFacilitatorData.length, 'facilitators');
+  }
+
+  // Auto-populate attendance summary if empty
+  setTimeout(() => {
+    const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
+    if (tableBody && tableBody.textContent.includes('No facilitator data available')) {
+      console.log('Auto-populating attendance summary with sample data...');
+      renderActivityLog(sampleFacilitatorData);
+    }
+  }, 1000);
