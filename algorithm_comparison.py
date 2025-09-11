@@ -9,9 +9,6 @@ from dataclasses import dataclass
 from enum import Enum
 
 class AlgorithmType(Enum):
-    WEIGHTED_SUM = "weighted_sum"
-    WEIGHTED_PRODUCT = "weighted_product"
-    LOG_TRANSFORMED = "log_transformed"
     THRESHOLD_HYBRID = "threshold_hybrid"
 
 @dataclass
@@ -43,18 +40,6 @@ class AdvancedSchedulingEngine:
         
         # Algorithm-specific weight adjustments
         self.algorithm_weights = {
-            AlgorithmType.WEIGHTED_SUM: AlgorithmWeights(
-                availability=0.25, skill_match=0.20, skill_level=0.15, 
-                preference=0.15, experience=0.15, workload_balance=0.10
-            ),
-            AlgorithmType.WEIGHTED_PRODUCT: AlgorithmWeights(
-                availability=0.40, skill_match=0.30, skill_level=0.10, 
-                preference=0.10, experience=0.05, workload_balance=0.05
-            ),
-            AlgorithmType.LOG_TRANSFORMED: AlgorithmWeights(
-                availability=0.15, skill_match=0.35, skill_level=0.25, 
-                preference=0.15, experience=0.05, workload_balance=0.05
-            ),
             AlgorithmType.THRESHOLD_HYBRID: AlgorithmWeights(
                 availability=0.30, skill_match=0.25, skill_level=0.20, 
                 preference=0.15, experience=0.05, workload_balance=0.05
@@ -107,60 +92,7 @@ class AdvancedSchedulingEngine:
             workload_score=workload_score
         )
     
-    def weighted_sum_algorithm(self, metrics: FacilitatorMetrics) -> float:
-        """Algorithm 1: Weighted Sum (baseline)"""
-        if metrics.availability == 0:
-            return 0.0
-        
-        weights = self.algorithm_weights[AlgorithmType.WEIGHTED_SUM]
-        score = (
-            weights.availability * metrics.availability +
-            weights.skill_match * metrics.skill_match_ratio +
-            weights.skill_level * metrics.avg_skill_level +
-            weights.preference * metrics.preference_score +
-            weights.experience * metrics.experience_score +
-            weights.workload_balance * metrics.workload_score
-        )
-        return score
-    
-    def weighted_product_algorithm(self, metrics: FacilitatorMetrics) -> float:
-        """Algorithm 2: Weighted Product (Geometric Mean)"""
-        if metrics.availability == 0:
-            return 0.0
-        
-        weights = self.algorithm_weights[AlgorithmType.WEIGHTED_PRODUCT]
-        # Add epsilon to avoid log(0)
-        components = [
-            (metrics.availability + self.epsilon) ** weights.availability,
-            (metrics.skill_match_ratio + self.epsilon) ** weights.skill_match,
-            (metrics.avg_skill_level + self.epsilon) ** weights.skill_level,
-            (metrics.preference_score + self.epsilon) ** weights.preference,
-            (metrics.experience_score + self.epsilon) ** weights.experience,
-            (metrics.workload_score + self.epsilon) ** weights.workload_balance
-        ]
-        
-        score = 1.0
-        for component in components:
-            score *= component
-        
-        return score
-    
-    def log_transformed_algorithm(self, metrics: FacilitatorMetrics) -> float:
-        """Algorithm 3: Log-Transformed Sum (using log1p for better numerical stability)"""
-        if metrics.availability == 0:
-            return 0.0
-        
-        weights = self.algorithm_weights[AlgorithmType.LOG_TRANSFORMED]
-        # Use log1p(x) = log(1+x) to ensure positive values and better numerical stability
-        score = (
-            weights.availability * math.log1p(metrics.availability) +
-            weights.skill_match * math.log1p(metrics.skill_match_ratio) +
-            weights.skill_level * math.log1p(metrics.avg_skill_level) +
-            weights.preference * math.log1p(metrics.preference_score) +
-            weights.experience * math.log1p(metrics.experience_score) +
-            weights.workload_balance * math.log1p(metrics.workload_score)
-        )
-        return max(0, score)  # Ensure non-negative score
+
     
     def threshold_hybrid_algorithm(self, metrics: FacilitatorMetrics) -> float:
         """Algorithm 4: Threshold-Hybrid (Sum + business floor)"""
@@ -169,13 +101,13 @@ class AdvancedSchedulingEngine:
         
         weights = self.algorithm_weights[AlgorithmType.THRESHOLD_HYBRID]
         
-        # Define stricter thresholds for each metric to create more differentiation
+        # Define more reasonable thresholds for practical use
         thresholds = {
-            'skill_match': 0.7,
-            'skill_level': 0.6,
-            'preference': 0.4,
-            'experience': 0.4,
-            'workload': 0.3
+            'skill_match': 0.3,  # 降低要求：至少30%技能匹配
+            'skill_level': 0.4,  # 降低要求：平均技能水平40%以上
+            'preference': 0.2,
+            'experience': 0.2,
+            'workload': 0.2
         }
         
         # Check if facilitator meets minimum thresholds
@@ -198,13 +130,7 @@ class AdvancedSchedulingEngine:
         """Calculate score using specified algorithm"""
         metrics = self.calculate_facilitator_metrics(facilitator, session)
         
-        if algorithm == AlgorithmType.WEIGHTED_SUM:
-            return self.weighted_sum_algorithm(metrics)
-        elif algorithm == AlgorithmType.WEIGHTED_PRODUCT:
-            return self.weighted_product_algorithm(metrics)
-        elif algorithm == AlgorithmType.LOG_TRANSFORMED:
-            return self.log_transformed_algorithm(metrics)
-        elif algorithm == AlgorithmType.THRESHOLD_HYBRID:
+        if algorithm == AlgorithmType.THRESHOLD_HYBRID:
             return self.threshold_hybrid_algorithm(metrics)
         else:
             raise ValueError(f"Unknown algorithm type: {algorithm}")
@@ -224,30 +150,8 @@ class AdvancedSchedulingEngine:
         if not available_facilitators:
             return None
         
-        # Different selection strategies for different algorithms
-        if algorithm == AlgorithmType.WEIGHTED_SUM:
-            # Greedy: always select highest score
-            best_facilitator, best_score = max(available_facilitators, key=lambda x: x[1])
-        
-        elif algorithm == AlgorithmType.WEIGHTED_PRODUCT:
-            # Probabilistic selection from top 50% with weighted randomness
-            available_facilitators.sort(key=lambda x: x[1], reverse=True)
-            top_half = available_facilitators[:max(1, len(available_facilitators)//2)]
-            weights = [score for _, score in top_half]
-            selected = random.choices(top_half, weights=weights)[0]
-            best_facilitator, best_score = selected
-        
-        elif algorithm == AlgorithmType.LOG_TRANSFORMED:
-            # Select from above-median candidates with randomness
-            scores = [s for _, s in available_facilitators]
-            median_score = sorted(scores)[len(scores)//2] if scores else 0
-            above_median = [f for f in available_facilitators if f[1] >= median_score]
-            if above_median:
-                best_facilitator, best_score = random.choice(above_median)
-            else:
-                best_facilitator, best_score = max(available_facilitators, key=lambda x: x[1])
-        
-        elif algorithm == AlgorithmType.THRESHOLD_HYBRID:
+        # Threshold hybrid selection strategy
+        if algorithm == AlgorithmType.THRESHOLD_HYBRID:
             # Strict threshold: only top 25% qualify, then select by skill match priority
             available_facilitators.sort(key=lambda x: x[1], reverse=True)
             top_quarter = available_facilitators[:max(1, len(available_facilitators)//4)]
@@ -257,9 +161,8 @@ class AdvancedSchedulingEngine:
                 self.calculate_facilitator_metrics(x[0], session).avg_skill_level,
                 x[1]
             ))
-        
         else:
-            best_facilitator, best_score = max(available_facilitators, key=lambda x: x[1])
+            raise ValueError(f"Unknown algorithm type: {algorithm}")
         
         return best_facilitator
     
@@ -295,30 +198,8 @@ class AdvancedSchedulingEngine:
         if not available_facilitators:
             return None
         
-        # Apply same selection strategies as before
-        if algorithm == AlgorithmType.WEIGHTED_SUM:
-            # Greedy: always select highest score
-            best_facilitator, best_score = max(available_facilitators, key=lambda x: x[1])
-        
-        elif algorithm == AlgorithmType.WEIGHTED_PRODUCT:
-            # Probabilistic selection from top 50% with weighted randomness
-            available_facilitators.sort(key=lambda x: x[1], reverse=True)
-            top_half = available_facilitators[:max(1, len(available_facilitators)//2)]
-            weights = [score for _, score in top_half]
-            selected = random.choices(top_half, weights=weights)[0]
-            best_facilitator, best_score = selected
-        
-        elif algorithm == AlgorithmType.LOG_TRANSFORMED:
-            # Select from above-median candidates with randomness
-            scores = [s for _, s in available_facilitators]
-            median_score = sorted(scores)[len(scores)//2] if scores else 0
-            above_median = [f for f in available_facilitators if f[1] >= median_score]
-            if above_median:
-                best_facilitator, best_score = random.choice(above_median)
-            else:
-                best_facilitator, best_score = max(available_facilitators, key=lambda x: x[1])
-        
-        elif algorithm == AlgorithmType.THRESHOLD_HYBRID:
+        # Apply threshold hybrid selection strategy
+        if algorithm == AlgorithmType.THRESHOLD_HYBRID:
             # Strict threshold: only top 25% qualify, then select by skill match priority
             available_facilitators.sort(key=lambda x: x[1], reverse=True)
             top_quarter = available_facilitators[:max(1, len(available_facilitators)//4)]
@@ -328,9 +209,8 @@ class AdvancedSchedulingEngine:
                 self.calculate_facilitator_metrics(x[0], session).avg_skill_level,
                 x[1]
             ))
-        
         else:
-            best_facilitator, best_score = max(available_facilitators, key=lambda x: x[1])
+            raise ValueError(f"Unknown algorithm type: {algorithm}")
         
         return best_facilitator
     
@@ -370,6 +250,8 @@ class AdvancedSchedulingEngine:
                         assignments.append({
                             'session_id': session.id,
                             'facilitator_id': best_facilitator.id,
+                            'facilitator_name': f"{best_facilitator.first_name} {best_facilitator.last_name}",
+                            'session_info': f"{session.module.unit.unit_code} - {session.module.module_name}",
                             'score': score,
                             'algorithm': algorithm.value
                         })
@@ -387,13 +269,13 @@ class AdvancedSchedulingEngine:
                     else:
                         conflicts.append({
                             'session_id': session.id,
-                            'session_name': session.course_name,
+                            'session_name': f"{session.module.unit.unit_code} - {session.module.module_name}",
                             'reason': 'No suitable facilitator found'
                         })
                 else:
                     conflicts.append({
                         'session_id': session.id,
-                        'session_name': session.course_name,
+                        'session_name': f"{session.module.unit.unit_code} - {session.module.module_name}",
                         'reason': 'No available facilitator meets algorithm criteria'
                     })
             
@@ -450,27 +332,13 @@ class AdvancedSchedulingEngine:
             return False
         
         # Algorithm-specific additional filtering
-        if algorithm == AlgorithmType.WEIGHTED_SUM:
-            # Most lenient - only basic availability required
-            return True
-            
-        elif algorithm == AlgorithmType.WEIGHTED_PRODUCT:
-            # Require some skill match
+        if algorithm == AlgorithmType.THRESHOLD_HYBRID:
+            # Reasonable requirements - require moderate skill match and level
             metrics = self.calculate_facilitator_metrics(facilitator, session)
-            return metrics.skill_match_ratio >= 0.3
-            
-        elif algorithm == AlgorithmType.LOG_TRANSFORMED:
-            # Require decent skill levels
-            metrics = self.calculate_facilitator_metrics(facilitator, session)
-            return metrics.avg_skill_level >= 0.2
-            
-        elif algorithm == AlgorithmType.THRESHOLD_HYBRID:
-            # Most strict - require high skill match and level
-            metrics = self.calculate_facilitator_metrics(facilitator, session)
-            return (metrics.skill_match_ratio >= 0.5 and 
-                   metrics.avg_skill_level >= 0.6)
-        
-        return True
+            return (metrics.skill_match_ratio >= 0.3 and 
+                   metrics.avg_skill_level >= 0.4)
+        else:
+            raise ValueError(f"Unknown algorithm type: {algorithm}")
     
     def _get_facilitator_skills(self, facilitator: User) -> Dict[str, float]:
         """Get facilitator skills with normalized levels"""
@@ -485,7 +353,7 @@ class AdvancedSchedulingEngine:
         }
         
         for skill in facilitator_skills:
-            skills[skill.skill_name] = skill_level_map.get(skill.skill_level, 0.0)
+            skills[skill.module.module_name] = skill_level_map.get(skill.skill_level, 0.0)
         
         return skills
     
