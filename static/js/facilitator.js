@@ -2192,7 +2192,10 @@ function deleteUnavailability(unavailabilityId) {
     }
     
     fetch(`/facilitator/unavailability/${unavailabilityId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': window.csrfToken
+        }
     })
     .then(response => response.json())
     .then(result => {
