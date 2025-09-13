@@ -3054,10 +3054,9 @@ input:checked + .toggle-slider:before {
 }
 
 .calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-  margin-bottom: 1px;
+  display: flex;
+  gap: 4px !important;
+  margin-bottom: 4px;
 }
 
 .weekday {
@@ -3075,28 +3074,25 @@ input:checked + .toggle-slider:before {
   box-sizing: border-box;
 }
 
-.calendar-days {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-}
-
 .calendar-day {
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
   background: var(--surface-primary);
   border: 1px solid var(--border-color);
-  border-radius: 2px;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 0.5rem;
+  font-size: 1rem;
   font-weight: 500;
   color: var(--color-text-primary);
-  min-height: 5px;
+  min-height: 80px;
+  height: auto;
+  width: calc((100% - 24px) / 7);
   box-sizing: border-box;
-  aspect-ratio: 1;
+  padding: 4px;
 }
 
 .calendar-day:hover {
@@ -4049,19 +4045,6 @@ textarea::placeholder {
 }
 
 /* CALENDAR CELLS - RECTANGULAR TO MATCH HEADERS */
-.calendar-day {
-  min-height: 80px !important;
-  font-size: 1rem !important;
-  background: var(--surface-primary) !important;
-  height: auto !important;
-  width: calc(14.28% - 3px) !important; /* 100% / 7 days - gap */
-  aspect-ratio: unset !important;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  padding: 4px;
-}
 
 /* Calendar day availability colors */
 .calendar-day.available {
@@ -4101,6 +4084,26 @@ textarea::placeholder {
   gap: 4px !important;
 }
 
+.calendar-weekday {
+  width: calc(14.28% - 3px) !important; /* Match the calendar day width */
+  text-align: center;
+  font-weight: bold;
+  padding: 8px 4px;
+  background: var(--surface-secondary);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.weekday {
+  width: calc(14.28% - 3px) !important; /* Match the calendar day width */
+  text-align: center;
+  font-weight: bold;
+  padding: 8px 4px;
+  background: var(--surface-secondary);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
 /* Responsive calendar styles */
 @media (max-width: 768px) {
   .calendar-container {
@@ -4110,8 +4113,16 @@ textarea::placeholder {
   
   .calendar-day {
     min-height: 60px !important;
-    height: 60px !important;
+    height: auto !important;
     font-size: 0.875rem !important;
+    width: calc((100% - 12px) / 7) !important; /* Adjust for smaller gap */
+  }
+  
+  .calendar-weekday,
+  .weekday {
+    width: calc(14.28% - 2px) !important; /* Match calendar day width */
+    font-size: 0.8rem !important;
+    padding: 6px 2px !important;
   }
   
   .calendar-days {
@@ -4126,8 +4137,16 @@ textarea::placeholder {
 @media (max-width: 480px) {
   .calendar-day {
     min-height: 50px !important;
-    height: 50px !important;
+    height: auto !important;
     font-size: 0.75rem !important;
+    width: calc((100% - 6px) / 7) !important; /* Adjust for smaller gap */
+  }
+  
+  .calendar-weekday,
+  .weekday {
+    width: calc(14.28% - 1px) !important; /* Match calendar day width */
+    font-size: 0.7rem !important;
+    padding: 4px 1px !important;
   }
 }
 
@@ -4138,7 +4157,7 @@ textarea::placeholder {
   flex-direction: column;
   gap: 2px;
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .event {

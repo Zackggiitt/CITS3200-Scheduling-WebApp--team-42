@@ -412,8 +412,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const prevMonth = new Date(year, month, 0);
         const daysInPrevMonth = prevMonth.getDate();
         
-        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-            const dayElement = createDayElement(daysInPrevMonth - i, true);
+        // Fix: Calculate previous month days correctly
+        for (let i = startingDayOfWeek; i > 0; i--) {
+            const dayNumber = daysInPrevMonth - i + 1;
+            const dayElement = createDayElement(dayNumber, true);
             calendarDays.appendChild(dayElement);
         }
         
@@ -430,6 +432,17 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let day = 1; day <= remainingCells; day++) {
             const dayElement = createDayElement(day, true);
             calendarDays.appendChild(dayElement);
+        }
+    }
+    
+    // Function to refresh calendar when unit data changes
+    function refreshCalendar() {
+        if (document.getElementById('calendar-view') && document.getElementById('calendar-view').style.display === 'block') {
+            loadUnavailabilityDataForCalendar();
+            // Small delay to ensure unavailability data is loaded before generating calendar
+            setTimeout(() => {
+                generateCalendarDays();
+            }, 100);
         }
     }
     
