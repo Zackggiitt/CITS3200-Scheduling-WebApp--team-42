@@ -3250,6 +3250,15 @@ body.calendar-view-active #unit-selector {
   margin-bottom: var(--gap-md);
 }
 
+.schedule-legend {
+  display: flex;
+  gap: var(--gap-lg);
+  margin-top: var(--gap-lg);
+  padding-top: var(--gap-md);
+  border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
 .legend-item {
   display: flex;
   align-items: center;
