@@ -4232,6 +4232,8 @@ textarea::placeholder {
   line-height: 1.2;
 }
 
+/* Emoji styling - no special CSS needed, emojis render inline by default */
+
 .event:hover {
   opacity: 0.8;
 }

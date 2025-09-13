@@ -531,7 +531,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     unit.upcoming_sessions.forEach(session => {
                         if (session.date === formattedDate) {
                             const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
-                            const eventText = `${unit.code}\n${session.topic}\n${session.time}\n${session.location}`;
+                            // Truncate long session names
+                            const truncatedTopic = session.topic.length > 15 ? session.topic.substring(0, 15) + '...' : session.topic;
+                            const eventText = `📚 ${unit.code}<br>
+👤 ${truncatedTopic}<br>
+⏰ ${session.time}<br>
+📍 ${session.location}`;
                             allEvents.push({
                                 text: eventText,
                                 class: statusClass,
@@ -546,7 +551,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (unit.past_sessions) {
                     unit.past_sessions.forEach(session => {
                         if (session.date === formattedDate) {
-                            const eventText = `${unit.code}\n${session.topic}\n${session.time}\n${session.location}`;
+                            // Truncate long session names
+                            const truncatedTopic = session.topic.length > 15 ? session.topic.substring(0, 15) + '...' : session.topic;
+                            const eventText = `📚 ${unit.code}<br>
+👤 ${truncatedTopic}<br>
+⏰ ${session.time}<br>
+📍 ${session.location}`;
                             allEvents.push({
                                 text: eventText,
                                 class: 'past',
