@@ -229,6 +229,13 @@ document.addEventListener('DOMContentLoaded', function() {
         generateCalendarDays();
     }
     
+    // Function to refresh calendar when unit data changes
+    function refreshCalendar() {
+        if (document.getElementById('calendar-view').style.display === 'block') {
+            generateCalendarDays();
+        }
+    }
+    
     function updateCalendarHeader() {
         const monthTitle = document.getElementById('current-month');
         if (monthTitle) {
@@ -309,20 +316,50 @@ document.addEventListener('DOMContentLoaded', function() {
     function generateEvents(dayNumber, isOtherMonth) {
         if (isOtherMonth) return '';
         
-        // Sample events (replace with real data)
         const events = [];
         
-        if (dayNumber === 22) { // Today
-            events.push('<div class="event confirmed">Lab Session 9-5</div>');
+        // Get current calendar date
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const currentDateObj = new Date(year, month, dayNumber);
+        
+        // Format date to match session date format (dd/mm/yyyy)
+        const formattedDate = String(dayNumber).padStart(2, '0') + '/' + 
+                             String(month + 1).padStart(2, '0') + '/' + 
+                             String(year);
+        
+        // Get sessions for this date from all units
+        if (window.unitsData) {
+            window.unitsData.forEach(unit => {
+                // Check upcoming sessions
+                if (unit.upcoming_sessions) {
+                    unit.upcoming_sessions.forEach(session => {
+                        if (session.date === formattedDate) {
+                            const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
+                            const eventText = `${session.topic} ${session.time}`;
+                            events.push(`<div class="event ${statusClass}" title="${session.location}">${eventText}</div>`);
+                        }
+                    });
+                }
+                
+                // Check past sessions (for historical view)
+                if (unit.past_sessions) {
+                    unit.past_sessions.forEach(session => {
+                        if (session.date === formattedDate) {
+                            const eventText = `${session.topic} ${session.time}`;
+                            events.push(`<div class="event completed" title="${session.location}">${eventText}</div>`);
+                        }
+                    });
+                }
+            });
         }
-        if (dayNumber === 23) { // Tomorrow
-            events.push('<div class="event pending">Lab Session 9-5</div>');
-        }
-        if (dayNumber === 25) {
-            events.push('<div class="event available">Available</div>');
-        }
-        if (dayNumber === 28) {
-            events.push('<div class="event confirmed">Lab Session 2-6</div>');
+        
+        // If no sessions found, show "Available" for active units
+        if (events.length === 0) {
+            const hasActiveUnits = window.unitsData && window.unitsData.some(unit => unit.status === 'active');
+            if (hasActiveUnits) {
+                events.push('<div class="event available">Available</div>');
+            }
         }
         
         return events.join('');
@@ -682,6 +719,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update unavailability view if it's currently visible
         updateUnavailabilityViewForUnit(unit);
 
+        // Refresh calendar if it's currently visible
+        refreshCalendar();
+
         // Update active state in dropdown
         document.querySelectorAll('.unit-item').forEach(item => {
             item.classList.remove('active');
@@ -718,6 +758,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update sessions section for all units view
         updateAllUnitsSessionsSection();
+
+        // Refresh calendar if it's currently visible
+        refreshCalendar();
 
         console.log('Switched to All Units view');
     }

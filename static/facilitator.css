@@ -4103,3 +4103,66 @@ textarea::placeholder {
     font-size: 0.75rem !important;
   }
 }
+
+/* Calendar Event Styles */
+.day-events {
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.event {
+  font-size: 0.7rem;
+  padding: 1px 2px;
+  border-radius: 2px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.event:hover {
+  opacity: 0.8;
+}
+
+.event.confirmed {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.event.pending {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.event.completed {
+  background-color: #e5e7eb;
+  color: #374151;
+  border: 1px solid #9ca3af;
+}
+
+.event.available {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+/* Responsive event styles */
+@media (max-width: 768px) {
+  .event {
+    font-size: 0.65rem;
+    padding: 1px;
+  }
+}
+
+@media (max-width: 480px) {
+  .event {
+    font-size: 0.6rem;
+    padding: 0.5px;
+  }
+}
