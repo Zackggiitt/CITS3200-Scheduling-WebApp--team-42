@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     unit.past_sessions.forEach(session => {
                         if (session.date === formattedDate) {
                             const eventText = `${session.topic} ${session.time}`;
-                            events.push(`<div class="event completed" title="${session.location}">${eventText}</div>`);
+                            events.push(`<div class="event past" title="${session.location}">${eventText}</div>`);
                         }
                     });
                 }
