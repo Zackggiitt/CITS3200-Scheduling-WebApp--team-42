@@ -434,9 +434,11 @@ document.addEventListener('DOMContentLoaded', function() {
             calendarDays.appendChild(dayElement);
         }
         
-        // Next month's leading days
+        // Next month's leading days - only show enough to complete the current month's rows
         const totalCells = calendarDays.children.length;
-        const remainingCells = 42 - totalCells; // 6 rows × 7 days
+        const currentWeek = Math.ceil(totalCells / 7);
+        const cellsNeededForCurrentWeek = currentWeek * 7;
+        const remainingCells = cellsNeededForCurrentWeek - totalCells;
         
         for (let day = 1; day <= remainingCells; day++) {
             const dayElement = createDayElement(day, true);

@@ -33,6 +33,7 @@
   --gap-sm: 8px;
   --gap-md: 16px;
   --gap-lg: 24px;
+  --gap-xl: 32px;
 }
 
 * {
@@ -2796,6 +2797,7 @@ input:checked + .toggle-slider:before {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  margin-top: 32px;
   margin-bottom: var(--gap-lg);
   padding-bottom: var(--gap-md);
   border-bottom: 2px solid var(--border-color);
@@ -3182,6 +3184,16 @@ body.calendar-view-active #unit-selector {
 .calendar-day.today {
   border: 2px solid var(--color-text-primary);
   font-weight: 700;
+}
+
+.calendar-day.other-month {
+  opacity: 0.3;
+  color: var(--color-text-secondary);
+  background-color: var(--surface-secondary);
+}
+
+.calendar-day.other-month .day-number {
+  color: var(--color-text-secondary);
 }
 
 .calendar-day.weekend {
