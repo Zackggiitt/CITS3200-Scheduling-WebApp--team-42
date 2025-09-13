@@ -4053,9 +4053,14 @@ textarea::placeholder {
   min-height: 80px !important;
   font-size: 1rem !important;
   background: var(--surface-primary) !important;
-  height: 80px !important;
-  width: 100% !important;
+  height: auto !important;
+  width: calc(14.28% - 3px) !important; /* 100% / 7 days - gap */
   aspect-ratio: unset !important;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px;
 }
 
 /* Calendar day availability colors */
@@ -4086,12 +4091,13 @@ textarea::placeholder {
 }
 
 .calendar-days {
-  grid-template-columns: repeat(7, 1fr) !important;
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px !important;
 }
 
 .calendar-weekdays {
-  grid-template-columns: repeat(7, 1fr) !important;
+  display: flex;
   gap: 4px !important;
 }
 
@@ -4130,23 +4136,83 @@ textarea::placeholder {
   margin-top: 2px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+  flex: 1;
+  overflow: hidden;
 }
 
 .event {
   font-size: 0.7rem;
-  padding: 1px 2px;
-  border-radius: 2px;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 4px 6px;
+  border-radius: 4px;
+  text-align: left;
+  white-space: normal;
+  word-wrap: break-word;
   cursor: pointer;
   transition: opacity 0.2s ease;
+  min-height: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid;
+  min-width: 0;
+  line-height: 1.2;
 }
 
 .event:hover {
   opacity: 0.8;
+}
+
+.overflow-message {
+  font-size: 0.65rem;
+  color: #6b7280;
+  text-align: center;
+  padding: 2px;
+  font-style: italic;
+  cursor: pointer;
+  margin-top: auto;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.overflow-message:hover {
+  color: #374151;
+}
+
+/* Modal Session Styles */
+.modal-session-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 1px solid;
+  font-size: 0.9rem;
+}
+
+.modal-session-item.confirmed {
+  background-color: #dcfce7;
+  color: #166534;
+  border-color: #22c55e;
+}
+
+.modal-session-item.pending {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.modal-session-item.past {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border-color: #d1d5db;
+}
+
+.session-info {
+  display: flex;
+  align-items: center;
+}
+
+.session-text {
+  font-weight: 500;
 }
 
 .event.confirmed {

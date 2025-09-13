@@ -257,15 +257,100 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Function to refresh calendar when unit data changes
-    function refreshCalendar() {
-        if (document.getElementById('calendar-view').style.display === 'block') {
-            loadUnavailabilityDataForCalendar();
-            // Small delay to ensure unavailability data is loaded before generating calendar
-            setTimeout(() => {
-                generateCalendarDays();
-            }, 100);
+    // Function to show all sessions for a specific date
+    function showAllSessionsForDate(formattedDate, eventsData = null) {
+        // If eventsData is not provided, collect all events for this date
+        if (!eventsData) {
+            const allEvents = [];
+            
+            if (window.unitsData) {
+                window.unitsData.forEach(unit => {
+                    // Check upcoming sessions
+                    if (unit.upcoming_sessions) {
+                        unit.upcoming_sessions.forEach(session => {
+                            if (session.date === formattedDate) {
+                                const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
+                                const eventText = `${unit.code}\n${session.topic}\n${session.time}\n${session.location}`;
+                                allEvents.push({
+                                    text: eventText,
+                                    class: statusClass,
+                                    session: session,
+                                    unit: unit
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Check past sessions
+                    if (unit.past_sessions) {
+                        unit.past_sessions.forEach(session => {
+                            if (session.date === formattedDate) {
+                                const eventText = `${unit.code}\n${session.topic}\n${session.time}\n${session.location}`;
+                                allEvents.push({
+                                    text: eventText,
+                                    class: 'past',
+                                    session: session,
+                                    unit: unit
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // Sort events by time
+            allEvents.sort((a, b) => {
+                const timeA = a.session.time.split(' - ')[0];
+                const timeB = b.session.time.split(' - ')[0];
+                return timeA.localeCompare(timeB);
+            });
+            
+            eventsData = allEvents;
         }
+        
+        // Show modal with all sessions
+        showDateSessionsModal(formattedDate, eventsData);
+    }
+    
+    // Function to show date sessions modal
+    function showDateSessionsModal(date, sessions) {
+        const modal = document.getElementById('date-sessions-modal');
+        const modalTitle = document.getElementById('date-modal-title');
+        const modalSubtitle = document.getElementById('date-modal-subtitle');
+        const modalSessionsList = document.getElementById('date-modal-sessions-list');
+        
+        // Format date for display (convert dd/mm/yyyy to readable format)
+        const [day, month, year] = date.split('/');
+        const displayDate = new Date(year, month - 1, day);
+        const formattedDisplayDate = displayDate.toLocaleDateString('en-AU', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        modalTitle.textContent = `Sessions for ${formattedDisplayDate}`;
+        modalSubtitle.textContent = `${sessions.length} session${sessions.length !== 1 ? 's' : ''} scheduled`;
+        
+        // Generate session list HTML
+        const sessionsHTML = sessions.map(session => `
+            <div class="modal-session-item ${session.class}">
+                <div class="session-info">
+                    <div class="session-text">${session.text}</div>
+                </div>
+            </div>
+        `).join('');
+        
+        modalSessionsList.innerHTML = sessionsHTML;
+        
+        // Show modal
+        modal.style.display = 'flex';
+    }
+    
+    // Function to close date sessions modal
+    function closeDateSessionsModal() {
+        const modal = document.getElementById('date-sessions-modal');
+        modal.style.display = 'none';
     }
     
     // Function to check if a date is unavailable
@@ -376,13 +461,24 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         
+        // Add click handler for date cell
+        if (!isOtherMonth) {
+            dayElement.style.cursor = 'pointer';
+            dayElement.addEventListener('click', function() {
+                const formattedDate = String(dayNumber).padStart(2, '0') + '/' + 
+                                     String(currentDate.getMonth() + 1).padStart(2, '0') + '/' + 
+                                     String(currentDate.getFullYear());
+                showAllSessionsForDate(formattedDate);
+            });
+        }
+        
         return dayElement;
     }
     
     function generateEvents(dayNumber, isOtherMonth) {
         if (isOtherMonth) return '';
         
-        const events = [];
+        const allEvents = [];
         
         // Get current calendar date
         const year = currentDate.getFullYear();
@@ -402,8 +498,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     unit.upcoming_sessions.forEach(session => {
                         if (session.date === formattedDate) {
                             const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
-                            const eventText = `${session.topic} ${session.time}`;
-                            events.push(`<div class="event ${statusClass}" title="${session.location}">${eventText}</div>`);
+                            const eventText = `${unit.code}\n${session.topic}\n${session.time}\n${session.location}`;
+                            allEvents.push({
+                                text: eventText,
+                                class: statusClass,
+                                session: session,
+                                unit: unit
+                            });
                         }
                     });
                 }
@@ -412,15 +513,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (unit.past_sessions) {
                     unit.past_sessions.forEach(session => {
                         if (session.date === formattedDate) {
-                            const eventText = `${session.topic} ${session.time}`;
-                            events.push(`<div class="event past" title="${session.location}">${eventText}</div>`);
+                            const eventText = `${unit.code}\n${session.topic}\n${session.time}\n${session.location}`;
+                            allEvents.push({
+                                text: eventText,
+                                class: 'past',
+                                session: session,
+                                unit: unit
+                            });
                         }
                     });
                 }
             });
         }
         
-        return events.join('');
+        // Sort events by time (earliest first)
+        allEvents.sort((a, b) => {
+            const timeA = a.session.time.split(' - ')[0];
+            const timeB = b.session.time.split(' - ')[0];
+            return timeA.localeCompare(timeB);
+        });
+        
+        // Show only top 2 sessions
+        const displayEvents = allEvents.slice(0, 2);
+        const remainingCount = allEvents.length - 2;
+        
+        let result = displayEvents.map(event => 
+            `<div class="event ${event.class}" title="${event.text}">${event.text}</div>`
+        ).join('');
+        
+        // Add overflow message if there are more sessions
+        if (remainingCount > 0) {
+            result += `<div class="overflow-message" onclick="showAllSessionsForDate('${formattedDate}', ${JSON.stringify(allEvents).replace(/"/g, '&quot;')})">${remainingCount} more sessions. Click date to see more</div>`;
+        }
+        
+        return result;
     }
     
     // Month navigation
@@ -1519,6 +1645,24 @@ document.addEventListener('DOMContentLoaded', function() {
         if (closeBtn) {
             closeBtn.addEventListener('click', hideSessionsModal);
             console.log('Close button listener added');
+        }
+        
+        // Add event listeners for date sessions modal
+        const dateModal = document.getElementById('date-sessions-modal');
+        const dateCloseBtn = document.getElementById('date-modal-close-btn');
+        
+        if (dateCloseBtn) {
+            dateCloseBtn.addEventListener('click', closeDateSessionsModal);
+            console.log('Date modal close button listener added');
+        }
+        
+        // Close modal when clicking outside
+        if (dateModal) {
+            dateModal.addEventListener('click', function(e) {
+                if (e.target === dateModal) {
+                    closeDateSessionsModal();
+                }
+            });
         }
         
         // Close modal when clicking outside
