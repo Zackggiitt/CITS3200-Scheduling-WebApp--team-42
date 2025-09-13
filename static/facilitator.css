@@ -4050,26 +4050,56 @@ textarea::placeholder {
 
 /* CALENDAR CELLS - RECTANGULAR TO MATCH HEADERS */
 .calendar-day {
-  min-height: 40px !important;
-  font-size: 0.75rem !important;
+  min-height: 80px !important;
+  font-size: 1rem !important;
   background: var(--surface-primary) !important;
-  height: 40px !important;
+  height: 80px !important;
   width: 100% !important;
   aspect-ratio: unset !important;
 }
 
 .calendar-container {
   width: 100% !important;
-  max-width: 600px !important;
+  max-width: 1000px !important;
   margin: 0 auto !important;
 }
 
 .calendar-days {
   grid-template-columns: repeat(7, 1fr) !important;
-  gap: 2px !important;
+  gap: 4px !important;
 }
 
 .calendar-weekdays {
   grid-template-columns: repeat(7, 1fr) !important;
-  gap: 2px !important;
+  gap: 4px !important;
+}
+
+/* Responsive calendar styles */
+@media (max-width: 768px) {
+  .calendar-container {
+    max-width: 100% !important;
+    padding: 0 16px !important;
+  }
+  
+  .calendar-day {
+    min-height: 60px !important;
+    height: 60px !important;
+    font-size: 0.875rem !important;
+  }
+  
+  .calendar-days {
+    gap: 2px !important;
+  }
+  
+  .calendar-weekdays {
+    gap: 2px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-day {
+    min-height: 50px !important;
+    height: 50px !important;
+    font-size: 0.75rem !important;
+  }
 }
