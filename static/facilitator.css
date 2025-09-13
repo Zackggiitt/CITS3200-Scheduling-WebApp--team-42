@@ -4058,6 +4058,27 @@ textarea::placeholder {
   aspect-ratio: unset !important;
 }
 
+/* Calendar day availability colors */
+.calendar-day.available {
+  background-color: #dbeafe !important; /* Light blue for available */
+  border-color: #3b82f6 !important;
+}
+
+.calendar-day.unavailable {
+  background-color: #fee2e2 !important; /* Light red for unavailable */
+  border-color: #dc2626 !important;
+}
+
+.calendar-day.today.available {
+  background-color: #bfdbfe !important; /* Slightly darker blue for today + available */
+  border: 2px solid #3b82f6 !important;
+}
+
+.calendar-day.today.unavailable {
+  background-color: #fecaca !important; /* Slightly darker red for today + unavailable */
+  border: 2px solid #dc2626 !important;
+}
+
 .calendar-container {
   width: 100% !important;
   max-width: 1000px !important;
@@ -4150,6 +4171,17 @@ textarea::placeholder {
   background-color: #f3f4f6;
   color: #6b7280;
   border: 1px solid #d1d5db;
+}
+
+/* Legend color styles */
+.legend-color.available {
+  background-color: #dbeafe;
+  border: 1px solid #3b82f6;
+}
+
+.legend-color.unavailable {
+  background-color: #fee2e2;
+  border: 1px solid #dc2626;
 }
 
 /* Responsive event styles */

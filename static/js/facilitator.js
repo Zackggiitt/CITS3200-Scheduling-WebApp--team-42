@@ -226,14 +226,62 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function initCalendar() {
         updateCalendarHeader();
+        loadUnavailabilityDataForCalendar();
         generateCalendarDays();
+    }
+    
+    // Function to load unavailability data for the calendar
+    function loadUnavailabilityDataForCalendar() {
+        // Get current unit ID
+        const currentUnitId = window.currentUnitId;
+        
+        if (currentUnitId) {
+            fetch(`/facilitator/unavailability?unit_id=${currentUnitId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error('Error loading unavailability for calendar:', data.error);
+                        window.unavailabilityData = [];
+                        return;
+                    }
+                    
+                    window.unavailabilityData = data.unavailabilities || [];
+                    console.log('Loaded unavailability data for calendar:', window.unavailabilityData);
+                })
+                .catch(error => {
+                    console.error('Error loading unavailability data for calendar:', error);
+                    window.unavailabilityData = [];
+                });
+        } else {
+            window.unavailabilityData = [];
+        }
     }
     
     // Function to refresh calendar when unit data changes
     function refreshCalendar() {
         if (document.getElementById('calendar-view').style.display === 'block') {
-            generateCalendarDays();
+            loadUnavailabilityDataForCalendar();
+            // Small delay to ensure unavailability data is loaded before generating calendar
+            setTimeout(() => {
+                generateCalendarDays();
+            }, 100);
         }
+    }
+    
+    // Function to check if a date is unavailable
+    function isDateUnavailable(formattedDate) {
+        // Check if we have unavailability data
+        if (window.unavailabilityData && Array.isArray(window.unavailabilityData)) {
+            return window.unavailabilityData.some(unav => {
+                // Convert unavailability date to match our format
+                const unavDate = new Date(unav.date);
+                const unavFormatted = String(unavDate.getDate()).padStart(2, '0') + '/' + 
+                                    String(unavDate.getMonth() + 1).padStart(2, '0') + '/' + 
+                                    String(unavDate.getFullYear());
+                return unavFormatted === formattedDate;
+            });
+        }
+        return false;
     }
     
     function updateCalendarHeader() {
@@ -303,6 +351,24 @@ document.addEventListener('DOMContentLoaded', function() {
             dayElement.classList.add('today');
         }
         
+        // Check availability for this date
+        if (!isOtherMonth) {
+            const formattedDate = String(dayNumber).padStart(2, '0') + '/' + 
+                                 String(month + 1).padStart(2, '0') + '/' + 
+                                 String(year);
+            
+            // Check if date is unavailable
+            if (isDateUnavailable(formattedDate)) {
+                dayElement.classList.add('unavailable');
+            } else {
+                // Check if there are active units (for availability indication)
+                const hasActiveUnits = window.unitsData && window.unitsData.some(unit => unit.status === 'active');
+                if (hasActiveUnits) {
+                    dayElement.classList.add('available');
+                }
+            }
+        }
+        
         dayElement.innerHTML = `
             <div class="day-number">${dayNumber}</div>
             <div class="day-events">
@@ -352,14 +418,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
             });
-        }
-        
-        // If no sessions found, show "Available" for active units
-        if (events.length === 0) {
-            const hasActiveUnits = window.unitsData && window.unitsData.some(unit => unit.status === 'active');
-            if (hasActiveUnits) {
-                events.push('<div class="event available">Available</div>');
-            }
         }
         
         return events.join('');
