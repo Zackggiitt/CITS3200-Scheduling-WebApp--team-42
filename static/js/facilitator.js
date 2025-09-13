@@ -345,12 +345,29 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Show modal
         modal.style.display = 'flex';
+        
+        // Ensure close button has event listener (fallback)
+        const closeBtn = document.getElementById('date-modal-close-btn');
+        if (closeBtn) {
+            closeBtn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Date modal close button clicked (fallback)');
+                closeDateSessionsModal();
+            };
+        }
     }
     
     // Function to close date sessions modal
     function closeDateSessionsModal() {
+        console.log('closeDateSessionsModal called');
         const modal = document.getElementById('date-sessions-modal');
-        modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+            console.log('Date modal closed');
+        } else {
+            console.error('Date modal element not found!');
+        }
     }
     
     // Function to check if a date is unavailable
@@ -1651,15 +1668,31 @@ document.addEventListener('DOMContentLoaded', function() {
         const dateModal = document.getElementById('date-sessions-modal');
         const dateCloseBtn = document.getElementById('date-modal-close-btn');
         
+        console.log('Date modal elements for listeners:', {
+            dateModal: !!dateModal,
+            dateCloseBtn: !!dateCloseBtn
+        });
+        
         if (dateCloseBtn) {
-            dateCloseBtn.addEventListener('click', closeDateSessionsModal);
+            // Remove any existing listeners first
+            dateCloseBtn.removeEventListener('click', closeDateSessionsModal);
+            // Add the new listener
+            dateCloseBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Date modal close button clicked');
+                closeDateSessionsModal();
+            });
             console.log('Date modal close button listener added');
+        } else {
+            console.error('Date modal close button not found!');
         }
         
         // Close modal when clicking outside
         if (dateModal) {
             dateModal.addEventListener('click', function(e) {
                 if (e.target === dateModal) {
+                    console.log('Date modal clicked outside, closing');
                     closeDateSessionsModal();
                 }
             });
