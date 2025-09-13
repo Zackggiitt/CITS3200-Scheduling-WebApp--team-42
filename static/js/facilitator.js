@@ -1939,6 +1939,7 @@ function saveUnavailability() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': window.csrfToken
         },
         body: JSON.stringify(data)
     })
@@ -2091,7 +2092,10 @@ function deleteUnavailability(unavailabilityId) {
     }
     
     fetch(`/facilitator/unavailability/${unavailabilityId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': window.csrfToken
+        }
     })
     .then(response => response.json())
     .then(result => {

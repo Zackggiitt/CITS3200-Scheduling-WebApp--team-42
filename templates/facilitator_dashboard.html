@@ -637,6 +637,7 @@
     window.unitsData = {{ units_data|tojson }};
     window.currentUnitId = {{ current_unit_dict.id if current_unit_dict else 'null' }};
     window.currentUnit = {{ current_unit_dict|tojson if current_unit_dict else 'null' }};
+    window.csrfToken = "{{ csrf_token() }}";
 </script>
 
 </body>
