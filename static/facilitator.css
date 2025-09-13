@@ -2791,6 +2791,43 @@ input:checked + .toggle-slider:before {
   font-size: 1rem;
 }
 
+/* Schedule Header Styling */
+.schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--gap-lg);
+  padding-bottom: var(--gap-md);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.schedule-header h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--gap-sm);
+}
+
+.schedule-subtitle {
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+}
+
+/* Calendar Navigation Styling */
+.calendar-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--gap-md);
+  padding: var(--gap-sm) 0;
+}
+
+.calendar-navigation .month-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .header-actions {
   display: flex;
   gap: var(--gap-sm);
@@ -3975,6 +4012,18 @@ textarea::placeholder {
     flex-direction: column;
     gap: var(--gap-md);
     align-items: stretch;
+  }
+  
+  .schedule-header {
+    flex-direction: column;
+    gap: var(--gap-md);
+    align-items: stretch;
+  }
+  
+  .calendar-navigation {
+    flex-direction: column;
+    gap: var(--gap-sm);
+    align-items: center;
   }
   
   .summary-stats {

@@ -568,18 +568,22 @@
 
 <!-- Calendar View -->
 <section id="calendar-view" class="main-content-wrapper" style="display: none;">
-  <div class="calendar-container">
-    <div class="calendar-header">
+  <div class="schedule-header">
+    <div>
       <h2>My Schedule</h2>
-      <div class="calendar-controls">
-        <button id="prev-month" class="calendar-btn">
-          <span class="material-icons">chevron_left</span>
-        </button>
-        <span id="current-month" class="month-title">August 2025</span>
-        <button id="next-month" class="calendar-btn">
-          <span class="material-icons">chevron_right</span>
-        </button>
-      </div>
+      <p class="schedule-subtitle">View your scheduled sessions.</p>
+    </div>
+  </div>
+  
+  <div class="calendar-container">
+    <div class="calendar-navigation">
+      <button id="prev-month" class="action-btn">
+        <span class="material-icons">chevron_left</span>
+      </button>
+      <span id="current-month" class="month-title">August 2025</span>
+      <button id="next-month" class="action-btn">
+        <span class="material-icons">chevron_right</span>
+      </button>
     </div>
     
     <div class="calendar-grid">
