@@ -3179,18 +3179,6 @@ body.calendar-view-active #unit-selector {
   box-shadow: none;
 }
 
-.calendar-day.unavailable {
-  background: var(--surface-error-light);
-  border-color: var(--status-red);
-  color: var(--status-red);
-  font-weight: 600;
-}
-
-.calendar-day.unavailable:hover {
-  background: var(--surface-error-light);
-  border-color: var(--status-red);
-}
-
 .calendar-day.today {
   border: 2px solid var(--color-text-primary);
   font-weight: 700;
@@ -4109,27 +4097,6 @@ textarea::placeholder {
 
 /* CALENDAR CELLS - RECTANGULAR TO MATCH HEADERS */
 
-/* Calendar day availability colors */
-.calendar-day.available {
-  background-color: #dbeafe !important; /* Light blue for available */
-  border-color: #3b82f6 !important;
-}
-
-.calendar-day.unavailable {
-  background-color: #fee2e2 !important; /* Light red for unavailable */
-  border-color: #dc2626 !important;
-}
-
-.calendar-day.today.available {
-  background-color: #bfdbfe !important; /* Slightly darker blue for today + available */
-  border: 2px solid #3b82f6 !important;
-}
-
-.calendar-day.today.unavailable {
-  background-color: #fecaca !important; /* Slightly darker red for today + unavailable */
-  border: 2px solid #dc2626 !important;
-}
-
 .calendar-container {
   width: 100% !important;
   max-width: 1000px !important;
@@ -4297,6 +4264,14 @@ textarea::placeholder {
 
 .session-text {
   font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+/* Bold text for session information in popup modal */
+.modal-session-item .session-text {
+  font-weight: 700;
 }
 
 .event.confirmed {

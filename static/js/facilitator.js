@@ -273,7 +273,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         unit.upcoming_sessions.forEach(session => {
                             if (session.date === formattedDate) {
                                 const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
-                                const eventText = `${unit.code}\n${session.topic}\n${session.time}\n${session.location}`;
+                                const eventText = `📚 ${unit.code}<br>
+👤 ${session.topic}<br>
+⏰ ${session.time}<br>
+📍 ${session.location}`;
                                 allEvents.push({
                                     text: eventText,
                                     class: statusClass,
@@ -288,7 +291,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (unit.past_sessions) {
                         unit.past_sessions.forEach(session => {
                             if (session.date === formattedDate) {
-                                const eventText = `${unit.code}\n${session.topic}\n${session.time}\n${session.location}`;
+                                const eventText = `📚 ${unit.code}<br>
+👤 ${session.topic}<br>
+⏰ ${session.time}<br>
+📍 ${session.location}`;
                                 allEvents.push({
                                     text: eventText,
                                     class: 'past',
@@ -469,23 +475,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dayElement.classList.add('today');
         }
         
-        // Check availability for this date
-        if (!isOtherMonth) {
-            const formattedDate = String(dayNumber).padStart(2, '0') + '/' + 
-                                 String(month + 1).padStart(2, '0') + '/' + 
-                                 String(year);
-            
-            // Check if date is unavailable
-            if (isDateUnavailable(formattedDate)) {
-                dayElement.classList.add('unavailable');
-            } else {
-                // Check if there are active units (for availability indication)
-                const hasActiveUnits = window.unitsData && window.unitsData.some(unit => unit.status === 'active');
-                if (hasActiveUnits) {
-                    dayElement.classList.add('available');
-                }
-            }
-        }
+        // No availability checking for schedule view - only show sessions
         
         dayElement.innerHTML = `
             <div class="day-number">${dayNumber}</div>
