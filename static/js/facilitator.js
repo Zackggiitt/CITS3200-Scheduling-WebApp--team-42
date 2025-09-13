@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 dashboardSections.forEach(section => section.style.display = 'none');
                 unavailabilityView.style.display = 'block';
                 calendarView.style.display = 'none';
+                document.body.classList.remove('calendar-view-active');
                 // Hide unavailability alert in unavailability view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 dashboardSections.forEach(section => section.style.display = 'none');
                 unavailabilityView.style.display = 'none';
                 calendarView.style.display = 'block';
+                document.body.classList.add('calendar-view-active');
                 initCalendar();
                 // Hide unavailability alert in schedule view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
@@ -47,10 +49,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
                 unavailabilityView.style.display = 'none';
+                calendarView.style.display = 'none';
+                document.body.classList.remove('calendar-view-active');
                 // Show unavailability alert in dashboard view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'block';
-                calendarView.style.display = 'none';
             }
         });
     });
@@ -2230,6 +2233,7 @@ function saveUnavailability() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': window.csrfToken
         },
         body: JSON.stringify(data)
     })

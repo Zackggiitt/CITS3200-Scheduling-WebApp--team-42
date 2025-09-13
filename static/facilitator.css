@@ -2813,6 +2813,11 @@ input:checked + .toggle-slider:before {
   font-size: 1rem;
 }
 
+/* Hide entire unit card section only in calendar view */
+body.calendar-view-active #unit-selector {
+  display: none !important;
+}
+
 /* Calendar Navigation Styling */
 .calendar-navigation {
   display: flex;
