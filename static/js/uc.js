@@ -2983,8 +2983,8 @@ function ensureActivityLogCard() {
             <div>Name</div>
             <div>Student Number</div>
             <div>Date</div>
-            <div>Hours per Session</div>
-            <div>Weekly Hours</div>
+            <div class="text-center">Hours per Session</div>
+            <div class="text-center">Weekly Hours</div>
           </div>
         </div>
 
@@ -3071,8 +3071,8 @@ function handlePdfExport() {
           <td style="padding: 8px; border: 1px solid #ddd;">${name}</td>
           <td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${studentNumber}</td>
           <td style="padding: 8px; border: 1px solid #ddd;">${date}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${assignedHours}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${totalHours}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${assignedHours}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${totalHours}</td>
         </tr>
       `;
     }
@@ -3108,8 +3108,8 @@ function handlePdfExport() {
             <th>Name</th>
             <th>Student Number</th>
             <th>Date</th>
-            <th>Hours per Session</th>
-            <th>Weekly Hours</th>
+            <th style="text-align: center;">Hours per Session</th>
+            <th style="text-align: center;">Weekly Hours</th>
           </tr>
         </thead>
         <tbody>
@@ -3214,8 +3214,8 @@ function createFacilitatorRow(facilitator, index) {
     </div>
     <div class="text-xs text-gray-600 font-mono">${studentNumber}</div>
     <div class="text-xs text-gray-600">${getCurrentDate()}</div>
-    <div class="text-xs text-gray-600">${assignedHours}</div>
-    <div class="text-xs text-gray-600">${totalHours}</div>
+    <div class="text-xs text-gray-600 text-center">${assignedHours}</div>
+    <div class="text-xs text-gray-600 text-center">${totalHours}</div>
   `;
   
   return row;
@@ -3414,6 +3414,28 @@ function updateUpcomingSessions(sessions) {
         }
         
         // Handle regular sessions
+        const sessionDate = session.date;
+        let displayDate = sessionDate;
+        
+        // If it's a day name, add the actual date
+        if (sessionDate && !['Today', 'Tomorrow'].includes(sessionDate)) {
+          // Try to find the date for this day name
+          const today = new Date();
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const dayIndex = dayNames.indexOf(sessionDate);
+          
+          if (dayIndex !== -1) {
+            // Find the next occurrence of this day
+            const daysUntilTarget = (dayIndex - today.getDay() + 7) % 7;
+            const targetDate = new Date(today);
+            targetDate.setDate(today.getDate() + daysUntilTarget);
+            
+            const dayNumber = targetDate.getDate();
+            const monthNumber = targetDate.getMonth() + 1;
+            displayDate = `${sessionDate}<br><span class="text-xs text-gray-400">${dayNumber}/${monthNumber}</span>`;
+          }
+        }
+        
         return `
         <div class="bg-white rounded-md p-2 border border-purple-200 flex-shrink-0 h-[50px] flex flex-col justify-center">
           <div class="flex items-center justify-between">
@@ -3421,9 +3443,9 @@ function updateUpcomingSessions(sessions) {
               <div class="w-2 h-2 rounded-full bg-purple-500"></div>
               <span class="text-xs font-medium truncate">${session.name}</span>
             </div>
-            <div class="text-xs text-gray-500">${session.date}</div>
+            <div class="text-xs text-gray-500 text-right">${displayDate}</div>
           </div>
-          <div class="text-xs text-gray-600 mt-1 truncate">
+          <div class="text-xs text-gray-600 mt-0.5 truncate">
             ${session.time} • ${session.location || 'TBA'}
           </div>
         </div>
