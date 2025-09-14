@@ -224,10 +224,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Calendar functionality
     let currentDate = new Date();
+    let calendarViewMode = 'weekly'; // 'weekly' or 'monthly'
+    let currentWeekStart = new Date();
     const monthNames = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"];
     
     function initCalendar() {
+        // Set initial week start to current date
+        currentWeekStart = new Date();
+        updateViewToggleButtons();
+        updateCalendarContainerClass();
         updateCalendarHeader();
         loadUnavailabilityDataForCalendar();
         generateCalendarDays();
@@ -396,13 +402,68 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function updateCalendarHeader() {
-        const monthTitle = document.getElementById('current-month');
-        if (monthTitle) {
-            monthTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+        const periodTitle = document.getElementById('current-period');
+        if (periodTitle) {
+            if (calendarViewMode === 'weekly') {
+                // Show week range
+                const startOfWeek = new Date(currentWeekStart);
+                const dayOfWeek = startOfWeek.getDay();
+                const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+                
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                
+                const formatDate = (date) => {
+                    return `${monthNames[date.getMonth()]} ${date.getDate()}`;
+                };
+                
+                periodTitle.textContent = `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}, ${startOfWeek.getFullYear()}`;
+            } else {
+                // Show month
+                periodTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            }
         }
     }
     
     function generateCalendarDays() {
+        if (calendarViewMode === 'weekly') {
+            generateWeeklyCalendar();
+        } else {
+            generateMonthlyCalendar();
+        }
+    }
+    
+    function generateWeeklyCalendar() {
+        const calendarDays = document.getElementById('calendar-days');
+        if (!calendarDays) return;
+        
+        calendarDays.innerHTML = '';
+        
+        // Calculate the start of the current week (Monday)
+        const startOfWeek = new Date(currentWeekStart);
+        const dayOfWeek = startOfWeek.getDay();
+        const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Handle Sunday
+        startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+        
+        // Generate 7 days for the week
+        for (let i = 0; i < 7; i++) {
+            const dayDate = new Date(startOfWeek);
+            dayDate.setDate(startOfWeek.getDate() + i);
+            
+            const dayNumber = dayDate.getDate();
+            const isToday = isSameDay(dayDate, new Date());
+            
+            const dayElement = createDayElement(dayNumber, false, dayDate);
+            if (isToday) {
+                dayElement.classList.add('today');
+            }
+            
+            calendarDays.appendChild(dayElement);
+        }
+    }
+    
+    function generateMonthlyCalendar() {
         const calendarDays = document.getElementById('calendar-days');
         if (!calendarDays) return;
         
@@ -457,7 +518,88 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function createDayElement(dayNumber, isOtherMonth) {
+    function goToPreviousPeriod() {
+        if (calendarViewMode === 'weekly') {
+            currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+        } else {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+        }
+        updateCalendarHeader();
+        generateCalendarDays();
+    }
+    
+    function goToNextPeriod() {
+        if (calendarViewMode === 'weekly') {
+            currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+        } else {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+        updateCalendarHeader();
+        generateCalendarDays();
+    }
+    
+    function goToToday() {
+        const today = new Date();
+        if (calendarViewMode === 'weekly') {
+            currentWeekStart = new Date(today);
+        } else {
+            currentDate = new Date(today);
+        }
+        updateCalendarHeader();
+        generateCalendarDays();
+    }
+    
+    function switchToWeeklyView() {
+        calendarViewMode = 'weekly';
+        currentWeekStart = new Date();
+        updateViewToggleButtons();
+        updateCalendarHeader();
+        generateCalendarDays();
+        updateCalendarContainerClass();
+    }
+    
+    function switchToMonthlyView() {
+        calendarViewMode = 'monthly';
+        currentDate = new Date();
+        updateViewToggleButtons();
+        updateCalendarHeader();
+        generateCalendarDays();
+        updateCalendarContainerClass();
+    }
+    
+    function updateViewToggleButtons() {
+        const weeklyBtn = document.getElementById('weekly-view-btn');
+        const monthlyBtn = document.getElementById('monthly-view-btn');
+        
+        if (weeklyBtn && monthlyBtn) {
+            if (calendarViewMode === 'weekly') {
+                weeklyBtn.classList.add('active');
+                monthlyBtn.classList.remove('active');
+            } else {
+                monthlyBtn.classList.add('active');
+                weeklyBtn.classList.remove('active');
+            }
+        }
+    }
+    
+    function updateCalendarContainerClass() {
+        const container = document.querySelector('.calendar-container');
+        if (container) {
+            if (calendarViewMode === 'weekly') {
+                container.classList.add('weekly-view');
+            } else {
+                container.classList.remove('weekly-view');
+            }
+        }
+    }
+    
+    function isSameDay(date1, date2) {
+        return date1.getDate() === date2.getDate() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getFullYear() === date2.getFullYear();
+    }
+    
+    function createDayElement(dayNumber, isOtherMonth, dayDate = null) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
         
@@ -482,7 +624,7 @@ document.addEventListener('DOMContentLoaded', function() {
         dayElement.innerHTML = `
             <div class="day-number">${dayNumber}</div>
             <div class="day-events">
-                ${generateEvents(dayNumber, isOtherMonth)}
+                ${generateEvents(dayNumber, isOtherMonth, dayDate)}
             </div>
         `;
         
@@ -500,20 +642,27 @@ document.addEventListener('DOMContentLoaded', function() {
         return dayElement;
     }
     
-    function generateEvents(dayNumber, isOtherMonth) {
+    function generateEvents(dayNumber, isOtherMonth, dayDate = null) {
         if (isOtherMonth) return '';
         
         const allEvents = [];
         
-        // Get current calendar date
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const currentDateObj = new Date(year, month, dayNumber);
+        // Determine the date to use for session matching
+        let targetDate;
+        if (dayDate) {
+            // Use the provided date (for weekly view)
+            targetDate = dayDate;
+        } else {
+            // Use current calendar date (for monthly view)
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            targetDate = new Date(year, month, dayNumber);
+        }
         
         // Format date to match session date format (dd/mm/yyyy)
-        const formattedDate = String(dayNumber).padStart(2, '0') + '/' + 
-                             String(month + 1).padStart(2, '0') + '/' + 
-                             String(year);
+        const formattedDate = String(targetDate.getDate()).padStart(2, '0') + '/' + 
+                             String(targetDate.getMonth() + 1).padStart(2, '0') + '/' + 
+                             String(targetDate.getFullYear());
         
         // Get sessions for this date from all units
         if (window.unitsData) {
@@ -584,24 +733,31 @@ document.addEventListener('DOMContentLoaded', function() {
         return result;
     }
     
-    // Month navigation
-    const prevMonthBtn = document.getElementById('prev-month');
-    const nextMonthBtn = document.getElementById('next-month');
+    // Calendar navigation event listeners
+    const prevPeriodBtn = document.getElementById('prev-period');
+    const nextPeriodBtn = document.getElementById('next-period');
+    const todayBtn = document.getElementById('today-btn');
+    const weeklyViewBtn = document.getElementById('weekly-view-btn');
+    const monthlyViewBtn = document.getElementById('monthly-view-btn');
     
-    if (prevMonthBtn) {
-        prevMonthBtn.addEventListener('click', function() {
-            currentDate.setMonth(currentDate.getMonth() - 1);
-            updateCalendarHeader();
-            generateCalendarDays();
-        });
+    if (prevPeriodBtn) {
+        prevPeriodBtn.addEventListener('click', goToPreviousPeriod);
     }
     
-    if (nextMonthBtn) {
-        nextMonthBtn.addEventListener('click', function() {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            updateCalendarHeader();
-            generateCalendarDays();
-        });
+    if (nextPeriodBtn) {
+        nextPeriodBtn.addEventListener('click', goToNextPeriod);
+    }
+    
+    if (todayBtn) {
+        todayBtn.addEventListener('click', goToToday);
+    }
+    
+    if (weeklyViewBtn) {
+        weeklyViewBtn.addEventListener('click', switchToWeeklyView);
+    }
+    
+    if (monthlyViewBtn) {
+        monthlyViewBtn.addEventListener('click', switchToMonthlyView);
     }
 
     // GLOBAL CLICK HANDLER - Only one for all click events
