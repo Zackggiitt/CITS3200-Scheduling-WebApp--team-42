@@ -2983,8 +2983,8 @@ function ensureActivityLogCard() {
             <div>Name</div>
             <div>Student Number</div>
             <div>Date</div>
-            <div class="text-center">Hours per Session</div>
-            <div class="text-center">Weekly Hours</div>
+            <div class="text-center">Session Hours</div>
+            <div class="text-center">Total Weekly Hours</div>
           </div>
         </div>
 
@@ -4231,7 +4231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "Anna Smith",
       session_count: 7,
-      student_number: "STU0001",
+      student_number: "23456789",
       assigned_hours: 8,
       total_hours: 11,
       date: "2025-09-09",
@@ -4241,7 +4241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "Sophie Davis",
       session_count: 4,
-      student_number: "STU0002",
+      student_number: "21345678",
       assigned_hours: 8,
       total_hours: 9,
       date: "2025-09-09",
@@ -4251,7 +4251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "John Davis",
       session_count: 4,
-      student_number: "STU0003",
+      student_number: "25678909",
       assigned_hours: 5,
       total_hours: 8,
       date: "2025-09-14",
@@ -4261,7 +4261,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "Ryan Chen",
       session_count: 3,
-      student_number: "STU0004",
+      student_number: "21345654",
       assigned_hours: 2,
       total_hours: 2,
       date: "2025-09-09",
@@ -4271,7 +4271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "James Scott",
       session_count: 4,
-      student_number: "STU0005",
+      student_number: "21378987",
       assigned_hours: 7,
       total_hours: 10,
       date: "2025-09-08",
@@ -4281,7 +4281,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "Alex Torres",
       session_count: 8,
-      student_number: "STU0006",
+      student_number: "21346890",
       assigned_hours: 1,
       total_hours: 3,
       date: "2025-09-11",
@@ -4291,7 +4291,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "Alex Taylor",
       session_count: 2,
-      student_number: "STU0007",
+      student_number: "21490987",
       assigned_hours: 7,
       total_hours: 8,
       date: "2025-09-10",
@@ -4301,7 +4301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "Emma Young",
       session_count: 1,
-      student_number: "STU0008",
+      student_number: "24126789",
       assigned_hours: 2,
       total_hours: 3,
       date: "2025-09-10",
@@ -4311,7 +4311,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "Olivia Davis",
       session_count: 8,
-      student_number: "STU0009",
+      student_number: "23156790",
       assigned_hours: 6,
       total_hours: 7,
       date: "2025-09-11",
@@ -4321,7 +4321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "Maya Rodriguez",
       session_count: 3,
-      student_number: "STU0010",
+      student_number: "23789000",
       assigned_hours: 3,
       total_hours: 6,
       date: "2025-09-11",
@@ -4331,7 +4331,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "Emma Davis",
       session_count: 9,
-      student_number: "STU0011",
+      student_number: "23677880",
       assigned_hours: 6,
       total_hours: 8,
       date: "2025-09-08",
@@ -4341,7 +4341,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       name: "Kate Johnson",
       session_count: 6,
-      student_number: "STU0012",
+      student_number: "23499095",
       assigned_hours: 5,
       total_hours: 8,
       date: "2025-09-08",
