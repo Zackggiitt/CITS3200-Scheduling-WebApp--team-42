@@ -572,16 +572,33 @@
 
 <!-- Calendar View -->
 <section id="calendar-view" class="main-content-wrapper" style="display: none;">
-  <div class="calendar-container">
-    <div class="calendar-header">
+  <div class="schedule-header">
+    <div>
       <h2>My Schedule</h2>
-      <div class="calendar-controls">
-        <button id="prev-month" class="calendar-btn">
+      <p class="schedule-subtitle">View your scheduled sessions.</p>
+    </div>
+  </div>
+  
+  <div class="calendar-container">
+    <div class="calendar-navigation">
+      <div class="calendar-view-toggle">
+        <button id="weekly-view-btn" class="view-toggle-btn active" title="Weekly View">
+          <span class="material-icons">view_list</span>
+        </button>
+        <button id="monthly-view-btn" class="view-toggle-btn" title="Monthly View">
+          <span class="material-icons">view_module</span>
+        </button>
+      </div>
+      <div class="calendar-nav-right">
+        <button id="prev-period" class="action-btn">
           <span class="material-icons">chevron_left</span>
         </button>
-        <span id="current-month" class="month-title">August 2025</span>
-        <button id="next-month" class="calendar-btn">
+        <span id="current-period" class="period-title">August 2025</span>
+        <button id="next-period" class="action-btn">
           <span class="material-icons">chevron_right</span>
+        </button>
+        <button id="today-btn" class="action-btn today-btn">
+          Today
         </button>
       </div>
     </div>
@@ -600,20 +617,20 @@
       <div class="calendar-days" id="calendar-days">
       </div>
     </div>
-    
-    <div class="schedule-legend">
-      <div class="legend-item">
-        <div class="legend-color confirmed"></div>
-        <span>Confirmed Sessions</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color pending"></div>
-        <span>Pending Sessions</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color available"></div>
-        <span>Available</span>
-      </div>
+  </div>
+  
+  <div class="schedule-legend">
+    <div class="legend-item">
+      <div class="legend-color confirmed"></div>
+      <span>Confirmed Sessions</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color pending"></div>
+      <span>Pending Sessions</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color past"></div>
+      <span>Past Sessions</span>
     </div>
   </div>
 </section>
@@ -739,6 +756,24 @@
         </div>
       </div>
     </div>
+
+<!-- Date Sessions Modal -->
+<div id="date-sessions-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="date-modal-title">Sessions for Date</h2>
+            <button id="date-modal-close-btn" class="modal-close-btn">
+              <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p id="date-modal-subtitle" class="modal-subtitle"></p>
+            <div id="date-modal-sessions-list" class="modal-sessions-list">
+                <!-- Date sessions will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
     // Pass units data from backend to JavaScript
