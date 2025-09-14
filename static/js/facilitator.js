@@ -717,9 +717,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return timeA.localeCompare(timeB);
         });
         
-        // Show only top 2 sessions
-        const displayEvents = allEvents.slice(0, 2);
-        const remainingCount = allEvents.length - 2;
+        // Show different number of sessions based on view mode
+        const maxSessions = calendarViewMode === 'weekly' ? 5 : 2;
+        const displayEvents = allEvents.slice(0, maxSessions);
+        const remainingCount = allEvents.length - maxSessions;
         
         let result = displayEvents.map(event => 
             `<div class="event ${event.class}" title="${event.text}">${event.text}</div>`

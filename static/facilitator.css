@@ -2838,6 +2838,12 @@ body.calendar-view-active #unit-selector {
   gap: var(--gap-md);
 }
 
+.calendar-nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-md);
+}
+
 .period-title {
   font-size: 1.25rem;
   font-weight: 600;
