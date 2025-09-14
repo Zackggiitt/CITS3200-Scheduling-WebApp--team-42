@@ -2981,10 +2981,10 @@ function ensureActivityLogCard() {
         <div class="bg-green-50 px-6 py-3 sticky top-0 z-10">
           <div class="grid grid-cols-5 gap-4 text-xs font-semibold text-gray-700">
             <div>Name</div>
-            <div>Status</div>
+            <div>Student Number</div>
             <div>Date</div>
-            <div>Assigned Hours</div>
-            <div>Total Hours</div>
+            <div class="text-center">Session Hours</div>
+            <div class="text-center">Total Weekly Hours</div>
           </div>
         </div>
 
@@ -3026,14 +3026,14 @@ function handleAttendanceSearch(event) {
   const rows = tableBody.querySelectorAll('.grid.grid-cols-5');
   
   rows.forEach(row => {
-    // Search in name, status, and other visible text
+    // Search in name and student number
     const nameElement = row.querySelector('.text-xs.font-medium.text-gray-900');
-    const statusElement = row.querySelector('span.inline-flex');
+    const studentNumberElement = row.querySelector('.font-mono');
     
     const name = nameElement?.textContent.toLowerCase() || '';
-    const status = statusElement?.textContent.toLowerCase() || '';
+    const studentNumber = studentNumberElement?.textContent.toLowerCase() || '';
     
-    const isVisible = name.includes(searchTerm) || status.includes(searchTerm);
+    const isVisible = name.includes(searchTerm) || studentNumber.includes(searchTerm);
     row.style.display = isVisible ? 'grid' : 'none';
   });
 }
@@ -3061,7 +3061,7 @@ function handlePdfExport() {
     if (row.style.display !== 'none') {
       const cells = row.querySelectorAll('div');
       const name = cells[0]?.querySelector('.text-xs.font-medium.text-gray-900')?.textContent || '';
-      const status = cells[1]?.querySelector('span')?.textContent || '';
+      const studentNumber = cells[1]?.textContent || '';
       const date = cells[2]?.textContent || '';
       const assignedHours = cells[3]?.textContent || '';
       const totalHours = cells[4]?.textContent || '';
@@ -3069,10 +3069,10 @@ function handlePdfExport() {
       tableRows += `
         <tr>
           <td style="padding: 8px; border: 1px solid #ddd;">${name}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${status}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${studentNumber}</td>
           <td style="padding: 8px; border: 1px solid #ddd;">${date}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${assignedHours}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${totalHours}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${assignedHours}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${totalHours}</td>
         </tr>
       `;
     }
@@ -3106,10 +3106,10 @@ function handlePdfExport() {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Status</th>
+            <th>Student Number</th>
             <th>Date</th>
-            <th>Assigned Hours</th>
-            <th>Total Hours</th>
+            <th style="text-align: center;">Hours per Session</th>
+            <th style="text-align: center;">Weekly Hours</th>
           </tr>
         </thead>
         <tbody>
@@ -3204,25 +3204,18 @@ function createFacilitatorRow(facilitator, index) {
   const assignedHours = generateAssignedHours();
   const totalHours = generateTotalHours();
   
-  // Status options - only Active or Inactive
-  const statuses = [
-    { name: 'Active', color: 'green', bg: 'green' },
-    { name: 'Inactive', color: 'red', bg: 'red' }
-  ];
-  const status = statuses[index % statuses.length];
+  // Generate a student number for demo purposes
+  // In real implementation, this would come from facilitator.student_number or facilitator.staff_number
+  const studentNumber = facilitator.student_number || facilitator.staff_number || `STU${String(index + 1).padStart(4, '0')}`;
   
   row.innerHTML = `
     <div class="flex items-center">
       <span class="text-xs font-medium text-gray-900">${facilitator.name}</span>
     </div>
-    <div>
-      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusClasses(status)}">
-        ${status.name}
-      </span>
-    </div>
+    <div class="text-xs text-gray-600 font-mono">${studentNumber}</div>
     <div class="text-xs text-gray-600">${getCurrentDate()}</div>
-    <div class="text-xs text-gray-600">${assignedHours}</div>
-    <div class="text-xs text-gray-600">${totalHours}</div>
+    <div class="text-xs text-gray-600 text-center">${assignedHours}</div>
+    <div class="text-xs text-gray-600 text-center">${totalHours}</div>
   `;
   
   return row;
@@ -3421,6 +3414,28 @@ function updateUpcomingSessions(sessions) {
         }
         
         // Handle regular sessions
+        const sessionDate = session.date;
+        let displayDate = sessionDate;
+        
+        // If it's a day name, add the actual date
+        if (sessionDate && !['Today', 'Tomorrow'].includes(sessionDate)) {
+          // Try to find the date for this day name
+          const today = new Date();
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const dayIndex = dayNames.indexOf(sessionDate);
+          
+          if (dayIndex !== -1) {
+            // Find the next occurrence of this day
+            const daysUntilTarget = (dayIndex - today.getDay() + 7) % 7;
+            const targetDate = new Date(today);
+            targetDate.setDate(today.getDate() + daysUntilTarget);
+            
+            const dayNumber = targetDate.getDate();
+            const monthNumber = targetDate.getMonth() + 1;
+            displayDate = `${sessionDate}<br><span class="text-xs text-gray-400">${dayNumber}/${monthNumber}</span>`;
+          }
+        }
+        
         return `
         <div class="bg-white rounded-md p-2 border border-purple-200 flex-shrink-0 h-[50px] flex flex-col justify-center">
           <div class="flex items-center justify-between">
@@ -3428,9 +3443,9 @@ function updateUpcomingSessions(sessions) {
               <div class="w-2 h-2 rounded-full bg-purple-500"></div>
               <span class="text-xs font-medium truncate">${session.name}</span>
             </div>
-            <div class="text-xs text-gray-500">${session.date}</div>
+            <div class="text-xs text-gray-500 text-right">${displayDate}</div>
           </div>
-          <div class="text-xs text-gray-600 mt-1 truncate">
+          <div class="text-xs text-gray-600 mt-0.5 truncate">
             ${session.time} • ${session.location || 'TBA'}
           </div>
         </div>
@@ -3517,10 +3532,14 @@ function updateMiniCalendar(calendarData) {
   dayElements.forEach(dayEl => {
     dayEl.addEventListener('click', () => {
       // Remove active class from all days
-      dayElements.forEach(el => el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700'));
+      dayElements.forEach(el => {
+        el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+        el.style.color = '';
+      });
       
       // Add active class to clicked day
-      dayEl.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+      dayEl.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      dayEl.style.color = 'white';
       
       // Filter upcoming sessions by selected day
       const selectedDate = dayEl.getAttribute('data-date');
@@ -3532,7 +3551,10 @@ function updateMiniCalendar(calendarData) {
   dayElements.forEach(dayEl => {
     dayEl.addEventListener('dblclick', () => {
       // Remove active class from all days
-      dayElements.forEach(el => el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700'));
+      dayElements.forEach(el => {
+        el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+        el.style.color = '';
+      });
       
       // Show all upcoming sessions
       const allSessions = window.__attData?.upcoming || [];
@@ -4203,151 +4225,128 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+
   // Sample facilitator data for attendance summary
   const sampleFacilitatorData = [
     {
-      name: "Lisa Harris",
-      session_count: 2,
-      status: "Inactive",
-      status_color: "red",
-      status_bg: "red",
-      assigned_hours: 2,
-      total_hours: 5,
-      date: "2025-09-13",
-      email: "lisa.harris@university.edu",
-      phone: "0491906336"
+      name: "Anna Smith",
+      session_count: 7,
+      student_number: "23456789",
+      assigned_hours: 8,
+      total_hours: 11,
+      date: "2025-09-09",
+      email: "anna.smith@university.edu",
+      phone: "0427370168"
     },
     {
-      name: "Nina White",
-      session_count: 9,
-      status: "Inactive",
-      status_color: "red",
-      status_bg: "red",
-      assigned_hours: 4,
-      total_hours: 6,
-      date: "2025-09-10",
-      email: "nina.white@university.edu",
-      phone: "0414275542"
-    },
-    {
-      name: "James Anderson",
-      session_count: 9,
-      status: "Active",
-      status_color: "green",
-      status_bg: "green",
-      assigned_hours: 1,
-      total_hours: 1,
-      date: "2025-09-14",
-      email: "james.anderson@university.edu",
-      phone: "0443533914"
-    },
-    {
-      name: "Tom Jackson",
-      session_count: 10,
-      status: "Inactive",
-      status_color: "red",
-      status_bg: "red",
-      assigned_hours: 6,
-      total_hours: 6,
-      date: "2025-09-11",
-      email: "tom.jackson@university.edu",
-      phone: "0470697723"
-    },
-    {
-      name: "Mike King",
-      session_count: 6,
-      status: "Inactive",
-      status_color: "red",
-      status_bg: "red",
-      assigned_hours: 7,
-      total_hours: 10,
-      date: "2025-09-13",
-      email: "mike.king@university.edu",
-      phone: "0422129858"
-    },
-    {
-      name: "Sophie Wilson",
-      session_count: 2,
-      status: "Inactive",
-      status_color: "red",
-      status_bg: "red",
-      assigned_hours: 7,
-      total_hours: 10,
-      date: "2025-09-13",
-      email: "sophie.wilson@university.edu",
-      phone: "0477938279"
-    },
-    {
-      name: "David Scott",
-      session_count: 6,
-      status: "Active",
-      status_color: "green",
-      status_bg: "green",
-      assigned_hours: 2,
-      total_hours: 3,
-      date: "2025-09-11",
-      email: "david.scott@university.edu",
-      phone: "0421506942"
-    },
-    {
-      name: "John Anderson",
-      session_count: 9,
-      status: "Active",
-      status_color: "green",
-      status_bg: "green",
-      assigned_hours: 1,
-      total_hours: 1,
-      date: "2025-09-11",
-      email: "john.anderson@university.edu",
-      phone: "0450349575"
-    },
-    {
-      name: "Kate Brown",
+      name: "Sophie Davis",
       session_count: 4,
-      status: "Inactive",
-      status_color: "red",
-      status_bg: "red",
-      assigned_hours: 4,
-      total_hours: 6,
-      date: "2025-09-14",
-      email: "kate.brown@university.edu",
-      phone: "0413618118"
+      student_number: "21345678",
+      assigned_hours: 8,
+      total_hours: 9,
+      date: "2025-09-09",
+      email: "sophie.davis@university.edu",
+      phone: "0466209529"
     },
     {
-      name: "Sophie Rodriguez",
-      session_count: 1,
-      status: "Inactive",
-      status_color: "red",
-      status_bg: "red",
-      assigned_hours: 3,
-      total_hours: 3,
+      name: "John Davis",
+      session_count: 4,
+      student_number: "25678909",
+      assigned_hours: 5,
+      total_hours: 8,
       date: "2025-09-14",
-      email: "sophie.rodriguez@university.edu",
-      phone: "0464382546"
+      email: "john.davis@university.edu",
+      phone: "0457307239"
     },
     {
-      name: "Anna Young",
+      name: "Ryan Chen",
+      session_count: 3,
+      student_number: "21345654",
+      assigned_hours: 2,
+      total_hours: 2,
+      date: "2025-09-09",
+      email: "ryan.chen@university.edu",
+      phone: "0454759557"
+    },
+    {
+      name: "James Scott",
+      session_count: 4,
+      student_number: "21378987",
+      assigned_hours: 7,
+      total_hours: 10,
+      date: "2025-09-08",
+      email: "james.scott@university.edu",
+      phone: "0461693991"
+    },
+    {
+      name: "Alex Torres",
       session_count: 8,
-      status: "Active",
-      status_color: "green",
-      status_bg: "green",
+      student_number: "21346890",
+      assigned_hours: 1,
+      total_hours: 3,
+      date: "2025-09-11",
+      email: "alex.torres@university.edu",
+      phone: "0424120002"
+    },
+    {
+      name: "Alex Taylor",
+      session_count: 2,
+      student_number: "21490987",
       assigned_hours: 7,
       total_hours: 8,
-      date: "2025-09-09",
-      email: "anna.young@university.edu",
-      phone: "0480974701"
+      date: "2025-09-10",
+      email: "alex.taylor@university.edu",
+      phone: "0484401824"
     },
     {
-      name: "Emma Scott",
+      name: "Emma Young",
+      session_count: 1,
+      student_number: "24126789",
+      assigned_hours: 2,
+      total_hours: 3,
+      date: "2025-09-10",
+      email: "emma.young@university.edu",
+      phone: "0475694144"
+    },
+    {
+      name: "Olivia Davis",
       session_count: 8,
-      status: "Active",
-      status_color: "green",
-      status_bg: "green",
+      student_number: "23156790",
+      assigned_hours: 6,
+      total_hours: 7,
+      date: "2025-09-11",
+      email: "olivia.davis@university.edu",
+      phone: "0424180164"
+    },
+    {
+      name: "Maya Rodriguez",
+      session_count: 3,
+      student_number: "23789000",
+      assigned_hours: 3,
+      total_hours: 6,
+      date: "2025-09-11",
+      email: "maya.rodriguez@university.edu",
+      phone: "0429458783"
+    },
+    {
+      name: "Emma Davis",
+      session_count: 9,
+      student_number: "23677880",
+      assigned_hours: 6,
+      total_hours: 8,
+      date: "2025-09-08",
+      email: "emma.davis@university.edu",
+      phone: "0495239531"
+    },
+    {
+      name: "Kate Johnson",
+      session_count: 6,
+      student_number: "23499095",
       assigned_hours: 5,
       total_hours: 8,
       date: "2025-09-08",
-      email: "emma.scott@university.edu",
-      phone: "0428507758"
+      email: "kate.johnson@university.edu",
+      phone: "0466808419"
     }
   ];
 
