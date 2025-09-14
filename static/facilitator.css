@@ -4109,6 +4109,18 @@ textarea::placeholder {
 
 /* CALENDAR CELLS - RECTANGULAR TO MATCH HEADERS */
 
+/* Unavailability calendar specific styling */
+.unavailability-calendar-section .calendar-day.unavailable {
+  background-color: #fee2e2 !important; /* Light red for unavailable */
+  border-color: #dc2626 !important;
+  color: #dc2626 !important;
+}
+
+.unavailability-calendar-section .calendar-day.unavailable:hover {
+  background-color: #fecaca !important; /* Slightly darker red on hover */
+  border-color: #dc2626 !important;
+}
+
 .calendar-container {
   width: 100% !important;
   max-width: 1000px !important;
