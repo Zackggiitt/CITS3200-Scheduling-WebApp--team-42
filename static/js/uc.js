@@ -3532,10 +3532,14 @@ function updateMiniCalendar(calendarData) {
   dayElements.forEach(dayEl => {
     dayEl.addEventListener('click', () => {
       // Remove active class from all days
-      dayElements.forEach(el => el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700'));
+      dayElements.forEach(el => {
+        el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+        el.style.color = '';
+      });
       
       // Add active class to clicked day
-      dayEl.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+      dayEl.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      dayEl.style.color = 'white';
       
       // Filter upcoming sessions by selected day
       const selectedDate = dayEl.getAttribute('data-date');
@@ -3547,7 +3551,10 @@ function updateMiniCalendar(calendarData) {
   dayElements.forEach(dayEl => {
     dayEl.addEventListener('dblclick', () => {
       // Remove active class from all days
-      dayElements.forEach(el => el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700'));
+      dayElements.forEach(el => {
+        el.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+        el.style.color = '';
+      });
       
       // Show all upcoming sessions
       const allSessions = window.__attData?.upcoming || [];
