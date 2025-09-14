@@ -1,6 +1,7 @@
 // Navigation between dashboard, calendar, and notifications
 document.addEventListener('DOMContentLoaded', function() {
     const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
+    const unitSelector = document.getElementById('unit-selector');
     const calendarView = document.getElementById('calendar-view');
     const unavailabilityView = document.getElementById('unavailability-view');
     const swapsView = document.getElementById('swaps-view');
@@ -31,6 +32,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 unavailabilityView.style.display = 'block';
                 calendarView.style.display = 'none';
                 swapsView.style.display = 'none';
+                // Remove calendar-view-active class to ensure unit selector is visible
+                document.body.classList.remove('calendar-view-active');
+                // Show unit selector in unavailability view
+                if (unitSelector) unitSelector.style.display = 'block';
                 // Hide unavailability alert in unavailability view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
@@ -42,6 +47,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 unavailabilityView.style.display = 'none';
                 swapsView.style.display = 'none';
                 calendarView.style.display = 'block';
+                // Hide unit selector in schedule view
+                if (unitSelector) unitSelector.style.display = 'none';
                 document.body.classList.add('calendar-view-active');
                 initCalendar();
                 // Hide unavailability alert in schedule view
@@ -53,6 +60,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 unavailabilityView.style.display = 'none';
                 calendarView.style.display = 'none';
                 swapsView.style.display = 'block';
+                // Remove calendar-view-active class to ensure unit selector is visible
+                document.body.classList.remove('calendar-view-active');
+                // Show unit selector in swaps view
+                if (unitSelector) unitSelector.style.display = 'block';
                 // Hide unavailability alert in swaps view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
@@ -63,6 +74,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 dashboardSections.forEach(section => section.style.display = 'block');
                 unavailabilityView.style.display = 'none';
                 swapsView.style.display = 'none';
+                // Remove calendar-view-active class to ensure unit selector is visible
+                document.body.classList.remove('calendar-view-active');
+                // Show unit selector in dashboard view
+                if (unitSelector) unitSelector.style.display = 'block';
                 // Show unavailability alert in dashboard view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'block';
