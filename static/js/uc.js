@@ -3061,7 +3061,7 @@ function handlePdfExport() {
     if (row.style.display !== 'none') {
       const cells = row.querySelectorAll('div');
       const name = cells[0]?.querySelector('.text-xs.font-medium.text-gray-900')?.textContent || '';
-      const status = cells[1]?.querySelector('span')?.textContent || '';
+      const studentNumber = cells[1]?.textContent || '';
       const date = cells[2]?.textContent || '';
       const assignedHours = cells[3]?.textContent || '';
       const totalHours = cells[4]?.textContent || '';
@@ -3069,7 +3069,7 @@ function handlePdfExport() {
       tableRows += `
         <tr>
           <td style="padding: 8px; border: 1px solid #ddd;">${name}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${status}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${studentNumber}</td>
           <td style="padding: 8px; border: 1px solid #ddd;">${date}</td>
           <td style="padding: 8px; border: 1px solid #ddd;">${assignedHours}</td>
           <td style="padding: 8px; border: 1px solid #ddd;">${totalHours}</td>
@@ -3106,7 +3106,7 @@ function handlePdfExport() {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Status</th>
+            <th>Student Number</th>
             <th>Date</th>
             <th>Assigned Hours</th>
             <th>Total Hours</th>
