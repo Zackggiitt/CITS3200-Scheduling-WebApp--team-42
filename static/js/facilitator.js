@@ -697,6 +697,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update unavailability view if it's currently visible
         updateUnavailabilityViewForUnit(unit);
+        
+        // Update Session Swaps view if it's currently visible
+        if (document.getElementById('swaps-view').style.display !== 'none') {
+            // Update window.currentUnitId for Session Swaps
+            window.currentUnitId = unitId;
+            // Reload Session Swaps data
+            initializeSessionSwaps();
+        }
 
         // Update active state in dropdown
         document.querySelectorAll('.unit-item').forEach(item => {
@@ -2255,7 +2263,15 @@ function setupSwapsEventListeners() {
 // Load user's swap requests
 async function loadSwapRequests() {
     try {
-        const response = await fetch('/facilitator/swap-requests', {
+        // Get current unit ID for filtering
+        const currentUnitId = window.currentUnitId;
+        
+        if (!currentUnitId) {
+            console.warn('No current unit selected');
+            return;
+        }
+
+        const response = await fetch(`/facilitator/swap-requests?unit_id=${currentUnitId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -2391,13 +2407,55 @@ function getStatusIcon(status) {
 // Load user's assignments for the session dropdown
 async function loadUserAssignments() {
     try {
-        // This would typically come from an API endpoint
-        // For now, we'll use the existing units data
+        // Get current unit ID for filtering
+        const currentUnitId = window.currentUnitId;
+        
+        if (!currentUnitId) {
+            console.warn('No current unit selected');
+            return;
+        }
+
+        // Filter assignments by current unit
         if (window.unitsData && window.unitsData.length > 0) {
-            currentUserAssignments = [];
-            // Process units data to extract assignments
-            // This is a simplified version - in reality, you'd have a dedicated endpoint
-            console.log('Loaded user assignments from units data');
+            const currentUnit = window.unitsData.find(unit => unit.id === currentUnitId);
+            
+            if (currentUnit) {
+                currentUserAssignments = [];
+                
+                // Extract assignments from current unit's sessions
+                // Check different possible session structures
+                let sessions = null;
+                if (currentUnit.upcoming_sessions) {
+                    sessions = currentUnit.upcoming_sessions;
+                } else if (currentUnit.sessions && currentUnit.sessions.upcoming) {
+                    sessions = currentUnit.sessions.upcoming;
+                } else if (currentUnit.sessions && Array.isArray(currentUnit.sessions)) {
+                    sessions = currentUnit.sessions;
+                }
+                
+                if (sessions && sessions.length > 0) {
+                    sessions.forEach(session => {
+                        // The backend provides 'id' as the assignment ID
+                        if (session.id) {
+                            currentUserAssignments.push({
+                                id: session.id, // This is the assignment ID from backend
+                                session_id: session.session_id,
+                                module: session.module || 'Unknown Module', // Handle null module names
+                                session_type: session.session_type || 'Unknown Type', // Handle null session types
+                                start_time: session.start_time,
+                                end_time: session.end_time,
+                                venue: session.location || 'TBA', // Backend uses 'location' not 'venue'
+                                unit_id: currentUnitId
+                            });
+                        }
+                    });
+                }
+                
+                console.log(`Loaded ${currentUserAssignments.length} assignments for unit ${currentUnit.code}`);
+                
+                // Update unit info display
+                updateUnitInfoDisplay(currentUnit);
+            }
         }
     } catch (error) {
         console.error('Error loading user assignments:', error);
@@ -2422,6 +2480,22 @@ function closeRequestSwapModal() {
     }
 }
 
+// Update unit info display in swaps view
+function updateUnitInfoDisplay(unit) {
+    // Update unit code and name in swaps view
+    const unitNameEl = document.getElementById('current-unit-name');
+    const sessionCountEl = document.getElementById('session-count');
+    
+    if (unitNameEl) {
+        unitNameEl.textContent = `${unit.code} - ${unit.name}`;
+    }
+    
+    if (sessionCountEl) {
+        const sessionCount = currentUserAssignments.length;
+        sessionCountEl.textContent = `You have ${sessionCount} assigned sessions in this unit.`;
+    }
+}
+
 // Populate session dropdown
 function populateSessionDropdown() {
     const sessionSelect = document.getElementById('session-select');
@@ -2430,19 +2504,21 @@ function populateSessionDropdown() {
     // Clear existing options
     sessionSelect.innerHTML = '<option value="">Choose a session to swap</option>';
     
-    // Add sessions from current user's assignments
-    // This is a simplified version - in reality, you'd fetch from an API
-    if (window.unitsData && window.unitsData.length > 0) {
-        window.unitsData.forEach(unit => {
-            if (unit.sessions && unit.sessions.upcoming) {
-                unit.sessions.upcoming.forEach(session => {
-                    const option = document.createElement('option');
-                    option.value = session.assignment_id || session.id;
-                    option.textContent = `${session.module} - ${session.session_type} (${formatDate(session.start_time)})`;
-                    sessionSelect.appendChild(option);
-                });
-            }
+    // Add sessions from current user's assignments for the current unit
+    if (currentUserAssignments && currentUserAssignments.length > 0) {
+        currentUserAssignments.forEach(assignment => {
+            const option = document.createElement('option');
+            option.value = assignment.id;
+            option.textContent = `${assignment.module} - ${assignment.session_type} (${formatDate(assignment.start_time)})`;
+            sessionSelect.appendChild(option);
         });
+    } else {
+        // Show no sessions message
+        const option = document.createElement('option');
+        option.value = "";
+        option.textContent = "No sessions available for swapping";
+        option.disabled = true;
+        sessionSelect.appendChild(option);
     }
 }
 
@@ -2455,7 +2531,11 @@ async function handleSessionSelectionChange(event) {
     }
     
     try {
-        const response = await fetch(`/facilitator/available-facilitators/${assignmentId}`, {
+        // Include unit context in the request
+        const currentUnitId = window.currentUnitId;
+        const url = `/facilitator/available-facilitators/${assignmentId}?unit_id=${currentUnitId}`;
+        
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -2522,6 +2602,9 @@ async function handleSwapRequestSubmit(event) {
     }
     
     try {
+        // Include unit context in the request
+        const currentUnitId = window.currentUnitId;
+        
         const response = await fetch('/facilitator/swap-requests', {
             method: 'POST',
             headers: {
@@ -2532,7 +2615,8 @@ async function handleSwapRequestSubmit(event) {
                 requester_assignment_id: sessionId,
                 target_assignment_id: sessionId, // This would need to be the target's assignment
                 target_facilitator_id: suggestedFacilitatorId,
-                has_discussed: hasDiscussed
+                has_discussed: hasDiscussed,
+                unit_id: currentUnitId
             })
         });
         

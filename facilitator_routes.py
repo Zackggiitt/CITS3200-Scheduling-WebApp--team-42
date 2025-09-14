@@ -286,15 +286,15 @@ def dashboard():
             {
                 'id': a.id,
                 'session_id': s.id,
-                'module': m.module_name,
-                'session_type': s.session_type,
+                'module': m.module_name or 'Unknown Module',  # Handle null module names
+                'session_type': s.session_type or 'Unknown Type',  # Handle null session types
                 'start_time': s.start_time.isoformat(),
                 'end_time': s.end_time.isoformat(),
-                'location': s.location,
+                'location': s.location or 'TBA',  # Handle null locations
                 'is_confirmed': bool(a.is_confirmed),
                 'date': s.start_time.strftime('%d/%m/%Y'),
                 'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
-                'topic': m.module_name,
+                'topic': m.module_name or 'Unknown Module',
                 'status': 'confirmed' if a.is_confirmed else 'pending'
             }
             for a, s, m in assignments
@@ -306,15 +306,15 @@ def dashboard():
             {
                 'id': a.id,
                 'session_id': s.id,
-                'module': m.module_name,
-                'session_type': s.session_type,
+                'module': m.module_name or 'Unknown Module',  # Handle null module names
+                'session_type': s.session_type or 'Unknown Type',  # Handle null session types
                 'start_time': s.start_time.isoformat(),
                 'end_time': s.end_time.isoformat(),
-                'location': s.location,
+                'location': s.location or 'TBA',  # Handle null locations
                 'is_confirmed': bool(a.is_confirmed),
                 'date': s.start_time.strftime('%d/%m/%Y'),
                 'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
-                'topic': m.module_name,
+                'topic': m.module_name or 'Unknown Module',
                 'status': 'completed'
             }
             for a, s, m in assignments
@@ -876,6 +876,7 @@ def create_swap_request():
     target_assignment_id = data.get('target_assignment_id')
     target_facilitator_id = data.get('target_facilitator_id')
     has_discussed = data.get('has_discussed', False)
+    unit_id = data.get('unit_id')  # Optional unit context
     
     # Validate required fields
     if not all([requester_assignment_id, target_assignment_id, target_facilitator_id]):
@@ -938,14 +939,24 @@ def create_swap_request():
 @login_required
 @role_required(UserRole.FACILITATOR)
 def get_swap_requests():
-    """Get user's swap requests grouped by status."""
+    """Get user's swap requests grouped by status, filtered by unit."""
     user = get_current_user()
+    unit_id = request.args.get('unit_id', type=int)
     
-    # Get requests made by this user
-    my_requests = SwapRequest.query.filter_by(requester_id=user.id).all()
+    # Base query for requests made by this user
+    my_requests_query = SwapRequest.query.filter_by(requester_id=user.id)
     
-    # Get requests where this user is the target facilitator
-    requests_for_me = SwapRequest.query.filter_by(target_id=user.id).all()
+    # Base query for requests where this user is the target facilitator
+    requests_for_me_query = SwapRequest.query.filter_by(target_id=user.id)
+    
+    # Filter by unit if provided
+    if unit_id:
+        # Join with Assignment, Session, and Module to filter by unit
+        my_requests_query = my_requests_query.join(Assignment).join(Session).join(Module).filter(Module.unit_id == unit_id)
+        requests_for_me_query = requests_for_me_query.join(Assignment).join(Session).join(Module).filter(Module.unit_id == unit_id)
+    
+    my_requests = my_requests_query.all()
+    requests_for_me = requests_for_me_query.all()
     
     def serialize_swap_request(req):
         return {
@@ -1037,6 +1048,7 @@ def check_facilitator_availability(facilitator_id, session_date, session_start_t
 def get_available_facilitators(assignment_id):
     """Get facilitators available for a specific assignment swap."""
     user = get_current_user()
+    unit_id = request.args.get('unit_id', type=int)
     
     # Get the assignment details
     assignment = Assignment.query.get(assignment_id)
@@ -1048,12 +1060,15 @@ def get_available_facilitators(assignment_id):
     session_start_time = session.start_time.time()
     session_end_time = session.end_time.time()
     
-    # Get all facilitators assigned to the same unit
+    # Use provided unit_id or fall back to session's unit
+    target_unit_id = unit_id if unit_id else session.module.unit_id
+    
+    # Get all facilitators assigned to the specified unit
     unit_facilitators = (
         User.query
         .join(UnitFacilitator, User.id == UnitFacilitator.user_id)
         .filter(
-            UnitFacilitator.unit_id == session.module.unit_id,
+            UnitFacilitator.unit_id == target_unit_id,
             User.id != user.id,  # Exclude current user
             User.role == UserRole.FACILITATOR
         )
