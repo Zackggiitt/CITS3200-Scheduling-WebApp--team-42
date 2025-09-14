@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 dashboardSections.forEach(section => section.style.display = 'none');
                 unavailabilityView.style.display = 'block';
                 calendarView.style.display = 'none';
+                document.body.classList.remove('calendar-view-active');
                 // Hide unavailability alert in unavailability view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 dashboardSections.forEach(section => section.style.display = 'none');
                 unavailabilityView.style.display = 'none';
                 calendarView.style.display = 'block';
+                document.body.classList.add('calendar-view-active');
                 initCalendar();
                 // Hide unavailability alert in schedule view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
@@ -47,10 +49,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
                 unavailabilityView.style.display = 'none';
+                calendarView.style.display = 'none';
+                document.body.classList.remove('calendar-view-active');
                 // Show unavailability alert in dashboard view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'block';
-                calendarView.style.display = 'none';
             }
         });
     });
@@ -221,22 +224,246 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Calendar functionality
     let currentDate = new Date();
+    let calendarViewMode = 'weekly'; // 'weekly' or 'monthly'
+    let currentWeekStart = new Date();
     const monthNames = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"];
     
     function initCalendar() {
+        // Set initial week start to current date
+        currentWeekStart = new Date();
+        updateViewToggleButtons();
+        updateCalendarContainerClass();
         updateCalendarHeader();
+        loadUnavailabilityDataForCalendar();
         generateCalendarDays();
     }
     
+    // Function to load unavailability data for the calendar
+    function loadUnavailabilityDataForCalendar() {
+        // Get current unit ID
+        const currentUnitId = window.currentUnitId;
+        
+        if (currentUnitId) {
+            fetch(`/facilitator/unavailability?unit_id=${currentUnitId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error('Error loading unavailability for calendar:', data.error);
+                        window.unavailabilityData = [];
+                        return;
+                    }
+                    
+                    window.unavailabilityData = data.unavailabilities || [];
+                    console.log('Loaded unavailability data for calendar:', window.unavailabilityData);
+                })
+                .catch(error => {
+                    console.error('Error loading unavailability data for calendar:', error);
+                    window.unavailabilityData = [];
+                });
+        } else {
+            window.unavailabilityData = [];
+        }
+    }
+    
+    // Function to show all sessions for a specific date
+    function showAllSessionsForDate(formattedDate, eventsData = null) {
+        // If eventsData is not provided, collect all events for this date
+        if (!eventsData) {
+            const allEvents = [];
+            
+            if (window.unitsData) {
+                window.unitsData.forEach(unit => {
+                    // Check upcoming sessions
+                    if (unit.upcoming_sessions) {
+                        unit.upcoming_sessions.forEach(session => {
+                            if (session.date === formattedDate) {
+                                const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
+                                const eventText = `📚 ${unit.code}<br>
+👤 ${session.topic}<br>
+⏰ ${session.time}<br>
+📍 ${session.location}`;
+                                allEvents.push({
+                                    text: eventText,
+                                    class: statusClass,
+                                    session: session,
+                                    unit: unit
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Check past sessions
+                    if (unit.past_sessions) {
+                        unit.past_sessions.forEach(session => {
+                            if (session.date === formattedDate) {
+                                const eventText = `📚 ${unit.code}<br>
+👤 ${session.topic}<br>
+⏰ ${session.time}<br>
+📍 ${session.location}`;
+                                allEvents.push({
+                                    text: eventText,
+                                    class: 'past',
+                                    session: session,
+                                    unit: unit
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // Sort events by time
+            allEvents.sort((a, b) => {
+                const timeA = a.session.time.split(' - ')[0];
+                const timeB = b.session.time.split(' - ')[0];
+                return timeA.localeCompare(timeB);
+            });
+            
+            eventsData = allEvents;
+        }
+        
+        // Show modal with all sessions
+        showDateSessionsModal(formattedDate, eventsData);
+    }
+    
+    // Function to show date sessions modal
+    function showDateSessionsModal(date, sessions) {
+        const modal = document.getElementById('date-sessions-modal');
+        const modalTitle = document.getElementById('date-modal-title');
+        const modalSubtitle = document.getElementById('date-modal-subtitle');
+        const modalSessionsList = document.getElementById('date-modal-sessions-list');
+        
+        // Format date for display (convert dd/mm/yyyy to readable format)
+        const [day, month, year] = date.split('/');
+        const displayDate = new Date(year, month - 1, day);
+        const formattedDisplayDate = displayDate.toLocaleDateString('en-AU', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        modalTitle.textContent = `Sessions for ${formattedDisplayDate}`;
+        modalSubtitle.textContent = `${sessions.length} session${sessions.length !== 1 ? 's' : ''} scheduled`;
+        
+        // Generate session list HTML
+        const sessionsHTML = sessions.map(session => `
+            <div class="modal-session-item ${session.class}">
+                <div class="session-info">
+                    <div class="session-text">${session.text}</div>
+                </div>
+            </div>
+        `).join('');
+        
+        modalSessionsList.innerHTML = sessionsHTML;
+        
+        // Show modal
+        modal.style.display = 'flex';
+        
+        // Ensure close button has event listener (fallback)
+        const closeBtn = document.getElementById('date-modal-close-btn');
+        if (closeBtn) {
+            closeBtn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Date modal close button clicked (fallback)');
+                closeDateSessionsModal();
+            };
+        }
+    }
+    
+    // Function to close date sessions modal
+    function closeDateSessionsModal() {
+        console.log('closeDateSessionsModal called');
+        const modal = document.getElementById('date-sessions-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            console.log('Date modal closed');
+        } else {
+            console.error('Date modal element not found!');
+        }
+    }
+    
+    // Function to check if a date is unavailable
+    function isDateUnavailable(formattedDate) {
+        // Check if we have unavailability data
+        if (window.unavailabilityData && Array.isArray(window.unavailabilityData)) {
+            return window.unavailabilityData.some(unav => {
+                // Convert unavailability date to match our format
+                const unavDate = new Date(unav.date);
+                const unavFormatted = String(unavDate.getDate()).padStart(2, '0') + '/' + 
+                                    String(unavDate.getMonth() + 1).padStart(2, '0') + '/' + 
+                                    String(unavDate.getFullYear());
+                return unavFormatted === formattedDate;
+            });
+        }
+        return false;
+    }
+    
     function updateCalendarHeader() {
-        const monthTitle = document.getElementById('current-month');
-        if (monthTitle) {
-            monthTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+        const periodTitle = document.getElementById('current-period');
+        if (periodTitle) {
+            if (calendarViewMode === 'weekly') {
+                // Show week range
+                const startOfWeek = new Date(currentWeekStart);
+                const dayOfWeek = startOfWeek.getDay();
+                const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+                
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                
+                const formatDate = (date) => {
+                    return `${monthNames[date.getMonth()]} ${date.getDate()}`;
+                };
+                
+                periodTitle.textContent = `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}, ${startOfWeek.getFullYear()}`;
+            } else {
+                // Show month
+                periodTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            }
         }
     }
     
     function generateCalendarDays() {
+        if (calendarViewMode === 'weekly') {
+            generateWeeklyCalendar();
+        } else {
+            generateMonthlyCalendar();
+        }
+    }
+    
+    function generateWeeklyCalendar() {
+        const calendarDays = document.getElementById('calendar-days');
+        if (!calendarDays) return;
+        
+        calendarDays.innerHTML = '';
+        
+        // Calculate the start of the current week (Monday)
+        const startOfWeek = new Date(currentWeekStart);
+        const dayOfWeek = startOfWeek.getDay();
+        const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Handle Sunday
+        startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+        
+        // Generate 7 days for the week
+        for (let i = 0; i < 7; i++) {
+            const dayDate = new Date(startOfWeek);
+            dayDate.setDate(startOfWeek.getDate() + i);
+            
+            const dayNumber = dayDate.getDate();
+            const isToday = isSameDay(dayDate, new Date());
+            
+            const dayElement = createDayElement(dayNumber, false, dayDate);
+            if (isToday) {
+                dayElement.classList.add('today');
+            }
+            
+            calendarDays.appendChild(dayElement);
+        }
+    }
+    
+    function generateMonthlyCalendar() {
         const calendarDays = document.getElementById('calendar-days');
         if (!calendarDays) return;
         
@@ -255,8 +482,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const prevMonth = new Date(year, month, 0);
         const daysInPrevMonth = prevMonth.getDate();
         
-        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-            const dayElement = createDayElement(daysInPrevMonth - i, true);
+        // Fix: Calculate previous month days correctly
+        for (let i = startingDayOfWeek; i > 0; i--) {
+            const dayNumber = daysInPrevMonth - i + 1;
+            const dayElement = createDayElement(dayNumber, true);
             calendarDays.appendChild(dayElement);
         }
         
@@ -266,9 +495,11 @@ document.addEventListener('DOMContentLoaded', function() {
             calendarDays.appendChild(dayElement);
         }
         
-        // Next month's leading days
+        // Next month's leading days - only show enough to complete the current month's rows
         const totalCells = calendarDays.children.length;
-        const remainingCells = 42 - totalCells; // 6 rows × 7 days
+        const currentWeek = Math.ceil(totalCells / 7);
+        const cellsNeededForCurrentWeek = currentWeek * 7;
+        const remainingCells = cellsNeededForCurrentWeek - totalCells;
         
         for (let day = 1; day <= remainingCells; day++) {
             const dayElement = createDayElement(day, true);
@@ -276,7 +507,99 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function createDayElement(dayNumber, isOtherMonth) {
+    // Function to refresh calendar when unit data changes
+    function refreshCalendar() {
+        if (document.getElementById('calendar-view') && document.getElementById('calendar-view').style.display === 'block') {
+            loadUnavailabilityDataForCalendar();
+            // Small delay to ensure unavailability data is loaded before generating calendar
+            setTimeout(() => {
+                generateCalendarDays();
+            }, 100);
+        }
+    }
+    
+    function goToPreviousPeriod() {
+        if (calendarViewMode === 'weekly') {
+            currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+        } else {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+        }
+        updateCalendarHeader();
+        generateCalendarDays();
+    }
+    
+    function goToNextPeriod() {
+        if (calendarViewMode === 'weekly') {
+            currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+        } else {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+        updateCalendarHeader();
+        generateCalendarDays();
+    }
+    
+    function goToToday() {
+        const today = new Date();
+        if (calendarViewMode === 'weekly') {
+            currentWeekStart = new Date(today);
+        } else {
+            currentDate = new Date(today);
+        }
+        updateCalendarHeader();
+        generateCalendarDays();
+    }
+    
+    function switchToWeeklyView() {
+        calendarViewMode = 'weekly';
+        currentWeekStart = new Date();
+        updateViewToggleButtons();
+        updateCalendarHeader();
+        generateCalendarDays();
+        updateCalendarContainerClass();
+    }
+    
+    function switchToMonthlyView() {
+        calendarViewMode = 'monthly';
+        currentDate = new Date();
+        updateViewToggleButtons();
+        updateCalendarHeader();
+        generateCalendarDays();
+        updateCalendarContainerClass();
+    }
+    
+    function updateViewToggleButtons() {
+        const weeklyBtn = document.getElementById('weekly-view-btn');
+        const monthlyBtn = document.getElementById('monthly-view-btn');
+        
+        if (weeklyBtn && monthlyBtn) {
+            if (calendarViewMode === 'weekly') {
+                weeklyBtn.classList.add('active');
+                monthlyBtn.classList.remove('active');
+            } else {
+                monthlyBtn.classList.add('active');
+                weeklyBtn.classList.remove('active');
+            }
+        }
+    }
+    
+    function updateCalendarContainerClass() {
+        const container = document.querySelector('.calendar-container');
+        if (container) {
+            if (calendarViewMode === 'weekly') {
+                container.classList.add('weekly-view');
+            } else {
+                container.classList.remove('weekly-view');
+            }
+        }
+    }
+    
+    function isSameDay(date1, date2) {
+        return date1.getDate() === date2.getDate() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getFullYear() === date2.getFullYear();
+    }
+    
+    function createDayElement(dayNumber, isOtherMonth, dayDate = null) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
         
@@ -296,56 +619,146 @@ document.addEventListener('DOMContentLoaded', function() {
             dayElement.classList.add('today');
         }
         
+        // No availability checking for schedule view - only show sessions
+        
         dayElement.innerHTML = `
             <div class="day-number">${dayNumber}</div>
             <div class="day-events">
-                ${generateEvents(dayNumber, isOtherMonth)}
+                ${generateEvents(dayNumber, isOtherMonth, dayDate)}
             </div>
         `;
+        
+        // Add click handler for date cell
+        if (!isOtherMonth) {
+            dayElement.style.cursor = 'pointer';
+            dayElement.addEventListener('click', function() {
+                const formattedDate = String(dayNumber).padStart(2, '0') + '/' + 
+                                     String(currentDate.getMonth() + 1).padStart(2, '0') + '/' + 
+                                     String(currentDate.getFullYear());
+                showAllSessionsForDate(formattedDate);
+            });
+        }
         
         return dayElement;
     }
     
-    function generateEvents(dayNumber, isOtherMonth) {
+    function generateEvents(dayNumber, isOtherMonth, dayDate = null) {
         if (isOtherMonth) return '';
         
-        // Sample events (replace with real data)
-        const events = [];
+        const allEvents = [];
         
-        if (dayNumber === 22) { // Today
-            events.push('<div class="event confirmed">Lab Session 9-5</div>');
-        }
-        if (dayNumber === 23) { // Tomorrow
-            events.push('<div class="event pending">Lab Session 9-5</div>');
-        }
-        if (dayNumber === 25) {
-            events.push('<div class="event available">Available</div>');
-        }
-        if (dayNumber === 28) {
-            events.push('<div class="event confirmed">Lab Session 2-6</div>');
+        // Determine the date to use for session matching
+        let targetDate;
+        if (dayDate) {
+            // Use the provided date (for weekly view)
+            targetDate = dayDate;
+        } else {
+            // Use current calendar date (for monthly view)
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            targetDate = new Date(year, month, dayNumber);
         }
         
-        return events.join('');
+        // Format date to match session date format (dd/mm/yyyy)
+        const formattedDate = String(targetDate.getDate()).padStart(2, '0') + '/' + 
+                             String(targetDate.getMonth() + 1).padStart(2, '0') + '/' + 
+                             String(targetDate.getFullYear());
+        
+        // Get sessions for this date from all units
+        if (window.unitsData) {
+            window.unitsData.forEach(unit => {
+                // Check upcoming sessions
+                if (unit.upcoming_sessions) {
+                    unit.upcoming_sessions.forEach(session => {
+                        if (session.date === formattedDate) {
+                            const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
+                            // Truncate long session names
+                            const truncatedTopic = session.topic.length > 15 ? session.topic.substring(0, 15) + '...' : session.topic;
+                            const eventText = `📚 ${unit.code}<br>
+👤 ${truncatedTopic}<br>
+⏰ ${session.time}<br>
+📍 ${session.location}`;
+                            allEvents.push({
+                                text: eventText,
+                                class: statusClass,
+                                session: session,
+                                unit: unit
+                            });
+                        }
+                    });
+                }
+                
+                // Check past sessions (for historical view)
+                if (unit.past_sessions) {
+                    unit.past_sessions.forEach(session => {
+                        if (session.date === formattedDate) {
+                            // Truncate long session names
+                            const truncatedTopic = session.topic.length > 15 ? session.topic.substring(0, 15) + '...' : session.topic;
+                            const eventText = `📚 ${unit.code}<br>
+👤 ${truncatedTopic}<br>
+⏰ ${session.time}<br>
+📍 ${session.location}`;
+                            allEvents.push({
+                                text: eventText,
+                                class: 'past',
+                                session: session,
+                                unit: unit
+                            });
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Sort events by time (earliest first)
+        allEvents.sort((a, b) => {
+            const timeA = a.session.time.split(' - ')[0];
+            const timeB = b.session.time.split(' - ')[0];
+            return timeA.localeCompare(timeB);
+        });
+        
+        // Show different number of sessions based on view mode
+        const maxSessions = calendarViewMode === 'weekly' ? 5 : 2;
+        const displayEvents = allEvents.slice(0, maxSessions);
+        const remainingCount = allEvents.length - maxSessions;
+        
+        let result = displayEvents.map(event => 
+            `<div class="event ${event.class}" title="${event.text}">${event.text}</div>`
+        ).join('');
+        
+        // Add overflow message if there are more sessions
+        if (remainingCount > 0) {
+            result += `<div class="overflow-message" onclick="showAllSessionsForDate('${formattedDate}', ${JSON.stringify(allEvents).replace(/"/g, '&quot;')})">${remainingCount} more sessions. Click date to see more</div>`;
+        }
+        
+        return result;
     }
     
-    // Month navigation
-    const prevMonthBtn = document.getElementById('prev-month');
-    const nextMonthBtn = document.getElementById('next-month');
+    // Calendar navigation event listeners
+    const prevPeriodBtn = document.getElementById('prev-period');
+    const nextPeriodBtn = document.getElementById('next-period');
+    const todayBtn = document.getElementById('today-btn');
+    const weeklyViewBtn = document.getElementById('weekly-view-btn');
+    const monthlyViewBtn = document.getElementById('monthly-view-btn');
     
-    if (prevMonthBtn) {
-        prevMonthBtn.addEventListener('click', function() {
-            currentDate.setMonth(currentDate.getMonth() - 1);
-            updateCalendarHeader();
-            generateCalendarDays();
-        });
+    if (prevPeriodBtn) {
+        prevPeriodBtn.addEventListener('click', goToPreviousPeriod);
     }
     
-    if (nextMonthBtn) {
-        nextMonthBtn.addEventListener('click', function() {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            updateCalendarHeader();
-            generateCalendarDays();
-        });
+    if (nextPeriodBtn) {
+        nextPeriodBtn.addEventListener('click', goToNextPeriod);
+    }
+    
+    if (todayBtn) {
+        todayBtn.addEventListener('click', goToToday);
+    }
+    
+    if (weeklyViewBtn) {
+        weeklyViewBtn.addEventListener('click', switchToWeeklyView);
+    }
+    
+    if (monthlyViewBtn) {
+        monthlyViewBtn.addEventListener('click', switchToMonthlyView);
     }
 
     // GLOBAL CLICK HANDLER - Only one for all click events
@@ -682,6 +1095,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update unavailability view if it's currently visible
         updateUnavailabilityViewForUnit(unit);
 
+        // Refresh calendar if it's currently visible
+        refreshCalendar();
+
         // Update active state in dropdown
         document.querySelectorAll('.unit-item').forEach(item => {
             item.classList.remove('active');
@@ -718,6 +1134,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update sessions section for all units view
         updateAllUnitsSessionsSection();
+
+        // Refresh calendar if it's currently visible
+        refreshCalendar();
 
         console.log('Switched to All Units view');
     }
@@ -1418,6 +1837,40 @@ document.addEventListener('DOMContentLoaded', function() {
         if (closeBtn) {
             closeBtn.addEventListener('click', hideSessionsModal);
             console.log('Close button listener added');
+        }
+        
+        // Add event listeners for date sessions modal
+        const dateModal = document.getElementById('date-sessions-modal');
+        const dateCloseBtn = document.getElementById('date-modal-close-btn');
+        
+        console.log('Date modal elements for listeners:', {
+            dateModal: !!dateModal,
+            dateCloseBtn: !!dateCloseBtn
+        });
+        
+        if (dateCloseBtn) {
+            // Remove any existing listeners first
+            dateCloseBtn.removeEventListener('click', closeDateSessionsModal);
+            // Add the new listener
+            dateCloseBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Date modal close button clicked');
+                closeDateSessionsModal();
+            });
+            console.log('Date modal close button listener added');
+        } else {
+            console.error('Date modal close button not found!');
+        }
+        
+        // Close modal when clicking outside
+        if (dateModal) {
+            dateModal.addEventListener('click', function(e) {
+                if (e.target === dateModal) {
+                    console.log('Date modal clicked outside, closing');
+                    closeDateSessionsModal();
+                }
+            });
         }
         
         // Close modal when clicking outside

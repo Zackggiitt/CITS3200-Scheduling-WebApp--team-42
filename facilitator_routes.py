@@ -293,7 +293,7 @@ def dashboard():
                 'location': s.location,
                 'is_confirmed': bool(a.is_confirmed),
                 'date': s.start_time.strftime('%d/%m/%Y'),
-                'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
+                'time': f"{s.start_time.strftime('%H:%M')} - {s.end_time.strftime('%H:%M')}",
                 'topic': m.module_name,
                 'status': 'confirmed' if a.is_confirmed else 'pending'
             }
@@ -313,7 +313,7 @@ def dashboard():
                 'location': s.location,
                 'is_confirmed': bool(a.is_confirmed),
                 'date': s.start_time.strftime('%d/%m/%Y'),
-                'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
+                'time': f"{s.start_time.strftime('%H:%M')} - {s.end_time.strftime('%H:%M')}",
                 'topic': m.module_name,
                 'status': 'completed'
             }
