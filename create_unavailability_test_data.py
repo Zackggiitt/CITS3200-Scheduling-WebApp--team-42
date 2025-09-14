@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from application import app, db
 from models import (
     User, Unit, Module, Session, Assignment, UnitFacilitator, 
-    UserRole, Unavailability, RecurringPattern
+    UserRole, Unavailability, RecurringPattern, SwapRequest, SwapStatus
 )
 
 def create_test_facilitator():
@@ -430,9 +430,224 @@ def create_all_test_data():
         print(f"   • Unit assignments: {unit_assignments}")
         print(f"   • Session assignments: {session_assignments}")
         print(f"   • Sample unavailability: {unavailability_count}")
-        print("\n🎯 You can now test the unavailability system!")
+        
+        # 8. Create additional facilitators for swap testing
+        print("\n👥 Step 8: Creating additional facilitators for swap testing...")
+        additional_facilitators = create_additional_facilitators()
+        
+        # 9. Assign additional facilitators to units and sessions
+        print("\n📋 Step 9: Assigning additional facilitators to sessions...")
+        additional_assignments = assign_additional_facilitators_to_sessions(additional_facilitators, sessions)
+        
+        # 10. Create sample swap requests
+        print("\n🔄 Step 10: Creating sample swap requests...")
+        swap_requests_count = create_sample_swap_requests(facilitator, additional_facilitators, sessions)
+        
+        print("\n" + "=" * 60)
+        print("✅ Test data creation completed successfully!")
+        print(f"📊 Summary:")
+        print(f"   • Facilitator: {facilitator.email}")
+        print(f"   • Additional facilitators: {len(additional_facilitators)}")
+        print(f"   • Units: {len(units)}")
+        print(f"   • Modules: {len(modules)}")
+        print(f"   • Sessions: {len(sessions)}")
+        print(f"   • Unit assignments: {unit_assignments}")
+        print(f"   • Session assignments: {session_assignments}")
+        print(f"   • Additional session assignments: {additional_assignments}")
+        print(f"   • Sample unavailability: {unavailability_count}")
+        print(f"   • Sample swap requests: {swap_requests_count}")
+        print("\n🎯 You can now test the unavailability and swap systems!")
         print(f"   Login with: {facilitator.email}")
         print(f"   Note: Password should be set by existing facilitator creation script")
+
+def create_additional_facilitators():
+    """Create additional facilitators for swap testing"""
+    
+    additional_facilitators_data = [
+        {
+            'email': 'fac_sarah@example.com',
+            'first_name': 'Sarah',
+            'last_name': 'Chen',
+            'password': 'password123'
+        },
+        {
+            'email': 'fac_michael@example.com',
+            'first_name': 'Michael',
+            'last_name': 'Torres',
+            'password': 'password123'
+        },
+        {
+            'email': 'fac_emily@example.com',
+            'first_name': 'Emily',
+            'last_name': 'Johnson',
+            'password': 'password123'
+        }
+    ]
+    
+    created_facilitators = []
+    
+    for fac_data in additional_facilitators_data:
+        # Check if facilitator already exists
+        existing_facilitator = User.query.filter_by(email=fac_data['email']).first()
+        if existing_facilitator:
+            print(f"✓ Additional facilitator already exists: {fac_data['email']}")
+            created_facilitators.append(existing_facilitator)
+            continue
+        
+        # Create new facilitator
+        facilitator = User(
+            first_name=fac_data['first_name'],
+            last_name=fac_data['last_name'],
+            email=fac_data['email'],
+            password_hash=generate_password_hash(fac_data['password']),
+            role=UserRole.FACILITATOR
+        )
+        
+        db.session.add(facilitator)
+        db.session.commit()
+        
+        print(f"✓ Created additional facilitator: {fac_data['email']}")
+        created_facilitators.append(facilitator)
+    
+    return created_facilitators
+
+def assign_additional_facilitators_to_sessions(additional_facilitators, sessions):
+    """Assign additional facilitators to some sessions for swap testing"""
+    
+    assignment_count = 0
+    
+    # Get active units for assignment
+    active_units = [unit for unit in Unit.query.all() if unit.end_date and unit.end_date > date.today()]
+    
+    for i, facilitator in enumerate(additional_facilitators):
+        # Assign facilitator to active units
+        for unit in active_units[:2]:  # Assign to first 2 active units
+            # Check if already assigned
+            existing_assignment = UnitFacilitator.query.filter_by(
+                unit_id=unit.id, 
+                user_id=facilitator.id
+            ).first()
+            
+            if not existing_assignment:
+                unit_assignment = UnitFacilitator(
+                    unit_id=unit.id,
+                    user_id=facilitator.id
+                )
+                db.session.add(unit_assignment)
+                assignment_count += 1
+        
+        # Assign facilitator to some sessions (every 3rd session starting from index i)
+        for j, session in enumerate(sessions):
+            if j % 3 == i and session.start_time > datetime.utcnow():
+                # Check if already assigned
+                existing_assignment = Assignment.query.filter_by(
+                    session_id=session.id,
+                    facilitator_id=facilitator.id
+                ).first()
+                
+                if not existing_assignment:
+                    session_assignment = Assignment(
+                        session_id=session.id,
+                        facilitator_id=facilitator.id,
+                        is_confirmed=True
+                    )
+                    db.session.add(session_assignment)
+                    assignment_count += 1
+    
+    db.session.commit()
+    print(f"✓ Created {assignment_count} additional facilitator assignments")
+    return assignment_count
+
+def create_sample_swap_requests(main_facilitator, additional_facilitators, sessions):
+    """Create sample swap requests for testing"""
+    
+    swap_requests_count = 0
+    
+    # Get future sessions assigned to main facilitator
+    main_facilitator_assignments = Assignment.query.filter_by(
+        facilitator_id=main_facilitator.id
+    ).join(Session).filter(Session.start_time > datetime.utcnow()).all()
+    
+    # Get future sessions assigned to additional facilitators
+    additional_facilitator_assignments = []
+    for facilitator in additional_facilitators:
+        assignments = Assignment.query.filter_by(
+            facilitator_id=facilitator.id
+        ).join(Session).filter(Session.start_time > datetime.utcnow()).all()
+        additional_facilitator_assignments.extend(assignments)
+    
+    # Create sample swap requests
+    sample_swap_requests = [
+        {
+            'requester_assignment': main_facilitator_assignments[0] if main_facilitator_assignments else None,
+            'target_assignment': additional_facilitator_assignments[0] if additional_facilitator_assignments else None,
+            'status': SwapStatus.FACILITATOR_PENDING,
+            'reason': 'Medical appointment that cannot be rescheduled'
+        },
+        {
+            'requester_assignment': main_facilitator_assignments[1] if len(main_facilitator_assignments) > 1 else None,
+            'target_assignment': additional_facilitator_assignments[1] if len(additional_facilitator_assignments) > 1 else None,
+            'status': SwapStatus.COORDINATOR_PENDING,
+            'reason': 'Conference presentation',
+            'facilitator_confirmed': True,
+            'facilitator_confirmed_at': datetime.utcnow() - timedelta(days=1)
+        },
+        {
+            'requester_assignment': main_facilitator_assignments[2] if len(main_facilitator_assignments) > 2 else None,
+            'target_assignment': additional_facilitator_assignments[2] if len(additional_facilitator_assignments) > 2 else None,
+            'status': SwapStatus.APPROVED,
+            'reason': 'Family emergency',
+            'facilitator_confirmed': True,
+            'facilitator_confirmed_at': datetime.utcnow() - timedelta(days=2),
+            'reviewed_at': datetime.utcnow() - timedelta(days=1),
+            'reviewed_by': User.query.filter_by(role=UserRole.UNIT_COORDINATOR).first().id if User.query.filter_by(role=UserRole.UNIT_COORDINATOR).first() else None
+        },
+        {
+            'requester_assignment': main_facilitator_assignments[3] if len(main_facilitator_assignments) > 3 else None,
+            'target_assignment': additional_facilitator_assignments[3] if len(additional_facilitator_assignments) > 3 else None,
+            'status': SwapStatus.FACILITATOR_DECLINED,
+            'reason': 'Personal commitment',
+            'facilitator_confirmed': False,
+            'facilitator_confirmed_at': datetime.utcnow() - timedelta(days=1),
+            'facilitator_decline_reason': 'Not available due to other commitments'
+        }
+    ]
+    
+    for swap_data in sample_swap_requests:
+        if not swap_data['requester_assignment'] or not swap_data['target_assignment']:
+            continue
+            
+        # Check if swap request already exists
+        existing_request = SwapRequest.query.filter_by(
+            requester_id=swap_data['requester_assignment'].facilitator_id,
+            requester_assignment_id=swap_data['requester_assignment'].id,
+            target_assignment_id=swap_data['target_assignment'].id
+        ).first()
+        
+        if existing_request:
+            continue
+        
+        # Create swap request
+        swap_request = SwapRequest(
+            requester_id=swap_data['requester_assignment'].facilitator_id,
+            target_id=swap_data['target_assignment'].facilitator_id,
+            requester_assignment_id=swap_data['requester_assignment'].id,
+            target_assignment_id=swap_data['target_assignment'].id,
+            reason=swap_data['reason'],
+            status=swap_data['status'],
+            facilitator_confirmed=swap_data.get('facilitator_confirmed', False),
+            facilitator_confirmed_at=swap_data.get('facilitator_confirmed_at'),
+            facilitator_decline_reason=swap_data.get('facilitator_decline_reason'),
+            reviewed_at=swap_data.get('reviewed_at'),
+            reviewed_by=swap_data.get('reviewed_by')
+        )
+        
+        db.session.add(swap_request)
+        swap_requests_count += 1
+    
+    db.session.commit()
+    print(f"✓ Created {swap_requests_count} sample swap requests")
+    return swap_requests_count
 
 def clear_test_data():
     """Clear all test data"""
@@ -442,13 +657,33 @@ def clear_test_data():
     with app.app_context():
         try:
             # Clear in reverse order to avoid foreign key constraints
+            # Clear swap requests first
+            SwapRequest.query.delete()
+            
+            # Clear assignments
             Assignment.query.filter_by(facilitator_id=User.query.filter_by(email='fac_demo@example.com').first().id).delete()
+            
+            # Clear additional facilitator assignments
+            additional_facilitator_emails = ['fac_sarah@example.com', 'fac_michael@example.com', 'fac_emily@example.com']
+            for email in additional_facilitator_emails:
+                facilitator = User.query.filter_by(email=email).first()
+                if facilitator:
+                    Assignment.query.filter_by(facilitator_id=facilitator.id).delete()
+                    UnitFacilitator.query.filter_by(user_id=facilitator.id).delete()
+            
+            # Clear main facilitator data
             Unavailability.query.filter_by(user_id=User.query.filter_by(email='fac_demo@example.com').first().id).delete()
             UnitFacilitator.query.filter_by(user_id=User.query.filter_by(email='fac_demo@example.com').first().id).delete()
+            
+            # Clear sessions, modules, units
             Session.query.delete()
             Module.query.delete()
             Unit.query.delete()
+            
+            # Clear all test facilitators
             User.query.filter_by(email='fac_demo@example.com').delete()
+            for email in additional_facilitator_emails:
+                User.query.filter_by(email=email).delete()
             
             db.session.commit()
             print("✅ Test data cleared successfully!")
@@ -484,6 +719,25 @@ def show_status():
             # Check unavailability
             unavailability_count = Unavailability.query.filter_by(user_id=facilitator.id).count()
             print(f"🚫 Unavailability records: {unavailability_count}")
+            
+            # Check additional facilitators
+            additional_facilitator_emails = ['fac_sarah@example.com', 'fac_michael@example.com', 'fac_emily@example.com']
+            additional_count = 0
+            for email in additional_facilitator_emails:
+                if User.query.filter_by(email=email).first():
+                    additional_count += 1
+            print(f"👥 Additional facilitators: {additional_count}")
+            
+            # Check swap requests
+            swap_requests_count = SwapRequest.query.count()
+            print(f"🔄 Swap requests: {swap_requests_count}")
+            
+            if swap_requests_count > 0:
+                # Show breakdown by status
+                for status in SwapStatus:
+                    count = SwapRequest.query.filter_by(status=status).count()
+                    if count > 0:
+                        print(f"   • {status.value}: {count}")
             
         else:
             print("❌ Test facilitator not found")

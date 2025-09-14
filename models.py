@@ -12,8 +12,12 @@ class UserRole(Enum):
 
 class SwapStatus(Enum):
     PENDING = "pending"
+    FACILITATOR_PENDING = "facilitator_pending"
+    COORDINATOR_PENDING = "coordinator_pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    FACILITATOR_DECLINED = "facilitator_declined"
+    COORDINATOR_DECLINED = "coordinator_declined"
 
 # Add new enum for skill levels
 class SkillLevel(Enum):
@@ -280,7 +284,15 @@ class SwapRequest(db.Model):
     requester_assignment_id = db.Column(db.Integer, db.ForeignKey('assignment.id'), nullable=False)
     target_assignment_id = db.Column(db.Integer, db.ForeignKey('assignment.id'), nullable=False)
     reason = db.Column(db.Text)
-    status = db.Column(db.Enum(SwapStatus), default=SwapStatus.PENDING)
+    status = db.Column(db.Enum(SwapStatus), default=SwapStatus.FACILITATOR_PENDING)
+    
+    # Two-step approval process fields
+    facilitator_confirmed = db.Column(db.Boolean, default=False)
+    facilitator_confirmed_at = db.Column(db.DateTime)
+    facilitator_decline_reason = db.Column(db.Text)
+    coordinator_decline_reason = db.Column(db.Text)
+    
+    # Legacy fields (keeping for backward compatibility)
     admin_notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     reviewed_at = db.Column(db.DateTime)

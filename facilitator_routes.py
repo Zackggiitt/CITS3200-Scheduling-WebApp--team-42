@@ -825,7 +825,7 @@ def request_swap():
         # Check if swap request already exists
         existing_request = SwapRequest.query.filter_by(
             requester_id=user.id,
-            my_assignment_id=my_assignment_id,
+            requester_assignment_id=my_assignment_id,
             target_assignment_id=target_assignment_id
         ).first()
         
@@ -836,10 +836,11 @@ def request_swap():
         # Create swap request
         swap_request = SwapRequest(
             requester_id=user.id,
-            my_assignment_id=my_assignment_id,
+            target_id=target_assignment.facilitator_id,
+            requester_assignment_id=my_assignment_id,
             target_assignment_id=target_assignment_id,
             reason=reason,
-            status=SwapStatus.PENDING
+            status=SwapStatus.FACILITATOR_PENDING
         )
         
         db.session.add(swap_request)
@@ -856,3 +857,362 @@ def request_swap():
                          user=user,
                          my_assignments=my_assignments, 
                          other_assignments=other_assignments)
+
+
+# New API endpoints for Session Swaps tab
+
+@facilitator_bp.route('/swap-requests', methods=['POST'])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def create_swap_request():
+    """Create a new swap request via API."""
+    user = get_current_user()
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    requester_assignment_id = data.get('requester_assignment_id')
+    target_assignment_id = data.get('target_assignment_id')
+    target_facilitator_id = data.get('target_facilitator_id')
+    has_discussed = data.get('has_discussed', False)
+    
+    # Validate required fields
+    if not all([requester_assignment_id, target_assignment_id, target_facilitator_id]):
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    if not has_discussed:
+        return jsonify({'error': 'Must confirm discussion with target facilitator'}), 400
+    
+    # Validate assignments
+    requester_assignment = Assignment.query.filter_by(
+        id=requester_assignment_id, 
+        facilitator_id=user.id
+    ).first()
+    
+    target_assignment = Assignment.query.filter_by(
+        id=target_assignment_id,
+        facilitator_id=target_facilitator_id
+    ).first()
+    
+    if not requester_assignment or not target_assignment:
+        return jsonify({'error': 'Invalid assignment selection'}), 400
+    
+    # Check if swap request already exists
+    existing_request = SwapRequest.query.filter_by(
+        requester_id=user.id,
+        requester_assignment_id=requester_assignment_id,
+        target_assignment_id=target_assignment_id
+    ).first()
+    
+    if existing_request:
+        return jsonify({'error': 'Swap request already exists for these assignments'}), 400
+    
+    # Create swap request
+    swap_request = SwapRequest(
+        requester_id=user.id,
+        target_id=target_facilitator_id,
+        requester_assignment_id=requester_assignment_id,
+        target_assignment_id=target_assignment_id,
+        reason="Session swap request",
+        status=SwapStatus.FACILITATOR_PENDING,
+        facilitator_confirmed=False
+    )
+    
+    try:
+        db.session.add(swap_request)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Swap request created successfully',
+            'swap_request_id': swap_request.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to create swap request: {str(e)}'}), 500
+
+
+@facilitator_bp.route('/swap-requests', methods=['GET'])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def get_swap_requests():
+    """Get user's swap requests grouped by status."""
+    user = get_current_user()
+    
+    # Get requests made by this user
+    my_requests = SwapRequest.query.filter_by(requester_id=user.id).all()
+    
+    # Get requests where this user is the target facilitator
+    requests_for_me = SwapRequest.query.filter_by(target_id=user.id).all()
+    
+    def serialize_swap_request(req):
+        return {
+            'id': req.id,
+            'requester_name': req.requester.full_name,
+            'target_name': req.target.full_name,
+            'session_name': req.requester_assignment.session.module.module_name,
+            'session_date': req.requester_assignment.session.start_time.strftime('%Y-%m-%d'),
+            'session_time': req.requester_assignment.session.start_time.strftime('%H:%M'),
+            'session_location': req.requester_assignment.session.location,
+            'status': req.status.value,
+            'facilitator_confirmed': req.facilitator_confirmed,
+            'facilitator_confirmed_at': req.facilitator_confirmed_at.isoformat() if req.facilitator_confirmed_at else None,
+            'facilitator_decline_reason': req.facilitator_decline_reason,
+            'coordinator_decline_reason': req.coordinator_decline_reason,
+            'created_at': req.created_at.isoformat(),
+            'is_my_request': req.requester_id == user.id
+        }
+    
+    # Group requests by status
+    pending_requests = []
+    approved_requests = []
+    declined_requests = []
+    
+    all_requests = my_requests + requests_for_me
+    
+    for req in all_requests:
+        serialized = serialize_swap_request(req)
+        
+        if req.status in [SwapStatus.FACILITATOR_PENDING, SwapStatus.COORDINATOR_PENDING]:
+            pending_requests.append(serialized)
+        elif req.status == SwapStatus.APPROVED:
+            approved_requests.append(serialized)
+        elif req.status in [SwapStatus.FACILITATOR_DECLINED, SwapStatus.COORDINATOR_DECLINED, SwapStatus.REJECTED]:
+            declined_requests.append(serialized)
+    
+    return jsonify({
+        'pending_requests': pending_requests,
+        'approved_requests': approved_requests,
+        'declined_requests': declined_requests
+    })
+
+
+def check_facilitator_availability(facilitator_id, session_date, session_start_time, session_end_time, unit_id):
+    """Check if a facilitator is available for a specific session time."""
+    
+    # Check for unavailability conflicts
+    unavailability_conflict = Unavailability.query.filter(
+        Unavailability.user_id == facilitator_id,
+        Unavailability.unit_id == unit_id,
+        Unavailability.date == session_date,
+        db.or_(
+            Unavailability.is_full_day == True,
+            db.and_(
+                Unavailability.start_time <= session_start_time,
+                Unavailability.end_time >= session_end_time
+            )
+        )
+    ).first()
+    
+    if unavailability_conflict:
+        return False, "Facilitator has marked unavailability for this time"
+    
+    # Check for existing session assignments at the same time
+    conflicting_assignment = Assignment.query.join(Session).filter(
+        Assignment.facilitator_id == facilitator_id,
+        Session.start_time.date() == session_date,
+        db.or_(
+            db.and_(
+                Session.start_time.time() <= session_start_time,
+                Session.end_time.time() > session_start_time
+            ),
+            db.and_(
+                Session.start_time.time() < session_end_time,
+                Session.end_time.time() >= session_end_time
+            )
+        )
+    ).first()
+    
+    if conflicting_assignment:
+        return False, "Facilitator has conflicting session assignment"
+    
+    return True, "Available"
+
+
+@facilitator_bp.route('/available-facilitators/<int:assignment_id>', methods=['GET'])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def get_available_facilitators(assignment_id):
+    """Get facilitators available for a specific assignment swap."""
+    user = get_current_user()
+    
+    # Get the assignment details
+    assignment = Assignment.query.get(assignment_id)
+    if not assignment or assignment.facilitator_id != user.id:
+        return jsonify({'error': 'Invalid assignment'}), 400
+    
+    session = assignment.session
+    session_date = session.start_time.date()
+    session_start_time = session.start_time.time()
+    session_end_time = session.end_time.time()
+    
+    # Get all facilitators assigned to the same unit
+    unit_facilitators = (
+        User.query
+        .join(UnitFacilitator, User.id == UnitFacilitator.user_id)
+        .filter(
+            UnitFacilitator.unit_id == session.module.unit_id,
+            User.id != user.id,  # Exclude current user
+            User.role == UserRole.FACILITATOR
+        )
+        .all()
+    )
+    
+    available_facilitators = []
+    
+    for facilitator in unit_facilitators:
+        is_available, reason = check_facilitator_availability(
+            facilitator.id, 
+            session_date, 
+            session_start_time, 
+            session_end_time, 
+            session.module.unit_id
+        )
+        
+        if is_available:
+            available_facilitators.append({
+                'id': facilitator.id,
+                'name': facilitator.full_name,
+                'email': facilitator.email
+            })
+    
+    return jsonify({
+        'available_facilitators': available_facilitators,
+        'session_info': {
+            'date': session_date.isoformat(),
+            'start_time': session_start_time.isoformat(),
+            'end_time': session_end_time.isoformat(),
+            'unit_id': session.module.unit_id
+        }
+    })
+
+
+@facilitator_bp.route('/swap-requests/<int:request_id>/facilitator-response', methods=['POST'])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def facilitator_response_to_swap(request_id):
+    """Handle facilitator response to swap request (approve/decline)."""
+    user = get_current_user()
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    action = data.get('action')  # 'approve' or 'decline'
+    reason = data.get('reason', '')
+    
+    if action not in ['approve', 'decline']:
+        return jsonify({'error': 'Invalid action. Must be approve or decline'}), 400
+    
+    # Get the swap request
+    swap_request = SwapRequest.query.get(request_id)
+    if not swap_request:
+        return jsonify({'error': 'Swap request not found'}), 404
+    
+    # Check if user is the target facilitator
+    if swap_request.target_id != user.id:
+        return jsonify({'error': 'Unauthorized. You are not the target facilitator'}), 403
+    
+    # Check if request is in correct status
+    if swap_request.status != SwapStatus.FACILITATOR_PENDING:
+        return jsonify({'error': 'Request is not in facilitator pending status'}), 400
+    
+    try:
+        if action == 'approve':
+            # Check availability before approving
+            session = swap_request.requester_assignment.session
+            session_date = session.start_time.date()
+            session_start_time = session.start_time.time()
+            session_end_time = session.end_time.time()
+            
+            is_available, availability_reason = check_facilitator_availability(
+                user.id, session_date, session_start_time, session_end_time, session.module.unit_id
+            )
+            
+            if not is_available:
+                return jsonify({'error': f'Cannot approve: {availability_reason}'}), 400
+            
+            # Approve the request
+            swap_request.facilitator_confirmed = True
+            swap_request.facilitator_confirmed_at = datetime.utcnow()
+            swap_request.status = SwapStatus.COORDINATOR_PENDING
+            
+        else:  # decline
+            swap_request.facilitator_confirmed = False
+            swap_request.facilitator_confirmed_at = datetime.utcnow()
+            swap_request.facilitator_decline_reason = reason
+            swap_request.status = SwapStatus.FACILITATOR_DECLINED
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Swap request {action}d successfully',
+            'status': swap_request.status.value
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to process response: {str(e)}'}), 500
+
+
+@facilitator_bp.route('/swap-requests/<int:request_id>/coordinator-response', methods=['POST'])
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def coordinator_response_to_swap(request_id):
+    """Handle coordinator response to swap request (approve/decline)."""
+    user = get_current_user()
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    action = data.get('action')  # 'approve' or 'decline'
+    reason = data.get('reason', '')
+    
+    if action not in ['approve', 'decline']:
+        return jsonify({'error': 'Invalid action. Must be approve or decline'}), 400
+    
+    # Get the swap request
+    swap_request = SwapRequest.query.get(request_id)
+    if not swap_request:
+        return jsonify({'error': 'Swap request not found'}), 404
+    
+    # Check if request is in correct status
+    if swap_request.status != SwapStatus.COORDINATOR_PENDING:
+        return jsonify({'error': 'Request is not in coordinator pending status'}), 400
+    
+    try:
+        if action == 'approve':
+            # Perform the actual swap
+            requester_assignment = swap_request.requester_assignment
+            target_assignment = swap_request.target_assignment
+            
+            # Swap the facilitators
+            temp_facilitator_id = requester_assignment.facilitator_id
+            requester_assignment.facilitator_id = target_assignment.facilitator_id
+            target_assignment.facilitator_id = temp_facilitator_id
+            
+            swap_request.status = SwapStatus.APPROVED
+            swap_request.reviewed_at = datetime.utcnow()
+            swap_request.reviewed_by = user.id
+            
+        else:  # decline
+            swap_request.status = SwapStatus.COORDINATOR_DECLINED
+            swap_request.coordinator_decline_reason = reason
+            swap_request.reviewed_at = datetime.utcnow()
+            swap_request.reviewed_by = user.id
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Swap request {action}d successfully',
+            'status': swap_request.status.value
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to process response: {str(e)}'}), 500

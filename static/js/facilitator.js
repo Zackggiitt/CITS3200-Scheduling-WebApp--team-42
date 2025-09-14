@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
     const calendarView = document.getElementById('calendar-view');
     const unavailabilityView = document.getElementById('unavailability-view');
+    const swapsView = document.getElementById('swaps-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
     
     // Notification popup elements
@@ -29,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 dashboardSections.forEach(section => section.style.display = 'none');
                 unavailabilityView.style.display = 'block';
                 calendarView.style.display = 'none';
+                swapsView.style.display = 'none';
                 // Hide unavailability alert in unavailability view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
@@ -38,15 +40,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
                 unavailabilityView.style.display = 'none';
+                swapsView.style.display = 'none';
                 calendarView.style.display = 'block';
                 initCalendar();
                 // Hide unavailability alert in schedule view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
+            } else if (href === '#swaps') {
+                // Show swaps view
+                dashboardSections.forEach(section => section.style.display = 'none');
+                unavailabilityView.style.display = 'none';
+                calendarView.style.display = 'none';
+                swapsView.style.display = 'block';
+                // Hide unavailability alert in swaps view
+                const unavailabilityAlert = document.getElementById('unavailability-alert');
+                if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
+                // Initialize swaps functionality
+                initializeSessionSwaps();
             } else {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
                 unavailabilityView.style.display = 'none';
+                swapsView.style.display = 'none';
                 // Show unavailability alert in dashboard view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'block';
@@ -466,6 +481,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dashboardSections.forEach(section => section.style.display = 'none');
             unavailabilityView.style.display = 'block';
             calendarView.style.display = 'none';
+            swapsView.style.display = 'none';
             // Hide unavailability alert in unavailability view
             const unavailabilityAlert = document.getElementById('unavailability-alert');
             if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
@@ -2183,4 +2199,393 @@ function initializeAJAXFeatures() {
     window.addEventListener('unhandledrejection', function(event) {
         console.error('Unhandled promise rejection:', event.reason);
     });
+}
+
+// ============================================================================
+// SESSION SWAPS FUNCTIONALITY
+// ============================================================================
+
+let currentUserAssignments = [];
+let availableFacilitators = [];
+
+// Initialize Session Swaps functionality
+function initializeSessionSwaps() {
+    console.log('Initializing Session Swaps functionality...');
+    
+    // Set up event listeners
+    setupSwapsEventListeners();
+    
+    // Load initial data
+    loadSwapRequests();
+    loadUserAssignments();
+}
+
+// Set up event listeners for Session Swaps
+function setupSwapsEventListeners() {
+    // Request Swap button
+    const requestSwapBtn = document.getElementById('request-swap-btn');
+    if (requestSwapBtn) {
+        requestSwapBtn.addEventListener('click', openRequestSwapModal);
+    }
+    
+    // Modal close buttons
+    const modalCloseBtn = document.getElementById('request-swap-modal-close');
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', closeRequestSwapModal);
+    }
+    
+    const cancelBtn = document.getElementById('cancel-swap-request');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeRequestSwapModal);
+    }
+    
+    // Form submission
+    const swapForm = document.getElementById('request-swap-form');
+    if (swapForm) {
+        swapForm.addEventListener('submit', handleSwapRequestSubmit);
+    }
+    
+    // Session selection change
+    const sessionSelect = document.getElementById('session-select');
+    if (sessionSelect) {
+        sessionSelect.addEventListener('change', handleSessionSelectionChange);
+    }
+}
+
+// Load user's swap requests
+async function loadSwapRequests() {
+    try {
+        const response = await fetch('/facilitator/swap-requests', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Update counts
+        updateRequestCounts(data);
+        
+        // Render requests
+        renderSwapRequests(data);
+        
+    } catch (error) {
+        console.error('Error loading swap requests:', error);
+        showNotification('Error loading swap requests', 'error');
+    }
+}
+
+// Update request count badges
+function updateRequestCounts(data) {
+    const pendingCount = document.getElementById('pending-count');
+    const approvedCount = document.getElementById('approved-count');
+    const declinedCount = document.getElementById('declined-count');
+    
+    if (pendingCount) pendingCount.textContent = data.pending_requests.length;
+    if (approvedCount) approvedCount.textContent = data.approved_requests.length;
+    if (declinedCount) declinedCount.textContent = data.declined_requests.length;
+}
+
+// Render swap requests in their respective sections
+function renderSwapRequests(data) {
+    renderRequestSection('pending-requests-list', data.pending_requests, 'pending');
+    renderRequestSection('approved-requests-list', data.approved_requests, 'approved');
+    renderRequestSection('declined-requests-list', data.declined_requests, 'declined');
+}
+
+// Render a specific request section
+function renderRequestSection(containerId, requests, status) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    if (requests.length === 0) {
+        container.innerHTML = '<div class="no-requests">No requests found.</div>';
+        return;
+    }
+    
+    container.innerHTML = requests.map(request => createRequestCard(request, status)).join('');
+}
+
+// Create a request card HTML
+function createRequestCard(request, status) {
+    const statusClass = status;
+    const statusText = getStatusText(request.status);
+    const statusIcon = getStatusIcon(request.status);
+    
+    return `
+        <div class="request-card ${statusClass}">
+            <div class="request-header">
+                <h4>${request.session_name}</h4>
+                <span class="status-badge ${statusClass}">${statusText}</span>
+            </div>
+            <div class="request-details">
+                <div class="detail-item">
+                    <span class="material-icons">event</span>
+                    <span>${formatDate(request.session_date)} · ${formatTime(request.session_time)}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="material-icons">location_on</span>
+                    <span>${request.session_location}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="material-icons">person</span>
+                    <span>Suggested facilitator: ${request.target_name}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="material-icons">schedule</span>
+                    <span>Requested: ${formatDate(request.created_at)}</span>
+                </div>
+                ${request.facilitator_confirmed_at ? `
+                    <div class="detail-item">
+                        <span class="material-icons">check_circle</span>
+                        <span>Facilitator responded: ${formatDate(request.facilitator_confirmed_at)}</span>
+                    </div>
+                ` : ''}
+                ${request.facilitator_decline_reason ? `
+                    <div class="response-message declined">
+                        <strong>Response:</strong> ${request.facilitator_decline_reason}
+                    </div>
+                ` : ''}
+                ${request.coordinator_decline_reason ? `
+                    <div class="response-message declined">
+                        <strong>Response:</strong> ${request.coordinator_decline_reason}
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Get status text for display
+function getStatusText(status) {
+    const statusMap = {
+        'facilitator_pending': 'Pending',
+        'coordinator_pending': 'Pending',
+        'approved': 'Approved',
+        'facilitator_declined': 'Declined',
+        'coordinator_declined': 'Declined',
+        'rejected': 'Declined'
+    };
+    return statusMap[status] || status;
+}
+
+// Get status icon
+function getStatusIcon(status) {
+    const iconMap = {
+        'facilitator_pending': 'schedule',
+        'coordinator_pending': 'schedule',
+        'approved': 'check_circle',
+        'facilitator_declined': 'cancel',
+        'coordinator_declined': 'cancel',
+        'rejected': 'cancel'
+    };
+    return iconMap[status] || 'help';
+}
+
+// Load user's assignments for the session dropdown
+async function loadUserAssignments() {
+    try {
+        // This would typically come from an API endpoint
+        // For now, we'll use the existing units data
+        if (window.unitsData && window.unitsData.length > 0) {
+            currentUserAssignments = [];
+            // Process units data to extract assignments
+            // This is a simplified version - in reality, you'd have a dedicated endpoint
+            console.log('Loaded user assignments from units data');
+        }
+    } catch (error) {
+        console.error('Error loading user assignments:', error);
+    }
+}
+
+// Open the request swap modal
+function openRequestSwapModal() {
+    const modal = document.getElementById('request-swap-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        populateSessionDropdown();
+    }
+}
+
+// Close the request swap modal
+function closeRequestSwapModal() {
+    const modal = document.getElementById('request-swap-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        resetSwapForm();
+    }
+}
+
+// Populate session dropdown
+function populateSessionDropdown() {
+    const sessionSelect = document.getElementById('session-select');
+    if (!sessionSelect) return;
+    
+    // Clear existing options
+    sessionSelect.innerHTML = '<option value="">Choose a session to swap</option>';
+    
+    // Add sessions from current user's assignments
+    // This is a simplified version - in reality, you'd fetch from an API
+    if (window.unitsData && window.unitsData.length > 0) {
+        window.unitsData.forEach(unit => {
+            if (unit.sessions && unit.sessions.upcoming) {
+                unit.sessions.upcoming.forEach(session => {
+                    const option = document.createElement('option');
+                    option.value = session.assignment_id || session.id;
+                    option.textContent = `${session.module} - ${session.session_type} (${formatDate(session.start_time)})`;
+                    sessionSelect.appendChild(option);
+                });
+            }
+        });
+    }
+}
+
+// Handle session selection change
+async function handleSessionSelectionChange(event) {
+    const assignmentId = event.target.value;
+    if (!assignmentId) {
+        clearFacilitatorDropdown();
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/facilitator/available-facilitators/${assignmentId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        availableFacilitators = data.available_facilitators;
+        populateFacilitatorDropdown(data.available_facilitators);
+        
+    } catch (error) {
+        console.error('Error loading available facilitators:', error);
+        showNotification('Error loading available facilitators', 'error');
+        clearFacilitatorDropdown();
+    }
+}
+
+// Populate facilitator dropdown
+function populateFacilitatorDropdown(facilitators) {
+    const facilitatorSelect = document.getElementById('suggested-facilitator');
+    if (!facilitatorSelect) return;
+    
+    // Clear existing options
+    facilitatorSelect.innerHTML = '<option value="">Select a facilitator you\'ve discussed with</option>';
+    
+    facilitators.forEach(facilitator => {
+        const option = document.createElement('option');
+        option.value = facilitator.id;
+        option.textContent = facilitator.name;
+        facilitatorSelect.appendChild(option);
+    });
+}
+
+// Clear facilitator dropdown
+function clearFacilitatorDropdown() {
+    const facilitatorSelect = document.getElementById('suggested-facilitator');
+    if (facilitatorSelect) {
+        facilitatorSelect.innerHTML = '<option value="">Select a facilitator you\'ve discussed with</option>';
+    }
+}
+
+// Handle swap request form submission
+async function handleSwapRequestSubmit(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const sessionId = formData.get('session_id');
+    const suggestedFacilitatorId = formData.get('suggested_facilitator_id');
+    const hasDiscussed = document.getElementById('has-discussed').checked;
+    
+    if (!sessionId || !suggestedFacilitatorId) {
+        showNotification('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    if (!hasDiscussed) {
+        showNotification('Please confirm that you have discussed this swap with the facilitator', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/facilitator/swap-requests', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify({
+                requester_assignment_id: sessionId,
+                target_assignment_id: sessionId, // This would need to be the target's assignment
+                target_facilitator_id: suggestedFacilitatorId,
+                has_discussed: hasDiscussed
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to create swap request');
+        }
+        
+        const data = await response.json();
+        showNotification(data.message || 'Swap request created successfully!', 'success');
+        
+        // Close modal and refresh data
+        closeRequestSwapModal();
+        loadSwapRequests();
+        
+    } catch (error) {
+        console.error('Error creating swap request:', error);
+        showNotification(error.message || 'Error creating swap request', 'error');
+    }
+}
+
+// Reset swap form
+function resetSwapForm() {
+    const form = document.getElementById('request-swap-form');
+    if (form) {
+        form.reset();
+    }
+    clearFacilitatorDropdown();
+}
+
+// Utility functions for formatting
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+}
+
+function formatTime(timeString) {
+    const time = new Date(`2000-01-01T${timeString}`);
+    return time.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+    });
+}
+
+// Show notification (reuse existing notification system)
+function showNotification(message, type = 'info') {
+    // This would integrate with your existing notification system
+    console.log(`${type.toUpperCase()}: ${message}`);
+    // You can implement a toast notification here
 }
