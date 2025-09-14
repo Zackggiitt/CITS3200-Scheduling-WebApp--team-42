@@ -71,6 +71,10 @@
             <span class="material-icons" aria-hidden="true">calendar_today</span>
             <span>My Schedule</span>
         </a>
+        <a href="#swaps" class="dashboard-nav-item" id="swaps-nav">
+            <span class="material-icons" aria-hidden="true">swap_horiz</span>
+            <span>Session Swaps</span>
+        </a>
     </nav>
 </section>
 
@@ -631,6 +635,110 @@
   </div>
 </section>
 
+<!-- Session Swaps View -->
+<section id="swaps-view" class="main-content-wrapper" style="display: none;">
+  <div class="swaps-container">
+    <!-- Header -->
+    <div class="swaps-header">
+      <h2>Session Swaps</h2>
+      <p class="swaps-subtitle">Request shift swaps when you cannot attend scheduled sessions.</p>
+    </div>
+    
+    <!-- Unit Information Card -->
+    <div class="unit-info-card">
+      <div class="unit-info-content">
+        <span class="material-icons unit-icon">swap_horiz</span>
+        <div class="unit-details">
+          <h3 id="current-unit-name">Loading...</h3>
+          <p id="session-count">You have 0 assigned sessions in this unit.</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Request Swap Button -->
+    <div class="request-swap-section">
+      <button id="request-swap-btn" class="request-swap-btn">
+        <span class="material-icons">add</span>
+        Request Swap
+      </button>
+    </div>
+    
+    <!-- Swap Requests Sections -->
+    <div class="swap-requests-container">
+      <!-- Pending Requests -->
+      <div class="requests-section">
+        <div class="section-header">
+          <span class="material-icons section-icon pending">schedule</span>
+          <h3>Pending Requests <span id="pending-count" class="count-badge">0</span></h3>
+        </div>
+        <div id="pending-requests-list" class="requests-list">
+          <!-- Pending requests will be populated here -->
+        </div>
+      </div>
+      
+      <!-- Approved Requests -->
+      <div class="requests-section">
+        <div class="section-header">
+          <span class="material-icons section-icon approved">check_circle</span>
+          <h3>Approved Requests <span id="approved-count" class="count-badge">0</span></h3>
+        </div>
+        <div id="approved-requests-list" class="requests-list">
+          <!-- Approved requests will be populated here -->
+        </div>
+      </div>
+      
+      <!-- Declined Requests -->
+      <div class="requests-section">
+        <div class="section-header">
+          <span class="material-icons section-icon declined">cancel</span>
+          <h3>Declined Requests <span id="declined-count" class="count-badge">0</span></h3>
+        </div>
+        <div id="declined-requests-list" class="requests-list">
+          <!-- Declined requests will be populated here -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- How Swaps Work Section -->
+    <div class="how-swaps-work">
+      <h3>How Session Swaps Work</h3>
+      <div class="steps-container">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Submit Request</h4>
+            <p>Select the session you can't attend and suggest a replacement facilitator you've already spoken with.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Faciiltator and Unit Coordinator Review</h4>
+            <p>Your suggested facilitator will first review the request, and once they approve the request, the request will go through to the unit coordinator for review and approval.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Get Notification</h4>
+            <p>You will receive a notification when your request is approved or if changes are needed.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>Schedule Updated</h4>
+            <p>Once approved, the schedule is automatically updated and all relevant parties are notified.</p>
+          </div>
+        </div>
+      </div>
+      <div class="tip-box">
+        <strong>Tip:</strong> Always discuss with potential replacement facilitators before submitting a request. This helps ensure faster approval and shows consideration for your colleagues.
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- Sessions Modal -->
 <div id="sessions-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
@@ -674,6 +782,53 @@
     window.currentUnit = {{ current_unit_dict|tojson if current_unit_dict else 'null' }};
     window.csrfToken = "{{ csrf_token() }}";
 </script>
+
+<!-- Request Swap Modal -->
+<div id="request-swap-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Request Session Swap</h2>
+      <button id="request-swap-modal-close" class="modal-close-btn">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-subtitle">Select a session you need to swap and provide details about your request.</p>
+      
+      <form id="request-swap-form">
+        <div class="form-group">
+          <label for="session-select">Select Session*</label>
+          <select id="session-select" name="session_id" required>
+            <option value="">Choose a session to swap</option>
+            <!-- Sessions will be populated by JavaScript -->
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="suggested-facilitator">Suggested Replacement Facilitator*</label>
+          <select id="suggested-facilitator" name="suggested_facilitator_id" required>
+            <option value="">Select a facilitator you've discussed with</option>
+            <!-- Available facilitators will be populated by JavaScript -->
+          </select>
+          <p class="form-help">Choose someone you've already spoken with about covering this session.</p>
+        </div>
+        
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="has-discussed" name="has_discussed" required>
+            <span class="checkbox-custom"></span>
+            I have discussed this swap with the suggested facilitator
+          </label>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" id="cancel-swap-request" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Submit Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

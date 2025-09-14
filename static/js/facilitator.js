@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
     const calendarView = document.getElementById('calendar-view');
     const unavailabilityView = document.getElementById('unavailability-view');
+    const swapsView = document.getElementById('swaps-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
     
     // Notification popup elements
@@ -29,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 dashboardSections.forEach(section => section.style.display = 'none');
                 unavailabilityView.style.display = 'block';
                 calendarView.style.display = 'none';
-                document.body.classList.remove('calendar-view-active');
+                swapsView.style.display = 'none';
                 // Hide unavailability alert in unavailability view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
@@ -39,18 +40,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
                 unavailabilityView.style.display = 'none';
+                swapsView.style.display = 'none';
                 calendarView.style.display = 'block';
                 document.body.classList.add('calendar-view-active');
                 initCalendar();
                 // Hide unavailability alert in schedule view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
+            } else if (href === '#swaps') {
+                // Show swaps view
+                dashboardSections.forEach(section => section.style.display = 'none');
+                unavailabilityView.style.display = 'none';
+                calendarView.style.display = 'none';
+                swapsView.style.display = 'block';
+                // Hide unavailability alert in swaps view
+                const unavailabilityAlert = document.getElementById('unavailability-alert');
+                if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
+                // Initialize swaps functionality
+                initializeSessionSwaps();
             } else {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
                 unavailabilityView.style.display = 'none';
-                calendarView.style.display = 'none';
-                document.body.classList.remove('calendar-view-active');
+                swapsView.style.display = 'none';
                 // Show unavailability alert in dashboard view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'block';
@@ -879,6 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dashboardSections.forEach(section => section.style.display = 'none');
             unavailabilityView.style.display = 'block';
             calendarView.style.display = 'none';
+            swapsView.style.display = 'none';
             // Hide unavailability alert in unavailability view
             const unavailabilityAlert = document.getElementById('unavailability-alert');
             if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
@@ -1094,6 +1107,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update unavailability view if it's currently visible
         updateUnavailabilityViewForUnit(unit);
+        
+        // Update Session Swaps view if it's currently visible
+        if (document.getElementById('swaps-view').style.display !== 'none') {
+            // Update window.currentUnitId for Session Swaps
+            window.currentUnitId = unitId;
+            // Reload Session Swaps data
+            initializeSessionSwaps();
+        }
 
         // Refresh calendar if it's currently visible
         refreshCalendar();
@@ -1165,15 +1186,17 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show unavailability alert only if we're on the dashboard tab
         const unavailabilityAlert = document.getElementById('unavailability-alert');
         const unavailabilityView = document.getElementById('unavailability-view');
+        const swapsView = document.getElementById('swaps-view');
         
         if (dashboardNav) dashboardNav.style.display = 'flex';
         if (unavailabilityNav) unavailabilityNav.style.display = 'flex';
         if (scheduleNav) scheduleNav.style.display = 'flex';
         
-        // Only show alert if we're on dashboard tab (unavailability view is hidden)
+        // Only show alert if we're on dashboard tab (other views are hidden)
         if (unavailabilityAlert) {
-            if (unavailabilityView && unavailabilityView.style.display === 'block') {
-                // We're on unavailability tab, hide the alert
+            if ((unavailabilityView && unavailabilityView.style.display === 'block') ||
+                (swapsView && swapsView.style.display === 'block')) {
+                // We're on unavailability or swaps tab, hide the alert
                 unavailabilityAlert.style.display = 'none';
             } else {
                 // We're on dashboard tab, show the alert
@@ -2636,4 +2659,506 @@ function initializeAJAXFeatures() {
     window.addEventListener('unhandledrejection', function(event) {
         console.error('Unhandled promise rejection:', event.reason);
     });
+}
+
+// ============================================================================
+// SESSION SWAPS FUNCTIONALITY
+// ============================================================================
+
+let currentUserAssignments = [];
+let availableFacilitators = [];
+
+// Initialize Session Swaps functionality
+function initializeSessionSwaps() {
+    console.log('Initializing Session Swaps functionality...');
+    
+    // Ensure unavailability alert is hidden in swaps view
+    const unavailabilityAlert = document.getElementById('unavailability-alert');
+    if (unavailabilityAlert) {
+        unavailabilityAlert.style.display = 'none';
+    }
+    
+    // Set up event listeners
+    setupSwapsEventListeners();
+    
+    // Load initial data
+    loadSwapRequests();
+    loadUserAssignments();
+}
+
+// Set up event listeners for Session Swaps
+function setupSwapsEventListeners() {
+    // Request Swap button
+    const requestSwapBtn = document.getElementById('request-swap-btn');
+    if (requestSwapBtn) {
+        requestSwapBtn.addEventListener('click', openRequestSwapModal);
+    }
+    
+    // Modal close buttons
+    const modalCloseBtn = document.getElementById('request-swap-modal-close');
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', closeRequestSwapModal);
+    }
+    
+    const cancelBtn = document.getElementById('cancel-swap-request');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeRequestSwapModal);
+    }
+    
+    // Form submission
+    const swapForm = document.getElementById('request-swap-form');
+    if (swapForm) {
+        swapForm.addEventListener('submit', handleSwapRequestSubmit);
+    }
+    
+    // Session selection change
+    const sessionSelect = document.getElementById('session-select');
+    if (sessionSelect) {
+        sessionSelect.addEventListener('change', handleSessionSelectionChange);
+    }
+}
+
+// Load user's swap requests
+async function loadSwapRequests() {
+    try {
+        // Get current unit ID for filtering
+        const currentUnitId = window.currentUnitId;
+        
+        if (!currentUnitId) {
+            console.warn('No current unit selected');
+            return;
+        }
+
+        const response = await fetch(`/facilitator/swap-requests?unit_id=${currentUnitId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Update counts
+        updateRequestCounts(data);
+        
+        // Render requests
+        renderSwapRequests(data);
+        
+    } catch (error) {
+        console.error('Error loading swap requests:', error);
+        showNotification('Error loading swap requests', 'error');
+    }
+}
+
+// Update request count badges
+function updateRequestCounts(data) {
+    const pendingCount = document.getElementById('pending-count');
+    const approvedCount = document.getElementById('approved-count');
+    const declinedCount = document.getElementById('declined-count');
+    
+    if (pendingCount) pendingCount.textContent = data.pending_requests.length;
+    if (approvedCount) approvedCount.textContent = data.approved_requests.length;
+    if (declinedCount) declinedCount.textContent = data.declined_requests.length;
+}
+
+// Render swap requests in their respective sections
+function renderSwapRequests(data) {
+    renderRequestSection('pending-requests-list', data.pending_requests, 'pending');
+    renderRequestSection('approved-requests-list', data.approved_requests, 'approved');
+    renderRequestSection('declined-requests-list', data.declined_requests, 'declined');
+}
+
+// Render a specific request section
+function renderRequestSection(containerId, requests, status) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    if (requests.length === 0) {
+        container.innerHTML = '<div class="no-requests">No requests found.</div>';
+        return;
+    }
+    
+    container.innerHTML = requests.map(request => createRequestCard(request, status)).join('');
+}
+
+// Create a request card HTML
+function createRequestCard(request, status) {
+    const statusClass = status;
+    const statusText = getStatusText(request.status);
+    const statusIcon = getStatusIcon(request.status);
+    
+    return `
+        <div class="request-card ${statusClass}">
+            <div class="request-header">
+                <h4>${request.session_name}</h4>
+                <span class="status-badge ${statusClass}">${statusText}</span>
+            </div>
+            <div class="request-details">
+                <div class="detail-item">
+                    <span class="material-icons">event</span>
+                    <span>${formatDate(request.session_date)} · ${formatTime(request.session_time)}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="material-icons">location_on</span>
+                    <span>${request.session_location}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="material-icons">person</span>
+                    <span>Suggested facilitator: ${request.target_name}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="material-icons">schedule</span>
+                    <span>Requested: ${formatDate(request.created_at)}</span>
+                </div>
+                ${request.facilitator_confirmed_at ? `
+                    <div class="detail-item">
+                        <span class="material-icons">check_circle</span>
+                        <span>Facilitator responded: ${formatDate(request.facilitator_confirmed_at)}</span>
+                    </div>
+                ` : ''}
+                ${request.facilitator_decline_reason ? `
+                    <div class="response-message declined">
+                        <strong>Response:</strong> ${request.facilitator_decline_reason}
+                    </div>
+                ` : ''}
+                ${request.coordinator_decline_reason ? `
+                    <div class="response-message declined">
+                        <strong>Response:</strong> ${request.coordinator_decline_reason}
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Get status text for display
+function getStatusText(status) {
+    const statusMap = {
+        'facilitator_pending': 'Pending',
+        'coordinator_pending': 'Pending',
+        'approved': 'Approved',
+        'facilitator_declined': 'Declined',
+        'coordinator_declined': 'Declined',
+        'rejected': 'Declined'
+    };
+    return statusMap[status] || status;
+}
+
+// Get status icon
+function getStatusIcon(status) {
+    const iconMap = {
+        'facilitator_pending': 'schedule',
+        'coordinator_pending': 'schedule',
+        'approved': 'check_circle',
+        'facilitator_declined': 'cancel',
+        'coordinator_declined': 'cancel',
+        'rejected': 'cancel'
+    };
+    return iconMap[status] || 'help';
+}
+
+// Load user's assignments for the session dropdown
+async function loadUserAssignments() {
+    try {
+        // Get current unit ID for filtering
+        const currentUnitId = window.currentUnitId;
+        
+        if (!currentUnitId) {
+            console.warn('No current unit selected');
+            return;
+        }
+
+        // Filter assignments by current unit
+        if (window.unitsData && window.unitsData.length > 0) {
+            const currentUnit = window.unitsData.find(unit => unit.id === currentUnitId);
+            
+            if (currentUnit) {
+                currentUserAssignments = [];
+                
+                // Extract assignments from current unit's sessions
+                // Check different possible session structures
+                let sessions = null;
+                if (currentUnit.upcoming_sessions) {
+                    sessions = currentUnit.upcoming_sessions;
+                } else if (currentUnit.sessions && currentUnit.sessions.upcoming) {
+                    sessions = currentUnit.sessions.upcoming;
+                } else if (currentUnit.sessions && Array.isArray(currentUnit.sessions)) {
+                    sessions = currentUnit.sessions;
+                }
+                
+                if (sessions && sessions.length > 0) {
+                    sessions.forEach(session => {
+                        // The backend provides 'id' as the assignment ID
+                        if (session.id) {
+                            currentUserAssignments.push({
+                                id: session.id, // This is the assignment ID from backend
+                                session_id: session.session_id,
+                                module: session.module || 'Unknown Module', // Handle null module names
+                                session_type: session.session_type || 'Session', // Better default for session type
+                                start_time: session.start_time,
+                                end_time: session.end_time,
+                                venue: session.location || 'TBA', // Backend uses 'location' not 'venue'
+                                unit_id: currentUnitId
+                            });
+                        }
+                    });
+                }
+                
+                console.log(`Loaded ${currentUserAssignments.length} assignments for unit ${currentUnit.code}`);
+                
+                // Update unit info display
+                updateUnitInfoDisplay(currentUnit);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading user assignments:', error);
+    }
+}
+
+// Open the request swap modal
+function openRequestSwapModal() {
+    const modal = document.getElementById('request-swap-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        populateSessionDropdown();
+    }
+}
+
+// Close the request swap modal
+function closeRequestSwapModal() {
+    const modal = document.getElementById('request-swap-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        resetSwapForm();
+    }
+}
+
+// Update unit info display in swaps view
+function updateUnitInfoDisplay(unit) {
+    // Update unit code and name in swaps view
+    const unitNameEl = document.getElementById('current-unit-name');
+    const sessionCountEl = document.getElementById('session-count');
+    
+    if (unitNameEl) {
+        unitNameEl.textContent = `${unit.code} - ${unit.name}`;
+    }
+    
+    if (sessionCountEl) {
+        const sessionCount = currentUserAssignments.length;
+        sessionCountEl.textContent = `You have ${sessionCount} assigned sessions in this unit.`;
+    }
+}
+
+// Populate session dropdown
+function populateSessionDropdown() {
+    const sessionSelect = document.getElementById('session-select');
+    if (!sessionSelect) return;
+    
+    // Clear existing options
+    sessionSelect.innerHTML = '<option value="">Choose a session to swap</option>';
+    
+    // Add sessions from current user's assignments for the current unit
+    if (currentUserAssignments && currentUserAssignments.length > 0) {
+        currentUserAssignments.forEach(assignment => {
+            const option = document.createElement('option');
+            option.value = assignment.id;
+            // Format: session name, date and time, location
+            const sessionName = assignment.module;
+            const dateTime = formatDateTime(assignment.start_time, assignment.end_time);
+            const location = assignment.venue;
+            
+            option.textContent = `${sessionName}\n${dateTime}\n${location}`;
+            sessionSelect.appendChild(option);
+        });
+    } else {
+        // Show no sessions message
+        const option = document.createElement('option');
+        option.value = "";
+        option.textContent = "No sessions available for swapping";
+        option.disabled = true;
+        sessionSelect.appendChild(option);
+    }
+}
+
+// Handle session selection change
+async function handleSessionSelectionChange(event) {
+    const assignmentId = event.target.value;
+    if (!assignmentId) {
+        clearFacilitatorDropdown();
+        return;
+    }
+    
+    try {
+        // Include unit context in the request
+        const currentUnitId = window.currentUnitId;
+        const url = `/facilitator/available-facilitators/${assignmentId}?unit_id=${currentUnitId}`;
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        availableFacilitators = data.available_facilitators;
+        populateFacilitatorDropdown(data.available_facilitators);
+        
+    } catch (error) {
+        console.error('Error loading available facilitators:', error);
+        showNotification('Error loading available facilitators', 'error');
+        clearFacilitatorDropdown();
+    }
+}
+
+// Populate facilitator dropdown
+function populateFacilitatorDropdown(facilitators) {
+    const facilitatorSelect = document.getElementById('suggested-facilitator');
+    if (!facilitatorSelect) return;
+    
+    // Clear existing options
+    facilitatorSelect.innerHTML = '<option value="">Select a facilitator you\'ve discussed with</option>';
+    
+    facilitators.forEach(facilitator => {
+        const option = document.createElement('option');
+        option.value = facilitator.id;
+        option.textContent = facilitator.name;
+        facilitatorSelect.appendChild(option);
+    });
+}
+
+// Clear facilitator dropdown
+function clearFacilitatorDropdown() {
+    const facilitatorSelect = document.getElementById('suggested-facilitator');
+    if (facilitatorSelect) {
+        facilitatorSelect.innerHTML = '<option value="">Select a facilitator you\'ve discussed with</option>';
+    }
+}
+
+// Handle swap request form submission
+async function handleSwapRequestSubmit(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const sessionId = formData.get('session_id');
+    const suggestedFacilitatorId = formData.get('suggested_facilitator_id');
+    const hasDiscussed = document.getElementById('has-discussed').checked;
+    
+    if (!sessionId || !suggestedFacilitatorId) {
+        showNotification('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    if (!hasDiscussed) {
+        showNotification('Please confirm that you have discussed this swap with the facilitator', 'error');
+        return;
+    }
+    
+    try {
+        // Include unit context in the request
+        const currentUnitId = window.currentUnitId;
+        
+        const response = await fetch('/facilitator/swap-requests', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify({
+                requester_assignment_id: sessionId,
+                target_assignment_id: sessionId, // This would need to be the target's assignment
+                target_facilitator_id: suggestedFacilitatorId,
+                has_discussed: hasDiscussed,
+                unit_id: currentUnitId
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to create swap request');
+        }
+        
+        const data = await response.json();
+        showNotification(data.message || 'Swap request created successfully!', 'success');
+        
+        // Close modal and refresh data
+        closeRequestSwapModal();
+        loadSwapRequests();
+        
+    } catch (error) {
+        console.error('Error creating swap request:', error);
+        showNotification(error.message || 'Error creating swap request', 'error');
+    }
+}
+
+// Reset swap form
+function resetSwapForm() {
+    const form = document.getElementById('request-swap-form');
+    if (form) {
+        form.reset();
+    }
+    clearFacilitatorDropdown();
+}
+
+// Utility functions for formatting
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+}
+
+function formatTime(timeString) {
+    const time = new Date(`2000-01-01T${timeString}`);
+    return time.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+    });
+}
+
+function formatDateTime(startTimeString, endTimeString) {
+    const startDate = new Date(startTimeString);
+    const endDate = new Date(endTimeString);
+    
+    const dateStr = startDate.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    
+    const startTimeStr = startDate.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+    });
+    
+    const endTimeStr = endDate.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+    });
+    
+    return `${dateStr}, ${startTimeStr} - ${endTimeStr}`;
+}
+
+// Show notification (reuse existing notification system)
+function showNotification(message, type = 'info') {
+    // This would integrate with your existing notification system
+    console.log(`${type.toUpperCase()}: ${message}`);
+    // You can implement a toast notification here
 }
