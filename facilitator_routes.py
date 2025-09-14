@@ -287,7 +287,7 @@ def dashboard():
                 'id': a.id,
                 'session_id': s.id,
                 'module': m.module_name or 'Unknown Module',  # Handle null module names
-                'session_type': s.session_type or 'Unknown Type',  # Handle null session types
+                'session_type': s.session_type or 'Session',  # Better default for session type
                 'start_time': s.start_time.isoformat(),
                 'end_time': s.end_time.isoformat(),
                 'location': s.location or 'TBA',  # Handle null locations
@@ -307,7 +307,7 @@ def dashboard():
                 'id': a.id,
                 'session_id': s.id,
                 'module': m.module_name or 'Unknown Module',  # Handle null module names
-                'session_type': s.session_type or 'Unknown Type',  # Handle null session types
+                'session_type': s.session_type or 'Session',  # Better default for session type
                 'start_time': s.start_time.isoformat(),
                 'end_time': s.end_time.isoformat(),
                 'location': s.location or 'TBA',  # Handle null locations
@@ -952,8 +952,14 @@ def get_swap_requests():
     # Filter by unit if provided
     if unit_id:
         # Join with Assignment, Session, and Module to filter by unit
-        my_requests_query = my_requests_query.join(Assignment).join(Session).join(Module).filter(Module.unit_id == unit_id)
-        requests_for_me_query = requests_for_me_query.join(Assignment).join(Session).join(Module).filter(Module.unit_id == unit_id)
+        # Specify the join condition explicitly to avoid ambiguity
+        my_requests_query = my_requests_query.join(
+            Assignment, SwapRequest.requester_assignment_id == Assignment.id
+        ).join(Session).join(Module).filter(Module.unit_id == unit_id)
+        
+        requests_for_me_query = requests_for_me_query.join(
+            Assignment, SwapRequest.target_assignment_id == Assignment.id
+        ).join(Session).join(Module).filter(Module.unit_id == unit_id)
     
     my_requests = my_requests_query.all()
     requests_for_me = requests_for_me_query.all()
@@ -1023,15 +1029,15 @@ def check_facilitator_availability(facilitator_id, session_date, session_start_t
     # Check for existing session assignments at the same time
     conflicting_assignment = Assignment.query.join(Session).filter(
         Assignment.facilitator_id == facilitator_id,
-        Session.start_time.date() == session_date,
+        db.func.date(Session.start_time) == session_date,
         db.or_(
             db.and_(
-                Session.start_time.time() <= session_start_time,
-                Session.end_time.time() > session_start_time
+                db.func.time(Session.start_time) <= session_start_time,
+                db.func.time(Session.end_time) > session_start_time
             ),
             db.and_(
-                Session.start_time.time() < session_end_time,
-                Session.end_time.time() >= session_end_time
+                db.func.time(Session.start_time) < session_end_time,
+                db.func.time(Session.end_time) >= session_end_time
             )
         )
     ).first()

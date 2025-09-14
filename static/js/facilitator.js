@@ -770,15 +770,17 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show unavailability alert only if we're on the dashboard tab
         const unavailabilityAlert = document.getElementById('unavailability-alert');
         const unavailabilityView = document.getElementById('unavailability-view');
+        const swapsView = document.getElementById('swaps-view');
         
         if (dashboardNav) dashboardNav.style.display = 'flex';
         if (unavailabilityNav) unavailabilityNav.style.display = 'flex';
         if (scheduleNav) scheduleNav.style.display = 'flex';
         
-        // Only show alert if we're on dashboard tab (unavailability view is hidden)
+        // Only show alert if we're on dashboard tab (other views are hidden)
         if (unavailabilityAlert) {
-            if (unavailabilityView && unavailabilityView.style.display === 'block') {
-                // We're on unavailability tab, hide the alert
+            if ((unavailabilityView && unavailabilityView.style.display === 'block') ||
+                (swapsView && swapsView.style.display === 'block')) {
+                // We're on unavailability or swaps tab, hide the alert
                 unavailabilityAlert.style.display = 'none';
             } else {
                 // We're on dashboard tab, show the alert
@@ -2220,6 +2222,12 @@ let availableFacilitators = [];
 function initializeSessionSwaps() {
     console.log('Initializing Session Swaps functionality...');
     
+    // Ensure unavailability alert is hidden in swaps view
+    const unavailabilityAlert = document.getElementById('unavailability-alert');
+    if (unavailabilityAlert) {
+        unavailabilityAlert.style.display = 'none';
+    }
+    
     // Set up event listeners
     setupSwapsEventListeners();
     
@@ -2441,7 +2449,7 @@ async function loadUserAssignments() {
                                 id: session.id, // This is the assignment ID from backend
                                 session_id: session.session_id,
                                 module: session.module || 'Unknown Module', // Handle null module names
-                                session_type: session.session_type || 'Unknown Type', // Handle null session types
+                                session_type: session.session_type || 'Session', // Better default for session type
                                 start_time: session.start_time,
                                 end_time: session.end_time,
                                 venue: session.location || 'TBA', // Backend uses 'location' not 'venue'

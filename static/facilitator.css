@@ -33,6 +33,7 @@
   --gap-sm: 8px;
   --gap-md: 16px;
   --gap-lg: 24px;
+  --gap-xl: 32px;
 }
 
 * {
@@ -4083,11 +4084,14 @@ textarea::placeholder {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--gap-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xl);
 }
 
 /* Swaps Header */
 .swaps-header {
-  margin-bottom: var(--gap-xl);
+  margin-bottom: 0; /* No gap */
 }
 
 .swaps-header h2 {
@@ -4109,7 +4113,7 @@ textarea::placeholder {
   border: 1px solid var(--surface-info);
   border-radius: 12px;
   padding: var(--gap-lg);
-  margin-bottom: var(--gap-xl);
+  margin-bottom: 0; /* No gap */
 }
 
 .unit-info-content {
@@ -4140,7 +4144,7 @@ textarea::placeholder {
 .request-swap-section {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--gap-xl);
+  margin-bottom: 0; /* No gap */
 }
 
 .request-swap-btn {
@@ -4172,7 +4176,7 @@ textarea::placeholder {
   display: flex;
   flex-direction: column;
   gap: var(--gap-xl);
-  margin-bottom: var(--gap-xl);
+  margin-bottom: var(--gap-xl); /* Add explicit margin as fallback */
 }
 
 /* Requests Section */
@@ -4342,6 +4346,7 @@ textarea::placeholder {
   border-radius: 12px;
   padding: var(--gap-xl);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: var(--gap-xl); /* Add margin to separate from requests */
 }
 
 .how-swaps-work h3 {
