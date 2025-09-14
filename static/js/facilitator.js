@@ -2517,7 +2517,12 @@ function populateSessionDropdown() {
         currentUserAssignments.forEach(assignment => {
             const option = document.createElement('option');
             option.value = assignment.id;
-            option.textContent = `${assignment.module} - ${assignment.session_type} (${formatDate(assignment.start_time)})`;
+            // Format: session name, date and time, location
+            const sessionName = assignment.module;
+            const dateTime = formatDateTime(assignment.start_time, assignment.end_time);
+            const location = assignment.venue;
+            
+            option.textContent = `${sessionName}\n${dateTime}\n${location}`;
             sessionSelect.appendChild(option);
         });
     } else {
@@ -2673,6 +2678,32 @@ function formatTime(timeString) {
         minute: '2-digit',
         hour12: true 
     });
+}
+
+function formatDateTime(startTimeString, endTimeString) {
+    const startDate = new Date(startTimeString);
+    const endDate = new Date(endTimeString);
+    
+    const dateStr = startDate.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    
+    const startTimeStr = startDate.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+    });
+    
+    const endTimeStr = endDate.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+    });
+    
+    return `${dateStr}, ${startTimeStr} - ${endTimeStr}`;
 }
 
 // Show notification (reuse existing notification system)
