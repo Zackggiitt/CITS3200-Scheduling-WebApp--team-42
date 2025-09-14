@@ -2983,8 +2983,8 @@ function ensureActivityLogCard() {
             <div>Name</div>
             <div>Student Number</div>
             <div>Date</div>
-            <div>Assigned Hours</div>
-            <div>Total Hours</div>
+            <div>Hours per Session</div>
+            <div>Weekly Hours</div>
           </div>
         </div>
 
@@ -3108,8 +3108,8 @@ function handlePdfExport() {
             <th>Name</th>
             <th>Student Number</th>
             <th>Date</th>
-            <th>Assigned Hours</th>
-            <th>Total Hours</th>
+            <th>Hours per Session</th>
+            <th>Weekly Hours</th>
           </tr>
         </thead>
         <tbody>
