@@ -46,6 +46,156 @@
   <!-- You can add admin content below -->
   <main class="container" style="max-width:1200px;margin:24px auto;padding:0 16px;">
     <h2 style="font-family: 'Roboto', sans-serif; font-weight: 600;">Admin Dashboard</h2>
+    
+    <!-- Navigation Tabs -->
+    <nav class="admin-nav-tabs">
+      <button class="admin-tab active" data-tab="dashboard">
+        <span class="material-icons">bar_chart</span>
+        <span>Dashboard</span>
+      </button>
+      <button class="admin-tab" data-tab="schedule">
+        <span class="material-icons">event</span>
+        <span>Schedule</span>
+      </button>
+      <button class="admin-tab" data-tab="employees">
+        <span class="material-icons">group</span>
+        <span>Employees</span>
+      </button>
+      <button class="admin-tab" data-tab="session-swaps">
+        <span class="material-icons">swap_horiz</span>
+        <span>Session Swaps</span>
+        <span class="tab-badge">3</span>
+      </button>
+    </nav>
+
+    <!-- Welcome Banner -->
+    <div class="admin-welcome-banner">
+      <div class="admin-welcome-content">
+        <h1 class="admin-welcome-greeting">Good afternoon, {{ user.first_name if user else 'Admin' }}! 👋</h1>
+        <p class="admin-welcome-role">System Administrator • Schedule Manager</p>
+        <p class="admin-welcome-stats">System-wide: 47 units, 12 coordinators, 125 facilitators across all programs.</p>
+      </div>
+      <div class="admin-welcome-actions">
+        <button class="admin-settings-btn" type="button" aria-label="Settings">
+          <span class="material-icons">settings</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Dashboard Metrics -->
+    <div class="dashboard-metrics">
+      <!-- Top Row - Summary Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-content">
+            <h3 class="metric-title">Total Units</h3>
+            <div class="metric-value">{{ total_units or 47 }}</div>
+            <p class="metric-subtitle">{{ active_units or 28 }} active, {{ upcoming_units or 19 }} upcoming</p>
+            <span class="metric-change positive">+8.1% from last semester</span>
+          </div>
+          <div class="metric-icon blue">
+            <span class="material-icons">folder</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-content">
+            <h3 class="metric-title">Unit Coordinators</h3>
+            <div class="metric-value">{{ total_coordinators or 12 }}</div>
+            <p class="metric-subtitle">Managing academic programs</p>
+            <span class="metric-change positive">+2 new this month</span>
+          </div>
+          <div class="metric-icon purple">
+            <span class="material-icons">group</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-content">
+            <h3 class="metric-title">Lab Facilitators</h3>
+            <div class="metric-value">{{ total_facilitators or 125 }}</div>
+            <p class="metric-subtitle">{{ active_facilitators or 4 }} active in your view</p>
+            <span class="metric-change positive">+15.4% utilization</span>
+          </div>
+          <div class="metric-icon green">
+            <span class="material-icons">person</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-content">
+            <h3 class="metric-title">Active Sessions</h3>
+            <div class="metric-value">{{ total_sessions or 324 }}</div>
+            <p class="metric-subtitle">{{ total_hours or 2847 }} total hours</p>
+            <span class="metric-change positive">+23 this week scheduled</span>
+          </div>
+          <div class="metric-icon orange">
+            <span class="material-icons">event</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Section - System Usage & Activity -->
+      <div class="system-activity-card">
+        <div class="system-activity-header">
+          <h3 class="system-activity-title">System Usage & Activity</h3>
+          <button class="system-status-btn">
+            <span class="material-icons">bar_chart</span>
+            System Operational
+          </button>
+        </div>
+        
+        <div class="activity-metrics">
+          <div class="activity-metric">
+            <div class="activity-icon blue">
+              <span class="material-icons">group</span>
+            </div>
+            <div class="activity-content">
+              <h4 class="activity-title"># of UC</h4>
+              <div class="activity-value">{{ total_coordinators or 12 }}</div>
+              <p class="activity-desc">unit coordinators</p>
+              <p class="activity-desc">Managing academic programs</p>
+            </div>
+          </div>
+
+          <div class="activity-metric">
+            <div class="activity-icon green">
+              <span class="material-icons">person</span>
+            </div>
+            <div class="activity-content">
+              <h4 class="activity-title"># of Facilitators</h4>
+              <div class="activity-value">{{ total_facilitators or 125 }}</div>
+              <p class="activity-desc">total facilitators</p>
+              <p class="activity-desc">{{ active_facilitators or 2 }} active in system</p>
+            </div>
+          </div>
+
+          <div class="activity-metric">
+            <div class="activity-icon green">
+              <span class="material-icons">check_circle</span>
+            </div>
+            <div class="activity-content">
+              <h4 class="activity-title">System Uptime</h4>
+              <div class="activity-value">{{ system_uptime or '99.7%' }}</div>
+              <p class="activity-desc">availability</p>
+              <p class="activity-desc">Excellent reliability</p>
+            </div>
+          </div>
+
+          <div class="activity-metric">
+            <div class="activity-icon red">
+              <span class="material-icons">warning</span>
+            </div>
+            <div class="activity-content">
+              <h4 class="activity-title">Pending Actions</h4>
+              <div class="activity-value">{{ pending_actions or 18 }}</div>
+              <p class="activity-desc">across all units</p>
+              <p class="activity-desc">Requires attention</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
