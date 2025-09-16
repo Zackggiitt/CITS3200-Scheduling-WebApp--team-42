@@ -30,7 +30,7 @@ app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",               # consider "Strict" if it fits your flows
-    SESSION_COOKIE_SECURE=False if app.debug else True,  # True in production (HTTPS)
+    SESSION_COOKIE_SECURE=False,  # Always False for HTTP deployment
 )
 
 # Rate limiting
@@ -284,4 +284,7 @@ def google_callback():
 
     flash('Google login failed')
     return redirect(url_for('login'))
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5001)
 
