@@ -14,6 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Tab switching functionality
   const tabs = document.querySelectorAll('.admin-tab');
+  const facilitatorManagement = document.querySelector('.facilitator-management');
+  const dashboardMetrics = document.querySelector('.dashboard-metrics');
+  const unitStatusCard = document.querySelector('.unit-status-card');
+  const welcomeBanner = document.querySelector('.admin-welcome-banner');
+
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       // Remove active class from all tabs
@@ -25,8 +30,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const tabName = tab.getAttribute('data-tab');
       console.log(`Switched to ${tabName} tab`);
       
-      // Here you can add logic to show/hide different content sections
-      // For now, we'll just log the tab name
+      // Show/hide content sections based on tab
+      if (tabName === 'dashboard') {
+        // Show dashboard content
+        if (welcomeBanner) welcomeBanner.style.display = 'block';
+        if (dashboardMetrics) dashboardMetrics.style.display = 'block';
+        if (unitStatusCard) unitStatusCard.style.display = 'block';
+        if (facilitatorManagement) facilitatorManagement.style.display = 'none';
+      } else if (tabName === 'employees') {
+        // Show facilitator management
+        if (welcomeBanner) welcomeBanner.style.display = 'none';
+        if (dashboardMetrics) dashboardMetrics.style.display = 'none';
+        if (unitStatusCard) unitStatusCard.style.display = 'none';
+        if (facilitatorManagement) facilitatorManagement.style.display = 'block';
+      } else {
+        // For other tabs (schedule, session-swaps), show dashboard content for now
+        if (welcomeBanner) welcomeBanner.style.display = 'block';
+        if (dashboardMetrics) dashboardMetrics.style.display = 'block';
+        if (unitStatusCard) unitStatusCard.style.display = 'block';
+        if (facilitatorManagement) facilitatorManagement.style.display = 'none';
+      }
     });
   });
 

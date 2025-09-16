@@ -4,7 +4,7 @@ from getpass import getpass
 from werkzeug.security import generate_password_hash
 
 # --- Imports: adjust to your project structure if needed ---
-# If your app exposes `app` and `db` from `application`, this works as-is.
+# If app exposes `app` and `db` from `application`, this works as-is.
 from application import app, db
 from models import User, UserRole
 
