@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('Admin dashboard loaded');
+  
   const notifBtn = document.getElementById('adminNotifBtn');
   if (!notifBtn) return;
 
@@ -37,4 +39,5 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Settings panel coming soon!');
     });
   }
+
 });

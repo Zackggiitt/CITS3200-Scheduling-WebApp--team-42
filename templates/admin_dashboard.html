@@ -196,6 +196,193 @@
         </div>
       </div>
     </div>
+
+    <!-- Unit Status Distribution -->
+    <div class="unit-status-card">
+      <h3 class="unit-status-title">Unit Status Distribution</h3>
+      
+      <!-- Top Row - Unit Status -->
+      <div class="unit-status-row">
+        <div class="unit-status-metric">
+          <div class="unit-status-value active">{{ active_units_count or 28 }}</div>
+          <div class="unit-status-label">Active Units</div>
+        </div>
+        <div class="unit-status-metric">
+          <div class="unit-status-value upcoming">{{ upcoming_units_count or 12 }}</div>
+          <div class="unit-status-label">Upcoming Units</div>
+        </div>
+        <div class="unit-status-metric">
+          <div class="unit-status-value completed">{{ completed_units_count or 7 }}</div>
+          <div class="unit-status-label">Completed Units</div>
+        </div>
+      </div>
+
+      <!-- Bottom Row - Session Statistics -->
+      <div class="session-stats-row">
+        <div class="session-stat-metric">
+          <div class="session-stat-value">{{ avg_sessions_per_unit or 8.3 }}</div>
+          <div class="session-stat-label">Average Sessions per Unit</div>
+        </div>
+        <div class="session-stat-metric">
+          <div class="session-stat-value">{{ total_sessions_completed or 1847 }}</div>
+          <div class="session-stat-label">Total Sessions Completed</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Facilitator Management Section -->
+    <div class="facilitator-management">
+      <!-- Header -->
+      <div class="facilitator-header">
+        <div class="facilitator-header-content">
+          <h2 class="facilitator-title">Facilitator Management</h2>
+          <p class="facilitator-subtitle">Comprehensive facilitator oversight, performance tracking, and workforce management.</p>
+        </div>
+        <div class="facilitator-header-actions">
+          <button class="facilitator-action-btn secondary">
+            <span class="material-icons">download</span>
+            Export Data
+          </button>
+          <button class="facilitator-action-btn secondary">
+            <span class="material-icons">upload</span>
+            Import
+          </button>
+          <button class="facilitator-action-btn primary">
+            <span class="material-icons">add</span>
+            + Add User
+          </button>
+        </div>
+      </div>
+
+      <!-- Key Metrics Cards -->
+      <div class="facilitator-metrics-grid">
+        <div class="facilitator-metric-card blue">
+          <div class="facilitator-metric-icon">
+            <span class="material-icons">person</span>
+          </div>
+          <div class="facilitator-metric-content">
+            <div class="facilitator-metric-value">{{ total_facilitators_count or 6 }}</div>
+            <div class="facilitator-metric-label">Total Facilitators</div>
+          </div>
+        </div>
+
+        <div class="facilitator-metric-card green">
+          <div class="facilitator-metric-icon">
+            <span class="material-icons">check_circle</span>
+          </div>
+          <div class="facilitator-metric-content">
+            <div class="facilitator-metric-value">{{ active_facilitators_count or 5 }}</div>
+            <div class="facilitator-metric-label">Active</div>
+          </div>
+        </div>
+
+        <div class="facilitator-metric-card orange">
+          <div class="facilitator-metric-icon">
+            <span class="material-icons">schedule</span>
+          </div>
+          <div class="facilitator-metric-content">
+            <div class="facilitator-metric-value">{{ total_hours_worked or 1966 }}</div>
+            <div class="facilitator-metric-label">Total Hours</div>
+          </div>
+        </div>
+
+        <div class="facilitator-metric-card purple">
+          <div class="facilitator-metric-icon">
+            <span class="material-icons">star_outline</span>
+          </div>
+          <div class="facilitator-metric-content">
+            <div class="facilitator-metric-value">{{ avg_rating or 4.5 }}</div>
+            <div class="facilitator-metric-label">Avg Rating</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Section -->
+      <div class="facilitator-bottom-section">
+        <!-- Workforce Distribution -->
+        <div class="workforce-distribution">
+          <h3 class="workforce-title">Workforce Distribution</h3>
+          <div class="workforce-levels">
+            <div class="workforce-level">
+              <div class="workforce-level-header">
+                <span class="workforce-level-name">Expert Level</span>
+                <span class="workforce-level-count">{{ expert_facilitators or 3 }}</span>
+              </div>
+              <div class="workforce-progress-bar">
+                <div class="workforce-progress-fill expert-progress"></div>
+              </div>
+            </div>
+
+            <div class="workforce-level">
+              <div class="workforce-level-header">
+                <span class="workforce-level-name">Senior Level</span>
+                <span class="workforce-level-count">{{ senior_facilitators or 1 }}</span>
+              </div>
+              <div class="workforce-progress-bar">
+                <div class="workforce-progress-fill senior-progress"></div>
+              </div>
+            </div>
+
+            <div class="workforce-level">
+              <div class="workforce-level-header">
+                <span class="workforce-level-name">Junior Level</span>
+                <span class="workforce-level-count">{{ junior_facilitators or 2 }}</span>
+              </div>
+              <div class="workforce-progress-bar">
+                <div class="workforce-progress-fill junior-progress"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <h3 class="quick-actions-title">Quick Actions</h3>
+          <div class="quick-actions-list">
+            <div class="quick-action-item">
+              <div class="quick-action-icon">
+                <span class="material-icons">send</span>
+              </div>
+              <div class="quick-action-content">
+                <h4 class="quick-action-title">Send Bulk Notifications</h4>
+                <p class="quick-action-desc">Notify all active facilitators</p>
+              </div>
+            </div>
+
+            <div class="quick-action-item">
+              <div class="quick-action-icon">
+                <span class="material-icons">menu_book</span>
+              </div>
+              <div class="quick-action-content">
+                <h4 class="quick-action-title">Schedule Training Session</h4>
+                <p class="quick-action-desc">Organize skill development</p>
+              </div>
+            </div>
+
+            <div class="quick-action-item">
+              <div class="quick-action-icon">
+                <span class="material-icons">track_changes</span>
+              </div>
+              <div class="quick-action-content">
+                <h4 class="quick-action-title">Performance Review</h4>
+                <p class="quick-action-desc">Conduct quarterly assessments</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      </div>
+    </div>
+
+    <!-- Navigation Tabs (Always Visible) -->
+    <div class="facilitator-nav-tabs">
+      <button class="facilitator-nav-tab active" data-tab="overview">
+        <span class="material-icons">bar_chart</span>
+        <span>Overview</span>
+      </button>
+    </div>
+
   </main>
 
   <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
