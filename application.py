@@ -39,6 +39,10 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["2000 per day", "
 # CSRF protection (protects all POST forms, incl. logout form)
 csrf = CSRFProtect(app)
 
+# Additional CSRF settings for deployment
+app.config['WTF_CSRF_TIME_LIMIT'] = None
+app.config['WTF_CSRF_SSL_STRICT'] = False
+
 
 
 @app.route("/signup", methods=["GET", "POST"])
