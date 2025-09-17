@@ -5,8 +5,14 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from models import db, User, UserRole, Facilitator
-from auth import login_required, is_safe_url, get_current_user
+try:
+    from models import db, User, UserRole, Facilitator
+    print("models imported successfully")
+    from auth import login_required, is_safe_url, get_current_user
+    print("auth utils imported successfully")
+except Exception as e:
+    print(f"Error importing models/auth: {e}")
+    raise
 from authlib.integrations.flask_client import OAuth
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -16,15 +22,28 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 
 # Blueprints
-from admin_routes import admin_bp
-from facilitator_routes import facilitator_bp
-from unitcoordinator_routes import unitcoordinator_bp
-from auth import auth_bp  # contains POST /logout
+try:
+    from admin_routes import admin_bp
+    print("admin_routes imported successfully")
+    from facilitator_routes import facilitator_bp
+    print("facilitator_routes imported successfully")
+    from unitcoordinator_routes import unitcoordinator_bp
+    print("unitcoordinator_routes imported successfully")
+    from auth import auth_bp  # contains POST /logout
+    print("auth imported successfully")
+except Exception as e:
+    print(f"Error importing blueprints: {e}")
+    raise
 
 load_dotenv()
 
-app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+try:
+    app = Flask(__name__)
+    app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+    print("Flask app created successfully")
+except Exception as e:
+    print(f"Error creating Flask app: {e}")
+    raise
 
 # Recommended cookie hardening
 app.config.update(

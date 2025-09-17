@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Admin Dashboard</h1>
+            <div class="header-actions">
+                <form action="{{ url_for('auth.logout') }}" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-logout">Sign Out</button>
+                </form>
+            </div>
+        </header>
+        
+        {% if user %}
+            <div class="user-info">
+                <p>Welcome, {{ user.first_name }} {{ user.last_name }}!</p>
+                <p>Email: {{ user.email }}</p>
+                <p>Role: Administrator</p>
+            </div>
+        {% endif %}
+        
+        <div class="admin-content">
+            <h2>System Administration</h2>
+            <p>Manage users, sessions, and system settings from this dashboard.</p>
+            
+            <!-- Add your admin functionality here -->
+            <div class="admin-actions">
+                <a href="#" class="btn">Manage Users</a>
+                <a href="#" class="btn">Manage Sessions</a>
+                <a href="#" class="btn">System Settings</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
