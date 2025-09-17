@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profile - Unit Coordinator Portal</title>
+
+  <!-- Tailwind (utility only) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+  <!-- Material Icons (filled) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}" />
+  <style>
+    .profile-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .profile-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .unit-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      transition: all 0.2s ease;
+    }
+    
+    .unit-card:hover {
+      border-color: #6366f1;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <!-- HEADER -->
+  <header class="bg-white shadow-sm border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <!-- Left side - Logo and Title -->
+        <div class="flex items-center">
+          <span class="material-icons text-gray-800 mr-3">school</span>
+          <h1 class="text-xl font-semibold text-gray-900">Unit Coordinator Portal</h1>
+        </div>
+
+        <!-- Right side - Navigation and User Menu -->
+        <div class="flex items-center space-x-4">
+          <!-- Dashboard Button -->
+          <a href="{{ url_for('unitcoordinator.dashboard') }}" 
+             class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors">
+            <span class="material-icons mr-2 text-sm">dashboard</span>
+            Dashboard
+          </a>
+
+          <!-- Notifications -->
+          <button class="p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-full">
+            <span class="material-icons">notifications</span>
+          </button>
+
+          <!-- User Profile Dropdown -->
+          <div class="relative user-profile-container">
+            <button class="user-profile-btn flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" 
+                    onclick="toggleProfileDropdown()">
+              <span class="material-icons text-gray-400 mr-2">account_circle</span>
+              <span class="text-gray-700 font-medium">{{ user.full_name }}</span>
+              <span class="material-icons text-gray-400 ml-1">arrow_drop_down</span>
+            </button>
+            
+            <!-- Profile Dropdown Menu -->
+            <div class="profile-dropdown absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50" 
+                 id="profileDropdown" style="display: none;">
+              <div class="px-4 py-3 border-b border-gray-200">
+                <div class="flex items-center">
+                  <span class="material-icons text-gray-400 mr-3">account_circle</span>
+                  <div>
+                    <div class="text-sm font-medium text-gray-900">{{ user.full_name }}</div>
+                    <div class="text-sm text-gray-500">{{ user.email }}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="py-1">
+                <a href="{{ url_for('unitcoordinator.profile') }}" 
+                   class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <span class="material-icons text-gray-400 mr-3">person</span>
+                  View Profile
+                </a>
+                <a href="{{ url_for('unitcoordinator.account_settings') }}" 
+                   class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <span class="material-icons text-gray-400 mr-3">settings</span>
+                  Account Settings
+                </a>
+                <a href="#" onclick="openPreferences()" 
+                   class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <span class="material-icons text-gray-400 mr-3">tune</span>
+                  Preferences
+                </a>
+                <a href="#" onclick="openNotifications()" 
+                   class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <span class="material-icons text-gray-400 mr-3">notifications</span>
+                  Notifications
+                </a>
+                
+                <div class="border-t border-gray-200 my-1"></div>
+                
+                <a href="#" onclick="openHelp()" 
+                   class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <span class="material-icons text-gray-400 mr-3">help</span>
+                  Help & Support
+                </a>
+                <a href="#" onclick="openAbout()" 
+                   class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <span class="material-icons text-gray-400 mr-3">info</span>
+                  About
+                </a>
+                
+                <div class="border-t border-gray-200 my-1"></div>
+                
+                <a href="#" onclick="confirmLogout()" 
+                   class="flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50">
+                  <span class="material-icons text-red-400 mr-3">logout</span>
+                  Sign Out
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Role Badge -->
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+            {{ user.role.value.replace('_', ' ') | title }}
+          </span>
+
+          <!-- Hidden logout form for profile dropdown to use -->
+          <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form" style="display: none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          </form>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="min-h-screen">
+    <!-- Profile Header -->
+    <div class="profile-header py-16">
+      <div class="container mx-auto px-6">
+        <div class="flex items-center gap-6">
+          <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg">
+            <span class="material-icons text-4xl text-indigo-600">account_circle</span>
+          </div>
+          <div class="text-white">
+            <h1 class="text-4xl font-bold mb-2">{{ user.full_name }}</h1>
+            <p class="text-xl text-indigo-100">{{ user.email }}</p>
+            <p class="text-lg text-indigo-200">{{ user.role.value.replace('_', ' ').title() }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Content -->
+    <div class="container mx-auto px-6 -mt-8 pb-16">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- Left Column - Profile Information -->
+        <div class="space-y-6">
+          <!-- Profile Information Card -->
+          <div class="profile-card p-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span class="material-icons text-indigo-600">person</span>
+              Profile Information
+            </h2>
+            
+            <div class="space-y-4">
+              <div>
+                <label class="text-sm font-medium text-gray-500">Full Name</label>
+                <p class="text-gray-900">{{ user.full_name }}</p>
+              </div>
+              
+              <div>
+                <label class="text-sm font-medium text-gray-500">Email Address</label>
+                <p class="text-gray-900">{{ user.email }}</p>
+              </div>
+              
+              <div>
+                <label class="text-sm font-medium text-gray-500">Role</label>
+                <p class="text-gray-900">{{ user.role.value.replace('_', ' ').title() }}</p>
+              </div>
+              
+              <div>
+                <label class="text-sm font-medium text-gray-500">Member Since</label>
+                <p class="text-gray-900">
+                  {% if user.created_at %}
+                    {{ user.created_at.strftime('%B %d, %Y') }}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+            
+            <div class="mt-6 pt-4 border-t">
+              <button class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors">
+                <span class="material-icons mr-2">edit</span>
+                Edit Profile
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column - My Units -->
+        <div class="space-y-6">
+          <!-- My Units -->
+          <div class="profile-card p-6">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-xl font-semibold flex items-center gap-2">
+                <span class="material-icons text-blue-600">school</span>
+                My Units
+              </h2>
+              <a href="{{ url_for('unitcoordinator.dashboard') }}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                View All →
+              </a>
+            </div>
+            
+            {% if units %}
+              <div class="space-y-4">
+                {% for unit in units %}
+                  <div class="unit-card p-4">
+                    <div class="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 class="font-semibold text-lg">{{ unit.unit_code }}</h3>
+                        <p class="text-gray-600 text-sm">{{ unit.unit_name }}</p>
+                      </div>
+                      <span class="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">
+                        {{ unit.semester }}, {{ unit.year }}
+                      </span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+                      <span class="flex items-center gap-1">
+                        <span class="material-icons text-base">event</span>
+                        {{ unit.session_count }} sessions
+                      </span>
+                      <span class="flex items-center gap-1">
+                        <span class="material-icons text-base">schedule</span>
+                        {% if unit.end_date %}
+                          {% set end = unit.end_date %}
+                          {% set is_completed = end and (end if end is string else end) < today %}
+                          {% if is_completed %}
+                            Completed
+                          {% else %}
+                            Active
+                          {% endif %}
+                        {% else %}
+                          Active
+                        {% endif %}
+                      </span>
+                    </div>
+                    
+                    <div class="pt-3 border-t">
+                      <a href="{{ url_for('unitcoordinator.dashboard', unit=unit.id) }}" 
+                         class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                        Manage Unit →
+                      </a>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-center py-8">
+                <span class="material-icons text-4xl text-gray-400 mb-4">school</span>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No Units Yet</h3>
+                <p class="text-gray-600 mb-4">Create your first unit to get started with session management.</p>
+                <a href="{{ url_for('unitcoordinator.dashboard') }}" 
+                   class="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                  <span class="material-icons">add</span>
+                  Create Unit
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Profile dropdown functionality
+    function toggleProfileDropdown() {
+      const dropdown = document.getElementById('profileDropdown');
+      if (dropdown) {
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      const dropdown = document.getElementById('profileDropdown');
+      const button = document.querySelector('.user-profile-btn');
+      
+      if (dropdown && button && !button.contains(event.target) && !dropdown.contains(event.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+    
+    function openAccountSettings() {
+      alert('Account settings coming soon!');
+    }
+    
+    function openPreferences() {
+      alert('Preferences coming soon!');
+    }
+    
+    function openNotifications() {
+      alert('Notification settings coming soon!');
+    }
+    
+    function openHelp() {
+      alert('Help & Support coming soon!');
+    }
+    
+    function openAbout() {
+      alert('About Unit Coordinator Portal\nVersion 1.0.0\nBuilt with Flask & Python');
+    }
+    
+    function confirmLogout() {
+      if (confirm('Are you sure you want to sign out?')) {
+        const logoutForm = document.querySelector('.logout-form');
+        if (logoutForm) {
+          logoutForm.submit();
+        } else {
+          window.location.href = '/auth/logout';
+        }
+      }
+    }
+
+    // Add active state styling for current page
+    document.addEventListener('DOMContentLoaded', function() {
+      const activeItem = document.querySelector('.profile-menu-item.active');
+      if (activeItem) {
+        activeItem.style.backgroundColor = '#f3f4f6';
+        activeItem.style.color = '#1f2937';
+      }
+    });
+  </script>
+</body>
+</html>

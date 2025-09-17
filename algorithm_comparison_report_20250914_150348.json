@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-09-14T15:03:47.312344",
+  "algorithms": {
+    "threshold_hybrid": {
+      "statistics": {
+        "avg_assignment_rate": 0.0,
+        "std_assignment_rate": 0.0,
+        "avg_score": 0.0,
+        "std_score": 0.0,
+        "success_rate": 0.0,
+        "avg_conflicts": 0.0
+      },
+      "raw_results": [
+        {
+          "success": false,
+          "algorithm": "threshold_hybrid",
+          "error": "Working outside of application context.\n\nThis typically means that you attempted to use functionality that needed\nthe current application. To solve this, set up an application context\nwith app.app_context(). See the documentation for more information.",
+          "timestamp": "2025-09-14T15:03:47.312344",
+          "run_number": 1
+        },
+        {
+          "success": false,
+          "algorithm": "threshold_hybrid",
+          "error": "Working outside of application context.\n\nThis typically means that you attempted to use functionality that needed\nthe current application. To solve this, set up an application context\nwith app.app_context(). See the documentation for more information.",
+          "timestamp": "2025-09-14T15:03:47.312344",
+          "run_number": 2
+        },
+        {
+          "success": false,
+          "algorithm": "threshold_hybrid",
+          "error": "Working outside of application context.\n\nThis typically means that you attempted to use functionality that needed\nthe current application. To solve this, set up an application context\nwith app.app_context(). See the documentation for more information.",
+          "timestamp": "2025-09-14T15:03:47.312344",
+          "run_number": 3
+        },
+        {
+          "success": false,
+          "algorithm": "threshold_hybrid",
+          "error": "Working outside of application context.\n\nThis typically means that you attempted to use functionality that needed\nthe current application. To solve this, set up an application context\nwith app.app_context(). See the documentation for more information.",
+          "timestamp": "2025-09-14T15:03:47.312344",
+          "run_number": 4
+        },
+        {
+          "success": false,
+          "algorithm": "threshold_hybrid",
+          "error": "Working outside of application context.\n\nThis typically means that you attempted to use functionality that needed\nthe current application. To solve this, set up an application context\nwith app.app_context(). See the documentation for more information.",
+          "timestamp": "2025-09-14T15:03:47.312344",
+          "run_number": 5
+        }
+      ]
+    }
+  },
+  "summary": {
+    "best_assignment_rate": {
+      "algorithm": "threshold_hybrid",
+      "value": 0.0
+    },
+    "best_avg_score": {
+      "algorithm": "threshold_hybrid",
+      "value": 0.0
+    },
+    "most_stable": {
+      "algorithm": "threshold_hybrid",
+      "value": 0.0
+    },
+    "least_conflicts": {
+      "algorithm": "threshold_hybrid",
+      "value": 0.0
+    }
+  },
+  "recommendations": [
+    "Overall best algorithm: threshold_hybrid (score: 0.300)",
+    "threshold_hybrid: Very stable performance (std: 0.000)",
+    "threshold_hybrid: Low conflict rate (0.0 conflicts on average)"
+  ]
+}

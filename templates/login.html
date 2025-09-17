@@ -1,0 +1,111 @@
+<!-- templates/login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="wrapper">
+    <div class="role-toggle">
+      <div class="toggle-container">
+        <label class="toggle-label" id="facilitator-label">
+          <input type="radio" name="role" value="facilitator" checked>
+          <i class='bx bxs-user'></i> Facilitator
+        </label>
+        <label class="toggle-label" id="unitcoordinator-label">
+          <input type="radio" name="role" value="unit_coordinator">
+          <i class='bx bxs-book'></i> Unit Coordinator
+        </label>
+        <label class="toggle-label" id="admin-label">
+          <input type="radio" name="role" value="admin">
+          <i class='bx bxs-shield'></i> Admin
+        </label>
+      </div>
+    </div>
+    <form action="{{ url_for('login') }}" method="POST" id="login-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div id="login-title">
+        <h1><span class="title-line"></span></h1>
+        <p class="role-subtitle"></p>
+      </div>
+      <input type="hidden" name="user_role" id="user-role" value="facilitator">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash-messages">
+            {% for message in messages %}
+              <p>{{ message }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      <div class="input-box">
+        <i class='bx bxs-user'></i>
+        <input type="text" name="email" placeholder="Email" required>
+      </div>
+      <div class="input-box">
+        <i class='bx bxs-lock-alt'></i>
+        <input type="password" name="password" placeholder="password" required>
+      </div>
+      <div class="remember-forgot">
+        <label><input type="checkbox"> Remember me</label>
+        <a href="#">Forgot password?</a>
+      </div>
+      <button type="submit" class="btn" id="login-btn">Login as Facilitator</button>
+      <div class="oauth-section">
+        <div class="divider"><span>Or sign in with</span></div>
+        <div class="oauth-buttons">
+          <a href="{{ url_for('google_login') }}" class="oauth-btn google-btn">
+            <i class='bx bxl-google'></i>
+            Sign in with Google
+          </a>
+        </div>
+      </div>
+      <div class="register-link">
+        <p>Don't have an account? <a href="{{ url_for('signup') }}">Register</a></p>
+      </div>
+    </form>
+  </div>
+  <script>
+    const loginTitle = document.getElementById('login-title');
+    const loginBtn = document.getElementById('login-btn');
+    const userRoleInput = document.getElementById('user-role');
+    const roleSubtitle = document.querySelector('.role-subtitle');
+    const titleLine = document.querySelector('.title-line');
+
+    const facilitatorLabel = document.getElementById('facilitator-label');
+    const unitCoordLabel = document.getElementById('unitcoordinator-label');
+    const adminLabel = document.getElementById('admin-label');
+
+    const roleRadios = document.querySelectorAll('input[name="role"]');
+
+    function setActive(role) {
+      userRoleInput.value = role;
+      if (role === 'facilitator') {
+        titleLine.innerHTML = 'Facilitator<br>Login';
+        loginBtn.textContent = 'Login as Facilitator';
+        roleSubtitle.textContent = 'Lab Facilitator Access';
+      } else if (role === 'unit_coordinator') {
+        titleLine.innerHTML = 'Unit Coordinator<br>Login';
+        loginBtn.textContent = 'Login as Unit Coordinator';
+        roleSubtitle.textContent = 'Unit Management Access';
+      } else {
+        titleLine.innerHTML = 'Admin<br>Login';
+        loginBtn.textContent = 'Login as Admin';
+        roleSubtitle.textContent = 'Full System Access';
+      }
+      facilitatorLabel.classList.toggle('active', role === 'facilitator');
+      unitCoordLabel.classList.toggle('active', role === 'unit_coordinator');
+      adminLabel.classList.toggle('active', role === 'admin');
+    }
+
+    roleRadios.forEach(r => r.addEventListener('change', () => setActive(r.value)));
+    const checked = document.querySelector('input[name="role"]:checked');
+    setActive(checked ? checked.value : 'facilitator');
+  </script>
+</body>
+</html>

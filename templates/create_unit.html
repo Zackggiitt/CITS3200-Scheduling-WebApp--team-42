@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Create Unit{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card bg-dark text-white">
+                <div class="card-header text-center">
+                    <h2 class="mb-0">Create Unit</h2>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="unit_code" class="form-label">Unit Code</label>
+                            <input type="text" class="form-control" id="unit_code" name="unit_code" required style="background-color: #333; color: white; border-color: #555;">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="unit_name" class="form-label">Unit Name</label>
+                            <input type="text" class="form-control" id="unit_name" name="unit_name" required style="background-color: #333; color: white; border-color: #555;">
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                            <button type="submit" class="btn btn-primary me-md-2">Create Unit</button>
+                            <a href="{{ url_for('admin.manage_units') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

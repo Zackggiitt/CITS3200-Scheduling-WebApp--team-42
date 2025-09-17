@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Swap Requests</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Swap Requests</h1>
+            <p>View your swap requests and requests for your modules</p>
+        </div>
+
+        <div class="actions mb-4">
+            <div class="action-card">
+                <h3>Request New Swap</h3>
+                <p>Request to swap one of your assignments</p>
+                <a href="{{ url_for('facilitator.request_swap') }}" class="btn-primary">Request Swap</a>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <h2>My Requests</h2>
+            {% if my_requests %}
+                <table class="w-100" style="border-collapse: collapse; margin-top: 1rem;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">My Module</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Target Module</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Reason</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for request in my_requests %}
+                        <tr>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.my_assignment.module_code }} - {{ request.my_assignment.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.target_assignment.module_code }} - {{ request.target_assignment.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.reason or 'No reason provided' }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">
+                                <span class="{% if request.status.name == 'PENDING' %}text-warning{% elif request.status.name == 'APPROVED' %}text-success{% else %}text-danger{% endif %}">
+                                    {{ request.status.name }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No swap requests found.</p>
+            {% endif %}
+        </div>
+
+        <div class="form-container mt-4">
+            <h2>Requests for My Modules</h2>
+            {% if requests_for_me %}
+                <table class="w-100" style="border-collapse: collapse; margin-top: 1rem;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Requester</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Their Module</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">My Module</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for request in requests_for_me %}
+                        <tr>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.requester.first_name }} {{ request.requester.last_name }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.my_assignment.session.module_code }} - {{ request.my_assignment.session.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ request.target_assignment.session.module_code }} - {{ request.target_assignment.session.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">
+                                <span class="{% if request.status.name == 'PENDING' %}text-warning{% elif request.status.name == 'APPROVED' %}text-success{% else %}text-danger{% endif %}">
+                                    {{ request.status.name }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No requests for your modules.</p>
+            {% endif %}
+        </div>
+
+        <div class="actions mt-4">
+            <a href="{{ url_for('facilitator.dashboard') }}" class="btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

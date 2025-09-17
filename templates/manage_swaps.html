@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Swap Requests</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Manage Swap Requests</h1>
+            <p>Review and approve/reject facilitator swap requests</p>
+        </div>
+
+        <div class="form-container">
+            <h2>Pending Swap Requests</h2>
+            {% if swaps %}
+                <table class="w-100" style="border-collapse: collapse; margin-top: 1rem;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Requester</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Reason</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Status</th>
+                            <th style="padding: 1rem; border: 1px solid #dee2e6; text-align: left;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for swap in swaps %}
+                        <tr>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ swap.requester.first_name }} {{ swap.requester.last_name }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">{{ swap.reason or 'No reason provided' }}</td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">
+                                <span class="{% if swap.status.name == 'PENDING' %}text-warning{% elif swap.status.name == 'APPROVED' %}text-success{% else %}text-danger{% endif %}">
+                                    {{ swap.status.name }}
+                                </span>
+                            </td>
+                            <td style="padding: 1rem; border: 1px solid #dee2e6;">
+                                {% if swap.status.name == 'PENDING' %}
+                                    <form action="{{ url_for('admin.approve_swap', swap_id=swap.id) }}" method="POST" style="display: inline; margin-right: 0.5rem;">
+                                        <button type="submit" class="btn-primary">Approve</button>
+                                    </form>
+                                    <form action="{{ url_for('admin.reject_swap', swap_id=swap.id) }}" method="POST" style="display: inline;">
+                                        <input type="text" name="reason" placeholder="Rejection reason" style="margin-right: 0.5rem;">
+                                        <button type="submit" class="btn-danger">Reject</button>
+                                    </form>
+                                {% else %}
+                                    <span class="text-muted">{{ swap.admin_response or 'No response' }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No swap requests found.</p>
+            {% endif %}
+        </div>
+
+        <div class="actions mt-4">
+            <a href="{{ url_for('admin.dashboard') }}" class="btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

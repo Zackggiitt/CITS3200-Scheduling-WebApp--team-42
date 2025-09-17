@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}{% if module %}Edit Module{% else %}Create Module{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card bg-dark text-white">
+                <div class="card-header text-center">
+                    <h2 class="mb-0">{% if module %}Edit Module{% else %}Create Module{% endif %}</h2>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-3">
+                            <label for="unit_id" class="form-label">Unit</label>
+                            <select class="form-select" id="unit_id" name="unit_id" required>
+                                <option value=""{% if not module %} selected{% endif %}>Select a unit</option>
+                                {% for unit in units %}
+                                    <option value="{{ unit.id }}"{% if module and module.unit_id == unit.id %} selected{% endif %}>
+                                        {{ unit.unit_code }} - {{ unit.unit_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="module_name" class="form-label">Module Name</label>
+                            <input type="text" class="form-control" id="module_name" name="module_name" required 
+                                   placeholder="e.g., Lab 1, Tutorial A" 
+                                   {% if module %}value="{{ module.module_name }}"{% endif %}>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="module_type" class="form-label">Module Type</label>
+                            <select class="form-select" id="module_type" name="module_type" required>
+                                <option value=""{% if not module %} selected{% endif %}>Select a type</option>
+                                <option value="lab"{% if module and module.module_type == 'lab' %} selected{% endif %}>Lab</option>
+                                <option value="tutorial"{% if module and module.module_type == 'tutorial' %} selected{% endif %}>Tutorial</option>
+                                <option value="lecture"{% if module and module.module_type == 'lecture' %} selected{% endif %}>Lecture</option>
+                                <option value="workshop"{% if module and module.module_type == 'workshop' %} selected{% endif %}>Workshop</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="day_of_week" class="form-label">Day of Week</label>
+                            <select class="form-select" id="day_of_week" name="day_of_week">
+                                <option value="">Select a day (optional)</option>
+                                <option value="0"{% if module and module.sessions and module.sessions[0].day_of_week == 0 %} selected{% endif %}>Monday</option>
+                                <option value="1"{% if module and module.sessions and module.sessions[0].day_of_week == 1 %} selected{% endif %}>Tuesday</option>
+                                <option value="2"{% if module and module.sessions and module.sessions[0].day_of_week == 2 %} selected{% endif %}>Wednesday</option>
+                                <option value="3"{% if module and module.sessions and module.sessions[0].day_of_week == 3 %} selected{% endif %}>Thursday</option>
+                                <option value="4"{% if module and module.sessions and module.sessions[0].day_of_week == 4 %} selected{% endif %}>Friday</option>
+                                <option value="5"{% if module and module.sessions and module.sessions[0].day_of_week == 5 %} selected{% endif %}>Saturday</option>
+                                <option value="6"{% if module and module.sessions and module.sessions[0].day_of_week == 6 %} selected{% endif %}>Sunday</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="start_time" class="form-label">Start Time</label>
+                            <input type="time" class="form-control" id="start_time" name="start_time"
+                                   {% if module and module.sessions %}value="{{ module.sessions[0].start_time.strftime('%H:%M') }}"{% endif %}>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="end_time" class="form-label">End Time</label>
+                            <input type="time" class="form-control" id="end_time" name="end_time"
+                                   {% if module and module.sessions %}value="{{ module.sessions[0].end_time.strftime('%H:%M') }}"{% endif %}>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                            <button type="submit" class="btn btn-primary me-md-2">{% if module %}Update{% else %}Create{% endif %} Module</button>
+                            <a href="{{ url_for('admin.manage_modules') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

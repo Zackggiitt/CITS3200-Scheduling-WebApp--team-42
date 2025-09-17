@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule Results{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-white">Schedule Generation Results</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if results %}
+        <!-- Summary Card -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Generation Summary</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-success">{{ results.assignments_made }}</h3>
+                            <p class="mb-0">Assignments Made</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-warning">{{ results.conflicts|length }}</h3>
+                            <p class="mb-0">Conflicts</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-info">{{ results.metrics.avg_score if results.metrics else 0 }}</h3>
+                            <p class="mb-0">Avg Score</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-primary">{{ results.metrics.facilitator_count if results.metrics else 0 }}</h3>
+                            <p class="mb-0">Facilitators Used</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <p class="mb-0"><strong>Status:</strong> 
+                            {% if results.success %}
+                                <span class="text-success">Success</span>
+                            {% else %}
+                                <span class="text-danger">Failed</span>
+                            {% endif %}
+                        </p>
+                        <p class="mb-0"><strong>Message:</strong> {{ results.message }}</p>
+                        {% if results.metrics and results.metrics.total_hours %}
+                        <p class="mb-0"><strong>Total Hours:</strong> {{ results.metrics.total_hours }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assignments Table -->
+        {% if results.assignments %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Generated Assignments</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Facilitator</th>
+                                <th>Module</th>
+                                <th>Time</th>
+                                <th>Location</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in results.assignments %}
+                            <tr>
+                                <td>{{ assignment.facilitator }}</td>
+                                <td>{{ assignment.module }}</td>
+                                <td>{{ assignment.time }}</td>
+                                <td>{{ assignment.location if assignment.location else 'TBD' }}</td>
+                                <td>
+                                    <span class="badge badge-{% if assignment.score >= 0.8 %}success{% elif assignment.score >= 0.5 %}warning{% else %}secondary{% endif %}">
+                                        {{ assignment.score if assignment.score else 'N/A' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Conflicts -->
+        {% if results.conflicts %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Conflicts & Issues</h5>
+                <ul class="list-group list-group-flush">
+                    {% for conflict in results.conflicts %}
+                    <li class="list-group-item">{{ conflict }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        <div class="d-flex gap-2 mb-4">
+            <a href="{{ url_for('admin.generate_schedule') }}" class="btn btn-primary">Generate Again</a>
+            <a href="{{ url_for('admin.view_schedule') }}" class="btn btn-secondary">View Full Schedule</a>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+        </div>
+    {% else %}
+        <div class="alert alert-warning">
+            <h5>No Results</h5>
+            <p>No scheduling results to display.</p>
+            <a href="{{ url_for('admin.generate_schedule') }}" class="btn btn-primary">Generate Schedule</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
