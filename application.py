@@ -159,9 +159,16 @@ def handle_file_too_large(e):
 
 
 # DB
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///dev.db")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db.init_app(app)
+try:
+    database_url = os.getenv("DATABASE_URL", "sqlite:///dev.db")
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    print(f"Database URL: {database_url}")
+    db.init_app(app)
+    print("Database initialized successfully")
+except Exception as e:
+    print(f"Database initialization error: {e}")
+    raise
 
 # Register blueprints
 app.register_blueprint(admin_bp)
@@ -309,5 +316,5 @@ def google_callback():
     return redirect(url_for('login'))
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5001, host='0.0.0.0')
 
