@@ -278,6 +278,15 @@ function setStep(n) {
   document.querySelectorAll('.wizard-step').forEach(s => {
     s.classList.toggle('hidden', parseInt(s.dataset.step) !== currentStep);
   });
+  
+  // Ensure CSV upload card remains visible on step 3 after successful upload
+  if (n === 3) {
+    const setupComplete = document.getElementById('setup_complete')?.value === 'true';
+    const wrapUpload = document.getElementById('setup_wrap');
+    if (setupComplete && wrapUpload) {
+      wrapUpload.classList.remove('hidden');
+    }
+  }
   document.querySelectorAll('.modal-steps .step').forEach((el, idx) => {
     el.classList.toggle('active', idx + 1 === currentStep);
   });
@@ -476,6 +485,12 @@ if (uploadInput) {
       fileNameEl.textContent = file.name;
       statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
+      // Ensure CSV upload card remains visible after successful upload
+      const wrapUpload = document.getElementById('setup_wrap');
+      if (wrapUpload) {
+        wrapUpload.classList.remove('hidden');
+      }
+      
       showCalendarIfReady();
       setTimeout(() => statusBox.classList.add("hidden"), 300);
       if (!window.__calendarInitRan) {
@@ -1242,13 +1257,16 @@ function showCalendarIfReady() {
   const wrapCal = document.getElementById('calendar_wrap');
 
   if (ready) {
-    wrapUpload.classList.add('hidden');
+    // Keep the facilitator upload section visible, only show calendar
     wrapCal.classList.remove('hidden');
     if (window.__calendarInitRan && calendar) {
       setTimeout(() => calendar.updateSize(), 0);
     }
   } else {
     wrapCal.classList.add('hidden');
+  }
+  // Always keep the facilitator upload section visible when on step 3
+  if (wrapUpload && currentStep === 3) {
     wrapUpload.classList.remove('hidden');
   }
 }
