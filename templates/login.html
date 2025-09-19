@@ -14,15 +14,15 @@
     <div class="role-toggle">
       <div class="toggle-container">
         <label class="toggle-label" id="facilitator-label">
-          <input type="radio" name="role" value="facilitator" checked>
+          <input type="radio" name="role" value="facilitator" {% if not selected_role or selected_role == 'facilitator' %}checked{% endif %}>
           <i class='bx bxs-user'></i> Facilitator
         </label>
         <label class="toggle-label" id="unitcoordinator-label">
-          <input type="radio" name="role" value="unit_coordinator">
+          <input type="radio" name="role" value="unit_coordinator" {% if selected_role == 'unit_coordinator' %}checked{% endif %}>
           <i class='bx bxs-book'></i> Unit Coordinator
         </label>
         <label class="toggle-label" id="admin-label">
-          <input type="radio" name="role" value="admin">
+          <input type="radio" name="role" value="admin" {% if selected_role == 'admin' %}checked{% endif %}>
           <i class='bx bxs-shield'></i> Admin
         </label>
       </div>
@@ -33,7 +33,7 @@
         <h1><span class="title-line"></span></h1>
         <p class="role-subtitle"></p>
       </div>
-      <input type="hidden" name="user_role" id="user-role" value="facilitator">
+      <input type="hidden" name="user_role" id="user-role" value="{{ selected_role or 'facilitator' }}">
       {% with messages = get_flashed_messages() %}
         {% if messages %}
           <div class="flash-messages">
@@ -105,7 +105,8 @@
 
     roleRadios.forEach(r => r.addEventListener('change', () => setActive(r.value)));
     const checked = document.querySelector('input[name="role"]:checked');
-    setActive(checked ? checked.value : 'facilitator');
+    const initialRole = checked ? checked.value : '{{ selected_role or "facilitator" }}';
+    setActive(initialRole);
   </script>
 </body>
 </html>
