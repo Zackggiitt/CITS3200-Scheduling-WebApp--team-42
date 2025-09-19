@@ -19,6 +19,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const unitStatusCard = document.querySelector('.unit-status-card');
   const welcomeBanner = document.querySelector('.admin-welcome-banner');
 
+  // Initialize dashboard state on page load
+  function initializeDashboard() {
+    console.log('Initializing dashboard state...');
+    
+    // Ensure dashboard tab is active by default
+    const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
+    if (dashboardTab) {
+      dashboardTab.classList.add('active');
+    }
+    
+    // Show dashboard content and hide facilitator management
+    if (welcomeBanner) welcomeBanner.style.display = 'block';
+    if (dashboardMetrics) dashboardMetrics.style.display = 'block';
+    if (unitStatusCard) unitStatusCard.style.display = 'block';
+    if (facilitatorManagement) facilitatorManagement.style.display = 'none';
+    
+    console.log('Dashboard initialized - facilitator management hidden');
+  }
+
+  // Initialize on page load
+  initializeDashboard();
+
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       // Remove active class from all tabs
