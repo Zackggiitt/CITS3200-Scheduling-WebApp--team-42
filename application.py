@@ -251,8 +251,8 @@ def login():
             )
             if not allowed:
                 flash("You don't have permission for the selected role.")
-                return render_template("login.html")
-
+                return render_template("login.html", selected_role=selected_role)
+            
             session["user_id"] = user.id
             target = request.args.get("next")
             if target and is_safe_url(target):
@@ -266,7 +266,11 @@ def login():
                 return redirect(url_for("facilitator.dashboard"))
 
         flash("Invalid credentials")
-    return render_template("login.html")
+        return render_template("login.html", selected_role=selected_role)
+    
+    # GET request - check for selected_role in query params or default to facilitator
+    selected_role = request.args.get("role", "facilitator")
+    return render_template("login.html", selected_role=selected_role)
 
 @app.route('/auth/google')
 def google_login():
