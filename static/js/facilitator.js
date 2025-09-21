@@ -1194,6 +1194,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dashboardNav = document.getElementById('dashboard-nav');
         const unavailabilityNav = document.getElementById('unavailability-nav');
         const scheduleNav = document.getElementById('schedule-nav');
+        const swapsNav = document.getElementById('swaps-nav');
         
         // Hide unavailability alert
         const unavailabilityAlert = document.getElementById('unavailability-alert');
@@ -1201,6 +1202,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dashboardNav) dashboardNav.style.display = 'none';
         if (unavailabilityNav) unavailabilityNav.style.display = 'none';
         if (scheduleNav) scheduleNav.style.display = 'none';
+        if (swapsNav) swapsNav.style.display = 'none';
         if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
     }
 
@@ -1209,6 +1211,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dashboardNav = document.getElementById('dashboard-nav');
         const unavailabilityNav = document.getElementById('unavailability-nav');
         const scheduleNav = document.getElementById('schedule-nav');
+        const swapsNav = document.getElementById('swaps-nav');
         
         // Show unavailability alert only if we're on the dashboard tab
         const unavailabilityAlert = document.getElementById('unavailability-alert');
@@ -1218,6 +1221,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dashboardNav) dashboardNav.style.display = 'flex';
         if (unavailabilityNav) unavailabilityNav.style.display = 'flex';
         if (scheduleNav) scheduleNav.style.display = 'flex';
+        if (swapsNav) swapsNav.style.display = 'flex';
         
         // Only show alert if we're on dashboard tab (other views are hidden)
         if (unavailabilityAlert) {
