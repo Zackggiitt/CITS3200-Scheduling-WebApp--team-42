@@ -2217,9 +2217,12 @@ function generateCalendar() {
             dayElement.classList.add('outside-period');
         }
         
-        // Check if date has unavailability
-        if (hasUnavailability(dateString)) {
-            dayElement.classList.add('unavailable');
+        // Check if date has unavailability and apply appropriate class
+        const unavailabilityType = getUnavailabilityType(dateString);
+        if (unavailabilityType === 'full') {
+            dayElement.classList.add('unavailable-full');
+        } else if (unavailabilityType === 'partial') {
+            dayElement.classList.add('unavailable-partial');
         }
         
         // Add today indicator
@@ -2250,15 +2253,27 @@ function hasUnavailability(dateString) {
     return unavailabilityData.some(unav => unav.date === dateString);
 }
 
+function getUnavailabilityType(dateString) {
+    const unav = unavailabilityData.find(unav => unav.date === dateString);
+    if (!unav) return null;
+    return unav.is_full_day ? 'full' : 'partial';
+}
+
 function updateCalendarDisplay() {
     const calendarDays = document.querySelectorAll('.calendar-day');
     calendarDays.forEach(dayElement => {
         const date = dayElement.dataset.date;
         if (!date) return;
         
-        dayElement.classList.remove('unavailable');
-        if (hasUnavailability(date)) {
-            dayElement.classList.add('unavailable');
+        // Remove all unavailability classes
+        dayElement.classList.remove('unavailable', 'unavailable-full', 'unavailable-partial');
+        
+        // Apply appropriate unavailability class
+        const unavailabilityType = getUnavailabilityType(date);
+        if (unavailabilityType === 'full') {
+            dayElement.classList.add('unavailable-full');
+        } else if (unavailabilityType === 'partial') {
+            dayElement.classList.add('unavailable-partial');
         }
     });
 }

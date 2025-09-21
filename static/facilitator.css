@@ -4185,6 +4185,43 @@ textarea::placeholder {
 /* CALENDAR CELLS - RECTANGULAR TO MATCH HEADERS */
 
 /* Unavailability calendar specific styling */
+.unavailability-calendar-section .calendar-day.unavailable-full {
+  background-color: #fee2e2 !important; /* Light red for full day unavailable */
+  border-color: #dc2626 !important;
+  color: #dc2626 !important;
+}
+
+.unavailability-calendar-section .calendar-day.unavailable-full:hover {
+  background-color: #fecaca !important; /* Slightly darker red on hover */
+  border-color: #dc2626 !important;
+}
+
+.unavailability-calendar-section .calendar-day.unavailable-partial {
+  background: linear-gradient(135deg, #fee2e2 50%, #dbeafe 50%) !important; /* Diagonal half-red, half-blue */
+  border-color: #dc2626 !important;
+  color: #dc2626 !important;
+  position: relative;
+}
+
+.unavailability-calendar-section .calendar-day.unavailable-partial:hover {
+  background: linear-gradient(135deg, #fecaca 50%, #bfdbfe 50%) !important; /* Slightly darker on hover */
+  border-color: #dc2626 !important;
+}
+
+/* Fallback for older browsers that don't support linear-gradient */
+.unavailability-calendar-section .calendar-day.unavailable-partial::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #fee2e2 50%, #dbeafe 50%);
+  z-index: -1;
+  border-radius: inherit;
+}
+
+/* Legacy support for existing unavailable class */
 .unavailability-calendar-section .calendar-day.unavailable {
   background-color: #fee2e2 !important; /* Light red for unavailable */
   border-color: #dc2626 !important;
