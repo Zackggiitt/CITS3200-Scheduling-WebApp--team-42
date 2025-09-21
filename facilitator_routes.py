@@ -212,6 +212,9 @@ def dashboard():
         .all()
     )
     
+    # Check if facilitator has no units assigned
+    has_no_units = len(units) == 0
+    
     # Get current active unit (most recent with future sessions or current date range)
     current_unit = None
     today = date.today()
@@ -362,7 +365,8 @@ def dashboard():
                          units=units,
                          current_unit=current_unit,
                          current_unit_dict=current_unit_dict,
-                         units_data=units_data)
+                         units_data=units_data,
+                         has_no_units=has_no_units)
 
 
 @facilitator_bp.route("/")

@@ -44,6 +44,7 @@
     </div>
 </header>
 
+{% if not has_no_units %}
 <section id="welcome" class="main-content-wrapper">
   <div class="welcome-banner">
     <div class="welcome-text">
@@ -65,7 +66,7 @@
         </a>
         <a href="#unavailability" class="dashboard-nav-item" id="unavailability-nav">
             <span class="material-icons" aria-hidden="true">event_busy</span>
-            <span>Unavailability</span>
+            <span>Unavailability & Other Information</span>
         </a>
         <a href="#schedule" class="dashboard-nav-item" id="schedule-nav">
             <span class="material-icons" aria-hidden="true">calendar_today</span>
@@ -77,6 +78,28 @@
         </a>
     </nav>
 </section>
+{% endif %}
+
+{% if has_no_units %}
+<!-- Empty State for No Units -->
+<section class="main-content-wrapper has-no-units-state">
+    <div class="empty-state-container">
+        <div class="empty-state-card">
+            <span class="material-icons empty-state-icon" aria-hidden="true">school</span>
+            <h2 class="empty-state-title">You have not been assigned to any units</h2>
+            <p class="empty-state-description">
+                Please confirm with your Unit Coordinator to ensure that you are added to the right units.
+            </p>
+            <button class="refresh-units-btn" onclick="refreshPage()">
+                <span class="material-icons">refresh</span>
+                Refresh
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Hide all other sections when no units -->
+{% endif %}
 
 <!-- Notification Popup Modal -->
 <div id="notification-popup" class="notification-popup">
@@ -781,6 +804,11 @@
     window.currentUnitId = {{ current_unit_dict.id if current_unit_dict else 'null' }};
     window.currentUnit = {{ current_unit_dict|tojson if current_unit_dict else 'null' }};
     window.csrfToken = "{{ csrf_token() }}";
+    
+    // Function to refresh the page to check for new unit assignments
+    function refreshPage() {
+        window.location.reload();
+    }
 </script>
 
 <!-- Request Swap Modal -->
