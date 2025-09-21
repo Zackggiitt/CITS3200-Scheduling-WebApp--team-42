@@ -60,9 +60,9 @@
     color: var(--color-text-primary);
 }
 
-.profile-title::before {
-    content: "👤";
-    font-size: 1rem;
+.profile-title .material-icons {
+    font-size: 1.25rem;
+    margin-right: var(--gap-sm);
 }
 
 /* Container styling */
@@ -147,6 +147,11 @@
     color: #000000;
     margin-bottom: var(--gap-lg);
     opacity: 0.9;
+}
+
+.profile-avatar .material-icons {
+    font-size: 64px;
+    color: #000000;
 }
 
 .profile-info {
@@ -351,6 +356,10 @@
         margin-bottom: var(--gap-md);
     }
     
+    .profile-avatar .material-icons {
+        font-size: 48px;
+    }
+    
     .profile-info {
         grid-template-columns: 1fr;
         gap: var(--gap-md);
@@ -393,6 +402,10 @@
     }
     
     .profile-avatar {
+        font-size: 40px;
+    }
+    
+    .profile-avatar .material-icons {
         font-size: 40px;
     }
     
