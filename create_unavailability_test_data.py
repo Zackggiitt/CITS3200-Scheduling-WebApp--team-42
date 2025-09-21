@@ -36,7 +36,14 @@ def create_test_facilitator():
     # Check if user already exists
     existing_user = User.query.filter_by(email=email).first()
     if existing_user:
-        print(f"✓ Test facilitator already exists: {email}")
+        # Update phone and staff number if they're missing
+        if not existing_user.phone_number or not existing_user.staff_number:
+            existing_user.phone_number = '+61 4 9876 5432'
+            existing_user.staff_number = 'FAC999'
+            db.session.commit()
+            print(f"✓ Updated test facilitator with phone and staff number: {email}")
+        else:
+            print(f"✓ Test facilitator already exists: {email}")
         return existing_user
     
     # Create new facilitator user (password will be set by existing facilitator creation script)

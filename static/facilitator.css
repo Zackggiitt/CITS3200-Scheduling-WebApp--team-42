@@ -5127,11 +5127,13 @@ textarea::placeholder {
   gap: 8px;
   text-decoration: none;
   color: inherit;
-  transition: opacity 0.2s ease;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
 }
 
 .user-info-link:hover {
-  opacity: 0.8;
+  background-color: var(--surface-secondary);
 }
 
 .user-info-link:visited {
