@@ -32,35 +32,41 @@
                 <div class="profile-avatar">👤</div>
                 
                 <div class="profile-info">
-                    <div class="info-group">
-                        <div class="info-label">First Name</div>
-                        <div class="info-value">{{ user.first_name or 'N/A' }}</div>
+                    <!-- Left Column -->
+                    <div>
+                        <div class="info-group">
+                            <div class="info-label">First Name</div>
+                            <div class="info-value">{{ user.first_name or 'N/A' }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">{{ user.email }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Staff Number</div>
+                            <div class="info-value">{{ user.staff_number or 'N/A' }}</div>
+                        </div>
                     </div>
 
-                    <div class="info-group">
-                        <div class="info-label">Last Name</div>
-                        <div class="info-value">{{ user.last_name or 'N/A' }}</div>
-                    </div>
+                    <!-- Right Column -->
+                    <div>
+                        <div class="info-group">
+                            <div class="info-label">Last Name</div>
+                            <div class="info-value">{{ user.last_name or 'N/A' }}</div>
+                        </div>
 
-                    <div class="info-group">
-                        <div class="info-label">Email</div>
-                        <div class="info-value">{{ user.email }}</div>
-                    </div>
+                        <div class="info-group">
+                            <div class="info-label">Phone Number</div>
+                            <div class="info-value">{{ user.phone_number or 'N/A' }}</div>
+                        </div>
 
-                    <div class="info-group">
-                        <div class="info-label">Phone Number</div>
-                        <div class="info-value">{{ user.phone_number or 'N/A' }}</div>
-                    </div>
-
-                    <div class="info-group">
-                        <div class="info-label">Staff Number</div>
-                        <div class="info-value">{{ user.staff_number or 'N/A' }}</div>
-                    </div>
-
-                    <div class="info-group">
-                        <div class="info-label">Role</div>
-                        <div class="info-value">
-                            <span class="role-badge">Lab Facilitator</span>
+                        <div class="info-group">
+                            <div class="info-label">Role</div>
+                            <div class="info-value">
+                                <span class="role-badge">Lab Facilitator</span>
+                            </div>
                         </div>
                     </div>
                 </div>
