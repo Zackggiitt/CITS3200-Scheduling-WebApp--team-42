@@ -1565,6 +1565,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
             pastUnits.forEach(unit => {
                 if (unit.pastSessions) {
+                    // Sort sessions by date (most recent first) and take only top 2
+                    const sortedSessions = unit.pastSessions.sort((a, b) => {
+                        const dateA = new Date(a.date.split('/').reverse().join('-'));
+                        const dateB = new Date(b.date.split('/').reverse().join('-'));
+                        return dateB - dateA; // Most recent first
+                    });
+                    
+                    const top2Sessions = sortedSessions.slice(0, 2);
+                    const remainingCount = unit.pastSessions.length - 2;
+                    
                     sessionsHTML += `
                         <div class="unit-session-group">
                             <div class="unit-header">
@@ -1573,7 +1583,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                     `;
                     
-                    unit.pastSessions.forEach(session => {
+                    top2Sessions.forEach(session => {
                         sessionsHTML += `
                             <div class="session-item">
                                 <div class="session-info">
@@ -1590,6 +1600,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         `;
                     });
+                    
+                    // Add "more sessions" message if there are remaining sessions
+                    if (remainingCount > 0) {
+                        sessionsHTML += `
+                            <div class="more-sessions-message">
+                                +${remainingCount} more session${remainingCount === 1 ? '' : 's'} in ${unit.code}. Click "View All" to see all sessions.
+                            </div>
+                        `;
+                    }
                     
                     sessionsHTML += '</div>';
                 }
