@@ -1182,9 +1182,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 <span>${totalSessions} sessions</span>
                 <span class="date-range">Across all units</span>
             </div>
-            <div style="display: block !important; margin-top: 8px; font-size: 0.875rem; color: #6b7280; font-style: italic; width: 100%;">
-                To view the hidden tabs, choose a specific unit.
-            </div>
         `;
         
         // Restore original display after a brief moment
