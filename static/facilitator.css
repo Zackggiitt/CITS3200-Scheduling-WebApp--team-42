@@ -5119,3 +5119,21 @@ textarea::placeholder {
     font-size: 0.9rem;
   }
 }
+
+/* User info link styling */
+.user-info-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.2s ease;
+}
+
+.user-info-link:hover {
+  opacity: 0.8;
+}
+
+.user-info-link:visited {
+  color: inherit;
+}

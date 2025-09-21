@@ -375,6 +375,54 @@ def dashboard():
 def root():
     return redirect(url_for(".dashboard"))
 
+
+@facilitator_bp.route("/profile")
+@login_required
+@role_required(UserRole.FACILITATOR)
+def profile():
+    user = get_current_user()
+    
+    # Get facilitator's current units and stats
+    units = (
+        Unit.query
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(UnitFacilitator.user_id == user.id)
+        .all()
+    )
+    
+    return render_template("facilitator_profile.html", user=user, units=units)
+
+
+@facilitator_bp.route("/profile/edit", methods=["GET", "POST"])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def edit_profile():
+    user = get_current_user()
+    
+    if request.method == "POST":
+        try:
+            # Update user information
+            user.first_name = request.form.get("first_name", user.first_name)
+            user.last_name = request.form.get("last_name", user.last_name)
+            user.email = request.form.get("email", user.email)
+            user.phone_number = request.form.get("phone_number", user.phone_number)
+            user.staff_number = request.form.get("staff_number", user.staff_number)
+            
+            # Handle password update if provided
+            new_password = request.form.get("password")
+            if new_password and new_password.strip():
+                user.set_password(new_password)
+            
+            db.session.commit()
+            flash("Profile updated successfully!", "success")
+            return redirect(url_for("facilitator.profile"))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash("Error updating profile. Please try again.", "error")
+    
+    return render_template("edit_facilitator_profile.html", user=user)
+
 @facilitator_bp.route('/schedule')
 @facilitator_required
 def view_schedule():

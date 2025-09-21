@@ -44,6 +44,8 @@ def create_test_facilitator():
         first_name='Demo',
         last_name='Facilitator',
         email=email,
+        phone_number='+61 4 9876 5432',
+        staff_number='FAC999',
         password_hash='',  # Empty password - should be set by existing facilitator creation script
         role=UserRole.FACILITATOR
     )
@@ -468,18 +470,24 @@ def create_additional_facilitators():
             'email': 'fac_sarah@example.com',
             'first_name': 'Sarah',
             'last_name': 'Chen',
+            'phone_number': '+61 4 1111 2222',
+            'staff_number': 'FAC101',
             'password': 'password123'
         },
         {
             'email': 'fac_michael@example.com',
             'first_name': 'Michael',
             'last_name': 'Torres',
+            'phone_number': '+61 4 3333 4444',
+            'staff_number': 'FAC102',
             'password': 'password123'
         },
         {
             'email': 'fac_emily@example.com',
             'first_name': 'Emily',
             'last_name': 'Johnson',
+            'phone_number': '+61 4 5555 6666',
+            'staff_number': 'FAC103',
             'password': 'password123'
         }
     ]
@@ -499,6 +507,8 @@ def create_additional_facilitators():
             first_name=fac_data['first_name'],
             last_name=fac_data['last_name'],
             email=fac_data['email'],
+            phone_number=fac_data['phone_number'],
+            staff_number=fac_data['staff_number'],
             password_hash=generate_password_hash(fac_data['password']),
             role=UserRole.FACILITATOR
         )

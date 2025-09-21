@@ -27,8 +27,10 @@
                 <span class="notification-badge" id="header-notification-badge">3</span>
             </div>
             <div class="user-info">
-                <span class="material-icons profile-icon" aria-hidden="true">account_circle</span>
-                <span class="user-name">facilitator Test</span>
+                <a href="{{ url_for('facilitator.profile') }}" class="user-info-link">
+                    <span class="material-icons profile-icon" aria-hidden="true">account_circle</span>
+                    <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
+                </a>
             </div>
             <span class="user-role-tag">Lab Facilitator</span>
             <div class="user-nav-item">
