@@ -34,6 +34,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
+                // Add unavailability-view-active class to hide All Units button
+                document.body.classList.add('unavailability-view-active');
+                document.body.classList.remove('swaps-view-active');
                 // Show unit selector in unavailability view
                 if (unitSelector) unitSelector.style.display = 'block';
                 // Hide unavailability alert in unavailability view
@@ -50,6 +53,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Hide unit selector in schedule view
                 if (unitSelector) unitSelector.style.display = 'none';
                 document.body.classList.add('calendar-view-active');
+                // Remove view-specific classes since unit selector is hidden anyway
+                document.body.classList.remove('unavailability-view-active');
+                document.body.classList.remove('swaps-view-active');
                 initCalendar();
                 // Hide unavailability alert in schedule view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
@@ -62,6 +68,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 swapsView.style.display = 'block';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
+                // Add swaps-view-active class to hide All Units button
+                document.body.classList.add('swaps-view-active');
+                document.body.classList.remove('unavailability-view-active');
                 // Show unit selector in swaps view
                 if (unitSelector) unitSelector.style.display = 'block';
                 // Hide unavailability alert in swaps view
@@ -76,6 +85,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
+                // Remove view-specific classes to show All Units button
+                document.body.classList.remove('unavailability-view-active');
+                document.body.classList.remove('swaps-view-active');
                 // Show unit selector in dashboard view
                 if (unitSelector) unitSelector.style.display = 'block';
                 // Show unavailability alert in dashboard view

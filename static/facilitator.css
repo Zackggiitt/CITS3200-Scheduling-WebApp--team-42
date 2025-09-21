@@ -5139,3 +5139,9 @@ textarea::placeholder {
 .user-info-link:visited {
   color: inherit;
 }
+
+/* Hide All Units button on specific tabs */
+.unavailability-view-active .all-units-btn,
+.swaps-view-active .all-units-btn {
+  display: none !important;
+}
