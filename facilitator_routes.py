@@ -9,6 +9,22 @@ import json
 facilitator_bp = Blueprint('facilitator', __name__, url_prefix='/facilitator')
 
 
+def format_session_date(dt):
+    """Format session date with custom day abbreviations"""
+    day_mapping = {
+        'Mon': 'Mon',
+        'Tue': 'Tues', 
+        'Wed': 'Wed',
+        'Thu': 'Thurs',
+        'Fri': 'Fri',
+        'Sat': 'Sat',
+        'Sun': 'Sun'
+    }
+    day_abbr = dt.strftime('%a')
+    custom_day = day_mapping.get(day_abbr, day_abbr)
+    return f"{custom_day}, {dt.strftime('%d/%m/%Y')}"
+
+
 def get_greeting():
     """Return time-based greeting"""
     hour = datetime.now().hour
@@ -295,7 +311,7 @@ def dashboard():
                 'end_time': s.end_time.isoformat(),
                 'location': s.location or 'TBA',  # Handle null locations
                 'is_confirmed': bool(a.is_confirmed),
-                'date': s.start_time.strftime('%d/%m/%Y'),
+                'date': format_session_date(s.start_time),
                 'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
                 'topic': m.module_name or 'Unknown Module',
                 'status': 'confirmed' if a.is_confirmed else 'pending'
@@ -315,7 +331,7 @@ def dashboard():
                 'end_time': s.end_time.isoformat(),
                 'location': s.location or 'TBA',  # Handle null locations
                 'is_confirmed': bool(a.is_confirmed),
-                'date': s.start_time.strftime('%d/%m/%Y'),
+                'date': format_session_date(s.start_time),
                 'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
                 'topic': m.module_name or 'Unknown Module',
                 'status': 'completed'

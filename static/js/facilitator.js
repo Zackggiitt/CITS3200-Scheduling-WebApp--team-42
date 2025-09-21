@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Check upcoming sessions
                     if (unit.upcoming_sessions) {
                         unit.upcoming_sessions.forEach(session => {
-                            if (session.date === formattedDate) {
+                            if (extractDateFromSessionDate(session.date) === formattedDate) {
                                 const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
                                 const eventText = `📚 ${unit.code}<br>
 👤 ${session.topic}<br>
@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Check past sessions
                     if (unit.past_sessions) {
                         unit.past_sessions.forEach(session => {
-                            if (session.date === formattedDate) {
+                            if (extractDateFromSessionDate(session.date) === formattedDate) {
                                 const eventText = `📚 ${unit.code}<br>
 👤 ${session.topic}<br>
 ⏰ ${session.time}<br>
@@ -709,7 +709,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check upcoming sessions
                 if (unit.upcoming_sessions) {
                     unit.upcoming_sessions.forEach(session => {
-                        if (session.date === formattedDate) {
+                        if (extractDateFromSessionDate(session.date) === formattedDate) {
                             const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
                             // Truncate long session names
                             const truncatedTopic = session.topic.length > 15 ? session.topic.substring(0, 15) + '...' : session.topic;
@@ -730,7 +730,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check past sessions (for historical view)
                 if (unit.past_sessions) {
                     unit.past_sessions.forEach(session => {
-                        if (session.date === formattedDate) {
+                        if (extractDateFromSessionDate(session.date) === formattedDate) {
                             // Truncate long session names
                             const truncatedTopic = session.topic.length > 15 ? session.topic.substring(0, 15) + '...' : session.topic;
                             const eventText = `📚 ${unit.code}<br>
@@ -1171,11 +1171,26 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update session info for all units
         const activeUnits = Object.values(units).filter(unit => unit.status === 'active');
         const totalSessions = activeUnits.reduce((sum, unit) => sum + unit.sessions, 0);
+        
+        // Temporarily change parent display to block for proper layout
+        const originalDisplay = sessionInfoEl.style.display;
+        sessionInfoEl.style.display = 'block';
+        
         sessionInfoEl.innerHTML = `
-            <span class="material-icons">calendar_today</span>
-            <span>${totalSessions} sessions</span>
-            <span class="date-range">Across all units</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="material-icons">calendar_today</span>
+                <span>${totalSessions} sessions</span>
+                <span class="date-range">Across all units</span>
+            </div>
+            <div style="display: block !important; margin-top: 8px; font-size: 0.875rem; color: #6b7280; font-style: italic; width: 100%;">
+                To view the hidden tabs, choose a specific unit.
+            </div>
         `;
+        
+        // Restore original display after a brief moment
+        setTimeout(() => {
+            sessionInfoEl.style.display = originalDisplay || '';
+        }, 10);
 
         // Update KPI cards for all units view
         updateAllUnitsKPICards();
@@ -3158,6 +3173,15 @@ function resetSwapForm() {
         form.reset();
     }
     clearFacilitatorDropdown();
+}
+
+// Helper function to extract date part from session date (removes day of week prefix)
+function extractDateFromSessionDate(sessionDate) {
+    // If session date contains day of week (e.g., "Mon, 22/09/2025", "Tues, 23/09/2025"), extract just the date part
+    if (sessionDate.includes(', ')) {
+        return sessionDate.split(', ')[1];
+    }
+    return sessionDate; // Return as-is if no day prefix
 }
 
 // Utility functions for formatting
