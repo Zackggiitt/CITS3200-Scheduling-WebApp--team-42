@@ -3448,9 +3448,7 @@ function updateUpcomingSessions(sessions) {
             const targetDate = new Date(today);
             targetDate.setDate(today.getDate() + daysUntilTarget);
             
-            const dayNumber = targetDate.getDate();
-            const monthNumber = targetDate.getMonth() + 1;
-            displayDate = `${sessionDate}<br><span class="text-xs text-gray-400">${dayNumber}/${monthNumber}</span>`;
+            displayDate = `${sessionDate}`;
           }
         }
         
