@@ -5,8 +5,14 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from models import db, User, UserRole, Facilitator
-from auth import login_required, is_safe_url, get_current_user
+try:
+    from models import db, User, UserRole, Facilitator
+    print("models imported successfully")
+    from auth import login_required, is_safe_url, get_current_user
+    print("auth utils imported successfully")
+except Exception as e:
+    print(f"Error importing models/auth: {e}")
+    raise
 from authlib.integrations.flask_client import OAuth
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -16,21 +22,34 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 
 # Blueprints
-from admin_routes import admin_bp
-from facilitator_routes import facilitator_bp
-from unitcoordinator_routes import unitcoordinator_bp
-from auth import auth_bp  # contains POST /logout
+try:
+    from admin_routes import admin_bp
+    print("admin_routes imported successfully")
+    from facilitator_routes import facilitator_bp
+    print("facilitator_routes imported successfully")
+    from unitcoordinator_routes import unitcoordinator_bp
+    print("unitcoordinator_routes imported successfully")
+    from auth import auth_bp  # contains POST /logout
+    print("auth imported successfully")
+except Exception as e:
+    print(f"Error importing blueprints: {e}")
+    raise
 
 load_dotenv()
 
-app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+try:
+    app = Flask(__name__)
+    app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+    print("Flask app created successfully")
+except Exception as e:
+    print(f"Error creating Flask app: {e}")
+    raise
 
 # Recommended cookie hardening
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",               # consider "Strict" if it fits your flows
-    SESSION_COOKIE_SECURE=False if app.debug else True,  # True in production (HTTPS)
+    SESSION_COOKIE_SECURE=False,  # Always False for HTTP deployment
 )
 
 # Rate limiting
@@ -38,6 +57,10 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["2000 per day", "
 
 # CSRF protection (protects all POST forms, incl. logout form)
 csrf = CSRFProtect(app)
+
+# Additional CSRF settings for deployment
+app.config['WTF_CSRF_TIME_LIMIT'] = None
+app.config['WTF_CSRF_SSL_STRICT'] = False
 
 
 
@@ -136,9 +159,16 @@ def handle_file_too_large(e):
 
 
 # DB
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///dev.db")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db.init_app(app)
+try:
+    database_url = os.getenv("DATABASE_URL", "sqlite:///dev.db")
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    print(f"Database URL: {database_url}")
+    db.init_app(app)
+    print("Database initialized successfully")
+except Exception as e:
+    print(f"Database initialization error: {e}")
+    raise
 
 # Register blueprints
 app.register_blueprint(admin_bp)
@@ -221,8 +251,8 @@ def login():
             )
             if not allowed:
                 flash("You don't have permission for the selected role.")
-                return render_template("login.html")
-
+                return render_template("login.html", selected_role=selected_role)
+            
             session["user_id"] = user.id
             target = request.args.get("next")
             if target and is_safe_url(target):
@@ -236,7 +266,11 @@ def login():
                 return redirect(url_for("facilitator.dashboard"))
 
         flash("Invalid credentials")
-    return render_template("login.html")
+        return render_template("login.html", selected_role=selected_role)
+    
+    # GET request - check for selected_role in query params or default to facilitator
+    selected_role = request.args.get("role", "facilitator")
+    return render_template("login.html", selected_role=selected_role)
 
 @app.route('/auth/google')
 def google_login():
@@ -285,7 +319,5 @@ def google_callback():
     flash('Google login failed')
     return redirect(url_for('login'))
 
-# Expose app and db for CLI scripts
 if __name__ == "__main__":
-    app.run(debug=True)
-
+    app.run(debug=True, port=5001, host='0.0.0.0')

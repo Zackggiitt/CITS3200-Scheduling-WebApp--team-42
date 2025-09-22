@@ -24,7 +24,7 @@ def dashboard():
     facilitators = User.query.filter_by(role=UserRole.FACILITATOR).all()
     
     # Calculate additional statistics
-    active_facilitators = User.query.filter_by(role=UserRole.FACILITATOR, status='active').count()
+    active_facilitators = User.query.filter_by(role=UserRole.FACILITATOR).count()  # All facilitators are considered active
     
     # Calculate experience level distribution
     expert_facilitators = 0
