@@ -2921,22 +2921,49 @@ function showSampleSessionsData() {
     todayCountElement.textContent = sampleData.today.length;
   }
   
-  // Create sample facilitator data for the activity log
+  // Create sample facilitator data for the activity log (fallback only)
   const sampleFacilitators = [
-    { name: "John Smith", session_count: 5 },
-    { name: "Sarah Johnson", session_count: 3 },
-    { name: "Mike Davis", session_count: 7 },
-    { name: "Lisa Wilson", session_count: 4 },
-    { name: "Alex Chen", session_count: 6 },
-    { name: "Emma Rodriguez", session_count: 4 },
-    { name: "David Kim", session_count: 8 },
-    { name: "Maria Garcia", session_count: 5 },
-    { name: "James Wilson", session_count: 7 },
-    { name: "Sophie Brown", session_count: 3 },
-    { name: "Ryan Taylor", session_count: 6 },
-    { name: "Olivia Martinez", session_count: 4 }
+    { name: "No facilitators assigned", session_count: 0 }
   ];
   renderActivityLog(sampleFacilitators);
+}
+
+// ===== Schedule Overview Cards Update Functions =====
+function updateSessionOverviewWeek() {
+  const weekDisplay = document.getElementById('current-week-display');
+  if (weekDisplay) {
+    weekDisplay.textContent = getCurrentWeek();
+  }
+}
+
+function updateScheduleOverviewCards(data) {
+  console.log('Updating Schedule Overview cards with data:', data);
+  
+  // Update Total Schedule
+  const totalScheduleElement = document.querySelector('[data-stat="total_schedule"]');
+  if (totalScheduleElement) {
+    totalScheduleElement.textContent = data.total_schedule || 0;
+  }
+  
+  // Update Schedule Assigned
+  const scheduleAssignedElement = document.querySelector('[data-stat="schedule_assigned"]');
+  if (scheduleAssignedElement) {
+    scheduleAssignedElement.textContent = data.schedule_assigned || 0;
+  }
+  
+  // Update Schedule Conflicts
+  const scheduleConflictsElement = document.querySelector('[data-stat="schedule_conflicts"]');
+  if (scheduleConflictsElement) {
+    scheduleConflictsElement.textContent = data.schedule_conflicts || 0;
+  }
+  
+  // Update Total Facilitators
+  const totalFacilitatorsElement = document.querySelector('[data-stat="total_facilitators"]');
+  if (totalFacilitatorsElement) {
+    totalFacilitatorsElement.textContent = data.total_facilitators || 0;
+  }
+  
+  console.log('Schedule Overview cards updated successfully');
 }
 
 function waitForVisible(el, tries = 20) {
@@ -3448,9 +3475,7 @@ function updateUpcomingSessions(sessions) {
             const targetDate = new Date(today);
             targetDate.setDate(today.getDate() + daysUntilTarget);
             
-            const dayNumber = targetDate.getDate();
-            const monthNumber = targetDate.getMonth() + 1;
-            displayDate = `${sessionDate}<br><span class="text-xs text-gray-400">${dayNumber}/${monthNumber}</span>`;
+            displayDate = `${sessionDate}`;
           }
         }
         
@@ -4244,141 +4269,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-  // Sample facilitator data for attendance summary
-  const sampleFacilitatorData = [
-    {
-      name: "Anna Smith",
-      session_count: 7,
-      student_number: "23456789",
-      assigned_hours: 8,
-      total_hours: 11,
-      date: "2025-09-09",
-      email: "anna.smith@university.edu",
-      phone: "0427370168"
-    },
-    {
-      name: "Sophie Davis",
-      session_count: 4,
-      student_number: "21345678",
-      assigned_hours: 8,
-      total_hours: 9,
-      date: "2025-09-09",
-      email: "sophie.davis@university.edu",
-      phone: "0466209529"
-    },
-    {
-      name: "John Davis",
-      session_count: 4,
-      student_number: "25678909",
-      assigned_hours: 5,
-      total_hours: 8,
-      date: "2025-09-14",
-      email: "john.davis@university.edu",
-      phone: "0457307239"
-    },
-    {
-      name: "Ryan Chen",
-      session_count: 3,
-      student_number: "21345654",
-      assigned_hours: 2,
-      total_hours: 2,
-      date: "2025-09-09",
-      email: "ryan.chen@university.edu",
-      phone: "0454759557"
-    },
-    {
-      name: "James Scott",
-      session_count: 4,
-      student_number: "21378987",
-      assigned_hours: 7,
-      total_hours: 10,
-      date: "2025-09-08",
-      email: "james.scott@university.edu",
-      phone: "0461693991"
-    },
-    {
-      name: "Alex Torres",
-      session_count: 8,
-      student_number: "21346890",
-      assigned_hours: 1,
-      total_hours: 3,
-      date: "2025-09-11",
-      email: "alex.torres@university.edu",
-      phone: "0424120002"
-    },
-    {
-      name: "Alex Taylor",
-      session_count: 2,
-      student_number: "21490987",
-      assigned_hours: 7,
-      total_hours: 8,
-      date: "2025-09-10",
-      email: "alex.taylor@university.edu",
-      phone: "0484401824"
-    },
-    {
-      name: "Emma Young",
-      session_count: 1,
-      student_number: "24126789",
-      assigned_hours: 2,
-      total_hours: 3,
-      date: "2025-09-10",
-      email: "emma.young@university.edu",
-      phone: "0475694144"
-    },
-    {
-      name: "Olivia Davis",
-      session_count: 8,
-      student_number: "23156790",
-      assigned_hours: 6,
-      total_hours: 7,
-      date: "2025-09-11",
-      email: "olivia.davis@university.edu",
-      phone: "0424180164"
-    },
-    {
-      name: "Maya Rodriguez",
-      session_count: 3,
-      student_number: "23789000",
-      assigned_hours: 3,
-      total_hours: 6,
-      date: "2025-09-11",
-      email: "maya.rodriguez@university.edu",
-      phone: "0429458783"
-    },
-    {
-      name: "Emma Davis",
-      session_count: 9,
-      student_number: "23677880",
-      assigned_hours: 6,
-      total_hours: 8,
-      date: "2025-09-08",
-      email: "emma.davis@university.edu",
-      phone: "0495239531"
-    },
-    {
-      name: "Kate Johnson",
-      session_count: 6,
-      student_number: "23499095",
-      assigned_hours: 5,
-      total_hours: 8,
-      date: "2025-09-08",
-      email: "kate.johnson@university.edu",
-      phone: "0466808419"
-    }
+  // Create sample facilitator data for the activity log (fallback only)
+  const sampleFacilitators = [
+    { name: "No facilitators assigned", session_count: 0 }
   ];
-
-  // Inject sample data into attendance summary
-  if (window.__attData) {
-    window.__attData.sampleFacilitators = sampleFacilitatorData;
-    console.log('Sample facilitator data injected:', sampleFacilitatorData.length, 'facilitators');
-  }
-
-  // Auto-populate attendance summary if empty
-  setTimeout(() => {
-    const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
-    if (tableBody && tableBody.textContent.includes('No facilitator data available')) {
-      console.log('Auto-populating attendance summary with sample data...');
-      renderActivityLog(sampleFacilitatorData);
-    }
-  }, 1000);
+  renderActivityLog(sampleFacilitators);
