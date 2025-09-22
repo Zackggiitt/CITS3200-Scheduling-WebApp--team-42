@@ -2201,13 +2201,16 @@ def get_dashboard_sessions(unit_id: int):
             "facilitators": facilitators
         })
 
-    # Get facilitator session counts for bar chart
+    # Get facilitator session counts for bar chart and attendance summary
     facilitator_counts = (
         db.session.query(
             User.first_name,
             User.last_name,
             User.email,
-            func.count(Assignment.id).label('session_count')
+            func.count(Assignment.id).label('session_count'),
+            func.sum(
+                func.extract('epoch', Session.end_time - Session.start_time) / 3600
+            ).label('total_hours')
         )
         .join(Assignment, Assignment.facilitator_id == User.id)
         .join(Session, Session.id == Assignment.session_id)
@@ -2220,11 +2223,17 @@ def get_dashboard_sessions(unit_id: int):
     )
 
     facilitator_data = []
-    for first_name, last_name, email, count in facilitator_counts:
+    for first_name, last_name, email, count, total_hours in facilitator_counts:
         name = f"{first_name or ''} {last_name or ''}".strip() or email
         facilitator_data.append({
             "name": name,
-            "session_count": count
+            "session_count": count,
+            "total_hours": round(float(total_hours or 0), 2),
+            "assigned_hours": round(float(total_hours or 0), 2),  # Same as total for now
+            "student_number": f"STF{str(User.query.filter_by(email=email).first().id).zfill(6)}" if User.query.filter_by(email=email).first() else "N/A",
+            "date": today.isoformat(),
+            "email": email,
+            "phone": "N/A"  # Phone not stored in User model
         })
 
     # Get swap requests over time (last 30 days)
