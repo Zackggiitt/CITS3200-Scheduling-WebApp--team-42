@@ -285,3 +285,7 @@ def google_callback():
     flash('Google login failed')
     return redirect(url_for('login'))
 
+# Expose app and db for CLI scripts
+if __name__ == "__main__":
+    app.run(debug=True)
+

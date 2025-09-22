@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
   <!-- Topbar -->
@@ -372,10 +373,338 @@
         </div>
       </div>
 
+      <!-- Facilitator Navigation Tabs -->
+      <div class="facilitator-nav-tabs">
+        <button class="facilitator-nav-tab active" data-facilitator-tab="overview">
+          <span class="material-icons">bar_chart</span>
+          <span>Overview</span>
+        </button>
+        <button class="facilitator-nav-tab" data-facilitator-tab="directory">
+          <span class="material-icons">group</span>
+          <span>Directory</span>
+        </button>
+      </div>
+
+      <!-- Overview Tab Content -->
+      <div class="facilitator-tab-content" id="facilitatorOverview">
+        <!-- Key Metrics Cards -->
+        <div class="facilitator-metrics-grid">
+          <div class="facilitator-metric-card blue">
+            <div class="facilitator-metric-icon">
+              <span class="material-icons">person</span>
+            </div>
+            <div class="facilitator-metric-content">
+              <div class="facilitator-metric-value">{{ total_facilitators_count or 6 }}</div>
+              <div class="facilitator-metric-label">Total Facilitators</div>
+            </div>
+          </div>
+
+          <div class="facilitator-metric-card green">
+            <div class="facilitator-metric-icon">
+              <span class="material-icons">check_circle</span>
+            </div>
+            <div class="facilitator-metric-content">
+              <div class="facilitator-metric-value">{{ active_facilitators_count or 5 }}</div>
+              <div class="facilitator-metric-label">Active</div>
+            </div>
+          </div>
+
+          <div class="facilitator-metric-card orange">
+            <div class="facilitator-metric-icon">
+              <span class="material-icons">schedule</span>
+            </div>
+            <div class="facilitator-metric-content">
+              <div class="facilitator-metric-value">{{ total_hours_worked or 1966 }}</div>
+              <div class="facilitator-metric-label">Total Hours</div>
+            </div>
+          </div>
+
+          <div class="facilitator-metric-card purple">
+            <div class="facilitator-metric-icon">
+              <span class="material-icons">star_outline</span>
+            </div>
+            <div class="facilitator-metric-content">
+              <div class="facilitator-metric-value">{{ avg_rating or 4.5 }}</div>
+              <div class="facilitator-metric-label">Avg Rating</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Section -->
+        <div class="facilitator-bottom-section">
+          <!-- Workforce Distribution -->
+          <div class="workforce-distribution">
+            <h3 class="workforce-title">Workforce Distribution</h3>
+            <div class="workforce-levels">
+              <div class="workforce-level">
+                <div class="workforce-level-header">
+                  <span class="workforce-level-name">Expert Level</span>
+                  <span class="workforce-level-count">{{ expert_facilitators or 3 }}</span>
+                </div>
+                <div class="workforce-progress-bar">
+                  <div class="workforce-progress-fill expert-progress"></div>
+                </div>
+              </div>
+
+              <div class="workforce-level">
+                <div class="workforce-level-header">
+                  <span class="workforce-level-name">Senior Level</span>
+                  <span class="workforce-level-count">{{ senior_facilitators or 1 }}</span>
+                </div>
+                <div class="workforce-progress-bar">
+                  <div class="workforce-progress-fill senior-progress"></div>
+                </div>
+              </div>
+
+              <div class="workforce-level">
+                <div class="workforce-level-header">
+                  <span class="workforce-level-name">Junior Level</span>
+                  <span class="workforce-level-count">{{ junior_facilitators or 2 }}</span>
+                </div>
+                <div class="workforce-progress-bar">
+                  <div class="workforce-progress-fill junior-progress"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="quick-actions">
+            <h3 class="quick-actions-title">Quick Actions</h3>
+            <div class="quick-actions-list">
+              <div class="quick-action-item">
+                <div class="quick-action-icon">
+                  <span class="material-icons">send</span>
+                </div>
+                <div class="quick-action-content">
+                  <h4 class="quick-action-title">Send Bulk Notifications</h4>
+                  <p class="quick-action-desc">Notify all active facilitators</p>
+                </div>
+              </div>
+
+              <div class="quick-action-item">
+                <div class="quick-action-icon">
+                  <span class="material-icons">menu_book</span>
+                </div>
+                <div class="quick-action-content">
+                  <h4 class="quick-action-title">Schedule Training Session</h4>
+                  <p class="quick-action-desc">Organize skill development</p>
+                </div>
+              </div>
+
+              <div class="quick-action-item">
+                <div class="quick-action-icon">
+                  <span class="material-icons">track_changes</span>
+                </div>
+                <div class="quick-action-content">
+                  <h4 class="quick-action-title">Performance Review</h4>
+                  <p class="quick-action-desc">Conduct quarterly assessments</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Directory Tab Content -->
+      <div class="facilitator-tab-content" id="facilitatorDirectory" style="display: none;">
+        <!-- Search and Filter Section -->
+        <div class="facilitator-search-section">
+          <div class="search-bar">
+            <span class="material-icons search-icon">search</span>
+            <input type="text" id="facilitatorSearch" placeholder="Search facilitators by name, email, or skills..." class="search-input">
+          </div>
+          <div class="filter-controls">
+            <select id="departmentFilter" class="filter-select">
+              <option value="">All Departments</option>
+              <option value="computer_science">Computer Science</option>
+              <option value="engineering">Engineering</option>
+              <option value="mathematics">Mathematics</option>
+              <option value="physics">Physics</option>
+              <option value="chemistry">Chemistry</option>
+            </select>
+            <select id="levelFilter" class="filter-select">
+              <option value="">All Levels</option>
+              <option value="junior">Junior</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="senior">Senior</option>
+              <option value="expert">Expert</option>
+            </select>
+            <select id="statusFilter" class="filter-select">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="on_leave">On Leave</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Results Summary -->
+        <div class="results-summary">
+          <span id="resultsCount">Showing {{ facilitators|length or 0 }} of {{ facilitators|length or 0 }} facilitators</span>
+        </div>
+
+        <!-- Facilitator List -->
+        <div class="facilitator-list" id="facilitatorList">
+          {% for facilitator in facilitators %}
+          <div class="facilitator-card" data-facilitator-id="{{ facilitator.id }}">
+            <div class="facilitator-avatar">
+              <span class="material-icons">person</span>
+            </div>
+            <div class="facilitator-info">
+              <div class="facilitator-name">{{ facilitator.full_name }}</div>
+              <div class="facilitator-badges">
+                <span class="badge badge-experience">{{ facilitator.experience_level|title if facilitator.experience_level else 'Junior' }}</span>
+                <span class="badge badge-status">{{ facilitator.status|title if facilitator.status else 'Active' }}</span>
+              </div>
+              <div class="facilitator-details">
+                <span class="facilitator-role">{{ facilitator.position|title if facilitator.position else 'Lab Facilitator' }}</span>
+                <span class="facilitator-department">{{ facilitator.department|title if facilitator.department else 'General' }}</span>
+              </div>
+              <div class="facilitator-metrics">
+                <div class="metric-item">
+                  <span class="material-icons">star</span>
+                  <span>{{ facilitator.avg_rating or 4.5 }}</span>
+                </div>
+                <div class="metric-item">
+                  <span class="material-icons">schedule</span>
+                  <span>{{ facilitator.total_hours or 0 }}h Hours</span>
+                </div>
+                <div class="metric-item">
+                  <span class="material-icons">folder</span>
+                  <span>{{ facilitator.total_units or 0 }} Units</span>
+                </div>
+                <div class="metric-item">
+                  <span class="material-icons">attach_money</span>
+                  <span>${{ facilitator.hourly_rate or 25 }} Rate</span>
+                </div>
+              </div>
+            </div>
+            <div class="facilitator-actions">
+              <button class="action-btn edit" title="Edit">
+                <span class="material-icons">edit</span>
+              </button>
+              <button class="action-btn key" title="Manage Access">
+                <span class="material-icons">vpn_key</span>
+              </button>
+              <button class="action-btn more" title="More Options">
+                <span class="material-icons">more_vert</span>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+          
+          {% if not facilitators %}
+          <div class="empty-state">
+            <span class="material-icons">group</span>
+            <h3>No facilitators found</h3>
+            <p>Add your first facilitator using the "Add Employee" button above.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
       </div>
     </div>
 
   </main>
+
+  <!-- Add Employee Modal -->
+  <div class="modal-overlay" id="addEmployeeModal" style="display: none;">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 class="modal-title">Add New Facilitator</h2>
+        <p class="modal-description">Add a new facilitator with their contact information and qualifications.</p>
+        <button class="modal-close" id="closeModal">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      
+      <form class="modal-form" id="addEmployeeForm">
+        <div class="form-row">
+          <div class="form-column">
+            <div class="form-group">
+              <label for="role" class="form-label">Role</label>
+              <select id="role" name="role" class="form-select">
+                <option value="lab_facilitator" selected>Lab Facilitator</option>
+                <option value="senior_facilitator">Senior Facilitator</option>
+                <option value="lead_facilitator">Lead Facilitator</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="fullName" class="form-label">Full Name</label>
+              <input type="text" id="fullName" name="fullName" class="form-input" placeholder="Enter full name" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="phone" class="form-label">Phone</label>
+              <input type="tel" id="phone" name="phone" class="form-input" placeholder="Enter phone number" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="position" class="form-label">Position</label>
+              <select id="position" name="position" class="form-select">
+                <option value="">Select position</option>
+                <option value="tutor">Tutor</option>
+                <option value="demonstrator">Demonstrator</option>
+                <option value="assistant">Assistant</option>
+                <option value="supervisor">Supervisor</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="experienceLevel" class="form-label">Experience Level</label>
+              <select id="experienceLevel" name="experienceLevel" class="form-select">
+                <option value="junior" selected>Junior</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="senior">Senior</option>
+                <option value="expert">Expert</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-column">
+            <div class="form-group">
+              <label for="email" class="form-label">Email</label>
+              <input type="email" id="email" name="email" class="form-input" placeholder="Enter email address" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="hourlyRate" class="form-label">Hourly Rate ($)</label>
+              <input type="number" id="hourlyRate" name="hourlyRate" class="form-input" value="25" min="0" step="0.01" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="department" class="form-label">Department</label>
+              <select id="department" name="department" class="form-select">
+                <option value="">Select department</option>
+                <option value="computer_science">Computer Science</option>
+                <option value="engineering">Engineering</option>
+                <option value="mathematics">Mathematics</option>
+                <option value="physics">Physics</option>
+                <option value="chemistry">Chemistry</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="status" class="form-label">Status</label>
+              <select id="status" name="status" class="form-select">
+                <option value="active" selected>Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="on_leave">On Leave</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn-primary">Add Facilitator</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
 </body>
