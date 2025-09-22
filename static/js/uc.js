@@ -2928,6 +2928,44 @@ function showSampleSessionsData() {
   renderActivityLog(sampleFacilitators);
 }
 
+// ===== Schedule Overview Cards Update Functions =====
+function updateSessionOverviewWeek() {
+  const weekDisplay = document.getElementById('current-week-display');
+  if (weekDisplay) {
+    weekDisplay.textContent = getCurrentWeek();
+  }
+}
+
+function updateScheduleOverviewCards(data) {
+  console.log('Updating Schedule Overview cards with data:', data);
+  
+  // Update Total Schedule
+  const totalScheduleElement = document.querySelector('[data-stat="total_schedule"]');
+  if (totalScheduleElement) {
+    totalScheduleElement.textContent = data.total_schedule || 0;
+  }
+  
+  // Update Schedule Assigned
+  const scheduleAssignedElement = document.querySelector('[data-stat="schedule_assigned"]');
+  if (scheduleAssignedElement) {
+    scheduleAssignedElement.textContent = data.schedule_assigned || 0;
+  }
+  
+  // Update Schedule Conflicts
+  const scheduleConflictsElement = document.querySelector('[data-stat="schedule_conflicts"]');
+  if (scheduleConflictsElement) {
+    scheduleConflictsElement.textContent = data.schedule_conflicts || 0;
+  }
+  
+  // Update Total Facilitators
+  const totalFacilitatorsElement = document.querySelector('[data-stat="total_facilitators"]');
+  if (totalFacilitatorsElement) {
+    totalFacilitatorsElement.textContent = data.total_facilitators || 0;
+  }
+  
+  console.log('Schedule Overview cards updated successfully');
+}
+
 function waitForVisible(el, tries = 20) {
   return new Promise((resolve, reject) => {
     function tick(left) {
