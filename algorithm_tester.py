@@ -5,6 +5,17 @@ import numpy as np
 from typing import List, Dict, Any
 import json
 from datetime import datetime
+
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder for numpy types"""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
 from algorithm_comparison import AdvancedSchedulingEngine, AlgorithmType, AlgorithmWeights
 from models import db, User, Session, Assignment, Availability, UserRole, SkillLevel, FacilitatorSkill
 import random
@@ -33,12 +44,13 @@ class AlgorithmTester:
         return results
     
     def compare_all_algorithms(self, num_runs: int = 5) -> Dict[str, List[Dict[str, Any]]]:
-        """Compare all four algorithms with multiple runs each"""
+        """Test the threshold hybrid algorithm with multiple runs"""
         comparison_results = {}
         
-        for algorithm in AlgorithmType:
-            print(f"Testing {algorithm.value}...")
-            comparison_results[algorithm.value] = self.run_multiple_tests(algorithm, num_runs)
+        # Only test threshold hybrid algorithm
+        algorithm = AlgorithmType.THRESHOLD_HYBRID
+        print(f"Testing {algorithm.value}...")
+        comparison_results[algorithm.value] = self.run_multiple_tests(algorithm, num_runs)
         
         return comparison_results
     
@@ -309,7 +321,7 @@ class AlgorithmTester:
             filename = f"algorithm_comparison_report_{timestamp}.json"
         
         with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
+            json.dump(report, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
         
         print(f"Report saved to {filename}")
         return filename
