@@ -72,77 +72,6 @@ def _get_user_unit_or_404(user, unit_id: int):
 def _iso(d: date) -> str:
     return d.isoformat()
 
-def _detect_schedule_conflicts(unit_id):
-    """
-    Detect scheduling conflicts for facilitators in a unit.
-    Returns the count of conflicts where facilitators are double-booked.
-    """
-    from sqlalchemy import func, and_, or_
-    
-    # Get all assignments for this unit with session details
-    assignments = (
-        db.session.query(
-            Assignment.id,
-            Assignment.facilitator_id,
-            Session.start_time,
-            Session.end_time,
-            Session.id.label('session_id'),
-            User.first_name,
-            User.last_name,
-            Module.module_name
-        )
-        .join(Session, Session.id == Assignment.session_id)
-        .join(Module, Module.id == Session.module_id)
-        .join(User, User.id == Assignment.facilitator_id)
-        .filter(Module.unit_id == unit_id)
-        .all()
-    )
-    
-    if not assignments:
-        return 0
-    
-    conflict_count = 0
-    
-    # Group assignments by facilitator
-    facilitator_assignments = {}
-    for assignment in assignments:
-        facilitator_id = assignment.facilitator_id
-        if facilitator_id not in facilitator_assignments:
-            facilitator_assignments[facilitator_id] = []
-        facilitator_assignments[facilitator_id].append(assignment)
-    
-    # Check each facilitator for overlapping sessions
-    for facilitator_id, sessions in facilitator_assignments.items():
-        if len(sessions) < 2:
-            continue  # Need at least 2 sessions to have a conflict
-            
-        # Sort sessions by start time
-        sessions.sort(key=lambda x: x.start_time)
-        
-        # Check for overlaps
-        for i in range(len(sessions)):
-            for j in range(i + 1, len(sessions)):
-                session1 = sessions[i]
-                session2 = sessions[j]
-                
-                # Check if sessions overlap
-                if _sessions_overlap(session1.start_time, session1.end_time, 
-                                  session2.start_time, session2.end_time):
-                    conflict_count += 1
-                    # Log the conflict for debugging
-                    print(f"Double-booking conflict: {session1.first_name} {session1.last_name} "
-                          f"assigned to both {session1.module_name} ({session1.start_time}) "
-                          f"and {session2.module_name} ({session2.start_time})")
-    
-    return conflict_count
-
-def _sessions_overlap(start1, end1, start2, end2):
-    """
-    Check if two time ranges overlap.
-    Returns True if the sessions overlap, False otherwise.
-    """
-    # Sessions overlap if one starts before the other ends
-    return not (end1 <= start2 or end2 <= start1)
 
 def _parse_dt(s: str):
     """Parse 'YYYY-MM-DDTHH:MM' or 'YYYY-MM-DD HH:MM' to datetime."""
@@ -707,9 +636,8 @@ def dashboard():
         )
         fac_stats["schedule_assigned"] = assigned_slots
 
-    # Schedule conflicts - detect overlapping assignments
-    conflicts = _detect_schedule_conflicts(current_unit.id)
-    fac_stats["schedule_conflicts"] = conflicts
+        # Schedule conflicts (placeholder for now)
+        fac_stats["schedule_conflicts"] = 0
 
     # ----- Facilitator Setup Progress + Details -----
     fac_progress = {"total": 0, "account": 0, "availability": 0, "ready": 0}
@@ -2273,16 +2201,13 @@ def get_dashboard_sessions(unit_id: int):
             "facilitators": facilitators
         })
 
-    # Get facilitator session counts for bar chart and attendance summary
+    # Get facilitator session counts for bar chart
     facilitator_counts = (
         db.session.query(
             User.first_name,
             User.last_name,
             User.email,
-            func.count(Assignment.id).label('session_count'),
-            func.sum(
-                func.extract('epoch', Session.end_time - Session.start_time) / 3600
-            ).label('total_hours')
+            func.count(Assignment.id).label('session_count')
         )
         .join(Assignment, Assignment.facilitator_id == User.id)
         .join(Session, Session.id == Assignment.session_id)
@@ -2295,17 +2220,11 @@ def get_dashboard_sessions(unit_id: int):
     )
 
     facilitator_data = []
-    for first_name, last_name, email, count, total_hours in facilitator_counts:
+    for first_name, last_name, email, count in facilitator_counts:
         name = f"{first_name or ''} {last_name or ''}".strip() or email
         facilitator_data.append({
             "name": name,
-            "session_count": count,
-            "total_hours": round(float(total_hours or 0), 2),
-            "assigned_hours": round(float(total_hours or 0), 2),  # Same as total for now
-            "student_number": f"STF{str(User.query.filter_by(email=email).first().id).zfill(6)}" if User.query.filter_by(email=email).first() else "N/A",
-            "date": today.isoformat(),
-            "email": email,
-            "phone": "N/A"  # Phone not stored in User model
+            "session_count": count
         })
 
     # Get swap requests over time (last 30 days)
@@ -2339,53 +2258,13 @@ def get_dashboard_sessions(unit_id: int):
             "count": swap_data.get(date_str, 0)
         })
 
-    # Calculate fac_stats for Schedule Overview cards
-    fac_stats = {
-        "total_schedule": 0,
-        "schedule_assigned": 0, 
-        "schedule_conflicts": 0,
-        "total_facilitators": 0
-    }
-
-    # Total facilitators associated with this unit
-    total_facilitators = (
-        db.session.query(func.count(UnitFacilitator.user_id.distinct()))
-        .filter(UnitFacilitator.unit_id == unit.id)
-        .scalar() or 0
-    )
-    fac_stats["total_facilitators"] = total_facilitators
-
-    # Total schedule slots (sessions * max_facilitators)
-    total_schedule_slots = (
-        db.session.query(func.sum(func.coalesce(Session.max_facilitators, 1)))
-        .join(Module, Module.id == Session.module_id)
-        .filter(Module.unit_id == unit.id)
-        .scalar() or 0
-    )
-    fac_stats["total_schedule"] = total_schedule_slots
-
-    # Assigned schedule slots (total assignments)
-    assigned_slots = (
-        db.session.query(func.count(Assignment.id))
-        .join(Session, Session.id == Assignment.session_id)
-        .join(Module, Module.id == Session.module_id)
-        .filter(Module.unit_id == unit.id)
-        .scalar() or 0
-    )
-    fac_stats["schedule_assigned"] = assigned_slots
-
-    # Schedule conflicts - detect overlapping assignments
-    conflicts = _detect_schedule_conflicts(unit.id)
-    fac_stats["schedule_conflicts"] = conflicts
-
     return jsonify({
         "ok": True,
         "today_sessions": today_data,
         "upcoming_sessions": upcoming_data,
         "facilitator_counts": facilitator_data,
         "swap_requests": swap_chart_data,
-        "week_session_count": len(today_data) + len(upcoming_data),
-        "fac_stats": fac_stats
+        "week_session_count": len(today_data) + len(upcoming_data)
     })
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/bulk-staffing/filters")
