@@ -20,12 +20,123 @@ def dashboard():
     pending_swaps = SwapRequest.query.filter_by(status=SwapStatus.PENDING).count()
     unassigned_sessions = Session.query.outerjoin(Assignment).filter(Assignment.id == None).count()
     
+    # Get facilitator data for the directory
+    facilitators = User.query.filter_by(role=UserRole.FACILITATOR).all()
+    
+    # Calculate additional statistics
+    active_facilitators = User.query.filter_by(role=UserRole.FACILITATOR).count()  # All facilitators are considered active
+    
+    # Calculate experience level distribution
+    expert_facilitators = 0
+    senior_facilitators = 0
+    junior_facilitators = 0
+    
+    total_hours_worked = 0
+    avg_rating = 4.5  # Default value
+    
+    for facilitator in facilitators:
+        # Parse preferences to get additional data
+        if facilitator.preferences:
+            try:
+                import json
+                prefs = json.loads(facilitator.preferences)
+                experience_level = prefs.get('experience_level', 'junior')
+                hourly_rate = prefs.get('hourly_rate', 25)
+                
+                # Count by experience level
+                if experience_level == 'expert':
+                    expert_facilitators += 1
+                elif experience_level == 'senior':
+                    senior_facilitators += 1
+                else:
+                    junior_facilitators += 1
+                    
+                # Add to total hours (mock calculation)
+                total_hours_worked += hourly_rate * 8  # Assume 8 hours per week
+            except:
+                junior_facilitators += 1
+    
     return render_template('admin_dashboard.html',
                          user=user,
                          total_facilitators=total_facilitators,
                          total_sessions=total_sessions,
                          pending_swaps=pending_swaps,
-                         unassigned_sessions=unassigned_sessions)
+                         unassigned_sessions=unassigned_sessions,
+                         facilitators=facilitators,
+                         total_facilitators_count=total_facilitators,
+                         active_facilitators_count=active_facilitators,
+                         total_hours_worked=total_hours_worked,
+                         avg_rating=avg_rating,
+                         expert_facilitators=expert_facilitators,
+                         senior_facilitators=senior_facilitators,
+                         junior_facilitators=junior_facilitators)
+
+@admin_bp.route('/create-facilitator-modal', methods=['POST'])
+@admin_required
+def create_facilitator_modal():
+    """Create a new facilitator from the admin dashboard modal"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['fullName', 'email', 'phone', 'role', 'experienceLevel', 'hourlyRate']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Check if email already exists
+        existing_user = User.query.filter_by(email=data['email']).first()
+        if existing_user:
+            return jsonify({'success': False, 'error': 'Email already exists'}), 400
+        
+        # Determine user role based on form data
+        role_mapping = {
+            'lab_facilitator': UserRole.FACILITATOR,
+            'senior_facilitator': UserRole.FACILITATOR,
+            'lead_facilitator': UserRole.FACILITATOR
+        }
+        
+        user_role = role_mapping.get(data['role'], UserRole.FACILITATOR)
+        
+        # Parse full name into first and last name
+        full_name = data['fullName'].strip()
+        name_parts = full_name.split(' ', 1)
+        first_name = name_parts[0] if name_parts else ''
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        # Create new user (only using fields that exist in the model)
+        new_user = User(
+            email=data['email'],
+            first_name=first_name,
+            last_name=last_name,
+            role=user_role,
+            # Generate a temporary password (user will need to reset)
+            password_hash=generate_password_hash('temp_password_123')
+        )
+        
+        # Store additional data in preferences field as JSON
+        additional_data = {
+            'phone': data['phone'],
+            'hourly_rate': float(data['hourlyRate']),
+            'experience_level': data['experienceLevel'],
+            'position': data.get('position', ''),
+            'department': data.get('department', ''),
+            'status': data.get('status', 'active')
+        }
+        new_user.preferences = json.dumps(additional_data)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Facilitator created successfully!',
+            'user_id': new_user.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/units/create', methods=['GET', 'POST'])
 @admin_required
