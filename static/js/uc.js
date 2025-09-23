@@ -4244,141 +4244,98 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-  // Sample facilitator data for attendance summary
-  const sampleFacilitatorData = [
-    {
-      name: "Anna Smith",
-      session_count: 7,
-      student_number: "23456789",
-      assigned_hours: 8,
-      total_hours: 11,
-      date: "2025-09-09",
-      email: "anna.smith@university.edu",
-      phone: "0427370168"
-    },
-    {
-      name: "Sophie Davis",
-      session_count: 4,
-      student_number: "21345678",
-      assigned_hours: 8,
-      total_hours: 9,
-      date: "2025-09-09",
-      email: "sophie.davis@university.edu",
-      phone: "0466209529"
-    },
-    {
-      name: "John Davis",
-      session_count: 4,
-      student_number: "25678909",
-      assigned_hours: 5,
-      total_hours: 8,
-      date: "2025-09-14",
-      email: "john.davis@university.edu",
-      phone: "0457307239"
-    },
-    {
-      name: "Ryan Chen",
-      session_count: 3,
-      student_number: "21345654",
-      assigned_hours: 2,
-      total_hours: 2,
-      date: "2025-09-09",
-      email: "ryan.chen@university.edu",
-      phone: "0454759557"
-    },
-    {
-      name: "James Scott",
-      session_count: 4,
-      student_number: "21378987",
-      assigned_hours: 7,
-      total_hours: 10,
-      date: "2025-09-08",
-      email: "james.scott@university.edu",
-      phone: "0461693991"
-    },
-    {
-      name: "Alex Torres",
-      session_count: 8,
-      student_number: "21346890",
-      assigned_hours: 1,
-      total_hours: 3,
-      date: "2025-09-11",
-      email: "alex.torres@university.edu",
-      phone: "0424120002"
-    },
-    {
-      name: "Alex Taylor",
-      session_count: 2,
-      student_number: "21490987",
-      assigned_hours: 7,
-      total_hours: 8,
-      date: "2025-09-10",
-      email: "alex.taylor@university.edu",
-      phone: "0484401824"
-    },
-    {
-      name: "Emma Young",
-      session_count: 1,
-      student_number: "24126789",
-      assigned_hours: 2,
-      total_hours: 3,
-      date: "2025-09-10",
-      email: "emma.young@university.edu",
-      phone: "0475694144"
-    },
-    {
-      name: "Olivia Davis",
-      session_count: 8,
-      student_number: "23156790",
-      assigned_hours: 6,
-      total_hours: 7,
-      date: "2025-09-11",
-      email: "olivia.davis@university.edu",
-      phone: "0424180164"
-    },
-    {
-      name: "Maya Rodriguez",
-      session_count: 3,
-      student_number: "23789000",
-      assigned_hours: 3,
-      total_hours: 6,
-      date: "2025-09-11",
-      email: "maya.rodriguez@university.edu",
-      phone: "0429458783"
-    },
-    {
-      name: "Emma Davis",
-      session_count: 9,
-      student_number: "23677880",
-      assigned_hours: 6,
-      total_hours: 8,
-      date: "2025-09-08",
-      email: "emma.davis@university.edu",
-      phone: "0495239531"
-    },
-    {
-      name: "Kate Johnson",
-      session_count: 6,
-      student_number: "23499095",
-      assigned_hours: 5,
-      total_hours: 8,
-      date: "2025-09-08",
-      email: "kate.johnson@university.edu",
-      phone: "0466808419"
-    }
-  ];
+  // Load real attendance data from database
+  async function loadAttendanceData() {
+    try {
+      const unitId = getUnitId();
+      if (!unitId) {
+        console.warn('No unit ID available for attendance data');
+        return;
+      }
 
-  // Inject sample data into attendance summary
-  if (window.__attData) {
-    window.__attData.sampleFacilitators = sampleFacilitatorData;
-    console.log('Sample facilitator data injected:', sampleFacilitatorData.length, 'facilitators');
+      const response = await fetch(`/unitcoordinator/units/${unitId}/attendance-summary`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.ok && data.facilitators) {
+        console.log('Loaded attendance data:', data.facilitators.length, 'facilitators');
+        
+        // Store in global data object
+        if (window.__attData) {
+          window.__attData.facilitators = data.facilitators;
+        }
+        
+        // Render the attendance summary
+        renderActivityLog(data.facilitators);
+        
+        // Update the week display with real data
+        updateAttendanceWeekDisplay(data.facilitators);
+        
+      } else {
+        console.error('Failed to load attendance data:', data.error);
+        showAttendanceError('Failed to load attendance data');
+      }
+      
+    } catch (error) {
+      console.error('Error loading attendance data:', error);
+      showAttendanceError('Error loading attendance data');
+    }
   }
 
-  // Auto-populate attendance summary if empty
-  setTimeout(() => {
-    const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
-    if (tableBody && tableBody.textContent.includes('No facilitator data available')) {
-      console.log('Auto-populating attendance summary with sample data...');
-      renderActivityLog(sampleFacilitatorData);
+  // Update the week display with real data
+  function updateAttendanceWeekDisplay(facilitators) {
+    const weekElement = document.querySelector('#activityLogCard .text-gray-400.text-xs.mt-1');
+    if (weekElement && facilitators.length > 0) {
+      // Get the most recent date from facilitators
+      const dates = facilitators
+        .map(f => f.date)
+        .filter(d => d)
+        .sort()
+        .reverse();
+      
+      if (dates.length > 0) {
+        const latestDate = new Date(dates[0]);
+        const weekStart = new Date(latestDate);
+        weekStart.setDate(latestDate.getDate() - latestDate.getDay()); // Start of week
+        
+        const weekText = `Week of ${weekStart.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric' 
+        })}`;
+        
+        weekElement.textContent = weekText;
+      }
     }
+  }
+
+  // Show error message in attendance summary
+  function showAttendanceError(message) {
+    const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
+    if (tableBody) {
+      tableBody.innerHTML = `
+        <div class="p-6 text-center text-gray-500">
+          <span class="material-icons text-4xl mb-2">error_outline</span>
+          <p>${message}</p>
+          <button onclick="loadAttendanceData()" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+            Retry
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  // Load attendance data when the page loads
+  setTimeout(() => {
+    loadAttendanceData();
   }, 1000);

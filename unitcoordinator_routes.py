@@ -2473,6 +2473,86 @@ def get_bulk_staffing_sessions(unit_id: int):
 
 
 
+@unitcoordinator_bp.get("/units/<int:unit_id>/attendance-summary")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def get_attendance_summary(unit_id: int):
+    """Get attendance summary data for facilitators in a unit."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        # Get all facilitators assigned to sessions in this unit
+        facilitators_query = db.session.query(User).join(Assignment).join(Session).join(Module).filter(
+            Module.unit_id == unit.id,
+            User.role == UserRole.FACILITATOR
+        ).distinct()
+        
+        facilitators_data = []
+        
+        for facilitator in facilitators_query:
+            # Get all assignments for this facilitator in this unit
+            assignments = db.session.query(Assignment).join(Session).join(Module).filter(
+                Assignment.facilitator_id == facilitator.id,
+                Module.unit_id == unit.id
+            ).all()
+            
+            # Calculate total hours and session count
+            total_hours = 0
+            session_count = len(assignments)
+            
+            for assignment in assignments:
+                session = assignment.session
+                duration = (session.end_time - session.start_time).total_seconds() / 3600  # Convert to hours
+                total_hours += duration
+            
+            # Get the most recent session date
+            latest_session = db.session.query(Session).join(Assignment).join(Module).filter(
+                Assignment.facilitator_id == facilitator.id,
+                Module.unit_id == unit.id
+            ).order_by(Session.start_time.desc()).first()
+            
+            latest_date = latest_session.start_time.date().isoformat() if latest_session else None
+            
+            # Calculate assigned hours (confirmed assignments)
+            confirmed_assignments = [a for a in assignments if a.is_confirmed]
+            assigned_hours = sum(
+                (a.session.end_time - a.session.start_time).total_seconds() / 3600 
+                for a in confirmed_assignments
+            )
+            
+            facilitator_data = {
+                "name": facilitator.full_name,
+                "student_number": facilitator.email.split('@')[0] if '@' in facilitator.email else "N/A",
+                "session_count": session_count,
+                "assigned_hours": round(assigned_hours, 2),
+                "total_hours": round(total_hours, 2),
+                "date": latest_date,
+                "email": facilitator.email,
+                "phone": "N/A",  # Phone not stored in User model
+                "status": "active" if session_count > 0 else "inactive"
+            }
+            
+            facilitators_data.append(facilitator_data)
+        
+        # Sort by total hours descending
+        facilitators_data.sort(key=lambda x: x['total_hours'], reverse=True)
+        
+        return jsonify({
+            "ok": True,
+            "facilitators": facilitators_data,
+            "unit_name": unit.unit_name,
+            "total_facilitators": len(facilitators_data)
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching attendance summary: {str(e)}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @unitcoordinator_bp.post("/units/<int:unit_id>/bulk-staffing/apply")
 
 @login_required
