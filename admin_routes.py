@@ -8,6 +8,16 @@ import json
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+# Add custom template filter for JSON parsing
+@admin_bp.app_template_filter('from_json')
+def from_json_filter(value):
+    if value:
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return {}
+
 @admin_bp.route('/dashboard')
 @admin_required
 def dashboard():
@@ -70,6 +80,37 @@ def dashboard():
                          expert_facilitators=expert_facilitators,
                          senior_facilitators=senior_facilitators,
                          junior_facilitators=junior_facilitators)
+
+@admin_bp.route('/delete-facilitator/<int:facilitator_id>', methods=['DELETE'])
+@admin_required
+def delete_facilitator(facilitator_id):
+    try:
+        print(f"Delete request received for facilitator ID: {facilitator_id}")
+        
+        # Get the facilitator to delete
+        facilitator = User.query.get(facilitator_id)
+        print(f"Found facilitator: {facilitator}")
+        
+        if not facilitator:
+            print("Facilitator not found")
+            return jsonify({'success': False, 'message': 'Facilitator not found'}), 404
+        
+        if facilitator.role != UserRole.FACILITATOR:
+            print(f"Invalid role: {facilitator.role}")
+            return jsonify({'success': False, 'message': 'Only facilitators can be deleted via this endpoint'}), 403
+        
+        # Delete the facilitator from database
+        print(f"Deleting facilitator: {facilitator.full_name}")
+        db.session.delete(facilitator)
+        db.session.commit()
+        print("Facilitator deleted successfully")
+        
+        return jsonify({'success': True, 'message': 'Facilitator account deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting facilitator: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while deleting the facilitator'}), 500
 
 @admin_bp.route('/create-facilitator-modal', methods=['POST'])
 @admin_required

@@ -154,7 +154,7 @@
             <div class="activity-content">
               <h4 class="activity-title"># of UC</h4>
               <div class="activity-value">{{ total_coordinators or 12 }}</div>
-              <p class="activity-desc">unit coordinators</p>
+              <p class="activity-desc">unit co  ordinators</p>
               <p class="activity-desc">Managing academic programs</p>
             </div>
           </div>
@@ -255,123 +255,6 @@
         </div>
       </div>
 
-      <!-- Key Metrics Cards -->
-      <div class="facilitator-metrics-grid">
-        <div class="facilitator-metric-card blue">
-          <div class="facilitator-metric-icon">
-            <span class="material-icons">person</span>
-          </div>
-          <div class="facilitator-metric-content">
-            <div class="facilitator-metric-value">{{ total_facilitators_count or 6 }}</div>
-            <div class="facilitator-metric-label">Total Facilitators</div>
-          </div>
-        </div>
-
-        <div class="facilitator-metric-card green">
-          <div class="facilitator-metric-icon">
-            <span class="material-icons">check_circle</span>
-          </div>
-          <div class="facilitator-metric-content">
-            <div class="facilitator-metric-value">{{ active_facilitators_count or 5 }}</div>
-            <div class="facilitator-metric-label">Active</div>
-          </div>
-        </div>
-
-        <div class="facilitator-metric-card orange">
-          <div class="facilitator-metric-icon">
-            <span class="material-icons">schedule</span>
-          </div>
-          <div class="facilitator-metric-content">
-            <div class="facilitator-metric-value">{{ total_hours_worked or 1966 }}</div>
-            <div class="facilitator-metric-label">Total Hours</div>
-          </div>
-        </div>
-
-        <div class="facilitator-metric-card purple">
-          <div class="facilitator-metric-icon">
-            <span class="material-icons">star_outline</span>
-          </div>
-          <div class="facilitator-metric-content">
-            <div class="facilitator-metric-value">{{ avg_rating or 4.5 }}</div>
-            <div class="facilitator-metric-label">Avg Rating</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bottom Section -->
-      <div class="facilitator-bottom-section">
-        <!-- Workforce Distribution -->
-        <div class="workforce-distribution">
-          <h3 class="workforce-title">Workforce Distribution</h3>
-          <div class="workforce-levels">
-            <div class="workforce-level">
-              <div class="workforce-level-header">
-                <span class="workforce-level-name">Expert Level</span>
-                <span class="workforce-level-count">{{ expert_facilitators or 3 }}</span>
-              </div>
-              <div class="workforce-progress-bar">
-                <div class="workforce-progress-fill expert-progress"></div>
-              </div>
-            </div>
-
-            <div class="workforce-level">
-              <div class="workforce-level-header">
-                <span class="workforce-level-name">Senior Level</span>
-                <span class="workforce-level-count">{{ senior_facilitators or 1 }}</span>
-              </div>
-              <div class="workforce-progress-bar">
-                <div class="workforce-progress-fill senior-progress"></div>
-              </div>
-            </div>
-
-            <div class="workforce-level">
-              <div class="workforce-level-header">
-                <span class="workforce-level-name">Junior Level</span>
-                <span class="workforce-level-count">{{ junior_facilitators or 2 }}</span>
-              </div>
-              <div class="workforce-progress-bar">
-                <div class="workforce-progress-fill junior-progress"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-          <h3 class="quick-actions-title">Quick Actions</h3>
-          <div class="quick-actions-list">
-            <div class="quick-action-item">
-              <div class="quick-action-icon">
-                <span class="material-icons">send</span>
-              </div>
-              <div class="quick-action-content">
-                <h4 class="quick-action-title">Send Bulk Notifications</h4>
-                <p class="quick-action-desc">Notify all active facilitators</p>
-              </div>
-            </div>
-
-            <div class="quick-action-item">
-              <div class="quick-action-icon">
-                <span class="material-icons">menu_book</span>
-              </div>
-              <div class="quick-action-content">
-                <h4 class="quick-action-title">Schedule Training Session</h4>
-                <p class="quick-action-desc">Organize skill development</p>
-              </div>
-            </div>
-
-            <div class="quick-action-item">
-              <div class="quick-action-icon">
-                <span class="material-icons">track_changes</span>
-              </div>
-              <div class="quick-action-content">
-                <h4 class="quick-action-title">Performance Review</h4>
-                <p class="quick-action-desc">Conduct quarterly assessments</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Facilitator Navigation Tabs -->
       <div class="facilitator-nav-tabs">
@@ -394,7 +277,7 @@
               <span class="material-icons">person</span>
             </div>
             <div class="facilitator-metric-content">
-              <div class="facilitator-metric-value">{{ total_facilitators_count or 6 }}</div>
+              <div class="facilitator-metric-value">{{ facilitators|length }}</div>
               <div class="facilitator-metric-label">Total Facilitators</div>
             </div>
           </div>
@@ -404,7 +287,20 @@
               <span class="material-icons">check_circle</span>
             </div>
             <div class="facilitator-metric-content">
-              <div class="facilitator-metric-value">{{ active_facilitators_count or 5 }}</div>
+              <div class="facilitator-metric-value">
+                {% set active_count = 0 %}
+                {% for facilitator in facilitators %}
+                  {% if facilitator.preferences %}
+                    {% set prefs = facilitator.preferences|from_json %}
+                    {% if prefs.get('status', 'active') == 'active' %}
+                      {% set active_count = active_count + 1 %}
+                    {% endif %}
+                  {% else %}
+                    {% set active_count = active_count + 1 %}
+                  {% endif %}
+                {% endfor %}
+                {{ active_count }}
+              </div>
               <div class="facilitator-metric-label">Active</div>
             </div>
           </div>
@@ -414,7 +310,7 @@
               <span class="material-icons">schedule</span>
             </div>
             <div class="facilitator-metric-content">
-              <div class="facilitator-metric-value">{{ total_hours_worked or 1966 }}</div>
+              <div class="facilitator-metric-value">0</div>
               <div class="facilitator-metric-label">Total Hours</div>
             </div>
           </div>
@@ -424,7 +320,7 @@
               <span class="material-icons">star_outline</span>
             </div>
             <div class="facilitator-metric-content">
-              <div class="facilitator-metric-value">{{ avg_rating or 4.5 }}</div>
+              <div class="facilitator-metric-value">4.5</div>
               <div class="facilitator-metric-label">Avg Rating</div>
             </div>
           </div>
@@ -436,33 +332,52 @@
           <div class="workforce-distribution">
             <h3 class="workforce-title">Workforce Distribution</h3>
             <div class="workforce-levels">
+              {% set expert_count = 0 %}
+              {% set senior_count = 0 %}
+              {% set junior_count = 0 %}
+              {% for facilitator in facilitators %}
+                {% if facilitator.preferences %}
+                  {% set prefs = facilitator.preferences|from_json %}
+                  {% set level = prefs.get('experience_level', 'junior') %}
+                  {% if level == 'expert' %}
+                    {% set expert_count = expert_count + 1 %}
+                  {% elif level == 'senior' %}
+                    {% set senior_count = senior_count + 1 %}
+                  {% else %}
+                    {% set junior_count = junior_count + 1 %}
+                  {% endif %}
+                {% else %}
+                  {% set junior_count = junior_count + 1 %}
+                {% endif %}
+              {% endfor %}
+              
               <div class="workforce-level">
                 <div class="workforce-level-header">
                   <span class="workforce-level-name">Expert Level</span>
-                  <span class="workforce-level-count">{{ expert_facilitators or 3 }}</span>
+                  <span class="workforce-level-count">{{ expert_count }}</span>
                 </div>
                 <div class="workforce-progress-bar">
-                  <div class="workforce-progress-fill expert-progress"></div>
+                  <div class="workforce-progress-fill expert-progress" style="width: {{ (expert_count / facilitators|length * 100) if facilitators|length > 0 else 0 }}%"></div>
                 </div>
               </div>
 
               <div class="workforce-level">
                 <div class="workforce-level-header">
                   <span class="workforce-level-name">Senior Level</span>
-                  <span class="workforce-level-count">{{ senior_facilitators or 1 }}</span>
+                  <span class="workforce-level-count">{{ senior_count }}</span>
                 </div>
                 <div class="workforce-progress-bar">
-                  <div class="workforce-progress-fill senior-progress"></div>
+                  <div class="workforce-progress-fill senior-progress" style="width: {{ (senior_count / facilitators|length * 100) if facilitators|length > 0 else 0 }}%"></div>
                 </div>
               </div>
 
               <div class="workforce-level">
                 <div class="workforce-level-header">
                   <span class="workforce-level-name">Junior Level</span>
-                  <span class="workforce-level-count">{{ junior_facilitators or 2 }}</span>
+                  <span class="workforce-level-count">{{ junior_count }}</span>
                 </div>
                 <div class="workforce-progress-bar">
-                  <div class="workforce-progress-fill junior-progress"></div>
+                  <div class="workforce-progress-fill junior-progress" style="width: {{ (junior_count / facilitators|length * 100) if facilitators|length > 0 else 0 }}%"></div>
                 </div>
               </div>
             </div>
@@ -554,42 +469,89 @@
             <div class="facilitator-info">
               <div class="facilitator-name">{{ facilitator.full_name }}</div>
               <div class="facilitator-badges">
-                <span class="badge badge-experience">{{ facilitator.experience_level|title if facilitator.experience_level else 'Junior' }}</span>
-                <span class="badge badge-status">{{ facilitator.status|title if facilitator.status else 'Active' }}</span>
+                <span class="badge badge-experience">
+                  {% if facilitator.preferences %}
+                    {% set prefs = facilitator.preferences|from_json %}
+                    {{ prefs.get('experience_level', 'junior')|title }}
+                  {% else %}
+                    Junior
+                  {% endif %}
+                </span>
+                <span class="badge badge-status">
+                  {% if facilitator.preferences %}
+                    {% set prefs = facilitator.preferences|from_json %}
+                    {{ prefs.get('status', 'active')|title }}
+                  {% else %}
+                    Active
+                  {% endif %}
+                </span>
               </div>
               <div class="facilitator-details">
-                <span class="facilitator-role">{{ facilitator.position|title if facilitator.position else 'Lab Facilitator' }}</span>
-                <span class="facilitator-department">{{ facilitator.department|title if facilitator.department else 'General' }}</span>
+                <span class="facilitator-role">
+                  {% if facilitator.preferences %}
+                    {% set prefs = facilitator.preferences|from_json %}
+                    {{ prefs.get('position', 'lab_facilitator')|replace('_', ' ')|title }}
+                  {% else %}
+                    Lab Facilitator
+                  {% endif %}
+                </span>
+                <span class="facilitator-department">
+                  {% if facilitator.preferences %}
+                    {% set prefs = facilitator.preferences|from_json %}
+                    {{ prefs.get('department', 'general')|replace('_', ' ')|title }}
+                  {% else %}
+                    General
+                  {% endif %}
+                </span>
               </div>
               <div class="facilitator-metrics">
                 <div class="metric-item">
                   <span class="material-icons">star</span>
-                  <span>{{ facilitator.avg_rating or 4.5 }}</span>
+                  <span>4.5</span>
                 </div>
                 <div class="metric-item">
                   <span class="material-icons">schedule</span>
-                  <span>{{ facilitator.total_hours or 0 }}h Hours</span>
+                  <span>0h Hours</span>
                 </div>
                 <div class="metric-item">
                   <span class="material-icons">folder</span>
-                  <span>{{ facilitator.total_units or 0 }} Units</span>
+                  <span>0 Units</span>
                 </div>
                 <div class="metric-item">
                   <span class="material-icons">attach_money</span>
-                  <span>${{ facilitator.hourly_rate or 25 }} Rate</span>
+                  <span>
+                    {% if facilitator.preferences %}
+                      {% set prefs = facilitator.preferences|from_json %}
+                      ${{ prefs.get('hourly_rate', 25) }} Rate
+                    {% else %}
+                      $25 Rate
+                    {% endif %}
+                  </span>
                 </div>
               </div>
             </div>
             <div class="facilitator-actions">
-              <button class="action-btn edit" title="Edit">
+              <button class="action-btn edit" title="Edit Profile" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name }}', '{{ facilitator.email }}')">
+                <span class="material-icons">person</span>
+              </button>
+              <button class="action-btn key" title="Edit Details" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name }}', '{{ facilitator.email }}')">
                 <span class="material-icons">edit</span>
               </button>
-              <button class="action-btn key" title="Manage Access">
-                <span class="material-icons">vpn_key</span>
-              </button>
-              <button class="action-btn more" title="More Options">
-                <span class="material-icons">more_vert</span>
-              </button>
+              <div class="dropdown-container">
+                <button class="action-btn more" title="More Options" onclick="toggleDropdown({{ facilitator.id }})">
+                  <span class="material-icons">more_vert</span>
+                </button>
+                <div class="dropdown-menu" id="dropdown-{{ facilitator.id }}" style="display: none;">
+                  <button class="dropdown-item" onclick="disableAccount({{ facilitator.id }}, '{{ facilitator.full_name }}')">
+                    <span class="material-icons">person_off</span>
+                    Disable Account
+                  </button>
+                  <button class="dropdown-item delete" onclick="deleteAccount({{ facilitator.id }}, '{{ facilitator.full_name }}')">
+                    <span class="material-icons">delete</span>
+                    Delete Employee Account
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           {% endfor %}
@@ -701,6 +663,120 @@
         <div class="modal-actions">
           <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
           <button type="submit" class="btn-primary">Add Facilitator</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Employee Modal -->
+  <div class="modal-overlay" id="editEmployeeModal" style="display: none;">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 class="modal-title">Edit Employee Details</h2>
+        <p class="modal-description">Update employee information and manage account settings.</p>
+        <button class="modal-close" id="closeEditModal">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      
+      <form class="modal-form" id="editEmployeeForm">
+        <input type="hidden" id="editEmployeeId" name="employeeId">
+        
+        <div class="form-row">
+          <div class="form-column">
+            <div class="form-group">
+              <label for="editRole" class="form-label">Role</label>
+              <select id="editRole" name="role" class="form-select">
+                <option value="lab_facilitator">Lab Facilitator</option>
+                <option value="senior_facilitator">Senior Facilitator</option>
+                <option value="lead_facilitator">Lead Facilitator</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="editFullName" class="form-label">Full Name</label>
+              <input type="text" id="editFullName" name="fullName" class="form-input" placeholder="Enter full name" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="editPhone" class="form-label">Phone</label>
+              <input type="tel" id="editPhone" name="phone" class="form-input" placeholder="Enter phone number" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="editPosition" class="form-label">Position</label>
+              <select id="editPosition" name="position" class="form-select">
+                <option value="">Select position</option>
+                <option value="tutor">Tutor</option>
+                <option value="demonstrator">Demonstrator</option>
+                <option value="assistant">Assistant</option>
+                <option value="supervisor">Supervisor</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="editExperienceLevel" class="form-label">Experience Level</label>
+              <select id="editExperienceLevel" name="experienceLevel" class="form-select">
+                <option value="junior">Junior</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="senior">Senior</option>
+                <option value="expert">Expert</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-column">
+            <div class="form-group">
+              <label for="editEmail" class="form-label">Email</label>
+              <input type="email" id="editEmail" name="email" class="form-input" placeholder="Enter email address" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="editHourlyRate" class="form-label">Hourly Rate ($)</label>
+              <input type="number" id="editHourlyRate" name="hourlyRate" class="form-input" min="0" step="0.01" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="editDepartment" class="form-label">Department</label>
+              <select id="editDepartment" name="department" class="form-select">
+                <option value="">Select department</option>
+                <option value="computer_science">Computer Science</option>
+                <option value="engineering">Engineering</option>
+                <option value="mathematics">Mathematics</option>
+                <option value="physics">Physics</option>
+                <option value="chemistry">Chemistry</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="editStatus" class="form-label">Status</label>
+              <select id="editStatus" name="status" class="form-select">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="on_leave">On Leave</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Password Reset Section -->
+        <div class="password-reset-section">
+          <h3 class="password-reset-title">Password Management</h3>
+          <div class="password-reset-options">
+            <button type="button" class="btn-secondary" onclick="sendResetLink()">
+              <span class="material-icons">email</span>
+              Send Reset Link to Employee
+            </button>
+            <button type="button" class="btn-secondary" onclick="adminResetPassword()">
+              <span class="material-icons">lock_reset</span>
+              Admin Reset Password
+            </button>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" id="cancelEditBtn">Cancel</button>
+          <button type="submit" class="btn-primary">Update Employee</button>
         </div>
       </form>
     </div>

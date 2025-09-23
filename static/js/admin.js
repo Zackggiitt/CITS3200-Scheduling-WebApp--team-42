@@ -23,19 +23,42 @@ document.addEventListener('DOMContentLoaded', () => {
   function initializeDashboard() {
     console.log('Initializing dashboard state...');
     
-    // Ensure dashboard tab is active by default
-    const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
-    if (dashboardTab) {
-      dashboardTab.classList.add('active');
+    // Check if there's a tab parameter in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab');
+    
+    if (activeTab === 'employees') {
+      // Activate employees tab
+      const employeesTab = document.querySelector('.admin-tab[data-tab="employees"]');
+      if (employeesTab) {
+        employeesTab.classList.add('active');
+        // Remove active from dashboard tab
+        const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
+        if (dashboardTab) dashboardTab.classList.remove('active');
+      }
+      
+      // Show facilitator management and hide dashboard content
+      if (welcomeBanner) welcomeBanner.style.display = 'none';
+      if (dashboardMetrics) dashboardMetrics.style.display = 'none';
+      if (unitStatusCard) unitStatusCard.style.display = 'none';
+      if (facilitatorManagement) facilitatorManagement.style.display = 'block';
+      
+      console.log('Employees tab activated from URL parameter');
+    } else {
+      // Default to dashboard tab
+      const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
+      if (dashboardTab) {
+        dashboardTab.classList.add('active');
+      }
+      
+      // Show dashboard content and hide facilitator management
+      if (welcomeBanner) welcomeBanner.style.display = 'block';
+      if (dashboardMetrics) dashboardMetrics.style.display = 'block';
+      if (unitStatusCard) unitStatusCard.style.display = 'block';
+      if (facilitatorManagement) facilitatorManagement.style.display = 'none';
+      
+      console.log('Dashboard initialized - facilitator management hidden');
     }
-    
-    // Show dashboard content and hide facilitator management
-    if (welcomeBanner) welcomeBanner.style.display = 'block';
-    if (dashboardMetrics) dashboardMetrics.style.display = 'block';
-    if (unitStatusCard) unitStatusCard.style.display = 'block';
-    if (facilitatorManagement) facilitatorManagement.style.display = 'none';
-    
-    console.log('Dashboard initialized - facilitator management hidden');
   }
 
   // Initialize on page load
@@ -179,8 +202,8 @@ document.addEventListener('DOMContentLoaded', () => {
           // Reset form
           addEmployeeForm.reset();
           
-          // Optionally refresh the page or update the UI
-          // window.location.reload();
+          // Refresh the page to show the new facilitator and stay on employees tab
+          window.location.href = window.location.pathname + '?tab=employees';
         } else {
           // Error - show error message
           alert(`Error: ${result.error}`);
@@ -293,4 +316,105 @@ document.addEventListener('DOMContentLoaded', () => {
     statusFilter.addEventListener('change', filterFacilitators);
   }
 
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.dropdown-container')) {
+      const dropdowns = document.querySelectorAll('.dropdown-menu');
+      dropdowns.forEach(dropdown => {
+        dropdown.style.display = 'none';
+      });
+    }
+  });
+
 });
+
+// Dropdown functionality
+function toggleDropdown(facilitatorId) {
+  const dropdown = document.getElementById(`dropdown-${facilitatorId}`);
+  const allDropdowns = document.querySelectorAll('.dropdown-menu');
+  
+  // Close all other dropdowns
+  allDropdowns.forEach(d => {
+    if (d.id !== `dropdown-${facilitatorId}`) {
+      d.style.display = 'none';
+    }
+  });
+  
+  // Toggle current dropdown
+  if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+    dropdown.style.display = 'block';
+  } else {
+    dropdown.style.display = 'none';
+  }
+}
+
+// Disable account function
+function disableAccount(facilitatorId, facilitatorName) {
+  if (confirm(`Are you sure you want to disable ${facilitatorName}'s account?`)) {
+    // TODO: Implement disable account API call
+    console.log(`Disabling account for facilitator ID: ${facilitatorId}`);
+    alert(`${facilitatorName}'s account has been disabled.`);
+    // Close dropdown
+    document.getElementById(`dropdown-${facilitatorId}`).style.display = 'none';
+  }
+}
+
+// Delete account function
+async function deleteAccount(facilitatorId, facilitatorName) {
+  console.log(`Attempting to delete facilitator ID: ${facilitatorId}, Name: ${facilitatorName}`);
+  
+  if (confirm(`Are you sure you want to permanently delete ${facilitatorName}'s account? This action cannot be undone.`)) {
+    try {
+      // Get CSRF token
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      console.log('CSRF Token:', csrfToken);
+      
+      // Send DELETE request to backend
+      console.log(`Sending DELETE request to: /admin/delete-facilitator/${facilitatorId}`);
+      const response = await fetch(`/admin/delete-facilitator/${facilitatorId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        }
+      });
+      
+      console.log('Response status:', response.status);
+      const result = await response.json();
+      console.log('Response result:', result);
+      
+      if (result.success) {
+        // Success - remove the facilitator card from DOM
+        const facilitatorCard = document.querySelector(`.facilitator-card[data-facilitator-id="${facilitatorId}"]`);
+        if (facilitatorCard) {
+          facilitatorCard.remove();
+        }
+        
+        // Update results count
+        const resultsCount = document.getElementById('resultsCount');
+        if (resultsCount) {
+          const currentText = resultsCount.textContent;
+          const match = currentText.match(/Showing (\d+) of (\d+) facilitators/);
+          if (match) {
+            const currentVisible = parseInt(match[1]) - 1;
+            const total = parseInt(match[2]) - 1;
+            resultsCount.textContent = `Showing ${currentVisible} of ${total} facilitators`;
+          }
+        }
+        
+        alert(`${facilitatorName}'s account has been deleted successfully.`);
+        
+        // Refresh the page to update all counts and ensure consistency
+        window.location.href = window.location.pathname + '?tab=employees';
+      } else {
+        alert(`Error: ${result.message || 'Failed to delete account'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting facilitator:', error);
+      alert('An error occurred while deleting the account. Please try again.');
+    }
+    
+    // Close dropdown
+    document.getElementById(`dropdown-${facilitatorId}`).style.display = 'none';
+  }
+}
