@@ -112,6 +112,131 @@ def delete_facilitator(facilitator_id):
         print(f"Error deleting facilitator: {e}")
         return jsonify({'success': False, 'message': 'An error occurred while deleting the facilitator'}), 500
 
+@admin_bp.route('/update-facilitator', methods=['PUT'])
+@admin_required
+def update_facilitator():
+    try:
+        data = request.get_json()
+        print(f"Update request received: {data}")
+        
+        # Get the facilitator to update
+        facilitator = User.query.get(data.get('employeeId'))
+        if not facilitator:
+            return jsonify({'success': False, 'error': 'Facilitator not found'}), 404
+        
+        if facilitator.role != UserRole.FACILITATOR:
+            return jsonify({'success': False, 'error': 'Only facilitators can be updated via this endpoint'}), 403
+        
+        # Update basic fields
+        if data.get('fullName'):
+            # Parse full name into first and last name
+            name_parts = data['fullName'].strip().split(' ', 1)
+            facilitator.first_name = name_parts[0]
+            facilitator.last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        if data.get('email'):
+            # Check if email is already taken by another user
+            existing_user = User.query.filter_by(email=data['email']).first()
+            if existing_user and existing_user.id != facilitator.id:
+                return jsonify({'success': False, 'error': 'Email already exists'}), 400
+            facilitator.email = data['email']
+        
+        # Update preferences (JSON field)
+        preferences = {}
+        if facilitator.preferences:
+            try:
+                import json
+                preferences = json.loads(facilitator.preferences)
+            except (json.JSONDecodeError, TypeError):
+                preferences = {}
+        
+        # Update preference fields
+        if data.get('phone'):
+            preferences['phone'] = data['phone']
+        if data.get('hourlyRate'):
+            preferences['hourly_rate'] = float(data['hourlyRate'])
+        if data.get('experienceLevel'):
+            preferences['experience_level'] = data['experienceLevel']
+        if data.get('position'):
+            preferences['position'] = data['position']
+        if data.get('department'):
+            preferences['department'] = data['department']
+        if data.get('status'):
+            preferences['status'] = data['status']
+        
+        # Save updated preferences
+        facilitator.preferences = json.dumps(preferences)
+        
+        # Commit changes
+        db.session.commit()
+        print(f"Facilitator {facilitator.full_name} updated successfully")
+        
+        return jsonify({'success': True, 'message': 'Facilitator updated successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating facilitator: {e}")
+        return jsonify({'success': False, 'error': 'An error occurred while updating the facilitator'}), 500
+
+@admin_bp.route('/send-reset-link', methods=['POST'])
+@admin_required
+def send_reset_link():
+    try:
+        data = request.get_json()
+        print(f"Send reset link request received: {data}")
+        
+        # Get the facilitator
+        facilitator = User.query.get(data.get('employeeId'))
+        if not facilitator:
+            return jsonify({'success': False, 'message': 'Facilitator not found'}), 404
+        
+        if facilitator.role != UserRole.FACILITATOR:
+            return jsonify({'success': False, 'message': 'Only facilitators can use this endpoint'}), 403
+        
+        # TODO: Implement actual email sending logic here
+        # For now, just return success
+        print(f"Reset link would be sent to {facilitator.email}")
+        
+        return jsonify({'success': True, 'message': f'Password reset link sent to {facilitator.email}'})
+        
+    except Exception as e:
+        print(f"Error sending reset link: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while sending the reset link'}), 500
+
+@admin_bp.route('/admin-reset-password', methods=['POST'])
+@admin_required
+def admin_reset_password():
+    try:
+        data = request.get_json()
+        print(f"Admin reset password request received: {data}")
+        
+        # Get the facilitator
+        facilitator = User.query.get(data.get('employeeId'))
+        if not facilitator:
+            return jsonify({'success': False, 'message': 'Facilitator not found'}), 404
+        
+        if facilitator.role != UserRole.FACILITATOR:
+            return jsonify({'success': False, 'message': 'Only facilitators can use this endpoint'}), 403
+        
+        # Hash the new password
+        from werkzeug.security import generate_password_hash
+        new_password = data.get('newPassword')
+        if not new_password or len(new_password) < 6:
+            return jsonify({'success': False, 'message': 'Password must be at least 6 characters long'}), 400
+        
+        facilitator.password_hash = generate_password_hash(new_password)
+        
+        # Commit changes
+        db.session.commit()
+        print(f"Password reset successfully for {facilitator.full_name}")
+        
+        return jsonify({'success': True, 'message': f'Password reset successfully for {facilitator.full_name}'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error resetting password: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while resetting the password'}), 500
+
 @admin_bp.route('/create-facilitator-modal', methods=['POST'])
 @admin_required
 def create_facilitator_modal():

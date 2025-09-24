@@ -1679,6 +1679,54 @@
   margin: 0;
 }
 
+/* Password Reset Section */
+.password-reset-section {
+  margin-top: 24px;
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.password-reset-title {
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 16px 0;
+}
+
+.password-reset-options {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-secondary .material-icons {
+  font-size: 18px;
+}
+
 /* Responsive Design for Facilitator Management */
 @media (max-width: 768px) {
   .facilitator-search-section {
@@ -1713,6 +1761,15 @@
   }
   
   .facilitator-actions {
+    justify-content: center;
+  }
+  
+  .password-reset-options {
+    flex-direction: column;
+  }
+  
+  .btn-secondary {
+    width: 100%;
     justify-content: center;
   }
 }

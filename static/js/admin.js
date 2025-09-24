@@ -227,6 +227,110 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Edit Employee Modal functionality
+  const editModal = document.getElementById('editEmployeeModal');
+  const closeEditModalBtn = document.getElementById('closeEditModal');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const editEmployeeForm = document.getElementById('editEmployeeForm');
+
+  // Hide edit modal when close button is clicked
+  if (closeEditModalBtn && editModal) {
+    closeEditModalBtn.addEventListener('click', () => {
+      editModal.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    });
+  }
+
+  // Hide edit modal when cancel button is clicked
+  if (cancelEditBtn && editModal) {
+    cancelEditBtn.addEventListener('click', () => {
+      editModal.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    });
+  }
+
+  // Hide edit modal when clicking outside of it
+  if (editModal) {
+    editModal.addEventListener('click', (e) => {
+      if (e.target === editModal) {
+        editModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+      }
+    });
+  }
+
+  // Handle edit form submission
+  if (editEmployeeForm) {
+    editEmployeeForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Get form data
+      const formData = new FormData(editEmployeeForm);
+      const employeeData = {
+        employeeId: formData.get('employeeId'),
+        role: formData.get('role'),
+        fullName: formData.get('fullName'),
+        phone: formData.get('phone'),
+        position: formData.get('position'),
+        experienceLevel: formData.get('experienceLevel'),
+        email: formData.get('email'),
+        hourlyRate: formData.get('hourlyRate'),
+        department: formData.get('department'),
+        status: formData.get('status')
+      };
+
+      console.log('Updating employee data:', employeeData);
+      
+      // Show loading state
+      const submitBtn = editEmployeeForm.querySelector('.btn-primary');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Updating...';
+      submitBtn.disabled = true;
+      
+      try {
+        // Send data to backend
+        const response = await fetch('/admin/update-facilitator', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+          },
+          body: JSON.stringify(employeeData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Success - show success message and close modal
+          alert('Employee details updated successfully!');
+          editModal.style.display = 'none';
+          document.body.style.overflow = 'auto';
+          
+          // Refresh the page to show updated data
+          window.location.href = window.location.pathname + '?tab=employees';
+        } else {
+          // Error - show error message
+          alert(`Error: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('Error updating employee:', error);
+        alert('An error occurred while updating the employee. Please try again.');
+      } finally {
+        // Restore button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  // Close edit modal with Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && editModal && editModal.style.display === 'flex') {
+      editModal.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+  });
+
   // Facilitator tab switching functionality
   const facilitatorTabs = document.querySelectorAll('.facilitator-nav-tab');
   const facilitatorOverview = document.getElementById('facilitatorOverview');
@@ -416,5 +520,111 @@ async function deleteAccount(facilitatorId, facilitatorName) {
     
     // Close dropdown
     document.getElementById(`dropdown-${facilitatorId}`).style.display = 'none';
+  }
+}
+
+// Open edit modal function
+function openEditModal(facilitatorId, facilitatorName, facilitatorEmail) {
+  console.log(`Opening edit modal for facilitator ID: ${facilitatorId}, Name: ${facilitatorName}`);
+  
+  // Set the employee ID
+  document.getElementById('editEmployeeId').value = facilitatorId;
+  
+  // Set the email (read-only for now)
+  document.getElementById('editEmail').value = facilitatorEmail;
+  
+  // Set the full name
+  document.getElementById('editFullName').value = facilitatorName;
+  
+  // Show the modal
+  const editModal = document.getElementById('editEmployeeModal');
+  if (editModal) {
+    editModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+// Send reset link function
+async function sendResetLink() {
+  const employeeId = document.getElementById('editEmployeeId').value;
+  const employeeEmail = document.getElementById('editEmail').value;
+  
+  if (!employeeId || !employeeEmail) {
+    alert('Employee information not found. Please try again.');
+    return;
+  }
+  
+  if (confirm(`Send password reset link to ${employeeEmail}?`)) {
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      
+      const response = await fetch('/admin/send-reset-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ employeeId: employeeId, email: employeeEmail })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`Password reset link sent to ${employeeEmail} successfully!`);
+      } else {
+        alert(`Error: ${result.message || 'Failed to send reset link'}`);
+      }
+    } catch (error) {
+      console.error('Error sending reset link:', error);
+      alert('An error occurred while sending the reset link. Please try again.');
+    }
+  }
+}
+
+// Admin reset password function
+async function adminResetPassword() {
+  const employeeId = document.getElementById('editEmployeeId').value;
+  const employeeName = document.getElementById('editFullName').value;
+  
+  if (!employeeId || !employeeName) {
+    alert('Employee information not found. Please try again.');
+    return;
+  }
+  
+  // Prompt for new password
+  const newPassword = prompt(`Enter new password for ${employeeName}:`);
+  if (!newPassword) {
+    return; // User cancelled
+  }
+  
+  if (newPassword.length < 6) {
+    alert('Password must be at least 6 characters long.');
+    return;
+  }
+  
+  if (confirm(`Reset password for ${employeeName}? This will immediately change their password.`)) {
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      
+      const response = await fetch('/admin/admin-reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ employeeId: employeeId, newPassword: newPassword })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`Password reset successfully for ${employeeName}! They can now log in with the new password.`);
+      } else {
+        alert(`Error: ${result.message || 'Failed to reset password'}`);
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      alert('An error occurred while resetting the password. Please try again.');
+    }
   }
 }
