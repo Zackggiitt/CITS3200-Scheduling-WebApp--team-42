@@ -6,6 +6,7 @@ const {
   UPDATE_SESS_TEMPLATE,
   DELETE_SESS_TEMPLATE,
   LIST_FACILITATORS_TEMPLATE,
+  LIST_VENUES_TEMPLATE,
   CREATE_OR_GET_DRAFT,
   UPLOAD_SETUP_CSV,
   REMOVE_FACILITATORS_TEMPLATE,
@@ -2093,9 +2094,45 @@ async function populateReview() {
     ulV.innerHTML = '';
     if (dataV.ok) {
       (dataV.venues || []).forEach(v => {
-        const li = document.createElement('li'); li.textContent = v.name || v; ulV.appendChild(li);
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
+        li.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-green-300 inline-block"></span>
+            <div>
+              <div class="font-medium">${v.name || v}</div>
+              <div class="text-sm text-gray-600">Venue</div>
+            </div>
+          </div>
+        `;
+        ulV.appendChild(li);
       });
       document.getElementById('rv_ven_count').textContent = (dataV.venues || []).length;
+    }
+  } catch {}
+
+  // Facilitators
+  try {
+    const resF = await fetch(withUnitId(LIST_FACILITATORS_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+    const dataF = await resF.json();
+    const ulF = document.getElementById('rv_facilitators');
+    ulF.innerHTML = '';
+    if (dataF.ok) {
+      (dataF.facilitators || []).forEach(f => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
+        li.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-300 inline-block"></span>
+            <div>
+              <div class="font-medium">${f}</div>
+              <div class="text-sm text-gray-600">Facilitator</div>
+            </div>
+          </div>
+        `;
+        ulF.appendChild(li);
+      });
+      document.getElementById('rv_fac_count').textContent = (dataF.facilitators || []).length;
     }
   } catch {}
 

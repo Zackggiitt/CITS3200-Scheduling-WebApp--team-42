@@ -1614,6 +1614,18 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
               </div>
             </div>
 
+            <!-- Venues -->
+            <div>
+              <h3 class="text-base font-semibold mb-3">Venues (<span id="rv_ven_count">0</span>)</h3>
+              <ul id="rv_venues" class="space-y-2"></ul>
+            </div>
+
+            <!-- Facilitators -->
+            <div>
+              <h3 class="text-base font-semibold mb-3">Facilitators (<span id="rv_fac_count">0</span>)</h3>
+              <ul id="rv_facilitators" class="space-y-2"></ul>
+            </div>
+
             <!-- Sessions -->
             <div>
               <h3 class="text-base font-semibold mb-3">Sessions (<span id="rv_sess_count">0</span>)</h3>
@@ -1647,6 +1659,7 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     REMOVE_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.remove_unit_facilitators', unit_id=0) }}",
     UPLOAD_SESSIONS_TEMPLATE: "{{ url_for('unitcoordinator.upload_sessions_csv', unit_id=0) }}",
     LIST_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.list_facilitators', unit_id=0) }}",
+    LIST_VENUES_TEMPLATE: "{{ url_for('unitcoordinator.list_venues', unit_id=0) }}",
     UPLOAD_CAS_TEMPLATE: "{{ url_for('unitcoordinator.upload_cas_csv', unit_id=0) }}"
   };
   window.CSRF_TOKEN = "{{ csrf_token() }}";
