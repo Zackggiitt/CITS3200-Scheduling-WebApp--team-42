@@ -1165,6 +1165,39 @@ def upload_setup_csv():
         "errors": errors[:20],  # show up to 20 issues
     }), 200
 
+
+@unitcoordinator_bp.delete("/units/<int:unit_id>/facilitators")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def remove_unit_facilitators(unit_id: int):
+    """
+    Remove all facilitator links for a unit.
+    This effectively "removes" the CSV data by unlinking all facilitators from the unit.
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found"}), 404
+
+    try:
+        # Count facilitators before removal
+        facilitator_count = UnitFacilitator.query.filter_by(unit_id=unit.id).count()
+        
+        # Remove all facilitator links for this unit
+        UnitFacilitator.query.filter_by(unit_id=unit.id).delete()
+        
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "removed_facilitators": facilitator_count,
+            "message": f"Removed {facilitator_count} facilitator(s) from unit"
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to remove facilitators: {str(e)}"}), 500
+
 # ---------- Step 3B: Calendar / Sessions ----------
 @unitcoordinator_bp.get("/units/<int:unit_id>/calendar")
 @login_required

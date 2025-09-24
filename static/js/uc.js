@@ -8,6 +8,7 @@ const {
   LIST_FACILITATORS_TEMPLATE,
   CREATE_OR_GET_DRAFT,
   UPLOAD_SETUP_CSV,
+  REMOVE_FACILITATORS_TEMPLATE,
   UPLOAD_SESSIONS_TEMPLATE,
   UPLOAD_CAS_TEMPLATE
 } = window.FLASK_ROUTES || {};
@@ -489,9 +490,22 @@ if (uploadInput) {
 
       statusBox.classList.add("success");
       statusBox.innerHTML = `
-        <div class="font-semibold">Upload successful</div>
-        <div class="text-sm mt-1">
-          Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-semibold">Upload successful</div>
+            <div class="text-sm mt-1">
+              Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
+            </div>
+          </div>
+          <button 
+            id="remove_csv_btn" 
+            class="ml-3 text-red-600 hover:text-red-800 transition-colors"
+            title="Remove CSV data"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>`;
       setupFlagEl.value = "true";
       fileNameEl.textContent = file.name;
@@ -510,6 +524,12 @@ if (uploadInput) {
       } else {
         refreshCalendarRange();
       }
+      
+      // Add event listener for remove button
+      const removeBtn = document.getElementById('remove_csv_btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', removeFacilitatorsCsv);
+      }
     } catch (err) {
       console.error(err);
       statusBox.textContent = String(err.message || "Unexpected error during upload.");
@@ -524,6 +544,73 @@ if (uploadInput) {
     const f = e.target.files?.[0];
     fileNameEl.textContent = f ? f.name : 'No file selected';
   });
+}
+
+// ===== Remove Facilitators CSV =====
+async function removeFacilitatorsCsv() {
+  const unitId = unitIdEl.value;
+  if (!unitId) {
+    statusBox.textContent = 'Missing unit id.';
+    statusBox.classList.add('error');
+    return;
+  }
+
+  if (!confirm('Are you sure you want to remove all facilitators from this unit? This action cannot be undone.')) {
+    return;
+  }
+
+  statusBox.classList.remove('hidden', 'success', 'error');
+  statusBox.textContent = 'Removing facilitators...';
+  statusBox.classList.add('error'); // Use error styling for removal
+
+  try {
+    const url = withUnitId(REMOVE_FACILITATORS_TEMPLATE, unitId);
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN,
+        'X-CSRF-Token': CSRF_TOKEN,
+      },
+    });
+
+    let data;
+    try {
+      const text = await res.text();
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
+    }
+
+    if (!res.ok || !data.ok) {
+      statusBox.textContent = data.error || 'Failed to remove facilitators';
+      return;
+    }
+
+    // Success - reset everything
+    statusBox.classList.remove('error');
+    statusBox.classList.add('success');
+    statusBox.innerHTML = `
+      <div class="font-semibold">Facilitators removed</div>
+      <div class="text-sm mt-1">Removed ${data.removed_facilitators} facilitator(s) from unit</div>
+    `;
+    
+    // Reset form elements
+    setupFlagEl.value = 'false';
+    fileNameEl.textContent = 'No file selected';
+    uploadInput.value = '';
+    
+    // Hide the status after a delay
+    setTimeout(() => {
+      statusBox.classList.add('hidden');
+      statusBox.classList.remove('success', 'error');
+      statusBox.textContent = '';
+    }, 3000);
+
+  } catch (err) {
+    console.error(err);
+    statusBox.textContent = String(err.message || 'Unexpected error during removal.');
+    statusBox.classList.add('error');
+  }
 }
 
 // ===== Sessions CSV Upload (Step 3b) =====
