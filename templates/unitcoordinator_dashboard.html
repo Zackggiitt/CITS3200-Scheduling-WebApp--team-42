@@ -393,6 +393,13 @@
               </details>
             </div>
 
+            <!-- Edit Unit -->
+            <button type="button" onclick="openEditUnitModal()"
+                    class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+              <span class="material-icons text-base">edit</span>
+              Edit Unit
+            </button>
+
             {% if units|length > 1 %}
             <!-- Switch Unit -->
             <div class="relative card-actions">
@@ -1614,6 +1621,12 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
               </div>
             </div>
 
+            <!-- Facilitators -->
+            <div>
+              <h3 class="text-base font-semibold mb-3">Facilitators (<span id="rv_fac_count">0</span>)</h3>
+              <ul id="rv_facilitators" class="space-y-2"></ul>
+            </div>
+
             <!-- Sessions -->
             <div>
               <h3 class="text-base font-semibold mb-3">Sessions (<span id="rv_sess_count">0</span>)</h3>
@@ -1644,6 +1657,7 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     DELETE_SESS_TEMPLATE: "{{ url_for('unitcoordinator.delete_session', session_id=0) }}",
     CREATE_OR_GET_DRAFT: "{{ url_for('unitcoordinator.create_or_get_draft') }}",
     UPLOAD_SETUP_CSV: "{{ url_for('unitcoordinator.upload_setup_csv') }}",
+    REMOVE_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.remove_unit_facilitators', unit_id=0) }}",
     UPLOAD_SESSIONS_TEMPLATE: "{{ url_for('unitcoordinator.upload_sessions_csv', unit_id=0) }}",
     LIST_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.list_facilitators', unit_id=0) }}",
     UPLOAD_CAS_TEMPLATE: "{{ url_for('unitcoordinator.upload_cas_csv', unit_id=0) }}"
