@@ -56,6 +56,16 @@ function openCreateUnitModal() {
   setStep(1);
   document.getElementById('unit_id').value = '';
   document.getElementById('setup_complete').value = 'false';
+  
+  // Reset modal title and button text for create mode
+  const modalTitle = document.querySelector('#create-unit-title');
+  if (modalTitle) {
+    modalTitle.textContent = 'Create New Unit';
+  }
+  const submitBtn = document.querySelector('#submit-btn');
+  if (submitBtn) {
+    submitBtn.textContent = 'Create Unit';
+  }
 
 
     if (calendar) {
@@ -97,6 +107,47 @@ function openCreateUnitModal() {
     document.removeEventListener('keydown', handleEnterKey);
     document.addEventListener('keydown', handleEscKey);
     document.addEventListener('keydown', handleEnterKey);
+}
+
+function openEditUnitModal() {
+  // Get current unit data from the page
+  const unitCode = document.querySelector('.unit-card h2').textContent.trim();
+  const unitName = document.querySelector('.unit-card p.font-medium').textContent.trim();
+  const semesterYear = document.querySelector('.chip--neutral').textContent.trim();
+  const [semester, year] = semesterYear.split(', ');
+  
+  // Get current unit ID from the URL or data attribute
+  const currentUnitId = getUnitId();
+  
+  // Open the create modal
+  openCreateUnitModal();
+  
+  // Pre-populate the form with current unit data
+  setTimeout(() => {
+    // Set the unit ID for update
+    document.getElementById('unit_id').value = currentUnitId;
+    
+    // Pre-populate form fields
+    document.querySelector('input[name="unit_code"]').value = unitCode;
+    document.querySelector('input[name="unit_name"]').value = unitName;
+    document.querySelector('input[name="semester"]').value = semester;
+    document.querySelector('input[name="year"]').value = year;
+    
+    // Update the modal title to indicate editing
+    const modalTitle = document.querySelector('#create-unit-title');
+    if (modalTitle) {
+      modalTitle.textContent = 'Edit Unit';
+    }
+    
+    // Change the submit button text
+    const submitBtn = document.querySelector('#submit-btn');
+    if (submitBtn) {
+      submitBtn.textContent = 'Update Unit';
+    }
+    
+    // Skip to step 1 (Unit Information) since we're editing
+    setStep(1);
+  }, 100);
 }
 
 // Also add this to handle clicking outside the modal

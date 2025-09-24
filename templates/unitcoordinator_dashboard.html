@@ -393,6 +393,13 @@
               </details>
             </div>
 
+            <!-- Edit Unit -->
+            <button type="button" onclick="openEditUnitModal()"
+                    class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+              <span class="material-icons text-base">edit</span>
+              Edit Unit
+            </button>
+
             {% if units|length > 1 %}
             <!-- Switch Unit -->
             <div class="relative card-actions">
