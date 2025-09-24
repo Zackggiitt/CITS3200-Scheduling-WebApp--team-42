@@ -34,6 +34,9 @@ function getUnitId() {
   return '';
 }
 
+// ===== Global event handlers =====
+let handleEscKey, handleEnterKey;
+
 // ===== Modal open/close =====
 function openCreateUnitModal() {
     
@@ -74,16 +77,25 @@ function openCreateUnitModal() {
         console.log('Close button wired to showCloseConfirmationPopup');
     }
     
-    // Also handle ESC key
-    const handleEscKey = (e) => {
+    // Define event handlers
+    handleEscKey = (e) => {
       if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
         showCloseConfirmationPopup();
       }
     };
     
-    // Remove existing ESC listeners and add new one
+    handleEnterKey = (e) => {
+      if (e.key === 'Enter' && !modal.classList.contains('hidden')) {
+        e.preventDefault(); // Prevent form submission
+        nextStep(); // Go to next step instead
+      }
+    };
+    
+    // Remove existing listeners and add new ones
     document.removeEventListener('keydown', handleEscKey);
+    document.removeEventListener('keydown', handleEnterKey);
     document.addEventListener('keydown', handleEscKey);
+    document.addEventListener('keydown', handleEnterKey);
 }
 
 // Also add this to handle clicking outside the modal
@@ -1486,6 +1498,14 @@ function closeCreateUnitModal() {
   if (modal) {
     modal.classList.remove("flex");
     modal.classList.add("hidden");
+  }
+
+  // Clean up event listeners
+  if (handleEscKey) {
+    document.removeEventListener('keydown', handleEscKey);
+  }
+  if (handleEnterKey) {
+    document.removeEventListener('keydown', handleEnterKey);
   }
 
   // Reset to step 1
