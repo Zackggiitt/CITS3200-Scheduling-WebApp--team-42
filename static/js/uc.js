@@ -6,7 +6,6 @@ const {
   UPDATE_SESS_TEMPLATE,
   DELETE_SESS_TEMPLATE,
   LIST_FACILITATORS_TEMPLATE,
-  LIST_VENUES_TEMPLATE,
   CREATE_OR_GET_DRAFT,
   UPLOAD_SETUP_CSV,
   REMOVE_FACILITATORS_TEMPLATE,
@@ -2085,31 +2084,6 @@ async function populateReview() {
 
   const unitId = document.getElementById('unit_id').value;
 
-
-  // Venues
-  try {
-    const resV = await fetch(withUnitId(LIST_VENUES_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
-    const dataV = await resV.json();
-    const ulV = document.getElementById('rv_venues');
-    ulV.innerHTML = '';
-    if (dataV.ok) {
-      (dataV.venues || []).forEach(v => {
-        const li = document.createElement('li');
-        li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
-        li.innerHTML = `
-          <div class="flex items-center gap-3">
-            <span class="w-2.5 h-2.5 rounded-full bg-green-300 inline-block"></span>
-            <div>
-              <div class="font-medium">${v.name || v}</div>
-              <div class="text-sm text-gray-600">Venue</div>
-            </div>
-          </div>
-        `;
-        ulV.appendChild(li);
-      });
-      document.getElementById('rv_ven_count').textContent = (dataV.venues || []).length;
-    }
-  } catch {}
 
   // Facilitators
   try {
