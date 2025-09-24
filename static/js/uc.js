@@ -504,7 +504,6 @@ if (uploadInput) {
       }
       
       showCalendarIfReady();
-      setTimeout(() => statusBox.classList.add("hidden"), 300);
       if (!window.__calendarInitRan) {
         window.__calendarInitRan = true;
         initCalendar();
