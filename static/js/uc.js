@@ -664,6 +664,77 @@ async function removeFacilitatorsCsv() {
   }
 }
 
+// ===== Remove Individual Facilitator =====
+async function removeIndividualFacilitator(email, buttonElement) {
+  if (!confirm(`Are you sure you want to remove ${email} from this unit?`)) {
+    return;
+  }
+
+  const unitId = unitIdEl.value;
+  if (!unitId) {
+    alert('Missing unit id.');
+    return;
+  }
+
+  try {
+    // Construct the URL manually to avoid template issues
+    const url = `/unitcoordinator/units/${unitId}/facilitators/${encodeURIComponent(email)}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN,
+        'X-CSRF-Token': CSRF_TOKEN,
+      },
+    });
+
+    let data;
+    try {
+      const text = await res.text();
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
+    }
+
+    if (!res.ok || !data.ok) {
+      alert(data.error || 'Failed to remove facilitator');
+      return;
+    }
+
+    // Remove the facilitator from the UI immediately
+    const listItem = buttonElement.closest('li');
+    if (listItem) {
+      listItem.remove();
+      
+      // Update the count
+      const facilitatorList = document.getElementById('rv_facilitators');
+      const remainingCount = facilitatorList.querySelectorAll('li').length;
+      document.getElementById('rv_fac_count').textContent = remainingCount;
+      
+      // Show success message
+      const statusBox = document.getElementById('upload_status');
+      if (statusBox) {
+        statusBox.classList.remove('hidden', 'success', 'error');
+        statusBox.classList.add('success');
+        statusBox.innerHTML = `
+          <div class="font-semibold">Facilitator removed</div>
+          <div class="text-sm mt-1">${email} has been removed from the unit</div>
+        `;
+        
+        // Hide message after 3 seconds
+        setTimeout(() => {
+          statusBox.classList.add('hidden');
+          statusBox.classList.remove('success', 'error');
+          statusBox.textContent = '';
+        }, 3000);
+      }
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert(`Error removing facilitator: ${err.message || 'Unexpected error'}`);
+  }
+}
+
 // ===== Sessions CSV Upload (Step 3b) =====
 const sessionsInput = document.getElementById('sessions_csv');
 const sessionsFileName = document.getElementById('sessions_file_name');
@@ -2154,10 +2225,28 @@ async function populateReview() {
               <div class="text-sm text-gray-600">Facilitator</div>
             </div>
           </div>
+          <button 
+            class="remove-facilitator-btn text-red-600 hover:text-red-800 transition-colors p-1 rounded"
+            title="Remove facilitator"
+            data-email="${f}"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         `;
         ulF.appendChild(li);
       });
       document.getElementById('rv_fac_count').textContent = (dataF.facilitators || []).length;
+      
+      // Add event listeners for remove buttons
+      ulF.querySelectorAll('.remove-facilitator-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const email = btn.getAttribute('data-email');
+          removeIndividualFacilitator(email, btn);
+        });
+      });
     }
   } catch {}
 

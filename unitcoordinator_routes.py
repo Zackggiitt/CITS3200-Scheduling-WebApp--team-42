@@ -1198,6 +1198,43 @@ def remove_unit_facilitators(unit_id: int):
         db.session.rollback()
         return jsonify({"ok": False, "error": f"Failed to remove facilitators: {str(e)}"}), 500
 
+
+@unitcoordinator_bp.delete("/units/<int:unit_id>/facilitators/<email>")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def remove_individual_facilitator(unit_id: int, email: str):
+    """
+    Remove a specific facilitator from a unit by email.
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found"}), 404
+
+    try:
+        # Find the user by email
+        facilitator_user = User.query.filter_by(email=email, role=UserRole.FACILITATOR).first()
+        if not facilitator_user:
+            return jsonify({"ok": False, "error": "Facilitator not found"}), 404
+
+        # Find and remove the specific facilitator link
+        link = UnitFacilitator.query.filter_by(unit_id=unit.id, user_id=facilitator_user.id).first()
+        if not link:
+            return jsonify({"ok": False, "error": "Facilitator not linked to this unit"}), 404
+
+        db.session.delete(link)
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "message": f"Removed {email} from unit",
+            "removed_email": email
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to remove facilitator: {str(e)}"}), 500
+
 # ---------- Step 3B: Calendar / Sessions ----------
 @unitcoordinator_bp.get("/units/<int:unit_id>/calendar")
 @login_required
