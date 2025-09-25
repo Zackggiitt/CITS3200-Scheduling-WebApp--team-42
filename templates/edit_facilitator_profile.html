@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - Facilitator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='facilitator_profile.css') }}">
+</head>
+<body class="profile-page">
+    <!-- Edit Profile Header -->
+    <div class="profile-header">
+        <a href="{{ url_for('facilitator.profile') }}" class="back-button">Back to Profile</a>
+        <div class="profile-header-right">
+            <h1 class="profile-title">
+                <span class="material-icons">edit</span>
+                Edit Profile
+            </h1>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="profile-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="profile-card">
+            <form method="POST" class="edit-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="first_name">First Name *</label>
+                        <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="last_name">Last Name *</label>
+                        <input type="text" id="last_name" name="last_name" value="{{ user.last_name or '' }}" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="email">Email *</label>
+                        <input type="email" id="email" name="email" value="{{ user.email }}" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="phone_number">Phone Number</label>
+                        <input type="tel" id="phone_number" name="phone_number" value="{{ user.phone_number or '' }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="staff_number">Staff Number</label>
+                        <input type="text" id="staff_number" name="staff_number" value="{{ user.staff_number or '' }}">
+                    </div>
+                </div>
+
+
+                <div class="button-group">
+                    <a href="{{ url_for('facilitator.profile') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

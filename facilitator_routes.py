@@ -9,6 +9,22 @@ import json
 facilitator_bp = Blueprint('facilitator', __name__, url_prefix='/facilitator')
 
 
+def format_session_date(dt):
+    """Format session date with custom day abbreviations"""
+    day_mapping = {
+        'Mon': 'Mon',
+        'Tue': 'Tues', 
+        'Wed': 'Wed',
+        'Thu': 'Thurs',
+        'Fri': 'Fri',
+        'Sat': 'Sat',
+        'Sun': 'Sun'
+    }
+    day_abbr = dt.strftime('%a')
+    custom_day = day_mapping.get(day_abbr, day_abbr)
+    return f"{custom_day}, {dt.strftime('%d/%m/%Y')}"
+
+
 def get_greeting():
     """Return time-based greeting"""
     hour = datetime.now().hour
@@ -212,6 +228,9 @@ def dashboard():
         .all()
     )
     
+    # Check if facilitator has no units assigned
+    has_no_units = len(units) == 0
+    
     # Get current active unit (most recent with future sessions or current date range)
     current_unit = None
     today = date.today()
@@ -292,7 +311,7 @@ def dashboard():
                 'end_time': s.end_time.isoformat(),
                 'location': s.location or 'TBA',  # Handle null locations
                 'is_confirmed': bool(a.is_confirmed),
-                'date': s.start_time.strftime('%d/%m/%Y'),
+                'date': format_session_date(s.start_time),
                 'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
                 'topic': m.module_name or 'Unknown Module',
                 'status': 'confirmed' if a.is_confirmed else 'pending'
@@ -312,7 +331,7 @@ def dashboard():
                 'end_time': s.end_time.isoformat(),
                 'location': s.location or 'TBA',  # Handle null locations
                 'is_confirmed': bool(a.is_confirmed),
-                'date': s.start_time.strftime('%d/%m/%Y'),
+                'date': format_session_date(s.start_time),
                 'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
                 'topic': m.module_name or 'Unknown Module',
                 'status': 'completed'
@@ -362,7 +381,8 @@ def dashboard():
                          units=units,
                          current_unit=current_unit,
                          current_unit_dict=current_unit_dict,
-                         units_data=units_data)
+                         units_data=units_data,
+                         has_no_units=has_no_units)
 
 
 @facilitator_bp.route("/")
@@ -370,6 +390,54 @@ def dashboard():
 @role_required(UserRole.FACILITATOR)
 def root():
     return redirect(url_for(".dashboard"))
+
+
+@facilitator_bp.route("/profile")
+@login_required
+@role_required(UserRole.FACILITATOR)
+def profile():
+    user = get_current_user()
+    
+    # Get facilitator's current units and stats
+    units = (
+        Unit.query
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(UnitFacilitator.user_id == user.id)
+        .all()
+    )
+    
+    return render_template("facilitator_profile.html", user=user, units=units)
+
+
+@facilitator_bp.route("/profile/edit", methods=["GET", "POST"])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def edit_profile():
+    user = get_current_user()
+    
+    if request.method == "POST":
+        try:
+            # Update user information
+            user.first_name = request.form.get("first_name", user.first_name)
+            user.last_name = request.form.get("last_name", user.last_name)
+            user.email = request.form.get("email", user.email)
+            user.phone_number = request.form.get("phone_number", user.phone_number)
+            user.staff_number = request.form.get("staff_number", user.staff_number)
+            
+            # Handle password update if provided
+            new_password = request.form.get("password")
+            if new_password and new_password.strip():
+                user.set_password(new_password)
+            
+            db.session.commit()
+            flash("Profile updated successfully!", "success")
+            return redirect(url_for("facilitator.profile"))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash("Error updating profile. Please try again.", "error")
+    
+    return render_template("edit_facilitator_profile.html", user=user)
 
 @facilitator_bp.route('/schedule')
 @facilitator_required

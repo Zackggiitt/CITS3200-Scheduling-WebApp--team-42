@@ -34,6 +34,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
+                // Add unavailability-view-active class to hide All Units button
+                document.body.classList.add('unavailability-view-active');
+                document.body.classList.remove('swaps-view-active');
                 // Show unit selector in unavailability view
                 if (unitSelector) unitSelector.style.display = 'block';
                 // Hide unavailability alert in unavailability view
@@ -50,6 +53,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Hide unit selector in schedule view
                 if (unitSelector) unitSelector.style.display = 'none';
                 document.body.classList.add('calendar-view-active');
+                // Remove view-specific classes since unit selector is hidden anyway
+                document.body.classList.remove('unavailability-view-active');
+                document.body.classList.remove('swaps-view-active');
                 initCalendar();
                 // Hide unavailability alert in schedule view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
@@ -62,6 +68,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 swapsView.style.display = 'block';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
+                // Add swaps-view-active class to hide All Units button
+                document.body.classList.add('swaps-view-active');
+                document.body.classList.remove('unavailability-view-active');
                 // Show unit selector in swaps view
                 if (unitSelector) unitSelector.style.display = 'block';
                 // Hide unavailability alert in swaps view
@@ -76,6 +85,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
+                // Remove view-specific classes to show All Units button
+                document.body.classList.remove('unavailability-view-active');
+                document.body.classList.remove('swaps-view-active');
                 // Show unit selector in dashboard view
                 if (unitSelector) unitSelector.style.display = 'block';
                 // Show unavailability alert in dashboard view
@@ -304,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Check upcoming sessions
                     if (unit.upcoming_sessions) {
                         unit.upcoming_sessions.forEach(session => {
-                            if (session.date === formattedDate) {
+                            if (extractDateFromSessionDate(session.date) === formattedDate) {
                                 const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
                                 const eventText = `📚 ${unit.code}<br>
 👤 ${session.topic}<br>
@@ -323,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Check past sessions
                     if (unit.past_sessions) {
                         unit.past_sessions.forEach(session => {
-                            if (session.date === formattedDate) {
+                            if (extractDateFromSessionDate(session.date) === formattedDate) {
                                 const eventText = `📚 ${unit.code}<br>
 👤 ${session.topic}<br>
 ⏰ ${session.time}<br>
@@ -697,7 +709,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check upcoming sessions
                 if (unit.upcoming_sessions) {
                     unit.upcoming_sessions.forEach(session => {
-                        if (session.date === formattedDate) {
+                        if (extractDateFromSessionDate(session.date) === formattedDate) {
                             const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
                             // Truncate long session names
                             const truncatedTopic = session.topic.length > 15 ? session.topic.substring(0, 15) + '...' : session.topic;
@@ -718,7 +730,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check past sessions (for historical view)
                 if (unit.past_sessions) {
                     unit.past_sessions.forEach(session => {
-                        if (session.date === formattedDate) {
+                        if (extractDateFromSessionDate(session.date) === formattedDate) {
                             // Truncate long session names
                             const truncatedTopic = session.topic.length > 15 ? session.topic.substring(0, 15) + '...' : session.topic;
                             const eventText = `📚 ${unit.code}<br>
@@ -1159,11 +1171,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update session info for all units
         const activeUnits = Object.values(units).filter(unit => unit.status === 'active');
         const totalSessions = activeUnits.reduce((sum, unit) => sum + unit.sessions, 0);
+        
+        // Temporarily change parent display to block for proper layout
+        const originalDisplay = sessionInfoEl.style.display;
+        sessionInfoEl.style.display = 'block';
+        
         sessionInfoEl.innerHTML = `
-            <span class="material-icons">calendar_today</span>
-            <span>${totalSessions} sessions</span>
-            <span class="date-range">Across all units</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="material-icons">calendar_today</span>
+                <span>${totalSessions} sessions</span>
+                <span class="date-range">Across all units</span>
+            </div>
         `;
+        
+        // Restore original display after a brief moment
+        setTimeout(() => {
+            sessionInfoEl.style.display = originalDisplay || '';
+        }, 10);
 
         // Update KPI cards for all units view
         updateAllUnitsKPICards();
@@ -1182,6 +1206,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dashboardNav = document.getElementById('dashboard-nav');
         const unavailabilityNav = document.getElementById('unavailability-nav');
         const scheduleNav = document.getElementById('schedule-nav');
+        const swapsNav = document.getElementById('swaps-nav');
         
         // Hide unavailability alert
         const unavailabilityAlert = document.getElementById('unavailability-alert');
@@ -1189,6 +1214,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dashboardNav) dashboardNav.style.display = 'none';
         if (unavailabilityNav) unavailabilityNav.style.display = 'none';
         if (scheduleNav) scheduleNav.style.display = 'none';
+        if (swapsNav) swapsNav.style.display = 'none';
         if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
     }
 
@@ -1197,6 +1223,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dashboardNav = document.getElementById('dashboard-nav');
         const unavailabilityNav = document.getElementById('unavailability-nav');
         const scheduleNav = document.getElementById('schedule-nav');
+        const swapsNav = document.getElementById('swaps-nav');
         
         // Show unavailability alert only if we're on the dashboard tab
         const unavailabilityAlert = document.getElementById('unavailability-alert');
@@ -1206,6 +1233,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dashboardNav) dashboardNav.style.display = 'flex';
         if (unavailabilityNav) unavailabilityNav.style.display = 'flex';
         if (scheduleNav) scheduleNav.style.display = 'flex';
+        if (swapsNav) swapsNav.style.display = 'flex';
         
         // Only show alert if we're on dashboard tab (other views are hidden)
         if (unavailabilityAlert) {
@@ -1549,6 +1577,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
             pastUnits.forEach(unit => {
                 if (unit.pastSessions) {
+                    // Sort sessions by date (most recent first) and take only top 2
+                    const sortedSessions = unit.pastSessions.sort((a, b) => {
+                        const dateA = new Date(a.date.split('/').reverse().join('-'));
+                        const dateB = new Date(b.date.split('/').reverse().join('-'));
+                        return dateB - dateA; // Most recent first
+                    });
+                    
+                    const top2Sessions = sortedSessions.slice(0, 2);
+                    const remainingCount = unit.pastSessions.length - 2;
+                    
                     sessionsHTML += `
                         <div class="unit-session-group">
                             <div class="unit-header">
@@ -1557,7 +1595,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                     `;
                     
-                    unit.pastSessions.forEach(session => {
+                    top2Sessions.forEach(session => {
                         sessionsHTML += `
                             <div class="session-item">
                                 <div class="session-info">
@@ -1574,6 +1612,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         `;
                     });
+                    
+                    // Add "more sessions" message if there are remaining sessions
+                    if (remainingCount > 0) {
+                        sessionsHTML += `
+                            <div class="more-sessions-message">
+                                +${remainingCount} more session${remainingCount === 1 ? '' : 's'} in ${unit.code}. Click "View All" to see all sessions.
+                            </div>
+                        `;
+                    }
                     
                     sessionsHTML += '</div>';
                 }
@@ -2167,9 +2214,12 @@ function generateCalendar() {
             dayElement.classList.add('outside-period');
         }
         
-        // Check if date has unavailability
-        if (hasUnavailability(dateString)) {
-            dayElement.classList.add('unavailable');
+        // Check if date has unavailability and apply appropriate class
+        const unavailabilityType = getUnavailabilityType(dateString);
+        if (unavailabilityType === 'full') {
+            dayElement.classList.add('unavailable-full');
+        } else if (unavailabilityType === 'partial') {
+            dayElement.classList.add('unavailable-partial');
         }
         
         // Add today indicator
@@ -2200,15 +2250,27 @@ function hasUnavailability(dateString) {
     return unavailabilityData.some(unav => unav.date === dateString);
 }
 
+function getUnavailabilityType(dateString) {
+    const unav = unavailabilityData.find(unav => unav.date === dateString);
+    if (!unav) return null;
+    return unav.is_full_day ? 'full' : 'partial';
+}
+
 function updateCalendarDisplay() {
     const calendarDays = document.querySelectorAll('.calendar-day');
     calendarDays.forEach(dayElement => {
         const date = dayElement.dataset.date;
         if (!date) return;
         
-        dayElement.classList.remove('unavailable');
-        if (hasUnavailability(date)) {
-            dayElement.classList.add('unavailable');
+        // Remove all unavailability classes
+        dayElement.classList.remove('unavailable', 'unavailable-full', 'unavailable-partial');
+        
+        // Apply appropriate unavailability class
+        const unavailabilityType = getUnavailabilityType(date);
+        if (unavailabilityType === 'full') {
+            dayElement.classList.add('unavailable-full');
+        } else if (unavailabilityType === 'partial') {
+            dayElement.classList.add('unavailable-partial');
         }
     });
 }
@@ -3123,6 +3185,15 @@ function resetSwapForm() {
         form.reset();
     }
     clearFacilitatorDropdown();
+}
+
+// Helper function to extract date part from session date (removes day of week prefix)
+function extractDateFromSessionDate(sessionDate) {
+    // If session date contains day of week (e.g., "Mon, 22/09/2025", "Tues, 23/09/2025"), extract just the date part
+    if (sessionDate.includes(', ')) {
+        return sessionDate.split(', ')[1];
+    }
+    return sessionDate; // Return as-is if no day prefix
 }
 
 // Utility functions for formatting

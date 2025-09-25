@@ -83,6 +83,8 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
+    phone_number = db.Column(db.String(20))
+    staff_number = db.Column(db.String(20))
     password_hash = db.Column(db.String(255), nullable=True)
     role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.FACILITATOR)
     
