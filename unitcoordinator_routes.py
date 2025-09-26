@@ -640,7 +640,7 @@ def dashboard():
         fac_stats["schedule_conflicts"] = 0
 
     # ----- Facilitator Setup Progress + Details -----
-    fac_progress = {"total": 0, "account": 0, "availability": 0, "ready": 0}
+    fac_progress = {"total": 0, "account": 0, "availability": 0, "skills": 0, "ready": 0}
     facilitators = []
 
     if current_unit:
@@ -671,9 +671,18 @@ def dashboard():
                 is not None
             )
 
-            is_ready = has_profile and has_avail
+            has_skills = (
+                db.session.query(FacilitatorSkill.id)
+                .filter(FacilitatorSkill.facilitator_id == f.id)
+                .limit(1)
+                .first()
+                is not None
+            )
+
+            is_ready = has_profile and has_avail and has_skills
             fac_progress["account"] += 1 if has_profile else 0
             fac_progress["availability"] += 1 if has_avail else 0
+            fac_progress["skills"] += 1 if has_skills else 0
             fac_progress["ready"] += 1 if is_ready else 0
 
             facilitators.append(
@@ -689,6 +698,7 @@ def dashboard():
                     "last_login": getattr(f, "last_login", None),
                     "has_profile": has_profile,
                     "has_availability": has_avail,
+                    "has_skills": has_skills,
                     "is_ready": is_ready,
                 }
             )

@@ -740,6 +740,7 @@
             {% set total = fp.total or 0 %}
             {% set acct_pct = (fp.account * 100 // total) if total else 0 %}
             {% set avail_pct = (fp.availability * 100 // total) if total else 0 %}
+            {% set skills_pct = (fp.skills * 100 // total) if total else 0 %}
             {% set ready_pct = (fp.ready * 100 // total) if total else 0 %}
 
             <div class="mt-6 bg-gray-50 border rounded-2xl p-5">
@@ -748,10 +749,10 @@
                 <h3 class="font-semibold text-gray-900">Facilitator Setup Progress</h3>
               </header>
               <p class="text-sm text-gray-600 mb-5">
-                Track how many facilitators have completed their account setup and availability configuration.
+                Track how many facilitators have completed their account setup, availability configuration, and skills setup.
               </p>
 
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
                 <div class="text-center">
                   <div class="text-3xl font-semibold text-blue-600">{{ total }}</div>
                   <div class="text-sm text-gray-600 mt-1">Total Facilitators</div>
@@ -777,6 +778,17 @@
                     <div class="h-2 bg-gray-900 rounded-full" style="width: {{ avail_pct }}%"></div>
                   </div>
                   <div class="text-xs text-gray-500 mt-1">{{ avail_pct }}% complete</div>
+                </div>
+
+                <div>
+                  <div class="text-center">
+                    <div class="text-3xl font-semibold" style="color:#dc2626">{{ fp.skills }}</div>
+                    <div class="text-sm text-gray-600 mt-1">Skill Set</div>
+                  </div>
+                  <div class="mt-2 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-2 bg-gray-900 rounded-full" style="width: {{ skills_pct }}%"></div>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">{{ skills_pct }}% complete</div>
                 </div>
 
                 <div>
@@ -815,6 +827,7 @@
                     <ul class="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow text-sm">
                       <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">All Status</button></li>
                       <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Ready</button></li>
+                      <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Needs Skills</button></li>
                       <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Needs Availability</button></li>
                       <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Pending Setup</button></li>
                     </ul>
@@ -834,6 +847,13 @@
                           {% if f.is_ready %}
                             <span class="status-badge status-badge--green">
                               <span class="material-icons">check_circle</span> Ready
+                            </span>
+                          {% elif f.has_profile and f.has_availability and not f.has_skills %}
+                            <span class="status-badge status-badge--amber">
+                              <span class="material-icons">hourglass_bottom</span> Pending
+                            </span>
+                            <span class="status-badge status-badge--amber">
+                              <span class="material-icons">priority_high</span> Needs Skills
                             </span>
 
                           {% elif f.has_profile and not f.has_availability %}
