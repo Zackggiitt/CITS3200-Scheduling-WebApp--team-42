@@ -1,3 +1,4 @@
+<!-- HTML Template with Jinja2 syntax -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -945,7 +946,7 @@
                       </div>
 
                       <div class="flex items-center gap-2">
-                        <a href="#" class="inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50">
+                        <a href="{{ url_for('unitcoordinator.facilitator_profile', facilitator_id=f.id) }}" class="inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50">
                           <span class="material-icons text-base">visibility</span> View Profile
                         </a>
                         {% if not f.is_ready %}
@@ -1098,6 +1099,8 @@
 
         </div>
       </div>
+      </div> <!-- Close uc-tabs-wrap -->
+      </div> <!-- Close w-full max-w-5xl -->
     {% endif %}
   </main>
 
