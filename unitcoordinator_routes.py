@@ -1136,9 +1136,8 @@ def upload_setup_csv():
             "error": "CSV must include header: facilitator_email"
         }), 400
 
-    # Counters
-    created_users = 0
-    linked_facilitators = 0
+    # Process CSV rows
+    facilitators_data = []
     errors = []
 
     for idx, row in enumerate(reader, start=2):  # start=2 because header is row 1
@@ -1148,14 +1147,68 @@ def upload_setup_csv():
         if not _valid_email(email):
             errors.append(f"Row {idx}: invalid facilitator_email '{email}'")
             continue
+        
+        # Check if facilitator user exists
+        user_obj = User.query.filter_by(email=email).first()
+        
+        facilitators_data.append({
+            "email": email,
+            "exists": user_obj is not None,
+            "name": user_obj.full_name if user_obj else "",
+            "row": idx
+        })
 
+    # Return review data
+    return jsonify({
+        "ok": True,
+        "facilitators": facilitators_data,
+        "errors": errors[:20],  # show up to 20 issues
+        "unit_id": unit_id
+    }), 200
+
+
+@unitcoordinator_bp.post("/confirm-facilitators")
+def confirm_facilitators():
+    """
+    Confirm and create facilitator accounts from review step
+    """
+    user = get_current_user()
+    
+    unit_id = request.form.get("unit_id")
+    if not unit_id:
+        return jsonify({"ok": False, "error": "Missing unit_id"}), 400
+
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found"}), 404
+
+    # Get facilitator emails from form
+    facilitator_emails = request.form.getlist("facilitator_emails")
+    
+    created_users = 0
+    linked_facilitators = 0
+    errors = []
+    
+    # Default password for new accounts
+    default_password = "fac123"  # Simple default password for lab facilitators
+    
+    for email in facilitator_emails:
+        email = email.strip().lower()
+        if not email or not _valid_email(email):
+            continue
+            
         # Ensure facilitator user exists
         user_obj = User.query.filter_by(email=email).first()
         if not user_obj:
             user_obj = User(email=email, role=UserRole.FACILITATOR)
+            user_obj.set_password(default_password)
             db.session.add(user_obj)
             db.session.flush()  # <-- ensure user_obj.id is available
             created_users += 1
+        elif user_obj.role != UserRole.FACILITATOR:
+            # If user exists but is not a facilitator, update their role
+            user_obj.role = UserRole.FACILITATOR
+            # Note: We don't change their password as they might already be using the system
 
         # Ensure link to unit exists
         link = UnitFacilitator.query.filter_by(unit_id=unit.id, user_id=user_obj.id).first()
@@ -1163,17 +1216,18 @@ def upload_setup_csv():
             link = UnitFacilitator(unit_id=unit.id, user_id=user_obj.id)
             db.session.add(link)
             linked_facilitators += 1
-
-
-
-    db.session.commit()
-
-    return jsonify({
-        "ok": True,
-        "created_users": created_users,
-        "linked_facilitators": linked_facilitators,
-        "errors": errors[:20],  # show up to 20 issues
-    }), 200
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            "ok": True,
+            "created_users": created_users,
+            "linked_facilitators": linked_facilitators,
+            "errors": errors[:20],  # show up to 20 issues
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to create facilitators: {e}"}), 500
 
 
 @unitcoordinator_bp.delete("/units/<int:unit_id>/facilitators")

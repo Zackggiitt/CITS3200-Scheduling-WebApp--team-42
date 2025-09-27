@@ -1263,8 +1263,31 @@
                   <span id="file_name" class="filepicker-name" aria-live="polite">No file selected</span>
                 </div>
 
+                <button type="button" id="uploadSetupBtn" class="cal-btn primary mt-3">Upload and Review</button>
+
                 <!-- Status -->
                 <div id="upload_status" class="upload-status hidden" role="status" aria-live="polite"></div>
+              </div>
+            </div>
+
+            <!-- Review section (initially hidden) -->
+            <div id="facilitator-review" class="setup-card mt-4 hidden">
+              <div class="setup-card__header">
+                <span class="material-icons">visibility</span>
+                <div>
+                  <h3 class="setup-card__title">Review Facilitators</h3>
+                  <p class="setup-card__hint">
+                    Please review the facilitators that will be added to this unit. 
+                    Accounts will be created for new facilitators with a default password.
+                  </p>
+                </div>
+              </div>
+              
+              <div class="facilitator-list mt-4"></div>
+              
+              <div class="action-buttons mt-4 flex gap-3">
+                <button type="button" id="confirm-facilitators" class="cal-btn primary">Confirm and Add Facilitators</button>
+                <button type="button" id="cancel-review" class="cal-btn">Cancel</button>
               </div>
             </div>
           </div>
@@ -1729,6 +1752,7 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
 
 <!-- External JS -->
 <script src="{{ url_for('static', filename='js/uc.js') }}"></script>
+<script src="{{ url_for('static', filename='js/facilitator_review.js') }}"></script>
 
 
 
