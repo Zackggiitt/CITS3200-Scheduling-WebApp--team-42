@@ -371,6 +371,13 @@ input:invalid:focus {
     border-bottom: 2px solid var(--border-color);
 }
 
+.facilitator-section-subtext {
+    margin-top: -8px;
+    margin-bottom: var(--gap-md);
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
 .units-grid {
     display: grid;
     grid-template-columns: 1fr;

@@ -495,8 +495,7 @@ def calculate_facilitator_info(user, today):
             'completed_sessions': completed_sessions,
             'total_hours': round(total_hours, 1),
             'avg_hours_per_week': round(avg_hours_per_week, 1),
-            'session_types': session_types[:4],  # Limit to 4 session types
-            'additional_sessions': max(0, len(session_types) - 4),
+            'session_types': session_types,
             'sessions': past_sessions
         }
         

@@ -113,12 +113,18 @@
                                                     {% for session_type in unit.session_types %}
                                                         <span class="session-tag">{{ session_type }}</span>
                                                     {% endfor %}
-                                                    {% if unit.additional_sessions > 0 %}
-                                                        <span class="additional-sessions">+{{ unit.additional_sessions }} more</span>
-                                                    {% endif %}
+                                                
                                                 </div>
                                             </div>
                                         {% endif %}
+
+                                        <div class="completion-info">
+                                            <div class="completion-dates">
+                                                Active: {{ unit.start_date.strftime('%d/%m/%Y') if unit.start_date else 'N/A' }}
+                                                {% if unit.end_date %}- {{ unit.end_date.strftime('%d/%m/%Y') }}{% endif %}
+                                            </div>
+                                            <div class="semester-info">{{ unit.semester }}, {{ unit.year }}</div>
+                                        </div>
                                     </div>
                                 </div>
                             {% endfor %}
@@ -164,9 +170,7 @@
                                                 {% for session_type in unit.session_types %}
                                                     <span class="session-tag">{{ session_type }}</span>
                                                 {% endfor %}
-                                                {% if unit.additional_sessions > 0 %}
-                                                    <span class="additional-sessions">+{{ unit.additional_sessions }} more</span>
-                                                {% endif %}
+                                                
                                             </div>
                                         </div>
                                     {% endif %}
@@ -194,6 +198,7 @@
             <!-- Career Summary Section -->
             <div class="facilitator-section">
                 <h2 class="facilitator-section-title">Career Summary</h2>
+                <p class="facilitator-section-subtext">Metrics are calculated across all units (both active and past units).</p>
                 <div class="career-summary">
                     <div class="career-metric">
                         <div class="metric-number">{{ facilitator_info.career_summary.total_units }}</div>
