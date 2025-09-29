@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Tab switching functionality
   const tabs = document.querySelectorAll('.admin-tab');
   const facilitatorManagement = document.querySelector('.facilitator-management');
-  const dashboardMetrics = document.querySelector('.dashboard-metrics');
   const unitStatusCard = document.querySelector('.unit-status-card');
   const welcomeBanner = document.querySelector('.admin-welcome-banner');
 
@@ -39,25 +38,23 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Show facilitator management and hide dashboard content
       if (welcomeBanner) welcomeBanner.style.display = 'none';
-      if (dashboardMetrics) dashboardMetrics.style.display = 'none';
       if (unitStatusCard) unitStatusCard.style.display = 'none';
       if (facilitatorManagement) facilitatorManagement.style.display = 'block';
       
       console.log('Employees tab activated from URL parameter');
     } else {
       // Default to dashboard tab
-      const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
-      if (dashboardTab) {
-        dashboardTab.classList.add('active');
-      }
-      
-      // Show dashboard content and hide facilitator management
-      if (welcomeBanner) welcomeBanner.style.display = 'block';
-      if (dashboardMetrics) dashboardMetrics.style.display = 'block';
-      if (unitStatusCard) unitStatusCard.style.display = 'block';
-      if (facilitatorManagement) facilitatorManagement.style.display = 'none';
-      
-      console.log('Dashboard initialized - facilitator management hidden');
+    const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
+    if (dashboardTab) {
+      dashboardTab.classList.add('active');
+    }
+    
+    // Show dashboard content and hide facilitator management
+    if (welcomeBanner) welcomeBanner.style.display = 'block';
+    if (unitStatusCard) unitStatusCard.style.display = 'block';
+    if (facilitatorManagement) facilitatorManagement.style.display = 'none';
+    
+    console.log('Dashboard initialized - facilitator management hidden');
     }
   }
 
@@ -79,19 +76,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tabName === 'dashboard') {
         // Show dashboard content
         if (welcomeBanner) welcomeBanner.style.display = 'block';
-        if (dashboardMetrics) dashboardMetrics.style.display = 'block';
         if (unitStatusCard) unitStatusCard.style.display = 'block';
         if (facilitatorManagement) facilitatorManagement.style.display = 'none';
       } else if (tabName === 'employees') {
         // Show facilitator management
         if (welcomeBanner) welcomeBanner.style.display = 'none';
-        if (dashboardMetrics) dashboardMetrics.style.display = 'none';
         if (unitStatusCard) unitStatusCard.style.display = 'none';
         if (facilitatorManagement) facilitatorManagement.style.display = 'block';
       } else {
         // For other tabs (schedule, session-swaps), show dashboard content for now
         if (welcomeBanner) welcomeBanner.style.display = 'block';
-        if (dashboardMetrics) dashboardMetrics.style.display = 'block';
         if (unitStatusCard) unitStatusCard.style.display = 'block';
         if (facilitatorManagement) facilitatorManagement.style.display = 'none';
       }
@@ -329,33 +323,6 @@ document.addEventListener('DOMContentLoaded', () => {
       editModal.style.display = 'none';
       document.body.style.overflow = 'auto';
     }
-  });
-
-  // Facilitator tab switching functionality
-  const facilitatorTabs = document.querySelectorAll('.facilitator-nav-tab');
-  const facilitatorOverview = document.getElementById('facilitatorOverview');
-  const facilitatorDirectory = document.getElementById('facilitatorDirectory');
-
-  facilitatorTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      // Remove active class from all tabs
-      facilitatorTabs.forEach(t => t.classList.remove('active'));
-      // Add active class to clicked tab
-      tab.classList.add('active');
-      
-      // Get the tab data attribute
-      const tabName = tab.getAttribute('data-facilitator-tab');
-      console.log(`Switched to ${tabName} tab`);
-      
-      // Show/hide content sections based on tab
-      if (tabName === 'overview') {
-        if (facilitatorOverview) facilitatorOverview.style.display = 'block';
-        if (facilitatorDirectory) facilitatorDirectory.style.display = 'none';
-      } else if (tabName === 'directory') {
-        if (facilitatorOverview) facilitatorOverview.style.display = 'none';
-        if (facilitatorDirectory) facilitatorDirectory.style.display = 'block';
-      }
-    });
   });
 
   // Search and filter functionality

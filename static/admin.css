@@ -1395,14 +1395,15 @@
   display: flex;
   gap: 32px;
   margin-bottom: 24px;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
 }
 
 .search-bar {
   position: relative;
-  flex: 1;
-  max-width: 400px;
+  width: 100%;
+  max-width: none;
+  margin-bottom: 16px;
 }
 
 .search-icon {
@@ -1436,6 +1437,8 @@
   display: flex;
   gap: 20px;
   align-items: center;
+  margin-top: 0;
+  width: 100%;
 }
 
 .filter-select {
@@ -1736,17 +1739,19 @@
   }
   
   .search-bar {
-    max-width: none;
+    width: 100%;
+    margin-bottom: 16px;
   }
   
   .filter-controls {
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 12px;
+    align-items: stretch;
   }
   
   .filter-select {
     min-width: auto;
-    flex: 1;
+    width: 100%;
   }
   
   .facilitator-card {
