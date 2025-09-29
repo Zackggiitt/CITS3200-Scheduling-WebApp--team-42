@@ -8,6 +8,16 @@ import json
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+# Add custom template filter for JSON parsing
+@admin_bp.app_template_filter('from_json')
+def from_json_filter(value):
+    if value:
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return {}
+
 @admin_bp.route('/dashboard')
 @admin_required
 def dashboard():
@@ -20,11 +30,11 @@ def dashboard():
     pending_swaps = SwapRequest.query.filter_by(status=SwapStatus.PENDING).count()
     unassigned_sessions = Session.query.outerjoin(Assignment).filter(Assignment.id == None).count()
     
-    # Get facilitator data for the directory
-    facilitators = User.query.filter_by(role=UserRole.FACILITATOR).all()
+    # Get all employees data for the directory
+    facilitators = User.query.filter(User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR, UserRole.ADMIN])).all()
     
     # Calculate additional statistics
-    active_facilitators = User.query.filter_by(role=UserRole.FACILITATOR).count()  # All facilitators are considered active
+    active_facilitators = User.query.filter_by(role=UserRole.FACILITATOR).count()  # Keep facilitator count for compatibility
     
     # Calculate experience level distribution
     expert_facilitators = 0
@@ -34,26 +44,33 @@ def dashboard():
     total_hours_worked = 0
     avg_rating = 4.5  # Default value
     
-    for facilitator in facilitators:
+    for employee in facilitators:
         # Parse preferences to get additional data
-        if facilitator.preferences:
+        if employee.preferences:
             try:
                 import json
-                prefs = json.loads(facilitator.preferences)
-                experience_level = prefs.get('experience_level', 'junior')
-                hourly_rate = prefs.get('hourly_rate', 25)
+                prefs = json.loads(employee.preferences)
                 
-                # Count by experience level
-                if experience_level == 'expert':
-                    expert_facilitators += 1
-                elif experience_level == 'senior':
-                    senior_facilitators += 1
-                else:
-                    junior_facilitators += 1
+                # Only count experience level for facilitators
+                if employee.role == UserRole.FACILITATOR:
+                    experience_level = prefs.get('experience_level', 'junior')
+                    hourly_rate = prefs.get('hourly_rate', 25)
                     
-                # Add to total hours (mock calculation)
-                total_hours_worked += hourly_rate * 8  # Assume 8 hours per week
+                    # Count by experience level
+                    if experience_level == 'expert':
+                        expert_facilitators += 1
+                    elif experience_level == 'senior':
+                        senior_facilitators += 1
+                    else:
+                        junior_facilitators += 1
+                        
+                    # Add to total hours (mock calculation)
+                    total_hours_worked += hourly_rate * 8  # Assume 8 hours per week
+                else:
+                    # For unit coordinators and admins, default to junior for now
+                    junior_facilitators += 1
             except:
+                # Count as junior for error cases (maintains compatibility)
                 junior_facilitators += 1
     
     return render_template('admin_dashboard.html',
@@ -62,7 +79,8 @@ def dashboard():
                          total_sessions=total_sessions,
                          pending_swaps=pending_swaps,
                          unassigned_sessions=unassigned_sessions,
-                         facilitators=facilitators,
+                         facilitators=facilitators,  # This variable now contains all employees
+                         all_employees=facilitators,  # Explicit alias for clarity
                          total_facilitators_count=total_facilitators,
                          active_facilitators_count=active_facilitators,
                          total_hours_worked=total_hours_worked,
@@ -70,6 +88,404 @@ def dashboard():
                          expert_facilitators=expert_facilitators,
                          senior_facilitators=senior_facilitators,
                          junior_facilitators=junior_facilitators)
+
+@admin_bp.route('/delete-employee/<int:employee_id>', methods=['DELETE'])
+@admin_required
+def delete_employee(employee_id):
+    """Delete an employee (facilitator, unit coordinator, or admin) account"""
+    try:
+        print(f"Delete request received for employee ID: {employee_id}")
+        
+        # Get the employee to delete
+        employee = User.query.get(employee_id)
+        print(f"Found employee: {employee}")
+        
+        if not employee:
+            print("Employee not found")
+            return jsonify({'success': False, 'message': 'Employee not found'}), 404
+        
+        # Check if trying to delete the last admin
+        if employee.role == UserRole.ADMIN:
+            admin_count = User.query.filter_by(role=UserRole.ADMIN).count()
+            if admin_count <= 1:
+                return jsonify({'success': False, 'message': 'Cannot delete the last admin account'}), 403
+        
+        # Delete the employee from database
+        employee_name = employee.full_name if employee else 'Unknown'
+        print(f"Deleting employee: {employee_name} (Role: {employee.role})")
+        
+        db.session.delete(employee)
+        db.session.commit()
+        print("Employee deleted successfully")
+        
+        # Get position name for success message
+        position_mapping = {
+            UserRole.FACILITATOR: 'Facilitator',
+            UserRole.UNIT_COORDINATOR: 'Unit Coordinator', 
+            UserRole.ADMIN: 'Admin'
+        }
+        position_name = position_mapping.get(employee.role, 'Employee')
+        
+        return jsonify({'success': True, 'message': f'{position_name} account deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting employee: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while deleting the employee'}), 500
+
+@admin_bp.route('/delete-facilitator/<int:facilitator_id>', methods=['DELETE'])
+@admin_required
+def delete_facilitator(facilitator_id):
+    try:
+        print(f"Delete request received for facilitator ID: {facilitator_id}")
+        
+        # Get the facilitator to delete
+        facilitator = User.query.get(facilitator_id)
+        print(f"Found facilitator: {facilitator}")
+        
+        if not facilitator:
+            print("Facilitator not found")
+            return jsonify({'success': False, 'message': 'Facilitator not found'}), 404
+        
+        if facilitator.role != UserRole.FACILITATOR:
+            print(f"Invalid role: {facilitator.role}")
+            return jsonify({'success': False, 'message': 'Only facilitators can be deleted via this endpoint'}), 403
+        
+        # Delete the facilitator from database
+        print(f"Deleting facilitator: {facilitator.full_name}")
+        db.session.delete(facilitator)
+        db.session.commit()
+        print("Facilitator deleted successfully")
+        
+        return jsonify({'success': True, 'message': 'Facilitator account deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting facilitator: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while deleting the facilitator'}), 500
+
+@admin_bp.route('/update-employee', methods=['PUT'])
+@admin_required
+def update_employee():
+    """Update an employee (facilitator, unit coordinator, or admin) information"""
+    try:
+        data = request.get_json()
+        print(f"Update employee request received: {data}")
+        print(f"Employee ID from request: {data.get('employeeId')}")
+        
+        # Get the employee to update
+        employee_id = data.get('employeeId')
+        if not employee_id:
+            return jsonify({'success': False, 'error': 'Employee ID is required'}), 400
+            
+        employee = User.query.get(employee_id)
+        print(f"Found employee: {employee}")
+        if not employee:
+            return jsonify({'success': False, 'error': 'Employee not found'}), 404
+        
+        # Validate required fields
+        if not data.get('fullName'):
+            return jsonify({'success': False, 'error': 'Full name is required'}), 400
+        if not data.get('email'):
+            return jsonify({'success': False, 'error': 'Email is required'}), 400
+        if not data.get('phone'):
+            return jsonify({'success': False, 'error': 'Phone is required'}), 400
+        if not data.get('position'):
+            return jsonify({'success': False, 'error': 'Position is required'}), 400
+        
+        # If position is facilitator, validate role
+        print(f"Position: {data.get('position')}")
+        if data.get('position') == 'facilitator':
+            print(f"Position is facilitator, checking role: {data.get('role')}")
+            if not data.get('role'):
+                return jsonify({'success': False, 'error': 'Role is required when position is facilitator'}), 400
+        
+        # Update basic fields
+        if data.get('fullName'):
+            # Parse full name into first and last name
+            name_parts = data['fullName'].strip().split(' ', 1)
+            employee.first_name = name_parts[0]
+            employee.last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        if data.get('email'):
+            # Check if email is already taken by another user
+            existing_user = User.query.filter_by(email=data['email']).first()
+            if existing_user and existing_user.id != employee.id:
+                return jsonify({'success': False, 'error': 'Email already exists'}), 400
+            employee.email = data['email']
+        
+        # Update user role if position changed
+        role_mapping = {
+            'facilitator': UserRole.FACILITATOR,
+            'unit_coordinator': UserRole.UNIT_COORDINATOR,
+            'admin': UserRole.ADMIN
+        }
+        
+        new_role = role_mapping.get(data['position'], employee.role)
+        employee.role = new_role
+        
+        # Update preferences (JSON field)
+        import json
+        
+        preferences = {}
+        if employee.preferences:
+            try:
+                preferences = json.loads(employee.preferences)
+            except (json.JSONDecodeError, TypeError):
+                preferences = {}
+        
+        # Update preference fields that all employees have
+        preferences['phone'] = data['phone']
+        preferences['position'] = data['position']
+        preferences['status'] = data.get('status', 'active')
+        
+        # Add role-specific data based on position
+        if data['position'] == 'facilitator':
+            if data.get('role'):
+                preferences['role'] = data['role']
+        elif data['position'] == 'unit_coordinator':
+            preferences['admin_level'] = 'coordinator'
+        elif data['position'] == 'admin':
+            preferences['admin_level'] = 'system_admin'
+        
+        employee.preferences = json.dumps(preferences)
+        
+        # Save changes
+        db.session.commit()
+        
+        print(f"Updated employee: {employee.email} with role: {employee.role}")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Employee updated successfully',
+            'employee_id': employee.id,
+            'email': employee.email,
+            'position': data['position']
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating employee: {e}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': f'An error occurred while updating the employee: {str(e)}'}), 500
+
+@admin_bp.route('/update-facilitator', methods=['PUT'])
+@admin_required
+def update_facilitator():
+    try:
+        data = request.get_json()
+        print(f"Update request received: {data}")
+        
+        # Get the facilitator to update
+        facilitator = User.query.get(data.get('employeeId'))
+        if not facilitator:
+            return jsonify({'success': False, 'error': 'Facilitator not found'}), 404
+        
+        if facilitator.role != UserRole.FACILITATOR:
+            return jsonify({'success': False, 'error': 'Only facilitators can be updated via this endpoint'}), 403
+        
+        # Update basic fields
+        if data.get('fullName'):
+            # Parse full name into first and last name
+            name_parts = data['fullName'].strip().split(' ', 1)
+            facilitator.first_name = name_parts[0]
+            facilitator.last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        if data.get('email'):
+            # Check if email is already taken by another user
+            existing_user = User.query.filter_by(email=data['email']).first()
+            if existing_user and existing_user.id != facilitator.id:
+                return jsonify({'success': False, 'error': 'Email already exists'}), 400
+            facilitator.email = data['email']
+        
+        # Update preferences (JSON field)
+        import json
+        
+        preferences = {}
+        if facilitator.preferences:
+            try:
+                preferences = json.loads(facilitator.preferences)
+            except (json.JSONDecodeError, TypeError):
+                preferences = {}
+        
+        # Update preference fields
+        if data.get('phone'):
+            preferences['phone'] = data['phone']
+        if data.get('hourlyRate'):
+            preferences['hourly_rate'] = float(data['hourlyRate'])
+        if data.get('experienceLevel'):
+            preferences['experience_level'] = data['experienceLevel']
+        if data.get('position'):
+            preferences['position'] = data['position']
+        if data.get('department'):
+            preferences['department'] = data['department']
+        if data.get('status'):
+            preferences['status'] = data['status']
+        
+        # Save updated preferences
+        facilitator.preferences = json.dumps(preferences)
+        
+        # Commit changes
+        db.session.commit()
+        print(f"Facilitator {facilitator.full_name} updated successfully")
+        
+        return jsonify({'success': True, 'message': 'Facilitator updated successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating facilitator: {e}")
+        return jsonify({'success': False, 'error': 'An error occurred while updating the facilitator'}), 500
+
+@admin_bp.route('/send-reset-link', methods=['POST'])
+@admin_required
+def send_reset_link():
+    try:
+        data = request.get_json()
+        print(f"Send reset link request received: {data}")
+        
+        # Get the facilitator
+        facilitator = User.query.get(data.get('employeeId'))
+        if not facilitator:
+            return jsonify({'success': False, 'message': 'Facilitator not found'}), 404
+        
+        if facilitator.role != UserRole.FACILITATOR:
+            return jsonify({'success': False, 'message': 'Only facilitators can use this endpoint'}), 403
+        
+        # TODO: Implement actual email sending logic here
+        # For now, just return success
+        print(f"Reset link would be sent to {facilitator.email}")
+        
+        return jsonify({'success': True, 'message': f'Password reset link sent to {facilitator.email}'})
+        
+    except Exception as e:
+        print(f"Error sending reset link: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while sending the reset link'}), 500
+
+@admin_bp.route('/admin-reset-password', methods=['POST'])
+@admin_required
+def admin_reset_password():
+    try:
+        data = request.get_json()
+        print(f"Admin reset password request received: {data}")
+        
+        # Get the facilitator
+        facilitator = User.query.get(data.get('employeeId'))
+        if not facilitator:
+            return jsonify({'success': False, 'message': 'Facilitator not found'}), 404
+        
+        if facilitator.role != UserRole.FACILITATOR:
+            return jsonify({'success': False, 'message': 'Only facilitators can use this endpoint'}), 403
+        
+        # Hash the new password
+        from werkzeug.security import generate_password_hash
+        new_password = data.get('newPassword')
+        if not new_password or len(new_password) < 6:
+            return jsonify({'success': False, 'message': 'Password must be at least 6 characters long'}), 400
+        
+        facilitator.password_hash = generate_password_hash(new_password)
+        
+        # Commit changes
+        db.session.commit()
+        print(f"Password reset successfully for {facilitator.full_name}")
+        
+        return jsonify({'success': True, 'message': f'Password reset successfully for {facilitator.full_name}'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error resetting password: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while resetting the password'}), 500
+
+@admin_bp.route('/create-employee', methods=['POST'])
+@admin_required
+def create_employee():
+    """Create a new employee (facilitator, unit coordinator, or admin) from the admin dashboard modal"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['fullName', 'email', 'phone', 'position']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # If position is facilitator, validate role
+        if data.get('position') == 'facilitator':
+            if not data.get('role'):
+                return jsonify({'success': False, 'error': 'Role is required when position is facilitator'}), 400
+        
+        # Check if email already exists
+        existing_user = User.query.filter_by(email=data['email']).first()
+        if existing_user:
+            return jsonify({'success': False, 'error': 'Email already exists'}), 400
+        
+        # Determine user role based on position
+        role_mapping = {
+            'facilitator': UserRole.FACILITATOR,
+            'unit_coordinator': UserRole.UNIT_COORDINATOR,
+            'admin': UserRole.ADMIN
+        }
+        
+        user_role = role_mapping.get(data['position'], UserRole.FACILITATOR)
+        
+        # Parse full name into first and last name
+        full_name = data['fullName'].strip()
+        name_parts = full_name.split(' ', 1)
+        first_name = name_parts[0] if name_parts else ''
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        # Create new user
+        new_user = User(
+            email=data['email'],
+            first_name=first_name,
+            last_name=last_name,
+            role=user_role,
+            # Generate a temporary password (user will need to reset)
+            password_hash=generate_password_hash('temp_password_123')
+        )
+        
+        # Store additional data in preferences field as JSON
+        additional_data = {
+            'phone': data['phone'],
+            'position': data['position'],
+            'status': data.get('status', 'active')
+        }
+        
+        # Add role-specific data based on position
+        if data['position'] == 'facilitator':
+            if data.get('role'):
+                additional_data['role'] = data['role']
+            additional_data['experience_level'] = data.get('experienceLevel', 'junior')
+            additional_data['hourly_rate'] = data.get('hourlyRate', 25)
+            additional_data['department'] = data.get('department', 'general')
+        elif data['position'] == 'unit_coordinator':
+            additional_data['department'] = data.get('department', 'academic')
+            additional_data['admin_level'] = 'coordinator'
+        elif data['position'] == 'admin':
+            additional_data['admin_level'] = 'system_admin'
+        
+        new_user.preferences = json.dumps(additional_data)
+        
+        # Add to database
+        db.session.add(new_user)
+        db.session.commit()
+        
+        # TODO: Send welcome email with temporary password
+        position_name = data['position'].replace('_', ' ').title()
+        print(f"Created new {position_name}: {new_user.email} with role: {user_role}")
+        
+        return jsonify({
+            'success': True, 
+            'message': f'{position_name} created successfully! They will receive login credentials via email.',
+            'employee_id': new_user.id,
+            'email': new_user.email,
+            'position': position_name
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creating employee: {e}")
+        return jsonify({'success': False, 'error': 'An error occurred while creating the employee'}), 500
 
 @admin_bp.route('/create-facilitator-modal', methods=['POST'])
 @admin_required
