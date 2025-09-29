@@ -19,7 +19,7 @@ from auth import login_required, get_current_user
 from utils import role_required
 from models import db
 
-from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Availability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill
+from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Availability, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -636,8 +636,82 @@ def dashboard():
         )
         fac_stats["schedule_assigned"] = assigned_slots
 
-        # Schedule conflicts (placeholder for now)
-        fac_stats["schedule_conflicts"] = 0
+        # Schedule conflicts: Check for assignment conflicts
+        conflicts_count = 0
+        
+        # Get all assignments for this unit
+        assignments_query = (
+            db.session.query(Assignment, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .filter(Module.unit_id == current_unit.id)
+            .all()
+        )
+        
+        # Check for facilitator double-booking conflicts
+        facilitator_sessions = {}
+        for assignment, session, facilitator in assignments_query:
+            facilitator_id = facilitator.id
+            if facilitator_id not in facilitator_sessions:
+                facilitator_sessions[facilitator_id] = []
+            
+            facilitator_sessions[facilitator_id].append({
+                'assignment_id': assignment.id,
+                'session_id': session.id,
+                'start_time': session.start_time,
+                'end_time': session.end_time,
+                'facilitator_name': f"{facilitator.first_name} {facilitator.last_name}".strip()
+            })
+        
+        # Detect overlapping sessions for each facilitator
+        for facilitator_id, sessions in facilitator_sessions.items():
+            sessions.sort(key=lambda x: x['start_time'])
+            
+            for i in range(len(sessions)):
+                current_session = sessions[i]
+                current_start = current_session['start_time']
+                current_end = current_session['end_time']
+                
+                # Check for overlaps with subsequent sessions
+                for j in range(i + 1, len(sessions)):
+                    next_session = sessions[j]
+                    next_start = next_session['start_time']
+                    next_end = next_session['end_time']
+                    
+                    # Check if sessions overlap
+                    if current_end > next_start:
+                        conflicts_count += 1
+                        
+        # Check for unavailability conflicts
+        unavailability_conflicts = (
+            db.session.query(Assignment, Unavailability, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .join(Unavailability, 
+                  db.and_(
+                      Unavailability.user_id == Assignment.facilitator_id,
+                      Unavailability.unit_id == current_unit.id,
+                      db.func.date(Session.start_time) == Unavailability.date
+                  )
+            )
+            .filter(
+                Module.unit_id == current_unit.id,
+                db.or_(
+                    Unavailability.is_full_day == True,
+                    db.and_(
+                        Unavailability.start_time <= db.func.time(Session.start_time),
+                        Unavailability.end_time >= db.func.time(Session.end_time)
+                    )
+                )
+            )
+            .count()
+        )
+        
+        conflicts_count += unavailability_conflicts
+        
+        fac_stats["schedule_conflicts"] = conflicts_count
 
     # ----- Facilitator Setup Progress + Details -----
     fac_progress = {"total": 0, "account": 0, "availability": 0, "ready": 0}
@@ -2471,6 +2545,137 @@ def get_bulk_staffing_sessions(unit_id: int):
 
 
 
+
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/conflicts")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def get_schedule_conflicts(unit_id: int):
+    """Get detailed information about schedule conflicts."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+  
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        conflicts = []
+        
+        # Get all assignments for this unit
+        assignments_query = (
+            db.session.query(Assignment, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .filter(Module.unit_id == unit.id)
+            .all()
+        )
+        
+        # Group assignments by facilitator
+        facilitator_sessions = {}
+        for assignment, session, facilitator in assignments_query:
+            facilitator_id = facilitator.id
+            if facilitator_id not in facilitator_sessions:
+                facilitator_sessions[facilitator_id] = []
+            
+            facilitator_sessions[facilitator_id].append({
+                'assignment_id': assignment.id,
+                'session_id': session.id,
+                'start_time': session.start_time,
+                'end_time': session.end_time,
+                'module_name': session.module.module_name,
+                'facilitator_name': f"{facilitator.first_name} {facilitator.last_name}".strip()
+            })
+        
+        # Detect overlapping sessions
+        for facilitator_id, sessions in facilitator_sessions.items():
+            sessions.sort(key=lambda x: x['start_time'])
+            facilitator_name = sessions[0]['facilitator_name']
+            
+            for i in range(len(sessions)):
+                current_session = sessions[i]
+                
+                for j in range(i + 1, len(sessions)):
+                    next_session = sessions[j]
+                    
+                    # Check for time overlap
+                    if current_session['end_time'] > next_session['start_time']:
+                        conflict = {
+                            'type': 'schedule_overlap',
+                            'facilitator_id': facilitator_id,
+                            'facilitator_name': facilitator_name,
+                            'session1': {
+                                'id': current_session['session_id'],
+                                'module': current_session['module_name'],
+                                'start_time': current_session['start_time'].isoformat(),
+                                'end_time': current_session['end_time'].isoformat()
+                            },
+                            'session2': {
+                                'id': next_session['session_id'],
+                                'module': next_session['module_name'],
+                                'start_time': next_session['start_time'].isoformat(),
+                                'end_time': next_session['end_time'].isoformat()
+                            }
+                        }
+                        conflicts.append(conflict)
+        
+        # Check for unavailability conflicts
+        unavailability_conflicts_query = (
+            db.session.query(Assignment, Unavailability, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .join(Unavailability, 
+                  db.and_(
+                      Unavailability.user_id == Assignment.facilitator_id,
+                      Unavailability.unit_id == unit.id,
+                      db.func.date(Session.start_time) == Unavailability.date
+                  )
+            )
+            .filter(
+                Module.unit_id == unit.id,
+                db.or_(
+                    Unavailability.is_full_day == True,
+                    db.and_(
+                        Unavailability.start_time <= db.func.time(Session.start_time),
+                        Unavailability.end_time >= db.func.time(Session.end_time)
+                    )
+                )
+            )
+            .all()
+        )
+        
+        for assignment, unavailability, session, facilitator in unavailability_conflicts_query:
+            conflict = {
+                'type': 'unavailability_conflict',
+                'facilitator_id': facilitator.id,
+                'facilitator_name': f"{facilitator.first_name} {facilitator.last_name}".strip(),
+                'session': {
+                    'id': session.id,
+                    'module': session.module.module_name,
+                    'start_time': session.start_time.isoformat(),
+                    'end_time': session.end_time.isoformat()
+                },
+                'unavailability': {
+                    'date': unavailability.date.isoformat(),
+                    'start_time': unavailability.start_time.isoformat() if unavailability.start_time else None,
+                    'end_time': unavailability.end_time.isoformat() if unavailability.end_time else None,
+                    'is_full_day': unavailability.is_full_day,
+                    'reason': unavailability.reason
+                }
+            }
+            conflicts.append(conflict)
+        
+        return jsonify({
+            "ok": True,
+            "conflicts": conflicts,
+            "total_conflicts": len(conflicts),
+            "unit_name": unit.unit_name
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching schedule conflicts: {str(e)}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/attendance-summary")
