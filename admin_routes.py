@@ -225,10 +225,11 @@ def update_employee():
         employee.role = new_role
         
         # Update preferences (JSON field)
+        import json
+        
         preferences = {}
         if employee.preferences:
             try:
-                import json
                 preferences = json.loads(employee.preferences)
             except (json.JSONDecodeError, TypeError):
                 preferences = {}
@@ -299,10 +300,11 @@ def update_facilitator():
             facilitator.email = data['email']
         
         # Update preferences (JSON field)
+        import json
+        
         preferences = {}
         if facilitator.preferences:
             try:
-                import json
                 preferences = json.loads(facilitator.preferences)
             except (json.JSONDecodeError, TypeError):
                 preferences = {}

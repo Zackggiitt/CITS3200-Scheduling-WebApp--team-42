@@ -192,7 +192,7 @@
                 <span class="badge badge-status">
                   {% if facilitator.preferences %}
                     {% set prefs = facilitator.preferences|from_json %}
-                    {{ prefs.get('status', 'active')|title }}
+                    {{ prefs.get('status', 'active')|replace('_', ' ')|title }}
                   {% else %}
                     Active
                   {% endif %}
