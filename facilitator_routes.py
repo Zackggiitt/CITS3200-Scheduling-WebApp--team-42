@@ -475,10 +475,19 @@ def calculate_facilitator_info(user, today):
         completed_sessions = len(past_sessions)
         total_hours = sum((s.end_time - s.start_time).total_seconds() / 3600.0 for _, s, _ in past_sessions)
         
-        # Calculate average hours per week
+        # Calculate average hours per week based on weeks with sessions assigned (completed only)
         avg_hours_per_week = 0
-        if unit.start_date and unit.end_date and completed_sessions > 0:
-            weeks_count = max(1, (unit.end_date - unit.start_date).days / 7)
+        if completed_sessions > 0:
+            week_keys = set()
+            for _, s, _ in past_sessions:
+                iso = s.start_time.isocalendar()
+                # Python's isocalendar may return a namedtuple (year, week, weekday)
+                try:
+                    week_key = (iso.year, iso.week)
+                except AttributeError:
+                    week_key = (iso[0], iso[1])
+                week_keys.add(week_key)
+            weeks_count = max(1, len(week_keys))
             avg_hours_per_week = total_hours / weeks_count
         
         # Get session types (module names)
