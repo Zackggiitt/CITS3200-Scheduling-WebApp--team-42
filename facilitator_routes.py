@@ -1247,6 +1247,59 @@ def facilitator_response_to_swap(request_id):
         return jsonify({'error': f'Failed to process response: {str(e)}'}), 500
 
 
+# -------------------------- Unavailability (Facilitator) --------------------------
+@facilitator_bp.get("/unavailability")
+@login_required
+@role_required(UserRole.FACILITATOR)
+def list_unavailability():
+    """List current facilitator's unavailability. Optional filter by unit_id and date range."""
+    user = get_current_user()
+    unit_id = request.args.get("unit_id", type=int)
+    start = request.args.get("start")  # YYYY-MM-DD
+    end = request.args.get("end")      # YYYY-MM-DD
+
+    q = Unavailability.query.filter_by(user_id=user.id)
+    if unit_id:
+        q = q.filter(Unavailability.unit_id == unit_id)
+    try:
+        if start:
+            start_d = datetime.strptime(start, "%Y-%m-%d").date()
+            q = q.filter(Unavailability.date >= start_d)
+        if end:
+            end_d = datetime.strptime(end, "%Y-%m-%d").date()
+            q = q.filter(Unavailability.date <= end_d)
+    except ValueError:
+        return jsonify({"ok": False, "error": "Invalid date format; use YYYY-MM-DD"}), 400
+
+    rows = q.order_by(Unavailability.date.asc(), Unavailability.start_time.asc().nulls_first()).all()
+
+    def serialize(u):
+        return {
+            "id": u.id,
+            "unit_id": u.unit_id,
+            "date": u.date.isoformat(),
+            "is_full_day": bool(u.is_full_day),
+            "start_time": u.start_time.isoformat() if u.start_time else None,
+            "end_time": u.end_time.isoformat() if u.end_time else None,
+            "recurring_pattern": u.recurring_pattern.value if u.recurring_pattern else None,
+            "recurring_interval": u.recurring_interval,
+            "recurring_end_date": u.recurring_end_date.isoformat() if u.recurring_end_date else None,
+            "reason": u.reason or "",
+        }
+
+    return jsonify({"ok": True, "items": [serialize(r) for r in rows]})
+
+
+def _parse_hhmm(val: str):
+    if not val:
+        return None
+    try:
+        hh, mm = map(int, val.split(":", 1))
+        return time(hh, mm)
+    except Exception:
+        return None
+
+
 @facilitator_bp.route('/swap-requests/<int:request_id>/coordinator-response', methods=['POST'])
 @login_required
 @role_required(UserRole.UNIT_COORDINATOR)

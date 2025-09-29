@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 import random
 from flask import Flask
 from algorithm_comparison import AdvancedSchedulingEngine, AlgorithmType
-from models import db, User, Session, Assignment, Availability, UserRole, SkillLevel, FacilitatorSkill, Unit, Module
+from models import db, User, Session, Assignment, UserRole, SkillLevel, FacilitatorSkill, Unit, Module
 
 def create_test_app():
     """Create Flask app for testing"""
@@ -117,17 +117,8 @@ def setup_minimal_data(app):
             db.session.add(session)
             sessions.append(session)
         
-        # Create availability for facilitators that matches session days
-        for facilitator in facilitators:
-            # Create availability for multiple days to ensure coverage
-            for day in range(7):  # Monday to Sunday
-                availability = Availability(
-                    user_id=facilitator.id,
-                    day_of_week=day,
-                    start_time=datetime.strptime("09:00", "%H:%M").time(),
-                    end_time=datetime.strptime("17:00", "%H:%M").time()
-                )
-                db.session.add(availability)
+        # Deprecated: no weekly Availability model. Using Unavailability (date-based) with default free days.
+        # No unavailability blocks are created here so all facilitators are considered available unless blocked elsewhere.
         
         db.session.commit()
         

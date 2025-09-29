@@ -1,0 +1,6 @@
+activity_group_code,day_of_week,start_time,weeks,duration,location
+Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
+Tutorial B,Wednesday,14:00,1-12,90,CSSE 2.23
+Lab Session,Thursday,10:00,2-11,150,Physics Lab 3
+Workshop A,Monday,11:00,1-13,60,Blu Room 2.15
+Tutorial C,Friday,13:00,1-13,120,EZONE 3.45
