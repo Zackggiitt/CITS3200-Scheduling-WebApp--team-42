@@ -18,7 +18,7 @@ import random
 from flask import Flask
 from algorithm_tester import AlgorithmTester
 from algorithm_comparison import AlgorithmType
-from models import db, User, Session, Assignment, Availability, UserRole, SkillLevel, FacilitatorSkill, Unit, Module
+from models import db, User, Session, Assignment, UserRole, SkillLevel, FacilitatorSkill, Unit, Module
 
 def create_demo_app():
     """Create Flask app for testing"""
@@ -194,28 +194,7 @@ def setup_sample_data(app):
         
         print(f"Created {session_count} sessions")
         
-        # Create sample availability data
-        print("Creating sample availability data...")
-        
-        availability_count = 0
-        for facilitator in facilitators:
-            # Create availability for each day of the week
-            for day in range(7):  # Monday to Sunday
-                # Most facilitators are available during business hours
-                if random.random() < 0.8:  # 80% chance of being available
-                    start_hour = random.choice([8, 9, 10])
-                    end_hour = random.choice([16, 17, 18, 19])
-                    
-                    availability = Availability(
-                        user_id=facilitator.id,
-                        day_of_week=day,
-                        start_time=datetime.strptime(f"{start_hour}:00", "%H:%M").time(),
-                        end_time=datetime.strptime(f"{end_hour}:00", "%H:%M").time()
-                    )
-                    db.session.add(availability)
-                    availability_count += 1
-        
-        print(f"Created {availability_count} availability entries")
+        # Deprecated: weekly Availability model removed. No unavailability seeded here.
         
         # Commit all data
         db.session.commit()
@@ -224,7 +203,6 @@ def setup_sample_data(app):
         return {
             'facilitators': len(facilitators),
             'sessions': session_count,
-            'availability_entries': availability_count,
             'units': len(units),
             'modules': len(modules)
         }

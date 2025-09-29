@@ -7,7 +7,7 @@ Skill Levels: proficient=1.0, done_it_before=0.8, interested=0.5, not_interested
 """
 
 from datetime import datetime, time
-from models import User, UserRole, FacilitatorSkill, Availability, SkillLevel
+from models import User, UserRole, FacilitatorSkill, SkillLevel
 
 # Tunable weights for scoring function
 W_AVAILABILITY = 0.4
@@ -67,18 +67,8 @@ def prepare_facilitator_data(facilitators_from_db):
             for skill in facilitator.facilitator_skills:
                 skills[skill.module_id] = skill.skill_level
         
-        # Get availability
+        # Deprecated: slot-based weekly availability removed. Using unavailability model instead.
         availability = {}
-        if hasattr(facilitator, 'availability'):
-            for avail in facilitator.availability:
-                day = avail.day_of_week
-                if day not in availability:
-                    availability[day] = []
-                availability[day].append({
-                    'start_time': avail.start_time,
-                    'end_time': avail.end_time,
-                    'is_available': avail.is_available
-                })
         
         facilitator_data.append({
             'id': facilitator.id,
@@ -101,8 +91,11 @@ def check_availability(facilitator, session):
     session_start = session['start_time']
     session_end = session['end_time']
     
+    # If no availability data provided, treat as available by default
+    if 'availability' not in facilitator or not facilitator['availability']:
+        return 1.0
     if day not in facilitator['availability']:
-        return 0.0
+        return 1.0
     
     for avail_slot in facilitator['availability'][day]:
         if (avail_slot['is_available'] and 
