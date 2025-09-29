@@ -527,6 +527,8 @@
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* Facilitator Header */
@@ -561,6 +563,7 @@
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .facilitator-action-btn {
@@ -1390,19 +1393,25 @@
   display: block;
 }
 
+/* Facilitator Directory Content */
+.facilitator-directory-content {
+  margin-top: 24px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Search and Filter Section */
 .facilitator-search-section {
-  display: flex;
-  gap: 32px;
+  display: block;
   margin-bottom: 24px;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  margin-top: 0;
+  width: 100%;
 }
 
 .search-bar {
   position: relative;
   width: 100%;
-  max-width: none;
   margin-bottom: 16px;
 }
 
@@ -1437,7 +1446,7 @@
   display: flex;
   gap: 20px;
   align-items: center;
-  margin-top: 0;
+  margin-top: 16px;
   width: 100%;
 }
 
@@ -1472,6 +1481,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
 }
 
 .facilitator-card {
