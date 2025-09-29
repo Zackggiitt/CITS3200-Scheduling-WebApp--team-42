@@ -1583,6 +1583,16 @@
   color: #1e40af;
 }
 
+.badge-position {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.badge-role {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
 .badge-status {
   background: #d1fae5;
   color: #065f46;

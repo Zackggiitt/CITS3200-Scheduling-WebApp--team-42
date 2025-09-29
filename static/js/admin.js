@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
           addEmployeeForm.reset();
           
           // Refresh the page to show the new facilitator and stay on employees tab
-          window.location.href = window.location.pathname + '?tab=employees';
+          window.location.href = '/admin/dashboard?tab=employees';
         } else {
           // Error - show error message
           alert(`Error: ${result.error}`);
@@ -263,10 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fullName: formData.get('fullName'),
         phone: formData.get('phone'),
         position: formData.get('position'),
-        experienceLevel: formData.get('experienceLevel'),
         email: formData.get('email'),
-        hourlyRate: formData.get('hourlyRate'),
-        department: formData.get('department'),
         status: formData.get('status')
       };
 
@@ -280,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       try {
         // Send data to backend
-        const response = await fetch('/admin/update-facilitator', {
+        const response = await fetch('/admin/update-employee', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -298,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
           document.body.style.overflow = 'auto';
           
           // Refresh the page to show updated data
-          window.location.href = window.location.pathname + '?tab=employees';
+          window.location.href = '/admin/dashboard?tab=employees';
         } else {
           // Error - show error message
           alert(`Error: ${result.error}`);
@@ -324,39 +321,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Search and filter functionality
   const searchInput = document.getElementById('facilitatorSearch');
-  const departmentFilter = document.getElementById('departmentFilter');
-  const levelFilter = document.getElementById('levelFilter');
+  const positionFilter = document.getElementById('positionFilter');
   const statusFilter = document.getElementById('statusFilter');
   const facilitatorCards = document.querySelectorAll('.facilitator-card');
   const resultsCount = document.getElementById('resultsCount');
 
   function filterFacilitators() {
     const searchTerm = searchInput.value.toLowerCase();
-    const departmentValue = departmentFilter.value;
-    const levelValue = levelFilter.value;
+    const positionValue = positionFilter.value;
     const statusValue = statusFilter.value;
     
     let visibleCount = 0;
     
     facilitatorCards.forEach(card => {
       const name = card.querySelector('.facilitator-name').textContent.toLowerCase();
-      const role = card.querySelector('.facilitator-role').textContent.toLowerCase();
-      const department = card.querySelector('.facilitator-department').textContent.toLowerCase();
-      const experienceBadge = card.querySelector('.badge-experience').textContent.toLowerCase();
+      const email = card.querySelector('.facilitator-email').textContent.toLowerCase();
+      const positionBadge = card.querySelector('.badge-position') ? card.querySelector('.badge-position').textContent.toLowerCase() : '';
       const statusBadge = card.querySelector('.badge-status').textContent.toLowerCase();
       
       // Check search term
       const matchesSearch = searchTerm === '' || 
         name.includes(searchTerm) || 
-        role.includes(searchTerm) ||
-        department.includes(searchTerm);
+        email.includes(searchTerm);
       
-      // Check filters
-      const matchesDepartment = departmentValue === '' || department.includes(departmentValue);
-      const matchesLevel = levelValue === '' || experienceBadge.includes(levelValue);
+      // Check filters - map position filter values to badge text
+      let matchesPosition = true;
+      if (positionValue !== '') {
+        if (positionValue === 'admin') {
+          matchesPosition = positionBadge.includes('admin');
+        } else if (positionValue === 'facilitator') {
+          matchesPosition = positionBadge.includes('facilitator');
+        } else if (positionValue === 'unit_coordinator') {
+          matchesPosition = positionBadge.includes('unit') && positionBadge.includes('coordinator');
+        }
+      }
+      
       const matchesStatus = statusValue === '' || statusBadge.includes(statusValue);
       
-      if (matchesSearch && matchesDepartment && matchesLevel && matchesStatus) {
+      if (matchesSearch && matchesPosition && matchesStatus) {
         card.style.display = 'flex';
         visibleCount++;
       } else {
@@ -366,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Update results count
     if (resultsCount) {
-      resultsCount.textContent = `Showing ${visibleCount} of ${facilitatorCards.length} facilitators`;
+      resultsCount.textContent = `Showing ${visibleCount} of ${facilitatorCards.length} employees`;
     }
   }
 
@@ -374,11 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (searchInput) {
     searchInput.addEventListener('input', filterFacilitators);
   }
-  if (departmentFilter) {
-    departmentFilter.addEventListener('change', filterFacilitators);
-  }
-  if (levelFilter) {
-    levelFilter.addEventListener('change', filterFacilitators);
+  if (positionFilter) {
+    positionFilter.addEventListener('change', filterFacilitators);
   }
   if (statusFilter) {
     statusFilter.addEventListener('change', filterFacilitators);
@@ -408,6 +407,32 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add event listener for position change
   if (positionSelect) {
     positionSelect.addEventListener('change', toggleRoleDropdown);
+  }
+
+  // Edit Modal Conditional Role dropdown functionality
+  const editPositionSelect = document.getElementById('editPosition');
+  const editRoleGroup = document.getElementById('editRoleGroup');
+  const editRoleSelect = document.getElementById('editRole');
+  
+  function toggleEditRoleDropdown() {
+    const selectedPosition = editPositionSelect.value;
+    
+    if (selectedPosition === 'facilitator') {
+      editRoleGroup.style.display = 'block';
+      editRoleSelect.setAttribute('required', 'required');
+      // Set default value when showing
+      editRoleSelect.value = 'lab_facilitator';
+    } else {
+      editRoleGroup.style.display = 'none';
+      editRoleSelect.removeAttribute('required');
+      // Clear value when hiding
+      editRoleSelect.value = '';
+    }
+  }
+  
+  // Add event listener for edit position change
+  if (editPositionSelect) {
+    editPositionSelect.addEventListener('change', toggleEditRoleDropdown);
   }
 
   // Close dropdowns when clicking outside
@@ -464,8 +489,8 @@ async function deleteAccount(facilitatorId, facilitatorName) {
       console.log('CSRF Token:', csrfToken);
       
       // Send DELETE request to backend
-      console.log(`Sending DELETE request to: /admin/delete-facilitator/${facilitatorId}`);
-      const response = await fetch(`/admin/delete-facilitator/${facilitatorId}`, {
+      console.log(`Sending DELETE request to: /admin/delete-employee/${facilitatorId}`);
+      const response = await fetch(`/admin/delete-employee/${facilitatorId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -496,10 +521,10 @@ async function deleteAccount(facilitatorId, facilitatorName) {
           }
         }
         
-        alert(`${facilitatorName}'s account has been deleted successfully.`);
+        alert(`${facilitatorName}'s employee account has been deleted successfully.`);
         
         // Refresh the page to update all counts and ensure consistency
-        window.location.href = window.location.pathname + '?tab=employees';
+        window.location.href = '/admin/dashboard?tab=employees';
       } else {
         alert(`Error: ${result.message || 'Failed to delete account'}`);
       }
@@ -515,16 +540,100 @@ async function deleteAccount(facilitatorId, facilitatorName) {
 
 // Open edit modal function
 function openEditModal(facilitatorId, facilitatorName, facilitatorEmail) {
-  console.log(`Opening edit modal for facilitator ID: ${facilitatorId}, Name: ${facilitatorName}`);
+  console.log(`Opening edit modal for employee ID: ${facilitatorId}, Name: ${facilitatorName}`);
   
   // Set the employee ID
   document.getElementById('editEmployeeId').value = facilitatorId;
   
-  // Set the email (read-only for now)
+  // Set the email
   document.getElementById('editEmail').value = facilitatorEmail;
   
   // Set the full name
   document.getElementById('editFullName').value = facilitatorName;
+  
+  // Find the employee card and extract additional data
+  const employeeCard = document.querySelector(`.facilitator-card[data-facilitator-id="${facilitatorId}"]`);
+  if (employeeCard) {
+    // Extract phone number from details
+    const phoneElement = employeeCard.querySelector('.facilitator-phone');
+    if (phoneElement) {
+      document.getElementById('editPhone').value = phoneElement.textContent.trim();
+    }
+    
+    // Extract position from badge
+    const positionElement = employeeCard.querySelector('.badge-position');
+    if (positionElement) {
+      const positionText = positionElement.textContent.trim();
+      console.log('Position badge text:', positionText);
+      
+      // Map position text to dropdown values
+      let positionValue = '';
+      if (positionText.toLowerCase().includes('facilitator')) {
+        positionValue = 'facilitator';
+      } else if (positionText.toLowerCase().includes('unit') && positionText.toLowerCase().includes('coordinator')) {
+        positionValue = 'unit_coordinator';
+      } else if (positionText.toLowerCase().includes('admin')) {
+        positionValue = 'admin';
+      }
+      
+      console.log('Setting position value to:', positionValue);
+      document.getElementById('editPosition').value = positionValue;
+      
+      // Trigger role dropdown visibility based on position
+      if (positionValue === 'facilitator') {
+        // Extract role from badge
+        const roleElement = employeeCard.querySelector('.badge-role');
+        if (roleElement) {
+          const roleText = roleElement.textContent.trim();
+          console.log('Role badge text:', roleText);
+          
+          // Map role text to dropdown values
+          let roleValue = '';
+          if (roleText.toLowerCase().includes('lab')) {
+            roleValue = 'lab_facilitator';
+          } else if (roleText.toLowerCase().includes('senior')) {
+            roleValue = 'senior_facilitator';
+          } else if (roleText.toLowerCase().includes('lead')) {
+            roleValue = 'lead_facilitator';
+          }
+          
+          console.log('Setting role value to:', roleValue);
+          document.getElementById('editRoleGroup').style.display = 'block';
+          document.getElementById('editRole').value = roleValue;
+          document.getElementById('editRole').setAttribute('required', 'required');
+        }
+      } else {
+        document.getElementById('editRoleGroup').style.display = 'none';
+        document.getElementById('editRole').removeAttribute('required');
+      }
+    }
+    
+    // Extract status from badge
+    const statusElement = employeeCard.querySelector('.badge-status');
+    if (statusElement) {
+      const statusText = statusElement.textContent.trim();
+      console.log('Status badge text:', statusText);
+      
+      // Map status text to dropdown values
+      let statusValue = '';
+      if (statusText.toLowerCase().includes('active')) {
+        statusValue = 'active';
+      } else if (statusText.toLowerCase().includes('inactive')) {
+        statusValue = 'inactive';
+      } else if (statusText.toLowerCase().includes('leave')) {
+        statusValue = 'on_leave';
+      } else {
+        statusValue = 'active'; // Default fallback
+      }
+      
+      console.log('Setting status value to:', statusValue);
+      document.getElementById('editStatus').value = statusValue;
+    } else {
+      // Fallback to 'active' if status badge not found
+      document.getElementById('editStatus').value = 'active';
+      console.log('No status badge found, defaulting to active');
+    }
+  }
   
   // Show the modal
   const editModal = document.getElementById('editEmployeeModal');

@@ -148,23 +148,14 @@
         <div class="facilitator-search-section">
           <div class="search-bar">
             <span class="material-icons search-icon">search</span>
-            <input type="text" id="facilitatorSearch" placeholder="Search facilitators by name, email, or skills..." class="search-input">
+            <input type="text" id="facilitatorSearch" placeholder="Search employees by name or email..." class="search-input">
           </div>
           <div class="filter-controls">
-            <select id="departmentFilter" class="filter-select">
-              <option value="">All Departments</option>
-              <option value="computer_science">Computer Science</option>
-              <option value="engineering">Engineering</option>
-              <option value="mathematics">Mathematics</option>
-              <option value="physics">Physics</option>
-              <option value="chemistry">Chemistry</option>
-            </select>
-            <select id="levelFilter" class="filter-select">
-              <option value="">All Levels</option>
-              <option value="junior">Junior</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="senior">Senior</option>
-              <option value="expert">Expert</option>
+            <select id="positionFilter" class="filter-select">
+              <option value="">All Positions</option>
+              <option value="admin">Admin</option>
+              <option value="facilitator">Facilitator</option>
+              <option value="unit_coordinator">Unit Coordinator</option>
             </select>
             <select id="statusFilter" class="filter-select">
               <option value="">All Status</option>
@@ -190,12 +181,12 @@
             <div class="facilitator-info">
               <div class="facilitator-name">{{ facilitator.full_name }}</div>
               <div class="facilitator-badges">
-                <span class="badge badge-experience">
+                <span class="badge badge-position">
                   {% if facilitator.preferences %}
                     {% set prefs = facilitator.preferences|from_json %}
-                    {{ prefs.get('experience_level', 'junior')|title }}
+                    {{ prefs.get('position', 'facilitator')|replace('_', ' ')|title }}
                   {% else %}
-                    Junior
+                    Facilitator
                   {% endif %}
                 </span>
                 <span class="badge badge-status">
@@ -206,22 +197,23 @@
                     Active
                   {% endif %}
                 </span>
+                {% if facilitator.preferences %}
+                  {% set prefs = facilitator.preferences|from_json %}
+                  {% if prefs.get('role') and prefs.get('position') == 'facilitator' %}
+                    <span class="badge badge-role">
+                      {{ prefs.get('role', 'lab_facilitator')|replace('_', ' ')|title }}
+                    </span>
+                  {% endif %}
+                {% endif %}
               </div>
               <div class="facilitator-details">
-                <span class="facilitator-role">
+                <span class="facilitator-email">{{ facilitator.email }}</span>
+                <span class="facilitator-phone">
                   {% if facilitator.preferences %}
                     {% set prefs = facilitator.preferences|from_json %}
-                    {{ prefs.get('position', 'lab_facilitator')|replace('_', ' ')|title }}
+                    {{ prefs.get('phone', 'No phone set') }}
                   {% else %}
-                    Lab Facilitator
-                  {% endif %}
-                </span>
-                <span class="facilitator-department">
-                  {% if facilitator.preferences %}
-                    {% set prefs = facilitator.preferences|from_json %}
-                    {{ prefs.get('department', 'general')|replace('_', ' ')|title }}
-                  {% else %}
-                    General
+                    No phone set
                   {% endif %}
                 </span>
               </div>
@@ -237,17 +229,6 @@
                 <div class="metric-item">
                   <span class="material-icons">folder</span>
                   <span>0 Units</span>
-                </div>
-                <div class="metric-item">
-                  <span class="material-icons">attach_money</span>
-                  <span>
-                    {% if facilitator.preferences %}
-                      {% set prefs = facilitator.preferences|from_json %}
-                      ${{ prefs.get('hourly_rate', 25) }} Rate
-                    {% else %}
-                      $25 Rate
-                    {% endif %}
-                  </span>
                 </div>
               </div>
             </div>
@@ -378,15 +359,6 @@
         <div class="form-row">
           <div class="form-column">
             <div class="form-group">
-              <label for="editRole" class="form-label">Role</label>
-              <select id="editRole" name="role" class="form-select">
-                <option value="lab_facilitator">Lab Facilitator</option>
-                <option value="senior_facilitator">Senior Facilitator</option>
-                <option value="lead_facilitator">Lead Facilitator</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
               <label for="editFullName" class="form-label">Full Name</label>
               <input type="text" id="editFullName" name="fullName" class="form-input" placeholder="Enter full name" required>
             </div>
@@ -400,20 +372,18 @@
               <label for="editPosition" class="form-label">Position</label>
               <select id="editPosition" name="position" class="form-select">
                 <option value="">Select position</option>
-                <option value="tutor">Tutor</option>
-                <option value="demonstrator">Demonstrator</option>
-                <option value="assistant">Assistant</option>
-                <option value="supervisor">Supervisor</option>
+                <option value="facilitator">Facilitator</option>
+                <option value="unit_coordinator">Unit Coordinator</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
-            
-            <div class="form-group">
-              <label for="editExperienceLevel" class="form-label">Experience Level</label>
-              <select id="editExperienceLevel" name="experienceLevel" class="form-select">
-                <option value="junior">Junior</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="senior">Senior</option>
-                <option value="expert">Expert</option>
+
+            <div class="form-group role-group" id="editRoleGroup" style="display: none;">
+              <label for="editRole" class="form-label">Role</label>
+              <select id="editRole" name="role" class="form-select">
+                <option value="lab_facilitator">Lab Facilitator</option>
+                <option value="senior_facilitator">Senior Facilitator</option>
+                <option value="lead_facilitator">Lead Facilitator</option>
               </select>
             </div>
           </div>
@@ -422,23 +392,6 @@
             <div class="form-group">
               <label for="editEmail" class="form-label">Email</label>
               <input type="email" id="editEmail" name="email" class="form-input" placeholder="Enter email address" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="editHourlyRate" class="form-label">Hourly Rate ($)</label>
-              <input type="number" id="editHourlyRate" name="hourlyRate" class="form-input" min="0" step="0.01" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="editDepartment" class="form-label">Department</label>
-              <select id="editDepartment" name="department" class="form-select">
-                <option value="">Select department</option>
-                <option value="computer_science">Computer Science</option>
-                <option value="engineering">Engineering</option>
-                <option value="mathematics">Mathematics</option>
-                <option value="physics">Physics</option>
-                <option value="chemistry">Chemistry</option>
-              </select>
             </div>
             
             <div class="form-group">
