@@ -397,6 +397,7 @@ def root():
 @role_required(UserRole.FACILITATOR)
 def profile():
     user = get_current_user()
+    today = date.today()
     
     # Get facilitator's current units and stats
     units = (
@@ -406,7 +407,146 @@ def profile():
         .all()
     )
     
-    return render_template("facilitator_profile.html", user=user, units=units)
+    # Facilitator Information Calculations
+    facilitator_info = calculate_facilitator_info(user, today)
+    
+    return render_template("facilitator_profile.html", 
+                         user=user, 
+                         units=units,
+                         facilitator_info=facilitator_info)
+
+
+def calculate_facilitator_info(user, today):
+    """Calculate comprehensive facilitator information including units, sessions, and career metrics."""
+    
+    # Get all units the facilitator has been assigned to
+    all_units = (
+        Unit.query
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(UnitFacilitator.user_id == user.id)
+        .all()
+    )
+    
+    current_units = []
+    past_units = []
+    
+    for unit in all_units:
+        # Determine if unit is current or past
+        is_current = False
+        
+        if unit.start_date and unit.end_date:
+            is_current = unit.start_date <= today <= unit.end_date
+        elif unit.start_date and not unit.end_date:
+            is_current = unit.start_date <= today
+        elif not unit.start_date and unit.end_date:
+            is_current = today <= unit.end_date
+        else:
+            # Check if there are future assignments for this unit
+            has_future_sessions = (
+                db.session.query(Assignment)
+                .join(Session, Assignment.session_id == Session.id)
+                .join(Module, Session.module_id == Module.id)
+                .filter(
+                    Assignment.facilitator_id == user.id,
+                    Module.unit_id == unit.id,
+                    Session.start_time > datetime.utcnow()
+                )
+                .first() is not None
+            )
+            is_current = has_future_sessions
+        
+        # Get sessions for this unit
+        sessions_query = (
+            db.session.query(Assignment, Session, Module)
+            .join(Session, Assignment.session_id == Session.id)
+            .join(Module, Session.module_id == Module.id)
+            .filter(
+                Assignment.facilitator_id == user.id,
+                Module.unit_id == unit.id
+            )
+            .all()
+        )
+        
+        # Separate current and past sessions
+        current_sessions = [(a, s, m) for a, s, m in sessions_query if s.start_time >= datetime.utcnow()]
+        past_sessions = [(a, s, m) for a, s, m in sessions_query if s.start_time < datetime.utcnow()]
+        
+        # Calculate metrics for this unit
+        completed_sessions = len(past_sessions)
+        total_hours = sum((s.end_time - s.start_time).total_seconds() / 3600.0 for _, s, _ in past_sessions)
+        
+        # Calculate average hours per week
+        avg_hours_per_week = 0
+        if unit.start_date and unit.end_date and completed_sessions > 0:
+            weeks_count = max(1, (unit.end_date - unit.start_date).days / 7)
+            avg_hours_per_week = total_hours / weeks_count
+        
+        # Get session types (module names)
+        session_types = list(set(m.module_name for _, _, m in past_sessions if m.module_name))
+        
+        unit_info = {
+            'id': unit.id,
+            'code': unit.unit_code,
+            'name': unit.unit_name,
+            'year': unit.year,
+            'semester': unit.semester,
+            'start_date': unit.start_date,
+            'end_date': unit.end_date,
+            'completed_sessions': completed_sessions,
+            'total_hours': round(total_hours, 1),
+            'avg_hours_per_week': round(avg_hours_per_week, 1),
+            'session_types': session_types[:4],  # Limit to 4 session types
+            'additional_sessions': max(0, len(session_types) - 4),
+            'sessions': past_sessions
+        }
+        
+        if is_current:
+            current_units.append(unit_info)
+        else:
+            past_units.append(unit_info)
+    
+    # Calculate career summary metrics
+    # Total Units
+    total_units = len(all_units)
+    
+    # Sessions Facilitated (completed sessions across all units)
+    all_completed_sessions = (
+        db.session.query(Assignment, Session)
+        .join(Session, Assignment.session_id == Session.id)
+        .join(Module, Session.module_id == Module.id)
+        .join(UnitFacilitator, Module.unit_id == UnitFacilitator.unit_id)
+        .filter(
+            Assignment.facilitator_id == user.id,
+            Session.start_time < datetime.utcnow()
+        )
+        .all()
+    )
+    
+    sessions_facilitated = len(all_completed_sessions)
+    
+    # Total Hours (across all units)
+    total_hours = sum((s.end_time - s.start_time).total_seconds() / 3600.0 for _, s in all_completed_sessions)
+    
+    # Years Experience (from earliest unit start date)
+    years_experience = 0
+    if all_units:
+        earliest_start = min(unit.start_date for unit in all_units if unit.start_date)
+        if earliest_start:
+            years_experience = (today - earliest_start).days / 365.25
+    
+    # Sort past units by end date (most recent first)
+    past_units.sort(key=lambda x: x['end_date'] or date.min, reverse=True)
+    
+    return {
+        'current_units': current_units,
+        'past_units': past_units,
+        'career_summary': {
+            'total_units': total_units,
+            'sessions_facilitated': sessions_facilitated,
+            'total_hours': round(total_hours, 1),
+            'years_experience': round(years_experience, 1)
+        }
+    }
 
 
 @facilitator_bp.route("/profile/edit", methods=["GET", "POST"])
