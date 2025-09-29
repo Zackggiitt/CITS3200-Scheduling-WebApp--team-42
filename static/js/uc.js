@@ -2921,22 +2921,8 @@ function showSampleSessionsData() {
     todayCountElement.textContent = sampleData.today.length;
   }
   
-  // Create sample facilitator data for the activity log
-  const sampleFacilitators = [
-    { name: "John Smith", session_count: 5 },
-    { name: "Sarah Johnson", session_count: 3 },
-    { name: "Mike Davis", session_count: 7 },
-    { name: "Lisa Wilson", session_count: 4 },
-    { name: "Alex Chen", session_count: 6 },
-    { name: "Emma Rodriguez", session_count: 4 },
-    { name: "David Kim", session_count: 8 },
-    { name: "Maria Garcia", session_count: 5 },
-    { name: "James Wilson", session_count: 7 },
-    { name: "Sophie Brown", session_count: 3 },
-    { name: "Ryan Taylor", session_count: 6 },
-    { name: "Olivia Martinez", session_count: 4 }
-  ];
-  renderActivityLog(sampleFacilitators);
+  // Load real attendance data from the API
+  loadAttendanceData();
 }
 
 function waitForVisible(el, tries = 20) {
@@ -3206,7 +3192,9 @@ function renderActivityLog(facilitatorData = []) {
     // Show empty state
     tableBody.innerHTML = `
       <div class="px-6 py-8 text-center">
-        <div class="text-xs text-gray-500">No facilitator data available</div>
+        <span class="material-icons text-gray-400 text-4xl mb-2">person_add</span>
+        <div class="text-xs text-gray-500 mb-2">No facilitators assigned to sessions yet</div>
+        <div class="text-xs text-gray-400">Assign facilitators to sessions in the Staff Management section</div>
       </div>
     `;
   } else {
@@ -3218,22 +3206,20 @@ function createFacilitatorRow(facilitator, index) {
   const row = document.createElement('div');
   row.className = 'grid grid-cols-5 gap-4 px-6 py-3 hover:bg-gray-50';
   
-  // Generate random assigned hours data for demo
-  const assignedHours = generateAssignedHours();
-  const totalHours = generateTotalHours();
-  
-  // Generate a student number for demo purposes
-  // In real implementation, this would come from facilitator.student_number or facilitator.staff_number
-  const studentNumber = facilitator.student_number || facilitator.staff_number || `STU${String(index + 1).padStart(4, '0')}`;
+  // Use real data from the API
+  const assignedHours = facilitator.assigned_hours || 0;
+  const totalHours = facilitator.total_hours || 0;
+  const studentNumber = facilitator.student_number || facilitator.email.split('@')[0] || `STU${String(index + 1).padStart(4, '0')}`;
+  const sessionDate = facilitator.date || 'N/A';
   
   row.innerHTML = `
     <div class="flex items-center">
       <span class="text-xs font-medium text-gray-900">${facilitator.name}</span>
     </div>
     <div class="text-xs text-gray-600 font-mono">${studentNumber}</div>
-    <div class="text-xs text-gray-600">${getCurrentDate()}</div>
-    <div class="text-xs text-gray-600 text-center">${assignedHours}</div>
-    <div class="text-xs text-gray-600 text-center">${totalHours}</div>
+    <div class="text-xs text-gray-600">${sessionDate}</div>
+    <div class="text-xs text-gray-600 text-center">${assignedHours}h</div>
+    <div class="text-xs text-gray-600 text-center">${totalHours}h</div>
   `;
   
   return row;
