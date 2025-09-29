@@ -8,6 +8,7 @@ const {
   LIST_FACILITATORS_TEMPLATE,
   CREATE_OR_GET_DRAFT,
   UPLOAD_SETUP_CSV,
+  REMOVE_FACILITATORS_TEMPLATE,
   UPLOAD_SESSIONS_TEMPLATE,
   UPLOAD_CAS_TEMPLATE
 } = window.FLASK_ROUTES || {};
@@ -34,6 +35,9 @@ function getUnitId() {
   return '';
 }
 
+// ===== Global event handlers =====
+let handleEscKey, handleEnterKey;
+
 // ===== Modal open/close =====
 function openCreateUnitModal() {
     
@@ -52,6 +56,16 @@ function openCreateUnitModal() {
   setStep(1);
   document.getElementById('unit_id').value = '';
   document.getElementById('setup_complete').value = 'false';
+  
+  // Reset modal title and button text for create mode
+  const modalTitle = document.querySelector('#create-unit-title');
+  if (modalTitle) {
+    modalTitle.textContent = 'Create New Unit';
+  }
+  const submitBtn = document.querySelector('#submit-btn');
+  if (submitBtn) {
+    submitBtn.textContent = 'Create Unit';
+  }
 
 
     if (calendar) {
@@ -74,16 +88,66 @@ function openCreateUnitModal() {
         console.log('Close button wired to showCloseConfirmationPopup');
     }
     
-    // Also handle ESC key
-    const handleEscKey = (e) => {
+    // Define event handlers
+    handleEscKey = (e) => {
       if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
         showCloseConfirmationPopup();
       }
     };
     
-    // Remove existing ESC listeners and add new one
+    handleEnterKey = (e) => {
+      if (e.key === 'Enter' && !modal.classList.contains('hidden')) {
+        e.preventDefault(); // Prevent form submission
+        nextStep(); // Go to next step instead
+      }
+    };
+    
+    // Remove existing listeners and add new ones
     document.removeEventListener('keydown', handleEscKey);
+    document.removeEventListener('keydown', handleEnterKey);
     document.addEventListener('keydown', handleEscKey);
+    document.addEventListener('keydown', handleEnterKey);
+}
+
+function openEditUnitModal() {
+  // Get current unit data from the page
+  const unitCode = document.querySelector('.unit-card h2').textContent.trim();
+  const unitName = document.querySelector('.unit-card p.font-medium').textContent.trim();
+  const semesterYear = document.querySelector('.chip--neutral').textContent.trim();
+  const [semester, year] = semesterYear.split(', ');
+  
+  // Get current unit ID from the URL or data attribute
+  const currentUnitId = getUnitId();
+  
+  // Open the create modal
+  openCreateUnitModal();
+  
+  // Pre-populate the form with current unit data
+  setTimeout(() => {
+    // Set the unit ID for update
+    document.getElementById('unit_id').value = currentUnitId;
+    
+    // Pre-populate form fields
+    document.querySelector('input[name="unit_code"]').value = unitCode;
+    document.querySelector('input[name="unit_name"]').value = unitName;
+    document.querySelector('input[name="semester"]').value = semester;
+    document.querySelector('input[name="year"]').value = year;
+    
+    // Update the modal title to indicate editing
+    const modalTitle = document.querySelector('#create-unit-title');
+    if (modalTitle) {
+      modalTitle.textContent = 'Edit Unit';
+    }
+    
+    // Change the submit button text
+    const submitBtn = document.querySelector('#submit-btn');
+    if (submitBtn) {
+      submitBtn.textContent = 'Update Unit';
+    }
+    
+    // Skip to step 1 (Unit Information) since we're editing
+    setStep(1);
+  }, 100);
 }
 
 // Also add this to handle clicking outside the modal
@@ -477,9 +541,22 @@ if (uploadInput) {
 
       statusBox.classList.add("success");
       statusBox.innerHTML = `
-        <div class="font-semibold">Upload successful</div>
-        <div class="text-sm mt-1">
-          Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-semibold">Upload successful</div>
+            <div class="text-sm mt-1">
+              Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
+            </div>
+          </div>
+          <button 
+            id="remove_csv_btn" 
+            class="ml-3 text-red-600 hover:text-red-800 transition-colors"
+            title="Remove CSV data"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>`;
       setupFlagEl.value = "true";
       fileNameEl.textContent = file.name;
@@ -492,12 +569,17 @@ if (uploadInput) {
       }
       
       showCalendarIfReady();
-      setTimeout(() => statusBox.classList.add("hidden"), 300);
       if (!window.__calendarInitRan) {
         window.__calendarInitRan = true;
         initCalendar();
       } else {
         refreshCalendarRange();
+      }
+      
+      // Add event listener for remove button
+      const removeBtn = document.getElementById('remove_csv_btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', removeFacilitatorsCsv);
       }
     } catch (err) {
       console.error(err);
@@ -513,6 +595,144 @@ if (uploadInput) {
     const f = e.target.files?.[0];
     fileNameEl.textContent = f ? f.name : 'No file selected';
   });
+}
+
+// ===== Remove Facilitators CSV =====
+async function removeFacilitatorsCsv() {
+  const unitId = unitIdEl.value;
+  if (!unitId) {
+    statusBox.textContent = 'Missing unit id.';
+    statusBox.classList.add('error');
+    return;
+  }
+
+  if (!confirm('Are you sure you want to remove all facilitators from this unit? This action cannot be undone.')) {
+    return;
+  }
+
+  statusBox.classList.remove('hidden', 'success', 'error');
+  statusBox.textContent = 'Removing facilitators...';
+  statusBox.classList.add('error'); // Use error styling for removal
+
+  try {
+    const url = withUnitId(REMOVE_FACILITATORS_TEMPLATE, unitId);
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN,
+        'X-CSRF-Token': CSRF_TOKEN,
+      },
+    });
+
+    let data;
+    try {
+      const text = await res.text();
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
+    }
+
+    if (!res.ok || !data.ok) {
+      statusBox.textContent = data.error || 'Failed to remove facilitators';
+      return;
+    }
+
+    // Success - reset everything
+    statusBox.classList.remove('error');
+    statusBox.classList.add('success');
+    statusBox.innerHTML = `
+      <div class="font-semibold">Facilitators removed</div>
+      <div class="text-sm mt-1">Removed ${data.removed_facilitators} facilitator(s) from unit</div>
+    `;
+    
+    // Reset form elements
+    setupFlagEl.value = 'false';
+    fileNameEl.textContent = 'No file selected';
+    uploadInput.value = '';
+    
+    // Hide the status after a delay
+    setTimeout(() => {
+      statusBox.classList.add('hidden');
+      statusBox.classList.remove('success', 'error');
+      statusBox.textContent = '';
+    }, 3000);
+
+  } catch (err) {
+    console.error(err);
+    statusBox.textContent = String(err.message || 'Unexpected error during removal.');
+    statusBox.classList.add('error');
+  }
+}
+
+// ===== Remove Individual Facilitator =====
+async function removeIndividualFacilitator(email, buttonElement) {
+  if (!confirm(`Are you sure you want to remove ${email} from this unit?`)) {
+    return;
+  }
+
+  const unitId = unitIdEl.value;
+  if (!unitId) {
+    alert('Missing unit id.');
+    return;
+  }
+
+  try {
+    // Construct the URL manually to avoid template issues
+    const url = `/unitcoordinator/units/${unitId}/facilitators/${encodeURIComponent(email)}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN,
+        'X-CSRF-Token': CSRF_TOKEN,
+      },
+    });
+
+    let data;
+    try {
+      const text = await res.text();
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
+    }
+
+    if (!res.ok || !data.ok) {
+      alert(data.error || 'Failed to remove facilitator');
+      return;
+    }
+
+    // Remove the facilitator from the UI immediately
+    const listItem = buttonElement.closest('li');
+    if (listItem) {
+      listItem.remove();
+      
+      // Update the count
+      const facilitatorList = document.getElementById('rv_facilitators');
+      const remainingCount = facilitatorList.querySelectorAll('li').length;
+      document.getElementById('rv_fac_count').textContent = remainingCount;
+      
+      // Show success message
+      const statusBox = document.getElementById('upload_status');
+      if (statusBox) {
+        statusBox.classList.remove('hidden', 'success', 'error');
+        statusBox.classList.add('success');
+        statusBox.innerHTML = `
+          <div class="font-semibold">Facilitator removed</div>
+          <div class="text-sm mt-1">${email} has been removed from the unit</div>
+        `;
+        
+        // Hide message after 3 seconds
+        setTimeout(() => {
+          statusBox.classList.add('hidden');
+          statusBox.classList.remove('success', 'error');
+          statusBox.textContent = '';
+        }, 3000);
+      }
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert(`Error removing facilitator: ${err.message || 'Unexpected error'}`);
+  }
 }
 
 // ===== Sessions CSV Upload (Step 3b) =====
@@ -1488,6 +1708,14 @@ function closeCreateUnitModal() {
     modal.classList.add("hidden");
   }
 
+  // Clean up event listeners
+  if (handleEscKey) {
+    document.removeEventListener('keydown', handleEscKey);
+  }
+  if (handleEnterKey) {
+    document.removeEventListener('keydown', handleEnterKey);
+  }
+
   // Reset to step 1
   setStep(1);
   
@@ -1979,17 +2207,46 @@ async function populateReview() {
   const unitId = document.getElementById('unit_id').value;
 
 
-  // Venues
+  // Facilitators
   try {
-    const resV = await fetch(withUnitId(LIST_VENUES_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
-    const dataV = await resV.json();
-    const ulV = document.getElementById('rv_venues');
-    ulV.innerHTML = '';
-    if (dataV.ok) {
-      (dataV.venues || []).forEach(v => {
-        const li = document.createElement('li'); li.textContent = v.name || v; ulV.appendChild(li);
+    const resF = await fetch(withUnitId(LIST_FACILITATORS_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+    const dataF = await resF.json();
+    const ulF = document.getElementById('rv_facilitators');
+    ulF.innerHTML = '';
+    if (dataF.ok) {
+      (dataF.facilitators || []).forEach(f => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
+        li.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-300 inline-block"></span>
+            <div>
+              <div class="font-medium">${f}</div>
+              <div class="text-sm text-gray-600">Facilitator</div>
+            </div>
+          </div>
+          <button 
+            class="remove-facilitator-btn text-red-600 hover:text-red-800 transition-colors p-1 rounded"
+            title="Remove facilitator"
+            data-email="${f}"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        `;
+        ulF.appendChild(li);
       });
-      document.getElementById('rv_ven_count').textContent = (dataV.venues || []).length;
+      document.getElementById('rv_fac_count').textContent = (dataF.facilitators || []).length;
+      
+      // Add event listeners for remove buttons
+      ulF.querySelectorAll('.remove-facilitator-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const email = btn.getAttribute('data-email');
+          removeIndividualFacilitator(email, btn);
+        });
+      });
     }
   } catch {}
 
@@ -3448,9 +3705,8 @@ function updateUpcomingSessions(sessions) {
             const targetDate = new Date(today);
             targetDate.setDate(today.getDate() + daysUntilTarget);
             
-            const dayNumber = targetDate.getDate();
-            const monthNumber = targetDate.getMonth() + 1;
-            displayDate = `${sessionDate}<br><span class="text-xs text-gray-400">${dayNumber}/${monthNumber}</span>`;
+            // Date display removed as requested
+            displayDate = sessionDate;
           }
         }
         
@@ -4244,141 +4500,98 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-  // Sample facilitator data for attendance summary
-  const sampleFacilitatorData = [
-    {
-      name: "Anna Smith",
-      session_count: 7,
-      student_number: "23456789",
-      assigned_hours: 8,
-      total_hours: 11,
-      date: "2025-09-09",
-      email: "anna.smith@university.edu",
-      phone: "0427370168"
-    },
-    {
-      name: "Sophie Davis",
-      session_count: 4,
-      student_number: "21345678",
-      assigned_hours: 8,
-      total_hours: 9,
-      date: "2025-09-09",
-      email: "sophie.davis@university.edu",
-      phone: "0466209529"
-    },
-    {
-      name: "John Davis",
-      session_count: 4,
-      student_number: "25678909",
-      assigned_hours: 5,
-      total_hours: 8,
-      date: "2025-09-14",
-      email: "john.davis@university.edu",
-      phone: "0457307239"
-    },
-    {
-      name: "Ryan Chen",
-      session_count: 3,
-      student_number: "21345654",
-      assigned_hours: 2,
-      total_hours: 2,
-      date: "2025-09-09",
-      email: "ryan.chen@university.edu",
-      phone: "0454759557"
-    },
-    {
-      name: "James Scott",
-      session_count: 4,
-      student_number: "21378987",
-      assigned_hours: 7,
-      total_hours: 10,
-      date: "2025-09-08",
-      email: "james.scott@university.edu",
-      phone: "0461693991"
-    },
-    {
-      name: "Alex Torres",
-      session_count: 8,
-      student_number: "21346890",
-      assigned_hours: 1,
-      total_hours: 3,
-      date: "2025-09-11",
-      email: "alex.torres@university.edu",
-      phone: "0424120002"
-    },
-    {
-      name: "Alex Taylor",
-      session_count: 2,
-      student_number: "21490987",
-      assigned_hours: 7,
-      total_hours: 8,
-      date: "2025-09-10",
-      email: "alex.taylor@university.edu",
-      phone: "0484401824"
-    },
-    {
-      name: "Emma Young",
-      session_count: 1,
-      student_number: "24126789",
-      assigned_hours: 2,
-      total_hours: 3,
-      date: "2025-09-10",
-      email: "emma.young@university.edu",
-      phone: "0475694144"
-    },
-    {
-      name: "Olivia Davis",
-      session_count: 8,
-      student_number: "23156790",
-      assigned_hours: 6,
-      total_hours: 7,
-      date: "2025-09-11",
-      email: "olivia.davis@university.edu",
-      phone: "0424180164"
-    },
-    {
-      name: "Maya Rodriguez",
-      session_count: 3,
-      student_number: "23789000",
-      assigned_hours: 3,
-      total_hours: 6,
-      date: "2025-09-11",
-      email: "maya.rodriguez@university.edu",
-      phone: "0429458783"
-    },
-    {
-      name: "Emma Davis",
-      session_count: 9,
-      student_number: "23677880",
-      assigned_hours: 6,
-      total_hours: 8,
-      date: "2025-09-08",
-      email: "emma.davis@university.edu",
-      phone: "0495239531"
-    },
-    {
-      name: "Kate Johnson",
-      session_count: 6,
-      student_number: "23499095",
-      assigned_hours: 5,
-      total_hours: 8,
-      date: "2025-09-08",
-      email: "kate.johnson@university.edu",
-      phone: "0466808419"
-    }
-  ];
+  // Load real attendance data from database
+  async function loadAttendanceData() {
+    try {
+      const unitId = getUnitId();
+      if (!unitId) {
+        console.warn('No unit ID available for attendance data');
+        return;
+      }
 
-  // Inject sample data into attendance summary
-  if (window.__attData) {
-    window.__attData.sampleFacilitators = sampleFacilitatorData;
-    console.log('Sample facilitator data injected:', sampleFacilitatorData.length, 'facilitators');
+      const response = await fetch(`/unitcoordinator/units/${unitId}/attendance-summary`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.ok && data.facilitators) {
+        console.log('Loaded attendance data:', data.facilitators.length, 'facilitators');
+        
+        // Store in global data object
+        if (window.__attData) {
+          window.__attData.facilitators = data.facilitators;
+        }
+        
+        // Render the attendance summary
+        renderActivityLog(data.facilitators);
+        
+        // Update the week display with real data
+        updateAttendanceWeekDisplay(data.facilitators);
+        
+      } else {
+        console.error('Failed to load attendance data:', data.error);
+        showAttendanceError('Failed to load attendance data');
+      }
+      
+    } catch (error) {
+      console.error('Error loading attendance data:', error);
+      showAttendanceError('Error loading attendance data');
+    }
   }
 
-  // Auto-populate attendance summary if empty
-  setTimeout(() => {
-    const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
-    if (tableBody && tableBody.textContent.includes('No facilitator data available')) {
-      console.log('Auto-populating attendance summary with sample data...');
-      renderActivityLog(sampleFacilitatorData);
+  // Update the week display with real data
+  function updateAttendanceWeekDisplay(facilitators) {
+    const weekElement = document.querySelector('#activityLogCard .text-gray-400.text-xs.mt-1');
+    if (weekElement && facilitators.length > 0) {
+      // Get the most recent date from facilitators
+      const dates = facilitators
+        .map(f => f.date)
+        .filter(d => d)
+        .sort()
+        .reverse();
+      
+      if (dates.length > 0) {
+        const latestDate = new Date(dates[0]);
+        const weekStart = new Date(latestDate);
+        weekStart.setDate(latestDate.getDate() - latestDate.getDay()); // Start of week
+        
+        const weekText = `Week of ${weekStart.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric' 
+        })}`;
+        
+        weekElement.textContent = weekText;
+      }
     }
+  }
+
+  // Show error message in attendance summary
+  function showAttendanceError(message) {
+    const tableBody = document.querySelector('#activityLogCard .max-h-80.overflow-y-auto.divide-y');
+    if (tableBody) {
+      tableBody.innerHTML = `
+        <div class="p-6 text-center text-gray-500">
+          <span class="material-icons text-4xl mb-2">error_outline</span>
+          <p>${message}</p>
+          <button onclick="loadAttendanceData()" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+            Retry
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  // Load attendance data when the page loads
+  setTimeout(() => {
+    loadAttendanceData();
   }, 1000);

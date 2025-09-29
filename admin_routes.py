@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import db, User, UserRole, Unit, Module, FacilitatorSkill, SkillLevel, Availability, SwapRequest, SwapStatus, Session, Assignment
+from models import db, User, UserRole, Unit, Module, FacilitatorSkill, SkillLevel, Availability, SwapRequest, SwapStatus, Session, Assignment, UnitFacilitator
 from werkzeug.security import generate_password_hash
 from datetime import datetime, time
 from auth import admin_required, get_current_user
@@ -1099,6 +1099,55 @@ def manage_facilitators():
                          user=user, 
                          facilitator_data=facilitator_data,
                          modules=modules)
+
+@admin_bp.route('/facilitators/<int:facilitator_id>/profile')
+@admin_required
+def facilitator_profile(facilitator_id):
+    """View a specific facilitator's profile"""
+    user = get_current_user()
+    
+    # Get facilitator from User table
+    facilitator = User.query.get_or_404(facilitator_id)
+    
+    if facilitator.role != UserRole.FACILITATOR:
+        flash('User is not a facilitator!', 'error')
+        return redirect(url_for('admin.dashboard'))
+    
+    # Calculate stats
+    stats = {
+        'units_assigned': 0,
+        'pending_approvals': 0,
+        'total_sessions': 0,
+        'skills_count': 0,
+        'availability_status': 'Not Set'
+    }
+    
+    try:
+        # Count units assigned to this facilitator
+        stats['units_assigned'] = db.session.query(UnitFacilitator).filter_by(user_id=facilitator.id).count()
+        
+        # Count pending swap requests
+        stats['pending_approvals'] = SwapRequest.query.filter_by(
+            requested_by=facilitator.id, 
+            status=SwapStatus.PENDING
+        ).count()
+        
+        # Count total sessions assigned
+        stats['total_sessions'] = Assignment.query.filter_by(facilitator_id=facilitator.id).count()
+        
+        # Count skills registered
+        stats['skills_count'] = FacilitatorSkill.query.filter_by(facilitator_id=facilitator.id).count()
+        
+        # Check availability status
+        has_availability = Availability.query.filter_by(user_id=facilitator.id).first()
+        stats['availability_status'] = 'Available' if has_availability else 'Not Set'
+        
+    except Exception as e:
+        print(f"Error calculating stats: {e}")
+    
+    return render_template('admin/facilitator_profile.html', 
+                         facilitator=facilitator,
+                         stats=stats)
 
 @admin_bp.route('/facilitators/<int:facilitator_id>/edit')
 @admin_required

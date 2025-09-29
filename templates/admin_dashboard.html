@@ -233,12 +233,21 @@
               </div>
             </div>
             <div class="facilitator-actions">
-              <button class="action-btn edit" title="Edit Profile" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name }}', '{{ facilitator.email }}')">
-                <span class="material-icons">person</span>
-              </button>
-              <button class="action-btn key" title="Edit Details" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name }}', '{{ facilitator.email }}')">
+              <!-- View profile page -->
+              <a href="{{ url_for('admin.facilitator_profile', facilitator_id=facilitator.id) }}" class="action-btn view" title="View Profile">
+                <span class="material-icons">visibility</span>
+              </a>
+
+              <!-- Edit details in modal -->
+              <button class="action-btn edit" title="Edit Details" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name }}', '{{ facilitator.email }}')">
                 <span class="material-icons">edit</span>
               </button>
+
+              <!-- (Optional) Manage access -->
+              <button class="action-btn key" title="Manage Access">
+                <span class="material-icons">vpn_key</span>
+              </button>
+
               <div class="dropdown-container">
                 <button class="action-btn more" title="More Options" onclick="toggleDropdown({{ facilitator.id }})">
                   <span class="material-icons">more_vert</span>
@@ -255,7 +264,6 @@
                 </div>
               </div>
             </div>
-          </div>
           {% endfor %}
           
           {% if not facilitators %}

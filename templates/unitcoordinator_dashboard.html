@@ -1,3 +1,4 @@
+<!-- HTML Template with Jinja2 syntax -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -393,6 +394,13 @@
               </details>
             </div>
 
+            <!-- Edit Unit -->
+            <button type="button" onclick="openEditUnitModal()"
+                    class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+              <span class="material-icons text-base">edit</span>
+              Edit Unit
+            </button>
+
             {% if units|length > 1 %}
             <!-- Switch Unit -->
             <div class="relative card-actions">
@@ -733,6 +741,7 @@
             {% set total = fp.total or 0 %}
             {% set acct_pct = (fp.account * 100 // total) if total else 0 %}
             {% set avail_pct = (fp.availability * 100 // total) if total else 0 %}
+            {% set skills_pct = (fp.skills * 100 // total) if total else 0 %}
             {% set ready_pct = (fp.ready * 100 // total) if total else 0 %}
 
             <div class="mt-6 bg-gray-50 border rounded-2xl p-5">
@@ -741,10 +750,10 @@
                 <h3 class="font-semibold text-gray-900">Facilitator Setup Progress</h3>
               </header>
               <p class="text-sm text-gray-600 mb-5">
-                Track how many facilitators have completed their account setup and availability configuration.
+                Track how many facilitators have completed their account setup, availability configuration, and skills setup.
               </p>
 
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
                 <div class="text-center">
                   <div class="text-3xl font-semibold text-blue-600">{{ total }}</div>
                   <div class="text-sm text-gray-600 mt-1">Total Facilitators</div>
@@ -770,6 +779,17 @@
                     <div class="h-2 bg-gray-900 rounded-full" style="width: {{ avail_pct }}%"></div>
                   </div>
                   <div class="text-xs text-gray-500 mt-1">{{ avail_pct }}% complete</div>
+                </div>
+
+                <div>
+                  <div class="text-center">
+                    <div class="text-3xl font-semibold" style="color:#dc2626">{{ fp.skills }}</div>
+                    <div class="text-sm text-gray-600 mt-1">Skill Set</div>
+                  </div>
+                  <div class="mt-2 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-2 bg-gray-900 rounded-full" style="width: {{ skills_pct }}%"></div>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">{{ skills_pct }}% complete</div>
                 </div>
 
                 <div>
@@ -808,6 +828,7 @@
                     <ul class="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow text-sm">
                       <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">All Status</button></li>
                       <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Ready</button></li>
+                      <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Needs Skills</button></li>
                       <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Needs Availability</button></li>
                       <li><button type="button" class="block w-full text-left px-3 py-2 hover:bg-gray-50">Pending Setup</button></li>
                     </ul>
@@ -827,6 +848,13 @@
                           {% if f.is_ready %}
                             <span class="status-badge status-badge--green">
                               <span class="material-icons">check_circle</span> Ready
+                            </span>
+                          {% elif f.has_profile and f.has_availability and not f.has_skills %}
+                            <span class="status-badge status-badge--amber">
+                              <span class="material-icons">hourglass_bottom</span> Pending
+                            </span>
+                            <span class="status-badge status-badge--amber">
+                              <span class="material-icons">priority_high</span> Needs Skills
                             </span>
 
                           {% elif f.has_profile and not f.has_availability %}
@@ -918,7 +946,7 @@
                       </div>
 
                       <div class="flex items-center gap-2">
-                        <a href="#" class="inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50">
+                        <a href="{{ url_for('unitcoordinator.facilitator_profile', facilitator_id=f.id) }}" class="inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50">
                           <span class="material-icons text-base">visibility</span> View Profile
                         </a>
                         {% if not f.is_ready %}
@@ -1071,6 +1099,8 @@
 
         </div>
       </div>
+      </div> <!-- Close uc-tabs-wrap -->
+      </div> <!-- Close w-full max-w-5xl -->
     {% endif %}
   </main>
 
@@ -1614,6 +1644,12 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
               </div>
             </div>
 
+            <!-- Facilitators -->
+            <div>
+              <h3 class="text-base font-semibold mb-3">Facilitators (<span id="rv_fac_count">0</span>)</h3>
+              <ul id="rv_facilitators" class="space-y-2"></ul>
+            </div>
+
             <!-- Sessions -->
             <div>
               <h3 class="text-base font-semibold mb-3">Sessions (<span id="rv_sess_count">0</span>)</h3>
@@ -1644,6 +1680,7 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     DELETE_SESS_TEMPLATE: "{{ url_for('unitcoordinator.delete_session', session_id=0) }}",
     CREATE_OR_GET_DRAFT: "{{ url_for('unitcoordinator.create_or_get_draft') }}",
     UPLOAD_SETUP_CSV: "{{ url_for('unitcoordinator.upload_setup_csv') }}",
+    REMOVE_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.remove_unit_facilitators', unit_id=0) }}",
     UPLOAD_SESSIONS_TEMPLATE: "{{ url_for('unitcoordinator.upload_sessions_csv', unit_id=0) }}",
     LIST_FACILITATORS_TEMPLATE: "{{ url_for('unitcoordinator.list_facilitators', unit_id=0) }}",
     UPLOAD_CAS_TEMPLATE: "{{ url_for('unitcoordinator.upload_cas_csv', unit_id=0) }}"
