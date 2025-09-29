@@ -14,6 +14,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const headerNotificationBadge = document.getElementById('header-notification-badge');
     const popupCloseBtn = document.getElementById('popup-close');
     
+    // Profile dropdown elements (facilitator header)
+    const facProfileTrigger = document.getElementById('fac-profile-trigger');
+    const facDropdownMenu = document.getElementById('fac-dropdown-menu');
+    
     // Navigation click handlers
     navItems.forEach(item => {
         item.addEventListener('click', function(e) {
@@ -148,7 +152,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 hideNotificationPopup();
             }
         }
+        // Close facilitator profile dropdown when clicking outside
+        if (facDropdownMenu && facDropdownMenu.style.display === 'block') {
+            const withinTrigger = facProfileTrigger && facProfileTrigger.contains(e.target);
+            const withinMenu = facDropdownMenu.contains(e.target);
+            if (!withinTrigger && !withinMenu) {
+                facDropdownMenu.style.display = 'none';
+                if (facProfileTrigger) facProfileTrigger.setAttribute('aria-expanded', 'false');
+            }
+        }
     });
+
+    // Toggle facilitator profile dropdown
+    if (facProfileTrigger && facDropdownMenu) {
+        facProfileTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = facDropdownMenu.style.display === 'block';
+            facDropdownMenu.style.display = isOpen ? 'none' : 'block';
+            facProfileTrigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        });
+        // ESC closes the dropdown
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && facDropdownMenu.style.display === 'block') {
+                facDropdownMenu.style.display = 'none';
+                facProfileTrigger.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
 
     // Popup filter functionality
     const popupFilterBtns = document.querySelectorAll('.popup-filter-btn');

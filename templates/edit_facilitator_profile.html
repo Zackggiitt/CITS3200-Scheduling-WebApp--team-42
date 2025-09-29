@@ -53,9 +53,25 @@
                 </div>
 
                 <div class="form-row">
-                    <div class="form-group full-width">
+                    <div class="form-group">
                         <label for="email">Email *</label>
                         <input type="email" id="email" name="email" value="{{ user.email }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="password-change-section">
+                            <label for="change_password">Change Password</label>
+                            <button type="button" id="togglePasswordSection" class="password-toggle-btn">
+                                <span class="material-icons">key</span>
+                                Change Password
+                            </button>
+                            <div id="passwordFields" class="password-fields" style="display: none;">
+                                <input type="password" id="current_password" name="current_password" placeholder="Current Password">
+                                <input type="password" id="new_password" name="new_password" placeholder="New Password">
+                                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm New Password">
+                                <small class="password-hint">Leave blank to keep current password</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -79,5 +95,49 @@
             </form>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleBtn = document.getElementById('togglePasswordSection');
+            const passwordFields = document.getElementById('passwordFields');
+            const newPasswordField = document.getElementById('new_password');
+            const confirmPasswordField = document.getElementById('confirm_password');
+
+            // Toggle password section visibility
+            toggleBtn.addEventListener('click', function() {
+                const isVisible = passwordFields.style.display !== 'none';
+                passwordFields.style.display = isVisible ? 'none' : 'block';
+                toggleBtn.innerHTML = isVisible ? 
+                    '<span class="material-icons">key</span>Change Password' : 
+                    '<span class="material-icons">close</span>Hide Password Section';
+            });
+
+            // Validate password match
+            function validatePasswordMatch() {
+                const newPassword = newPasswordField.value;
+                const confirmPassword = confirmPasswordField.value;
+                
+                if (newPassword && confirmPassword && newPassword !== confirmPassword) {
+                    confirmPasswordField.setCustomValidity('Passwords do not match');
+                    return false;
+                } else {
+                    confirmPasswordField.setCustomValidity('');
+                    return true;
+                }
+            }
+
+            // Real-time password validation
+            newPasswordField.addEventListener('input', validatePasswordMatch);
+            confirmPasswordField.addEventListener('input', validatePasswordMatch);
+
+            // Form submission validation
+            document.querySelector('.edit-form').addEventListener('submit', function(e) {
+                if (!validatePasswordMatch()) {
+                    e.preventDefault();
+                    alert('Passwords do not match. Please check your password confirmation.');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

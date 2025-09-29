@@ -77,6 +77,148 @@
                 </div>
             </div>
         </div>
+
+        <!-- Facilitator Information Card -->
+        <div class="profile-card">
+            <div class="profile-card-header">
+                <h1 class="profile-card-title">Facilitator Information</h1>
+            </div>
+
+            <!-- Current Units Section --->
+            <div class="facilitator-section">
+                <h2 class="facilitator-section-title">Current Units</h2>
+                <div class="current-units-container">
+                    {% if facilitator_info.current_units %}
+                        <div class="units-grid">
+                            {% for unit in facilitator_info.current_units %}
+                                <div class="unit-card current">
+                                    <div class="unit-header">
+                                        <h3 class="unit-code">{{ unit.code }}</h3>
+                                        <span class="unit-status current">Current</span>
+                                    </div>
+                                    <div class="unit-name">{{ unit.name }}</div>
+                                    <div class="unit-details">
+                                        <div class="metric-row">
+                                            <span class="metric">Sessions Completed: {{ unit.completed_sessions }}</span>
+                                            </br>
+                                            <span class="metric">Hours Completed: {{ unit.total_hours }}h</span>
+                                            </br>
+                                            <span class="metric">Average per Week: {{ unit.avg_hours_per_week }}h/week</span>
+                                        </div>
+
+                                        {% if unit.session_types %}
+                                            <div class="session-types">
+                                                <div class="session-types-label">Session Types:</div>
+                                                <div class="session-tags">
+                                                    {% for session_type in unit.session_types %}
+                                                        <span class="session-tag">{{ session_type }}</span>
+                                                    {% endfor %}
+                                                
+                                                </div>
+                                            </div>
+                                        {% endif %}
+
+                                        <div class="completion-info">
+                                            <div class="completion-dates">
+                                                Active: {{ unit.start_date.strftime('%d/%m/%Y') if unit.start_date else 'N/A' }}
+                                                {% if unit.end_date %}- {{ unit.end_date.strftime('%d/%m/%Y') }}{% endif %}
+                                            </div>
+                                            <div class="semester-info">{{ unit.semester }}, {{ unit.year }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="no-units-state">
+                            <span class="material-icons">event</span>
+                            <p>No current units assigned</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Past Units Section -->
+            <div class="facilitator-section">
+                <h2 class="facilitator-section-title">Past Units</h2>
+                {% if facilitator_info.past_units %}
+                    <div class="units-grid">
+                        {% for unit in facilitator_info.past_units %}
+                            <div class="unit-card past">
+                                <div class="unit-header">
+                                    <h3 class="unit-code">{{ unit.code }}</h3>
+                                    <span class="unit-status completed">
+                                        <span class="material-icons">check_circle</span>
+                                        Completed
+                                    </span>
+                                </div>
+                                <div class="unit-name">{{ unit.name }}</div>
+                                
+                                <div class="unit-details">
+                                    <div class="metric-row">
+                                        <span class="metric">Sessions Completed: {{ unit.completed_sessions }}</span>
+                                    </br>
+                                        <span class="metric">Total Hours: {{ unit.total_hours }}h</span>
+                                    </br>
+                                        <span class="metric">Average per Week: {{ unit.avg_hours_per_week }}h/week</span>
+                                    </div>
+                                    
+                                    {% if unit.session_types %}
+                                        <div class="session-types">
+                                            <div class="session-types-label">Session Types:</div>
+                                            <div class="session-tags">
+                                                {% for session_type in unit.session_types %}
+                                                    <span class="session-tag">{{ session_type }}</span>
+                                                {% endfor %}
+                                                
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <div class="completion-info">
+                                        {% if unit.end_date %}
+                                            <div class="completion-dates">
+                                                Completed: {{ unit.start_date.strftime('%d/%m/%Y') if unit.start_date else 'N/A' }} - {{ unit.end_date.strftime('%d/%m/%Y') }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="semester-info">{{ unit.semester }}, {{ unit.year }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="no-units-state">
+                        <span class="material-icons">history</span>
+                        <p>No past units</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Career Summary Section -->
+            <div class="facilitator-section">
+                <h2 class="facilitator-section-title">Career Summary</h2>
+                <p class="facilitator-section-subtext">Metrics are calculated across all units (both active and past units).</p>
+                <div class="career-summary">
+                    <div class="career-metric">
+                        <div class="metric-number">{{ facilitator_info.career_summary.total_units }}</div>
+                        <div class="metric-label">Total Units</div>
+                    </div>
+                    <div class="career-metric">
+                        <div class="metric-number">{{ facilitator_info.career_summary.sessions_facilitated }}</div>
+                        <div class="metric-label">Sessions Facilitated</div>
+                    </div>
+                    <div class="career-metric">
+                        <div class="metric-number">{{ facilitator_info.career_summary.total_hours }}</div>
+                        <div class="metric-label">Total Hours</div>
+                    </div>
+                    <div class="career-metric">
+                        <div class="metric-number">{{ facilitator_info.career_summary.years_experience }}</div>
+                        <div class="metric-label">Years Experience</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>

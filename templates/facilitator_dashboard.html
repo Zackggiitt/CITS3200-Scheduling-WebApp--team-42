@@ -26,22 +26,27 @@
                 <span class="material-icons notification-icon" aria-hidden="true" id="bell-icon">notifications</span>
                 <span class="notification-badge" id="header-notification-badge">3</span>
             </div>
-            <div class="user-info">
-                <a href="{{ url_for('facilitator.profile') }}" class="user-info-link">
+            <div class="user-profile-dropdown" id="fac-profile-dropdown">
+                <button class="user-info-link" id="fac-profile-trigger" aria-haspopup="true" aria-expanded="false">
                     <span class="material-icons profile-icon" aria-hidden="true">account_circle</span>
                     <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
-                </a>
+                    <span class="material-icons" aria-hidden="true">arrow_drop_down</span>
+                </button>
+                <div class="fac-dropdown-menu" id="fac-dropdown-menu" role="menu" aria-label="User menu" style="display:none;">
+                    <a class="fac-dropdown-item" href="{{ url_for('facilitator.profile') }}" role="menuitem">
+                        <span class="material-icons" aria-hidden="true">person</span>
+                        <span>View Profile</span>
+                    </a>
+                    <form method="POST" action="{{ url_for('auth.logout') }}" role="none">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="fac-dropdown-item danger" role="menuitem">
+                            <span class="material-icons" aria-hidden="true">logout</span>
+                            <span>Logout</span>
+                        </button>
+                    </form>
+                </div>
             </div>
             <span class="user-role-tag">Lab Facilitator</span>
-            <div class="user-nav-item">
-                <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button type="submit" class="logout-button">
-                        <span class="material-icons" aria-hidden="true">logout</span>
-                        <span>Logout</span>
-                    </button>
-                </form>
-            </div>
         </nav>
     </div>
 </header>
