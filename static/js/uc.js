@@ -3194,7 +3194,7 @@ function renderActivityLog(facilitatorData = []) {
       <div class="px-6 py-8 text-center">
         <span class="material-icons text-gray-400 text-4xl mb-2">person_add</span>
         <div class="text-xs text-gray-500 mb-2">No facilitators assigned to sessions yet</div>
-        <div class="text-xs text-gray-400">Assign facilitators to sessions in the Staff Management section</div>
+        <div class="text-xs text-gray-400">Assign facilitators to sessions in the Schedule tab</div>
       </div>
     `;
   } else {
