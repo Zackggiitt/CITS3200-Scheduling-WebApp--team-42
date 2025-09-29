@@ -425,8 +425,22 @@ def edit_profile():
             user.staff_number = request.form.get("staff_number", user.staff_number)
             
             # Handle password update if provided
-            new_password = request.form.get("password")
+            current_password = request.form.get("current_password")
+            new_password = request.form.get("new_password")
+            confirm_password = request.form.get("confirm_password")
+            
             if new_password and new_password.strip():
+                # Verify current password if provided
+                if current_password and not user.check_password(current_password):
+                    flash("Current password is incorrect.", "error")
+                    return render_template("edit_facilitator_profile.html", user=user)
+                
+                # Validate new passwords match
+                if new_password != confirm_password:
+                    flash("New passwords do not match.", "error")
+                    return render_template("edit_facilitator_profile.html", user=user)
+                
+                # Set new password
                 user.set_password(new_password)
             
             db.session.commit()

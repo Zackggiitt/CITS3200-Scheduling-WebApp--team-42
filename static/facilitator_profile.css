@@ -277,6 +277,82 @@
     border-color: var(--color-text-secondary);
 }
 
+/* Password change section styling */
+.password-change-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+}
+
+.password-toggle-btn {
+    background: var(--surface-secondary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--border-color);
+    padding: var(--gap-md);
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    font-size: 0.9rem;
+    justify-content: center;
+}
+
+.password-toggle-btn:hover {
+    background: var(--border-color);
+    transform: translateY(-1px);
+}
+
+.password-toggle-btn .material-icons {
+    font-size: 18px;
+}
+
+.password-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-md);
+    padding: var(--gap-md);
+    background: var(--surface-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.password-fields input {
+    padding: var(--gap-sm);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: var(--font-main);
+    background: var(--surface-primary);
+    color: var(--color-text-primary);
+    transition: all 0.2s ease;
+}
+
+.password-fields input:focus {
+    outline: none;
+    border-color: var(--color-text-primary);
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.password-hint {
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+    font-style: italic;
+    text-align: center;
+}
+
+/* Password validation styling */
+input:invalid {
+    border-color: #e53e3e;
+    box-shadow: 0 0 0 1px #e53e3e;
+}
+
+input:invalid:focus {
+    box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
+}
+
 
 .button-group {
     display: flex;
@@ -381,6 +457,20 @@
     .form-row {
         grid-template-columns: 1fr;
         gap: var(--gap-md);
+    }
+    
+    .password-toggle-btn {
+        font-size: 0.85rem;
+        padding: var(--gap-sm) var(--gap-md);
+    }
+    
+    .password-fields {
+        padding: var(--gap-sm);
+    }
+    
+    .password-fields input {
+        padding: var(--gap-xs) var(--gap-sm);
+        font-size: 0.85rem;
     }
     
     .button-group {
