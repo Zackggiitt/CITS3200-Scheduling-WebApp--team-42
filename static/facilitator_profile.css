@@ -392,8 +392,8 @@ input:invalid:focus {
 }
 
 .unit-card.current {
-    border-left: 4px solid #10b981;
-    background: linear-gradient(135deg, #f0fdf4 0%, var(--surface-primary) 100%);
+    border-left: 4px solid #9CA3AF; /* gray-400 */
+    background: linear-gradient(135deg, #F3F4F6 0%, var(--surface-primary) 100%); /* gray-100 to surface */
 }
 
 .unit-card.past {
@@ -415,6 +415,13 @@ input:invalid:focus {
     margin: 0;
 }
 
+.unit-name {
+    margin-top: 2px;
+    margin-bottom: var(--gap-sm);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
 .unit-status {
     display: flex;
     align-items: center;
@@ -426,7 +433,7 @@ input:invalid:focus {
 }
 
 .unit-status.current {
-    background: #10b981;
+    background: #6B7280; /* gray-500 */
     color: white;
 }
 

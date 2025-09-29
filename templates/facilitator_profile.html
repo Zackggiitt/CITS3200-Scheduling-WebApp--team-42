@@ -94,11 +94,31 @@
                                 <div class="unit-card current">
                                     <div class="unit-header">
                                         <h3 class="unit-code">{{ unit.code }}</h3>
-                                        <span class="unit-status current">{{ unit.code }} - {{ unit.name }}</span>
+                                        <span class="unit-status current">Current</span>
                                     </div>
-                                    <div class="unit-metrics">
-                                        <span class="metric">Sessions: {{ unit.completed_sessions }}</span>
-                                        <span class="metric">Hours: {{ unit.total_hours }}h</span>
+                                    <div class="unit-name">{{ unit.name }}</div>
+                                    <div class="unit-details">
+                                        <div class="metric-row">
+                                            <span class="metric">Sessions Completed: {{ unit.completed_sessions }}</span>
+                                            </br>
+                                            <span class="metric">Hours Completed: {{ unit.total_hours }}h</span>
+                                            </br>
+                                            <span class="metric">Average per Week: {{ unit.avg_hours_per_week }}h/week</span>
+                                        </div>
+
+                                        {% if unit.session_types %}
+                                            <div class="session-types">
+                                                <div class="session-types-label">Session Types:</div>
+                                                <div class="session-tags">
+                                                    {% for session_type in unit.session_types %}
+                                                        <span class="session-tag">{{ session_type }}</span>
+                                                    {% endfor %}
+                                                    {% if unit.additional_sessions > 0 %}
+                                                        <span class="additional-sessions">+{{ unit.additional_sessions }} more</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             {% endfor %}
@@ -126,6 +146,7 @@
                                         Completed
                                     </span>
                                 </div>
+                                <div class="unit-name">{{ unit.name }}</div>
                                 
                                 <div class="unit-details">
                                     <div class="metric-row">
