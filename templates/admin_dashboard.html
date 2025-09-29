@@ -294,8 +294,8 @@
   <div class="modal-overlay" id="addEmployeeModal" style="display: none;">
     <div class="modal-container">
       <div class="modal-header">
-        <h2 class="modal-title">Add New Facilitator</h2>
-        <p class="modal-description">Add a new facilitator with their contact information and qualifications.</p>
+        <h2 class="modal-title">Add New Employee</h2>
+        <p class="modal-description">Add a new employee with their contact information and role details.</p>
         <button class="modal-close" id="closeModal">
           <span class="material-icons">close</span>
         </button>
@@ -304,15 +304,6 @@
       <form class="modal-form" id="addEmployeeForm">
         <div class="form-row">
           <div class="form-column">
-            <div class="form-group">
-              <label for="role" class="form-label">Role</label>
-              <select id="role" name="role" class="form-select">
-                <option value="lab_facilitator" selected>Lab Facilitator</option>
-                <option value="senior_facilitator">Senior Facilitator</option>
-                <option value="lead_facilitator">Lead Facilitator</option>
-              </select>
-            </div>
-            
             <div class="form-group">
               <label for="fullName" class="form-label">Full Name</label>
               <input type="text" id="fullName" name="fullName" class="form-input" placeholder="Enter full name" required>
@@ -327,22 +318,21 @@
               <label for="position" class="form-label">Position</label>
               <select id="position" name="position" class="form-select">
                 <option value="">Select position</option>
-                <option value="tutor">Tutor</option>
-                <option value="demonstrator">Demonstrator</option>
-                <option value="assistant">Assistant</option>
-                <option value="supervisor">Supervisor</option>
+                <option value="facilitator">Facilitator</option>
+                <option value="unit_coordinator">Unit Coordinator</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            <div class="form-group role-group" id="roleGroup" style="display: none;">
+              <label for="role" class="form-label">Role</label>
+              <select id="role" name="role" class="form-select">
+                <option value="lab_facilitator">Lab Facilitator</option>
+                <option value="senior_facilitator">Senior Facilitator</option>
+                <option value="lead_facilitator">Lead Facilitator</option>
               </select>
             </div>
             
-            <div class="form-group">
-              <label for="experienceLevel" class="form-label">Experience Level</label>
-              <select id="experienceLevel" name="experienceLevel" class="form-select">
-                <option value="junior" selected>Junior</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="senior">Senior</option>
-                <option value="expert">Expert</option>
-              </select>
-            </div>
           </div>
           
           <div class="form-column">
@@ -351,22 +341,6 @@
               <input type="email" id="email" name="email" class="form-input" placeholder="Enter email address" required>
             </div>
             
-            <div class="form-group">
-              <label for="hourlyRate" class="form-label">Hourly Rate ($)</label>
-              <input type="number" id="hourlyRate" name="hourlyRate" class="form-input" value="25" min="0" step="0.01" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="department" class="form-label">Department</label>
-              <select id="department" name="department" class="form-select">
-                <option value="">Select department</option>
-                <option value="computer_science">Computer Science</option>
-                <option value="engineering">Engineering</option>
-                <option value="mathematics">Mathematics</option>
-                <option value="physics">Physics</option>
-                <option value="chemistry">Chemistry</option>
-              </select>
-            </div>
             
             <div class="form-group">
               <label for="status" class="form-label">Status</label>
@@ -381,7 +355,7 @@
         
         <div class="modal-actions">
           <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
-          <button type="submit" class="btn-primary">Add Facilitator</button>
+          <button type="submit" class="btn-primary">Add Employee</button>
         </div>
       </form>
     </div>

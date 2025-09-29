@@ -159,10 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fullName: formData.get('fullName'),
         phone: formData.get('phone'),
         position: formData.get('position'),
-        experienceLevel: formData.get('experienceLevel'),
         email: formData.get('email'),
-        hourlyRate: formData.get('hourlyRate'),
-        department: formData.get('department'),
         status: formData.get('status')
       };
 
@@ -176,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       try {
         // Send data to backend
-        const response = await fetch('/admin/create-facilitator-modal', {
+        const response = await fetch('/admin/create-employee', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -189,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (result.success) {
           // Success - show success message and close modal
-          alert('Facilitator added successfully! They will receive login credentials via email.');
+          alert('Employee added successfully! They will receive login credentials via email.');
           modal.style.display = 'none';
           document.body.style.overflow = 'auto';
           
@@ -204,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } catch (error) {
         console.error('Error submitting form:', error);
-        alert('An error occurred while adding the facilitator. Please try again.');
+        alert('An error occurred while adding the employee. Please try again.');
       } finally {
         // Restore button state
         submitBtn.textContent = originalText;
@@ -385,6 +382,32 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (statusFilter) {
     statusFilter.addEventListener('change', filterFacilitators);
+  }
+
+  // Conditional Role dropdown functionality
+  const positionSelect = document.getElementById('position');
+  const roleGroup = document.getElementById('roleGroup');
+  const roleSelect = document.getElementById('role');
+  
+  function toggleRoleDropdown() {
+    const selectedPosition = positionSelect.value;
+    
+    if (selectedPosition === 'facilitator') {
+      roleGroup.style.display = 'block';
+      roleSelect.setAttribute('required', 'required');
+      // Set default value when showing
+      roleSelect.value = 'lab_facilitator';
+    } else {
+      roleGroup.style.display = 'none';
+      roleSelect.removeAttribute('required');
+      // Clear value when hiding
+      roleSelect.value = '';
+    }
+  }
+  
+  // Add event listener for position change
+  if (positionSelect) {
+    positionSelect.addEventListener('change', toggleRoleDropdown);
   }
 
   // Close dropdowns when clicking outside

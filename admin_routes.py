@@ -237,6 +237,89 @@ def admin_reset_password():
         print(f"Error resetting password: {e}")
         return jsonify({'success': False, 'message': 'An error occurred while resetting the password'}), 500
 
+@admin_bp.route('/create-employee', methods=['POST'])
+@admin_required
+def create_employee():
+    """Create a new employee (facilitator, unit coordinator, or admin) from the admin dashboard modal"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['fullName', 'email', 'phone', 'position']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # If position is facilitator, validate role
+        if data.get('position') == 'facilitator':
+            if not data.get('role'):
+                return jsonify({'success': False, 'error': 'Role is required when position is facilitator'}), 400
+        
+        # Check if email already exists
+        existing_user = User.query.filter_by(email=data['email']).first()
+        if existing_user:
+            return jsonify({'success': False, 'error': 'Email already exists'}), 400
+        
+        # Determine user role based on position
+        role_mapping = {
+            'facilitator': UserRole.FACILITATOR,
+            'unit_coordinator': UserRole.UNIT_COORDINATOR,
+            'admin': UserRole.ADMIN
+        }
+        
+        user_role = role_mapping.get(data['position'], UserRole.FACILITATOR)
+        
+        # Parse full name into first and last name
+        full_name = data['fullName'].strip()
+        name_parts = full_name.split(' ', 1)
+        first_name = name_parts[0] if name_parts else ''
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        # Create new user
+        new_user = User(
+            email=data['email'],
+            first_name=first_name,
+            last_name=last_name,
+            role=user_role,
+            # Generate a temporary password (user will need to reset)
+            password_hash=generate_password_hash('temp_password_123')
+        )
+        
+        # Store additional data in preferences field as JSON
+        additional_data = {
+            'phone': data['phone'],
+            'position': data['position'],
+            'status': data.get('status', 'active'),
+            'experience_level': data.get('experienceLevel', 'junior'),
+            'hourly_rate': data.get('hourlyRate', 25),
+            'department': data.get('department', 'general')
+        }
+        
+        # Add role if position is facilitator
+        if data.get('position') == 'facilitator' and data.get('role'):
+            additional_data['role'] = data['role']
+        
+        new_user.preferences = json.dumps(additional_data)
+        
+        # Add to database
+        db.session.add(new_user)
+        db.session.commit()
+        
+        # TODO: Send welcome email with temporary password
+        print(f"Created new employee: {new_user.email} with role: {user_role}")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Employee created successfully',
+            'employee_id': new_user.id,
+            'email': new_user.email
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creating employee: {e}")
+        return jsonify({'success': False, 'error': 'An error occurred while creating the employee'}), 500
+
 @admin_bp.route('/create-facilitator-modal', methods=['POST'])
 @admin_required
 def create_facilitator_modal():

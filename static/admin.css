@@ -1285,6 +1285,41 @@
   color: #9ca3af;
 }
 
+/* Role Group Styling and Animation */
+.role-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.role-group .form-select {
+  border: 1px solid #d1d5db !important;
+  background: #ffffff !important;
+}
+
+.role-group .form-select:focus {
+  outline: none;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.role-group:not([style*=" none"]) {
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .modal-actions {
   display: flex;
   gap: 12px;
