@@ -1,16 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Admin dashboard loaded');
-  
-  const notifBtn = document.getElementById('adminNotifBtn');
-  if (!notifBtn) return;
 
-  notifBtn.addEventListener('click', () => {
-    const badge = notifBtn.querySelector('.notif-badge');
-    if (badge) {
-      // Example behavior: mark notifications as read (hide badge)
-      badge.remove();
-    }
-  });
+  const notifBtn = document.getElementById('adminNotifBtn');
+  if (notifBtn) {
+    notifBtn.addEventListener('click', () => {
+      const badge = notifBtn.querySelector('.notif-badge');
+      if (badge) {
+        // Example behavior: mark notifications as read (hide badge)
+        badge.remove();
+      }
+    });
+  }
 
   // Tab switching functionality
   const tabs = document.querySelectorAll('.admin-tab');
@@ -18,77 +18,49 @@ document.addEventListener('DOMContentLoaded', () => {
   const unitStatusCard = document.querySelector('.unit-status-card');
   const welcomeBanner = document.querySelector('.admin-welcome-banner');
 
-  // Initialize dashboard state on page load
-  function initializeDashboard() {
-    console.log('Initializing dashboard state...');
-    
-    // Check if there's a tab parameter in the URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const activeTab = urlParams.get('tab');
-    
-    if (activeTab === 'employees') {
-      // Activate employees tab
+  // Helper: show the correct tab and content
+  function showTab(tabName) {
+    // Remove active class from all tabs
+    tabs.forEach(t => t.classList.remove('active'));
+
+    if (tabName === 'employees') {
       const employeesTab = document.querySelector('.admin-tab[data-tab="employees"]');
-      if (employeesTab) {
-        employeesTab.classList.add('active');
-        // Remove active from dashboard tab
-        const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
-        if (dashboardTab) dashboardTab.classList.remove('active');
-      }
-      
-      // Show facilitator management and hide dashboard content
+      if (employeesTab) employeesTab.classList.add('active');
       if (welcomeBanner) welcomeBanner.style.display = 'none';
       if (unitStatusCard) unitStatusCard.style.display = 'none';
       if (facilitatorManagement) facilitatorManagement.style.display = 'block';
-      
-      console.log('Employees tab activated from URL parameter');
+      console.log('Employees tab activated');
     } else {
-      // Default to dashboard tab
-    const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
-    if (dashboardTab) {
-      dashboardTab.classList.add('active');
+      const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
+      if (dashboardTab) dashboardTab.classList.add('active');
+      if (welcomeBanner) welcomeBanner.style.display = 'block';
+      if (unitStatusCard) unitStatusCard.style.display = 'block';
+      if (facilitatorManagement) facilitatorManagement.style.display = 'none';
+      console.log('Dashboard tab activated');
     }
-    
-    // Show dashboard content and hide facilitator management
-    if (welcomeBanner) welcomeBanner.style.display = 'block';
-    if (unitStatusCard) unitStatusCard.style.display = 'block';
-    if (facilitatorManagement) facilitatorManagement.style.display = 'none';
-    
-    console.log('Dashboard initialized - facilitator management hidden');
+  }
+
+  // Initialize dashboard state on page load
+  function initializeDashboard() {
+    console.log('Initializing dashboard state...');
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab');
+    if (activeTab === 'employees') {
+      showTab('employees');
+    } else {
+      showTab('dashboard');
     }
   }
 
   // Initialize on page load
   initializeDashboard();
 
+  // Tab click handler
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      // Remove active class from all tabs
-      tabs.forEach(t => t.classList.remove('active'));
-      // Add active class to clicked tab
-      tab.classList.add('active');
-      
-      // Get the tab data attribute
       const tabName = tab.getAttribute('data-tab');
       console.log(`Switched to ${tabName} tab`);
-      
-      // Show/hide content sections based on tab
-      if (tabName === 'dashboard') {
-        // Show dashboard content
-        if (welcomeBanner) welcomeBanner.style.display = 'block';
-        if (unitStatusCard) unitStatusCard.style.display = 'block';
-        if (facilitatorManagement) facilitatorManagement.style.display = 'none';
-      } else if (tabName === 'employees') {
-        // Show facilitator management
-        if (welcomeBanner) welcomeBanner.style.display = 'none';
-        if (unitStatusCard) unitStatusCard.style.display = 'none';
-        if (facilitatorManagement) facilitatorManagement.style.display = 'block';
-      } else {
-        // For other tabs (schedule, session-swaps), show dashboard content for now
-        if (welcomeBanner) welcomeBanner.style.display = 'block';
-        if (unitStatusCard) unitStatusCard.style.display = 'block';
-        if (facilitatorManagement) facilitatorManagement.style.display = 'none';
-      }
+      showTab(tabName);
     });
   });
 
@@ -97,62 +69,59 @@ document.addEventListener('DOMContentLoaded', () => {
   if (settingsBtn) {
     settingsBtn.addEventListener('click', () => {
       console.log('Settings button clicked');
-      // Add settings functionality here
       alert('Settings panel coming soon!');
     });
   }
 
-  // Modal functionality
+  // Modal functionality (Add Employee)
   const modal = document.getElementById('addEmployeeModal');
   const closeModalBtn = document.getElementById('closeModal');
   const cancelBtn = document.getElementById('cancelBtn');
   const addEmployeeForm = document.getElementById('addEmployeeForm');
 
-  // Show modal when Add Employee button is clicked (using event delegation)
+  // Show modal when Add Employee button is clicked (event delegation)
   document.addEventListener('click', (e) => {
-    // Check if the clicked element is the Add Employee button
     if (e.target.closest('.facilitator-action-btn.primary')) {
       e.preventDefault();
       console.log('Add Employee button clicked!');
       if (modal) {
         modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        document.body.style.overflow = 'hidden';
       }
     }
   });
 
-  // Hide modal when close button is clicked
+  // Hide modal (close)
   if (closeModalBtn && modal) {
     closeModalBtn.addEventListener('click', () => {
       modal.style.display = 'none';
-      document.body.style.overflow = 'auto'; // Restore scrolling
+      document.body.style.overflow = 'auto';
     });
   }
 
-  // Hide modal when cancel button is clicked
+  // Hide modal (cancel)
   if (cancelBtn && modal) {
     cancelBtn.addEventListener('click', () => {
       modal.style.display = 'none';
-      document.body.style.overflow = 'auto'; // Restore scrolling
+      document.body.style.overflow = 'auto';
     });
   }
 
-  // Hide modal when clicking outside of it
+  // Hide modal when clicking outside
   if (modal) {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
         modal.style.display = 'none';
-        document.body.style.overflow = 'auto'; // Restore scrolling
+        document.body.style.overflow = 'auto';
       }
     });
   }
 
-  // Handle form submission
+  // Handle add employee form
   if (addEmployeeForm) {
     addEmployeeForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
-      // Get form data
+
       const formData = new FormData(addEmployeeForm);
       const employeeData = {
         role: formData.get('role'),
@@ -164,57 +133,49 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       console.log('Submitting employee data:', employeeData);
-      
-      // Show loading state
+
       const submitBtn = addEmployeeForm.querySelector('.btn-primary');
       const originalText = submitBtn.textContent;
       submitBtn.textContent = 'Adding...';
       submitBtn.disabled = true;
-      
+
       try {
-        // Send data to backend
         const response = await fetch('/admin/create-employee', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
           },
           body: JSON.stringify(employeeData)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-          // Success - show success message and close modal
           alert('Employee added successfully! They will receive login credentials via email.');
           modal.style.display = 'none';
           document.body.style.overflow = 'auto';
-          
-          // Reset form
           addEmployeeForm.reset();
-          
-          // Refresh the page to show the new facilitator and stay on employees tab
+          // Stay on employees tab after addition
           window.location.href = '/admin/dashboard?tab=employees';
         } else {
-          // Error - show error message
           alert(`Error: ${result.error}`);
         }
       } catch (error) {
         console.error('Error submitting form:', error);
         alert('An error occurred while adding the employee. Please try again.');
       } finally {
-        // Restore button state
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
       }
     });
   }
 
-  // Close modal with Escape key
+  // Close Add modal with Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
       modal.style.display = 'none';
-      document.body.style.overflow = 'auto'; // Restore scrolling
+      document.body.style.overflow = 'auto';
     }
   });
 
@@ -224,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const cancelEditBtn = document.getElementById('cancelEditBtn');
   const editEmployeeForm = document.getElementById('editEmployeeForm');
 
-  // Hide edit modal when close button is clicked
   if (closeEditModalBtn && editModal) {
     closeEditModalBtn.addEventListener('click', () => {
       editModal.style.display = 'none';
@@ -232,7 +192,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Hide edit modal when cancel button is clicked
   if (cancelEditBtn && editModal) {
     cancelEditBtn.addEventListener('click', () => {
       editModal.style.display = 'none';
@@ -240,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Hide edit modal when clicking outside of it
   if (editModal) {
     editModal.addEventListener('click', (e) => {
       if (e.target === editModal) {
@@ -250,12 +208,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Handle edit form submission
+  // Handle edit employee form
   if (editEmployeeForm) {
     editEmployeeForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
-      // Get form data
+
       const formData = new FormData(editEmployeeForm);
       const employeeData = {
         employeeId: formData.get('employeeId'),
@@ -268,50 +225,43 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       console.log('Updating employee data:', employeeData);
-      
-      // Show loading state
+
       const submitBtn = editEmployeeForm.querySelector('.btn-primary');
       const originalText = submitBtn.textContent;
       submitBtn.textContent = 'Updating...';
       submitBtn.disabled = true;
-      
+
       try {
-        // Send data to backend
         const response = await fetch('/admin/update-employee', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
           },
           body: JSON.stringify(employeeData)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-          // Success - show success message and close modal
           alert('Employee details updated successfully!');
           editModal.style.display = 'none';
           document.body.style.overflow = 'auto';
-          
-          // Refresh the page to show updated data
-          window.location.href = '/admin/dashboard?tab=employees';
+          updateEmployeeCardInPlace(employeeData);
         } else {
-          // Error - show error message
           alert(`Error: ${result.error}`);
         }
       } catch (error) {
         console.error('Error updating employee:', error);
         alert('An error occurred while updating the employee. Please try again.');
       } finally {
-        // Restore button state
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
       }
     });
   }
 
-  // Close edit modal with Escape key
+  // Close Edit modal with Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && editModal && editModal.style.display === 'flex') {
       editModal.style.display = 'none';
@@ -330,21 +280,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchTerm = searchInput.value.toLowerCase();
     const positionValue = positionFilter.value;
     const statusValue = statusFilter.value;
-    
-    let visibleCount = 0;
-    
+
     facilitatorCards.forEach(card => {
       const name = card.querySelector('.facilitator-name').textContent.toLowerCase();
       const email = card.querySelector('.facilitator-email').textContent.toLowerCase();
       const positionBadge = card.querySelector('.badge-position') ? card.querySelector('.badge-position').textContent.toLowerCase() : '';
       const statusBadge = card.querySelector('.badge-status').textContent.toLowerCase();
-      
-      // Check search term
-      const matchesSearch = searchTerm === '' || 
-        name.includes(searchTerm) || 
-        email.includes(searchTerm);
-      
-      // Check filters - map position filter values to badge text
+
+      const matchesSearch = searchTerm === '' || name.includes(searchTerm) || email.includes(searchTerm);
+
       let matchesPosition = true;
       if (positionValue !== '') {
         if (positionValue === 'admin') {
@@ -355,82 +299,72 @@ document.addEventListener('DOMContentLoaded', () => {
           matchesPosition = positionBadge.includes('unit') && positionBadge.includes('coordinator');
         }
       }
-      
-      const matchesStatus = statusValue === '' || statusBadge.includes(statusValue);
-      
+
+      let matchesStatus = true;
+      if (statusValue !== '') {
+        // Normalize both the filter value and badge text for comparison
+        const normalizedFilterValue = statusValue.replace('_', ' ').toLowerCase();
+        const normalizedBadgeText = statusBadge.replace('_', ' ').toLowerCase();
+        matchesStatus = normalizedBadgeText.includes(normalizedFilterValue);
+      }
+
       if (matchesSearch && matchesPosition && matchesStatus) {
         card.style.display = 'flex';
-        visibleCount++;
       } else {
         card.style.display = 'none';
       }
     });
-    
-    // Update results count
-    if (resultsCount) {
-      resultsCount.textContent = `Showing ${visibleCount} of ${facilitatorCards.length} employees`;
-    }
+
+    updateResultsCount();
   }
 
   // Add event listeners for search and filters
-  if (searchInput) {
-    searchInput.addEventListener('input', filterFacilitators);
-  }
-  if (positionFilter) {
-    positionFilter.addEventListener('change', filterFacilitators);
-  }
-  if (statusFilter) {
-    statusFilter.addEventListener('change', filterFacilitators);
-  }
+  if (searchInput) searchInput.addEventListener('input', filterFacilitators);
+  if (positionFilter) positionFilter.addEventListener('change', filterFacilitators);
+  if (statusFilter) statusFilter.addEventListener('change', filterFacilitators);
 
-  // Conditional Role dropdown functionality
+  // Conditional Role dropdown (Add)
   const positionSelect = document.getElementById('position');
   const roleGroup = document.getElementById('roleGroup');
   const roleSelect = document.getElementById('role');
-  
+
   function toggleRoleDropdown() {
     const selectedPosition = positionSelect.value;
-    
+
     if (selectedPosition === 'facilitator') {
       roleGroup.style.display = 'block';
       roleSelect.setAttribute('required', 'required');
-      // Set default value when showing
       roleSelect.value = 'lab_facilitator';
     } else {
       roleGroup.style.display = 'none';
       roleSelect.removeAttribute('required');
-      // Clear value when hiding
       roleSelect.value = '';
     }
   }
-  
-  // Add event listener for position change
+
   if (positionSelect) {
     positionSelect.addEventListener('change', toggleRoleDropdown);
   }
 
-  // Edit Modal Conditional Role dropdown functionality
+  // Conditional Role dropdown (Edit)
   const editPositionSelect = document.getElementById('editPosition');
   const editRoleGroup = document.getElementById('editRoleGroup');
   const editRoleSelect = document.getElementById('editRole');
-  
+
   function toggleEditRoleDropdown() {
     const selectedPosition = editPositionSelect.value;
-    
+
     if (selectedPosition === 'facilitator') {
       editRoleGroup.style.display = 'block';
       editRoleSelect.setAttribute('required', 'required');
-      // Set default value when showing
       editRoleSelect.value = 'lab_facilitator';
     } else {
       editRoleGroup.style.display = 'none';
       editRoleSelect.removeAttribute('required');
-      // Clear value when hiding
       editRoleSelect.value = '';
     }
   }
-  
-  // Add event listener for edit position change
+
   if (editPositionSelect) {
     editPositionSelect.addEventListener('change', toggleEditRoleDropdown);
   }
@@ -447,18 +381,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 
-// Dropdown functionality
+// Dropdown functionality (global)
 function toggleDropdown(facilitatorId) {
   const dropdown = document.getElementById(`dropdown-${facilitatorId}`);
   const allDropdowns = document.querySelectorAll('.dropdown-menu');
-  
+
   // Close all other dropdowns
   allDropdowns.forEach(d => {
     if (d.id !== `dropdown-${facilitatorId}`) {
       d.style.display = 'none';
     }
   });
-  
+
   // Toggle current dropdown
   if (dropdown.style.display === 'none' || dropdown.style.display === '') {
     dropdown.style.display = 'block';
@@ -470,10 +404,8 @@ function toggleDropdown(facilitatorId) {
 // Disable account function
 function disableAccount(facilitatorId, facilitatorName) {
   if (confirm(`Are you sure you want to disable ${facilitatorName}'s account?`)) {
-    // TODO: Implement disable account API call
     console.log(`Disabling account for facilitator ID: ${facilitatorId}`);
     alert(`${facilitatorName}'s account has been disabled.`);
-    // Close dropdown
     document.getElementById(`dropdown-${facilitatorId}`).style.display = 'none';
   }
 }
@@ -481,15 +413,12 @@ function disableAccount(facilitatorId, facilitatorName) {
 // Delete account function
 async function deleteAccount(facilitatorId, facilitatorName) {
   console.log(`Attempting to delete facilitator ID: ${facilitatorId}, Name: ${facilitatorName}`);
-  
+
   if (confirm(`Are you sure you want to permanently delete ${facilitatorName}'s account? This action cannot be undone.`)) {
     try {
-      // Get CSRF token
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
       console.log('CSRF Token:', csrfToken);
-      
-      // Send DELETE request to backend
-      console.log(`Sending DELETE request to: /admin/delete-employee/${facilitatorId}`);
+
       const response = await fetch(`/admin/delete-employee/${facilitatorId}`, {
         method: 'DELETE',
         headers: {
@@ -497,34 +426,19 @@ async function deleteAccount(facilitatorId, facilitatorName) {
           'X-CSRFToken': csrfToken
         }
       });
-      
+
       console.log('Response status:', response.status);
       const result = await response.json();
       console.log('Response result:', result);
-      
+
       if (result.success) {
-        // Success - remove the facilitator card from DOM
         const facilitatorCard = document.querySelector(`.facilitator-card[data-facilitator-id="${facilitatorId}"]`);
         if (facilitatorCard) {
           facilitatorCard.remove();
         }
-        
-        // Update results count
-        const resultsCount = document.getElementById('resultsCount');
-        if (resultsCount) {
-          const currentText = resultsCount.textContent;
-          const match = currentText.match(/Showing (\d+) of (\d+) facilitators/);
-          if (match) {
-            const currentVisible = parseInt(match[1]) - 1;
-            const total = parseInt(match[2]) - 1;
-            resultsCount.textContent = `Showing ${currentVisible} of ${total} facilitators`;
-          }
-        }
-        
+
+        updateResultsCount();
         alert(`${facilitatorName}'s employee account has been deleted successfully.`);
-        
-        // Refresh the page to update all counts and ensure consistency
-        window.location.href = '/admin/dashboard?tab=employees';
       } else {
         alert(`Error: ${result.message || 'Failed to delete account'}`);
       }
@@ -532,41 +446,38 @@ async function deleteAccount(facilitatorId, facilitatorName) {
       console.error('Error deleting facilitator:', error);
       alert('An error occurred while deleting the account. Please try again.');
     }
-    
-    // Close dropdown
+
     document.getElementById(`dropdown-${facilitatorId}`).style.display = 'none';
   }
+}
+
+// Unified results count updater
+function updateResultsCount() {
+  const resultsCountEl = document.getElementById('resultsCount');
+  if (!resultsCountEl) return;
+  const allCards = Array.from(document.querySelectorAll('.facilitator-card'));
+  const visibleCards = allCards.filter(c => c.style.display !== 'none');
+  resultsCountEl.textContent = `Showing ${visibleCards.length} of ${allCards.length} employees`;
 }
 
 // Open edit modal function
 function openEditModal(facilitatorId, facilitatorName, facilitatorEmail) {
   console.log(`Opening edit modal for employee ID: ${facilitatorId}, Name: ${facilitatorName}`);
-  
-  // Set the employee ID
+
   document.getElementById('editEmployeeId').value = facilitatorId;
-  
-  // Set the email
   document.getElementById('editEmail').value = facilitatorEmail;
-  
-  // Set the full name
   document.getElementById('editFullName').value = facilitatorName;
-  
-  // Find the employee card and extract additional data
+
   const employeeCard = document.querySelector(`.facilitator-card[data-facilitator-id="${facilitatorId}"]`);
   if (employeeCard) {
-    // Extract phone number from details
     const phoneElement = employeeCard.querySelector('.facilitator-phone');
     if (phoneElement) {
       document.getElementById('editPhone').value = phoneElement.textContent.trim();
     }
-    
-    // Extract position from badge
+
     const positionElement = employeeCard.querySelector('.badge-position');
     if (positionElement) {
       const positionText = positionElement.textContent.trim();
-      console.log('Position badge text:', positionText);
-      
-      // Map position text to dropdown values
       let positionValue = '';
       if (positionText.toLowerCase().includes('facilitator')) {
         positionValue = 'facilitator';
@@ -575,29 +486,17 @@ function openEditModal(facilitatorId, facilitatorName, facilitatorEmail) {
       } else if (positionText.toLowerCase().includes('admin')) {
         positionValue = 'admin';
       }
-      
-      console.log('Setting position value to:', positionValue);
       document.getElementById('editPosition').value = positionValue;
-      
-      // Trigger role dropdown visibility based on position
+
       if (positionValue === 'facilitator') {
-        // Extract role from badge
         const roleElement = employeeCard.querySelector('.badge-role');
         if (roleElement) {
           const roleText = roleElement.textContent.trim();
-          console.log('Role badge text:', roleText);
-          
-          // Map role text to dropdown values
           let roleValue = '';
-          if (roleText.toLowerCase().includes('lab')) {
-            roleValue = 'lab_facilitator';
-          } else if (roleText.toLowerCase().includes('senior')) {
-            roleValue = 'senior_facilitator';
-          } else if (roleText.toLowerCase().includes('lead')) {
-            roleValue = 'lead_facilitator';
-          }
-          
-          console.log('Setting role value to:', roleValue);
+          if (roleText.toLowerCase().includes('lab')) roleValue = 'lab_facilitator';
+          else if (roleText.toLowerCase().includes('senior')) roleValue = 'senior_facilitator';
+          else if (roleText.toLowerCase().includes('lead')) roleValue = 'lead_facilitator';
+
           document.getElementById('editRoleGroup').style.display = 'block';
           document.getElementById('editRole').value = roleValue;
           document.getElementById('editRole').setAttribute('required', 'required');
@@ -607,35 +506,21 @@ function openEditModal(facilitatorId, facilitatorName, facilitatorEmail) {
         document.getElementById('editRole').removeAttribute('required');
       }
     }
-    
-    // Extract status from badge
+
     const statusElement = employeeCard.querySelector('.badge-status');
     if (statusElement) {
       const statusText = statusElement.textContent.trim();
-      console.log('Status badge text:', statusText);
-      
-      // Map status text to dropdown values
       let statusValue = '';
-      if (statusText.toLowerCase().includes('active')) {
-        statusValue = 'active';
-      } else if (statusText.toLowerCase().includes('inactive')) {
-        statusValue = 'inactive';
-      } else if (statusText.toLowerCase().includes('leave')) {
-        statusValue = 'on_leave';
-      } else {
-        statusValue = 'active'; // Default fallback
-      }
-      
-      console.log('Setting status value to:', statusValue);
+      if (statusText.toLowerCase().includes('active')) statusValue = 'active';
+      else if (statusText.toLowerCase().includes('inactive')) statusValue = 'inactive';
+      else if (statusText.toLowerCase().includes('leave')) statusValue = 'on_leave';
+      else statusValue = 'active';
       document.getElementById('editStatus').value = statusValue;
     } else {
-      // Fallback to 'active' if status badge not found
       document.getElementById('editStatus').value = 'active';
-      console.log('No status badge found, defaulting to active');
     }
   }
-  
-  // Show the modal
+
   const editModal = document.getElementById('editEmployeeModal');
   if (editModal) {
     editModal.style.display = 'flex';
@@ -647,16 +532,16 @@ function openEditModal(facilitatorId, facilitatorName, facilitatorEmail) {
 async function sendResetLink() {
   const employeeId = document.getElementById('editEmployeeId').value;
   const employeeEmail = document.getElementById('editEmail').value;
-  
+
   if (!employeeId || !employeeEmail) {
     alert('Employee information not found. Please try again.');
     return;
   }
-  
+
   if (confirm(`Send password reset link to ${employeeEmail}?`)) {
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-      
+
       const response = await fetch('/admin/send-reset-link', {
         method: 'POST',
         headers: {
@@ -665,9 +550,9 @@ async function sendResetLink() {
         },
         body: JSON.stringify({ employeeId: employeeId, email: employeeEmail })
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         alert(`Password reset link sent to ${employeeEmail} successfully!`);
       } else {
@@ -680,31 +565,77 @@ async function sendResetLink() {
   }
 }
 
+// Update employee card in place without redirecting
+function updateEmployeeCardInPlace(employeeData) {
+  const employeeId = employeeData.employeeId;
+  const employeeCard = document.querySelector(`.facilitator-card[data-facilitator-id="${employeeId}"]`);
+
+  if (employeeCard) {
+    const nameElement = employeeCard.querySelector('.facilitator-name');
+    if (nameElement) nameElement.textContent = employeeData.fullName;
+
+    const emailElement = employeeCard.querySelector('.facilitator-email');
+    if (emailElement) emailElement.textContent = employeeData.email;
+
+    const positionBadge = employeeCard.querySelector('.badge-position');
+    if (positionBadge) {
+      const positionText = employeeData.position.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+      positionBadge.textContent = positionText;
+    }
+
+    const statusBadge = employeeCard.querySelector('.badge-status');
+    if (statusBadge) {
+      const statusText = employeeData.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+      statusBadge.textContent = statusText;
+    }
+
+    if (employeeData.position === 'facilitator' && employeeData.role) {
+      let roleBadge = employeeCard.querySelector('.badge-role');
+      if (!roleBadge) {
+        const badgesContainer = employeeCard.querySelector('.facilitator-badges');
+        if (badgesContainer) {
+          roleBadge = document.createElement('span');
+          roleBadge.className = 'badge badge-role';
+          badgesContainer.appendChild(roleBadge);
+        }
+      }
+      if (roleBadge) {
+        const roleText = employeeData.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        roleBadge.textContent = roleText;
+      }
+    } else {
+      const roleBadge = employeeCard.querySelector('.badge-role');
+      if (roleBadge) roleBadge.remove();
+    }
+
+    const phoneElement = employeeCard.querySelector('.facilitator-phone');
+    if (phoneElement) phoneElement.textContent = employeeData.phone;
+
+    console.log('Employee card updated in place successfully');
+  }
+}
+
 // Admin reset password function
 async function adminResetPassword() {
   const employeeId = document.getElementById('editEmployeeId').value;
   const employeeName = document.getElementById('editFullName').value;
-  
+
   if (!employeeId || !employeeName) {
     alert('Employee information not found. Please try again.');
     return;
   }
-  
-  // Prompt for new password
+
   const newPassword = prompt(`Enter new password for ${employeeName}:`);
-  if (!newPassword) {
-    return; // User cancelled
-  }
-  
+  if (!newPassword) return;
   if (newPassword.length < 6) {
     alert('Password must be at least 6 characters long.');
     return;
   }
-  
+
   if (confirm(`Reset password for ${employeeName}? This will immediately change their password.`)) {
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-      
+
       const response = await fetch('/admin/admin-reset-password', {
         method: 'POST',
         headers: {
@@ -713,9 +644,9 @@ async function adminResetPassword() {
         },
         body: JSON.stringify({ employeeId: employeeId, newPassword: newPassword })
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         alert(`Password reset successfully for ${employeeName}! They can now log in with the new password.`);
       } else {
