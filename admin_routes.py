@@ -108,11 +108,6 @@ def delete_employee(employee_id):
             print("Employee not found")
             return jsonify({'success': False, 'message': 'Employee not found'}), 404
         
-        # Check if trying to delete the last admin
-        if employee.role == UserRole.ADMIN:
-            admin_count = User.query.filter_by(role=UserRole.ADMIN).count()
-            if admin_count <= 1:
-                return jsonify({'success': False, 'message': 'Cannot delete the last admin account'}), 403
         
         # Delete the employee from database
         employee_name = employee.full_name if employee else 'Unknown'
