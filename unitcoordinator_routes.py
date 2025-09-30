@@ -545,7 +545,7 @@ def change_password():
 def dashboard():
     from sqlalchemy import func, or_
     from sqlalchemy.orm import aliased
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, date
 
     user = get_current_user()
 
@@ -830,6 +830,300 @@ def dashboard():
         approvals=approvals,
         approvals_count=approvals_count,
         pending_requests=pending_requests,
+    )
+
+@unitcoordinator_bp.route("/admin-dashboard")
+@login_required
+@role_required(UserRole.ADMIN)
+def admin_dashboard():
+    """Admin view of Unit Coordinator dashboard - shows all units"""
+    from sqlalchemy import func, or_
+    from sqlalchemy.orm import aliased
+    from datetime import datetime, timedelta, date
+
+    user = get_current_user()
+
+    # Build list of ALL units + session counts (admin can see all units)
+    rows = (
+        db.session.query(Unit, func.count(Session.id))
+        .outerjoin(Module, Module.unit_id == Unit.id)
+        .outerjoin(Session, Session.module_id == Module.id)
+        .group_by(Unit.id)
+        .order_by(Unit.unit_code.asc())
+        .all()
+    )
+    units = []
+    for u, cnt in rows:
+        setattr(u, "session_count", int(cnt or 0))
+        units.append(u)
+
+    # Which unit is selected (via ?unit=) — otherwise first
+    selected_id = request.args.get("unit", type=int)
+    current_unit = (
+        next((u for u in units if u.id == selected_id), None)
+        if selected_id
+        else (units[0] if units else None)
+    )
+
+    # ----- Staffing tiles (safe if no current_unit) -----
+    stats = {"total": 0, "fully": 0, "needs_lead": 0, "unstaffed": 0}
+    if current_unit:
+        session_rows = (
+            db.session.query(
+                Session.id.label("sid"),
+                func.coalesce(Session.max_facilitators, 1).label("maxf"),
+                func.count(Assignment.id).label("assigned"),
+            )
+            .join(Module, Module.id == Session.module_id)
+            .outerjoin(Assignment, Assignment.session_id == Session.id)
+            .filter(Module.unit_id == current_unit.id)
+            .group_by(Session.id, Session.max_facilitators)
+            .all()
+        )
+
+        total_sessions = len(session_rows)
+        fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
+        unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
+        needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
+
+        stats = {
+            "total": total_sessions,
+            "fully": fully_staffed,
+            "needs_lead": needs_lead,
+            "unstaffed": unstaffed,
+        }
+
+    # ----- NEW: Facilitator stats -----
+    fac_stats = {
+        "total_schedule": 0,
+        "schedule_assigned": 0, 
+        "schedule_conflicts": 0,
+        "total_facilitators": 0
+    }
+
+    if current_unit:
+        # Total facilitators associated with this unit
+        total_facilitators = (
+            db.session.query(func.count(UnitFacilitator.user_id.distinct()))
+            .filter(UnitFacilitator.unit_id == current_unit.id)
+            .scalar() or 0
+        )
+        fac_stats["total_facilitators"] = total_facilitators
+
+        # Total schedule slots (sessions * max_facilitators)
+        total_schedule_slots = (
+            db.session.query(func.sum(func.coalesce(Session.max_facilitators, 1)))
+            .join(Module, Module.id == Session.module_id)
+            .filter(Module.unit_id == current_unit.id)
+            .scalar() or 0
+        )
+        fac_stats["total_schedule"] = total_schedule_slots
+
+        # Assigned schedule slots (total assignments)
+        assigned_slots = (
+            db.session.query(func.count(Assignment.id))
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .filter(Module.unit_id == current_unit.id)
+            .scalar() or 0
+        )
+        fac_stats["schedule_assigned"] = assigned_slots
+
+        # Schedule conflicts: Check for assignment conflicts
+        conflicts_count = 0
+        
+        # Get all assignments for this unit
+        assignments_query = (
+            db.session.query(Assignment, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .filter(Module.unit_id == current_unit.id)
+            .all()
+        )
+        
+        # Check for facilitator double-booking conflicts
+        facilitator_sessions = {}
+        for assignment, session, facilitator in assignments_query:
+            facilitator_id = facilitator.id
+            if facilitator_id not in facilitator_sessions:
+                facilitator_sessions[facilitator_id] = []
+            
+            facilitator_sessions[facilitator_id].append({
+                'assignment_id': assignment.id,
+                'session_id': session.id,
+                'start_time': session.start_time,
+                'end_time': session.end_time,
+                'facilitator_name': f"{facilitator.first_name} {facilitator.last_name}".strip()
+            })
+        
+        # Detect overlapping sessions for each facilitator
+        for facilitator_id, sessions in facilitator_sessions.items():
+            sessions.sort(key=lambda x: x['start_time'])
+            
+            for i in range(len(sessions)):
+                current_session = sessions[i]
+                current_start = current_session['start_time']
+                current_end = current_session['end_time']
+                
+                # Check for overlaps with subsequent sessions
+                for j in range(i + 1, len(sessions)):
+                    next_session = sessions[j]
+                    next_start = next_session['start_time']
+                    next_end = next_session['end_time']
+                    
+                    # Check if sessions overlap
+                    if current_end > next_start:
+                        conflicts_count += 1
+                        
+        # Check for unavailability conflicts
+        unavailability_conflicts = (
+            db.session.query(Assignment, Unavailability, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .join(Unavailability, 
+                  db.and_(
+                      Unavailability.user_id == Assignment.facilitator_id,
+                      Unavailability.unit_id == current_unit.id,
+                      db.func.date(Session.start_time) == Unavailability.date
+                  )
+            )
+            .filter(
+                Module.unit_id == current_unit.id,
+                db.or_(
+                    Unavailability.is_full_day == True,
+                    db.and_(
+                        Unavailability.start_time <= db.func.time(Session.start_time),
+                        Unavailability.end_time >= db.func.time(Session.end_time)
+                    )
+                )
+            )
+            .count()
+        )
+        
+        conflicts_count += unavailability_conflicts
+        
+        fac_stats["schedule_conflicts"] = conflicts_count
+
+    # ----- Facilitator Setup Progress + Details -----
+    fac_progress = {"total": 0, "account": 0, "availability": 0, "skills": 0, "ready": 0}
+    facilitators = []
+
+    if current_unit:
+        # All facilitator links for this unit
+        links = (
+            db.session.query(UnitFacilitator, User)
+            .join(User, UnitFacilitator.user_id == User.id)
+            .filter(UnitFacilitator.unit_id == current_unit.id)
+            .order_by(User.last_name.asc().nulls_last(), User.first_name.asc().nulls_last())
+            .all()
+        )
+
+        fac_progress["total"] = len(links)
+
+        for _, f in links:
+            has_profile = bool(
+                (getattr(f, "first_name", None) or getattr(f, "last_name", None))
+                or getattr(f, "phone", None)
+                or getattr(f, "staff_number", None)
+                or getattr(f, "avatar_url", None)
+            )
+
+            has_avail = (
+                db.session.query(Unavailability.id)
+                .filter(Unavailability.user_id == f.id)
+                .limit(1)
+                .first()
+                is not None
+            )
+
+            has_skills = (
+                db.session.query(FacilitatorSkill.id)
+                .filter(FacilitatorSkill.facilitator_id == f.id)
+                .limit(1)
+                .first()
+                is not None
+            )
+
+            is_ready = has_profile and has_avail and has_skills
+            fac_progress["account"] += 1 if has_profile else 0
+            fac_progress["availability"] += 1 if has_avail else 0
+            fac_progress["skills"] += 1 if has_skills else 0
+            fac_progress["ready"] += 1 if is_ready else 0
+
+            facilitators.append(
+                {
+                    "id": f.id,
+                    "name": getattr(f, "full_name", None) or f.email,
+                    "email": f.email,
+                    "phone": getattr(f, "phone", None),
+                    "staff_number": getattr(f, "staff_number", None),
+                    "experience_years": None,         # TODO wire real data later
+                    "upcoming_sessions": None,
+                    "total_hours": None,
+                    "last_login": getattr(f, "last_login", None),
+                    "has_profile": has_profile,
+                    "has_availability": has_avail,
+                    "has_skills": has_skills,
+                    "is_ready": is_ready,
+                }
+            )
+
+    # ----- Swap & Approvals counts -----
+    approvals = {"pending": 0, "approved_this_week": 0, "total": 0}
+    approvals_count = 0
+
+    if current_unit:
+        RA = aliased(Assignment)
+        TA = aliased(Assignment)
+        RS = aliased(Session)
+        TS = aliased(Session)
+        RM = aliased(Module)
+        TM = aliased(Module)
+
+        base_q = (
+            db.session.query(SwapRequest)
+            .join(RA, RA.id == SwapRequest.requester_assignment_id)
+            .join(RS, RS.id == RA.session_id)
+            .join(RM, RM.id == RS.module_id)
+            .join(TA, TA.id == SwapRequest.target_assignment_id)
+            .join(TS, TS.id == TA.session_id)
+            .join(TM, TM.id == TS.module_id)
+            .filter(or_(RM.unit_id == current_unit.id, TM.unit_id == current_unit.id))
+        )
+
+        approvals["total"] = base_q.count()
+        approvals["pending"] = base_q.filter(SwapRequest.status == SwapStatus.PENDING).count()
+        approvals_count = approvals["pending"]
+
+        week_ago = datetime.utcnow() - timedelta(days=7)
+        approvals["approved_this_week"] = (
+            base_q.filter(
+                SwapRequest.status == SwapStatus.APPROVED,
+                SwapRequest.reviewed_at != None,
+                SwapRequest.reviewed_at >= week_ago,
+            ).count()
+        )
+    pending_requests = []
+    if current_unit:
+        pending_requests = _pending_swaps_for_unit(current_unit.id)
+
+    # ---- Render ----
+    return render_template(
+        "unitcoordinator_dashboard.html",
+        user=user,
+        units=units,
+        current_unit=current_unit,
+        today=date.today(),
+        stats=stats,
+        fac_progress=fac_progress,
+        facilitators=facilitators,
+        fac_stats=fac_stats,
+        approvals=approvals,
+        approvals_count=approvals_count,
+        pending_requests=pending_requests,
+        is_admin_view=True,  # Flag to indicate this is admin view
     )
 
 @unitcoordinator_bp.post("/swap_requests/<int:swap_id>/approve")
