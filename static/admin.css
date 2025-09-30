@@ -1513,21 +1513,21 @@
 
 /* Facilitator List */
 .facilitator-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: block;
   width: 100%;
 }
 
 .facilitator-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
+  padding: 20px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 16px;
 }
 
 .facilitator-card:hover {
@@ -1536,14 +1536,16 @@
 }
 
 .facilitator-avatar {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 12px;
   background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #6b7280;
+  flex-shrink: 0;
+  margin-right: 16px;
 }
 
 .facilitator-avatar .material-icons {
@@ -1551,23 +1553,25 @@
 }
 
 .facilitator-info {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .facilitator-name {
   font-family: 'Roboto', sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #111827;
-  margin: 0;
+  margin: 0 0 8px 0;
 }
 
 .facilitator-badges {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 
 .badge {
@@ -1600,10 +1604,12 @@
 
 .facilitator-details {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 4px;
   font-family: 'Roboto', sans-serif;
   font-size: 14px;
   color: #6b7280;
+  margin-bottom: 8px;
 }
 
 .facilitator-role,
@@ -1613,17 +1619,21 @@
 
 .facilitator-metrics {
   display: flex;
-  gap: 16px;
-  margin-top: 4px;
+  gap: 20px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .metric-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-family: 'Roboto', sans-serif;
   font-size: 14px;
   color: #6b7280;
+  background: #f9fafb;
+  padding: 6px 10px;
+  border-radius: 6px;
 }
 
 .metric-item .material-icons {
@@ -1632,7 +1642,9 @@
 
 .facilitator-actions {
   display: flex;
+  flex-direction: row;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .action-btn {

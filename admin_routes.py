@@ -24,6 +24,9 @@ def dashboard():
     # Get current user
     user = get_current_user()
     
+    # Get the tab parameter from URL
+    tab = request.args.get('tab', 'dashboard')
+    
     # Get statistics for admin dashboard
     total_facilitators = User.query.filter_by(role=UserRole.FACILITATOR).count()
     total_sessions = Session.query.count()
@@ -75,6 +78,7 @@ def dashboard():
     
     return render_template('admin_dashboard.html',
                          user=user,
+                         tab=tab,  # Pass the tab parameter to template
                          total_facilitators=total_facilitators,
                          total_sessions=total_sessions,
                          pending_swaps=pending_swaps,

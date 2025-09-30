@@ -50,19 +50,19 @@
     
     <!-- Navigation Tabs -->
     <nav class="admin-nav-tabs">
-      <button class="admin-tab active" data-tab="dashboard">
+      <button class="admin-tab {% if tab == 'dashboard' %}active{% endif %}" data-tab="dashboard">
         <span class="material-icons">bar_chart</span>
         <span>Dashboard</span>
       </button>
-      <button class="admin-tab" data-tab="schedule">
+      <button class="admin-tab {% if tab == 'schedule' %}active{% endif %}" data-tab="schedule">
         <span class="material-icons">event</span>
         <span>Schedule</span>
       </button>
-      <button class="admin-tab" data-tab="employees">
+      <button class="admin-tab {% if tab == 'employees' %}active{% endif %}" data-tab="employees">
         <span class="material-icons">group</span>
         <span>Employees</span>
       </button>
-      <button class="admin-tab" data-tab="session-swaps">
+      <button class="admin-tab {% if tab == 'session-swaps' %}active{% endif %}" data-tab="session-swaps">
         <span class="material-icons">swap_horiz</span>
         <span>Session Swaps</span>
         <span class="tab-badge">3</span>
@@ -70,7 +70,7 @@
     </nav>
 
     <!-- Welcome Banner -->
-    <div class="admin-welcome-banner">
+    <div class="admin-welcome-banner" {% if tab == 'employees' %}style="display: none;"{% endif %}>
       <div class="admin-welcome-content">
         <h1 class="admin-welcome-greeting">Good afternoon, {{ user.first_name if user else 'Admin' }}! 👋</h1>
         <p class="admin-welcome-role">System Administrator • Schedule Manager</p>
@@ -85,7 +85,7 @@
 
 
     <!-- Unit Status Distribution -->
-    <div class="unit-status-card">
+    <div class="unit-status-card" {% if tab == 'employees' %}style="display: none;"{% endif %}>
       <h3 class="unit-status-title">Unit Status Distribution</h3>
       
       <!-- Top Row - Unit Status -->
@@ -118,7 +118,7 @@
     </div>
 
     <!-- Facilitator Management Section (Hidden by default) -->
-    <div class="facilitator-management" id="facilitatorManagement" style="display: none;">
+    <div class="facilitator-management" id="facilitatorManagement" {% if tab == 'employees' %}style="display: block;"{% else %}style="display: none;"{% endif %}>
       <!-- Header -->
       <div class="facilitator-header">
         <div class="facilitator-header-content">
@@ -233,21 +233,12 @@
               </div>
             </div>
             <div class="facilitator-actions">
-              <!-- View profile page -->
-              <a href="{{ url_for('admin.facilitator_profile', facilitator_id=facilitator.id) }}" class="action-btn view" title="View Profile">
-                <span class="material-icons">visibility</span>
-              </a>
-
-              <!-- Edit details in modal -->
-              <button class="action-btn edit" title="Edit Details" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name }}', '{{ facilitator.email }}')">
+              <button class="action-btn edit" title="Edit Profile" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name }}', '{{ facilitator.email }}')">
+                <span class="material-icons">person</span>
+              </button>
+              <button class="action-btn key" title="Edit Details" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name }}', '{{ facilitator.email }}')">
                 <span class="material-icons">edit</span>
               </button>
-
-              <!-- (Optional) Manage access -->
-              <button class="action-btn key" title="Manage Access">
-                <span class="material-icons">vpn_key</span>
-              </button>
-
               <div class="dropdown-container">
                 <button class="action-btn more" title="More Options" onclick="toggleDropdown({{ facilitator.id }})">
                   <span class="material-icons">more_vert</span>
@@ -264,6 +255,7 @@
                 </div>
               </div>
             </div>
+          </div>   <!-- ✅ close each facilitator-card here -->
           {% endfor %}
           
           {% if not facilitators %}
