@@ -8,6 +8,7 @@ const {
   LIST_FACILITATORS_TEMPLATE,
   CREATE_OR_GET_DRAFT,
   UPLOAD_SETUP_CSV,
+  REMOVE_FACILITATORS_TEMPLATE,
   UPLOAD_SESSIONS_TEMPLATE,
   UPLOAD_CAS_TEMPLATE
 } = window.FLASK_ROUTES || {};
@@ -34,6 +35,9 @@ function getUnitId() {
   return '';
 }
 
+// ===== Global event handlers =====
+let handleEscKey, handleEnterKey;
+
 // ===== Modal open/close =====
 function openCreateUnitModal() {
     
@@ -52,6 +56,16 @@ function openCreateUnitModal() {
   setStep(1);
   document.getElementById('unit_id').value = '';
   document.getElementById('setup_complete').value = 'false';
+  
+  // Reset modal title and button text for create mode
+  const modalTitle = document.querySelector('#create-unit-title');
+  if (modalTitle) {
+    modalTitle.textContent = 'Create New Unit';
+  }
+  const submitBtn = document.querySelector('#submit-btn');
+  if (submitBtn) {
+    submitBtn.textContent = 'Create Unit';
+  }
 
 
     if (calendar) {
@@ -74,16 +88,66 @@ function openCreateUnitModal() {
         console.log('Close button wired to showCloseConfirmationPopup');
     }
     
-    // Also handle ESC key
-    const handleEscKey = (e) => {
+    // Define event handlers
+    handleEscKey = (e) => {
       if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
         showCloseConfirmationPopup();
       }
     };
     
-    // Remove existing ESC listeners and add new one
+    handleEnterKey = (e) => {
+      if (e.key === 'Enter' && !modal.classList.contains('hidden')) {
+        e.preventDefault(); // Prevent form submission
+        nextStep(); // Go to next step instead
+      }
+    };
+    
+    // Remove existing listeners and add new ones
     document.removeEventListener('keydown', handleEscKey);
+    document.removeEventListener('keydown', handleEnterKey);
     document.addEventListener('keydown', handleEscKey);
+    document.addEventListener('keydown', handleEnterKey);
+}
+
+function openEditUnitModal() {
+  // Get current unit data from the page
+  const unitCode = document.querySelector('.unit-card h2').textContent.trim();
+  const unitName = document.querySelector('.unit-card p.font-medium').textContent.trim();
+  const semesterYear = document.querySelector('.chip--neutral').textContent.trim();
+  const [semester, year] = semesterYear.split(', ');
+  
+  // Get current unit ID from the URL or data attribute
+  const currentUnitId = getUnitId();
+  
+  // Open the create modal
+  openCreateUnitModal();
+  
+  // Pre-populate the form with current unit data
+  setTimeout(() => {
+    // Set the unit ID for update
+    document.getElementById('unit_id').value = currentUnitId;
+    
+    // Pre-populate form fields
+    document.querySelector('input[name="unit_code"]').value = unitCode;
+    document.querySelector('input[name="unit_name"]').value = unitName;
+    document.querySelector('input[name="semester"]').value = semester;
+    document.querySelector('input[name="year"]').value = year;
+    
+    // Update the modal title to indicate editing
+    const modalTitle = document.querySelector('#create-unit-title');
+    if (modalTitle) {
+      modalTitle.textContent = 'Edit Unit';
+    }
+    
+    // Change the submit button text
+    const submitBtn = document.querySelector('#submit-btn');
+    if (submitBtn) {
+      submitBtn.textContent = 'Update Unit';
+    }
+    
+    // Skip to step 1 (Unit Information) since we're editing
+    setStep(1);
+  }, 100);
 }
 
 // Also add this to handle clicking outside the modal
@@ -477,9 +541,22 @@ if (uploadInput) {
 
       statusBox.classList.add("success");
       statusBox.innerHTML = `
-        <div class="font-semibold">Upload successful</div>
-        <div class="text-sm mt-1">
-          Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-semibold">Upload successful</div>
+            <div class="text-sm mt-1">
+              Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
+            </div>
+          </div>
+          <button 
+            id="remove_csv_btn" 
+            class="ml-3 text-red-600 hover:text-red-800 transition-colors"
+            title="Remove CSV data"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>`;
       setupFlagEl.value = "true";
       fileNameEl.textContent = file.name;
@@ -492,12 +569,17 @@ if (uploadInput) {
       }
       
       showCalendarIfReady();
-      setTimeout(() => statusBox.classList.add("hidden"), 300);
       if (!window.__calendarInitRan) {
         window.__calendarInitRan = true;
         initCalendar();
       } else {
         refreshCalendarRange();
+      }
+      
+      // Add event listener for remove button
+      const removeBtn = document.getElementById('remove_csv_btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', removeFacilitatorsCsv);
       }
     } catch (err) {
       console.error(err);
@@ -513,6 +595,144 @@ if (uploadInput) {
     const f = e.target.files?.[0];
     fileNameEl.textContent = f ? f.name : 'No file selected';
   });
+}
+
+// ===== Remove Facilitators CSV =====
+async function removeFacilitatorsCsv() {
+  const unitId = unitIdEl.value;
+  if (!unitId) {
+    statusBox.textContent = 'Missing unit id.';
+    statusBox.classList.add('error');
+    return;
+  }
+
+  if (!confirm('Are you sure you want to remove all facilitators from this unit? This action cannot be undone.')) {
+    return;
+  }
+
+  statusBox.classList.remove('hidden', 'success', 'error');
+  statusBox.textContent = 'Removing facilitators...';
+  statusBox.classList.add('error'); // Use error styling for removal
+
+  try {
+    const url = withUnitId(REMOVE_FACILITATORS_TEMPLATE, unitId);
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN,
+        'X-CSRF-Token': CSRF_TOKEN,
+      },
+    });
+
+    let data;
+    try {
+      const text = await res.text();
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
+    }
+
+    if (!res.ok || !data.ok) {
+      statusBox.textContent = data.error || 'Failed to remove facilitators';
+      return;
+    }
+
+    // Success - reset everything
+    statusBox.classList.remove('error');
+    statusBox.classList.add('success');
+    statusBox.innerHTML = `
+      <div class="font-semibold">Facilitators removed</div>
+      <div class="text-sm mt-1">Removed ${data.removed_facilitators} facilitator(s) from unit</div>
+    `;
+    
+    // Reset form elements
+    setupFlagEl.value = 'false';
+    fileNameEl.textContent = 'No file selected';
+    uploadInput.value = '';
+    
+    // Hide the status after a delay
+    setTimeout(() => {
+      statusBox.classList.add('hidden');
+      statusBox.classList.remove('success', 'error');
+      statusBox.textContent = '';
+    }, 3000);
+
+  } catch (err) {
+    console.error(err);
+    statusBox.textContent = String(err.message || 'Unexpected error during removal.');
+    statusBox.classList.add('error');
+  }
+}
+
+// ===== Remove Individual Facilitator =====
+async function removeIndividualFacilitator(email, buttonElement) {
+  if (!confirm(`Are you sure you want to remove ${email} from this unit?`)) {
+    return;
+  }
+
+  const unitId = unitIdEl.value;
+  if (!unitId) {
+    alert('Missing unit id.');
+    return;
+  }
+
+  try {
+    // Construct the URL manually to avoid template issues
+    const url = `/unitcoordinator/units/${unitId}/facilitators/${encodeURIComponent(email)}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN,
+        'X-CSRF-Token': CSRF_TOKEN,
+      },
+    });
+
+    let data;
+    try {
+      const text = await res.text();
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
+    }
+
+    if (!res.ok || !data.ok) {
+      alert(data.error || 'Failed to remove facilitator');
+      return;
+    }
+
+    // Remove the facilitator from the UI immediately
+    const listItem = buttonElement.closest('li');
+    if (listItem) {
+      listItem.remove();
+      
+      // Update the count
+      const facilitatorList = document.getElementById('rv_facilitators');
+      const remainingCount = facilitatorList.querySelectorAll('li').length;
+      document.getElementById('rv_fac_count').textContent = remainingCount;
+      
+      // Show success message
+      const statusBox = document.getElementById('upload_status');
+      if (statusBox) {
+        statusBox.classList.remove('hidden', 'success', 'error');
+        statusBox.classList.add('success');
+        statusBox.innerHTML = `
+          <div class="font-semibold">Facilitator removed</div>
+          <div class="text-sm mt-1">${email} has been removed from the unit</div>
+        `;
+        
+        // Hide message after 3 seconds
+        setTimeout(() => {
+          statusBox.classList.add('hidden');
+          statusBox.classList.remove('success', 'error');
+          statusBox.textContent = '';
+        }, 3000);
+      }
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert(`Error removing facilitator: ${err.message || 'Unexpected error'}`);
+  }
 }
 
 // ===== Sessions CSV Upload (Step 3b) =====
@@ -1488,6 +1708,14 @@ function closeCreateUnitModal() {
     modal.classList.add("hidden");
   }
 
+  // Clean up event listeners
+  if (handleEscKey) {
+    document.removeEventListener('keydown', handleEscKey);
+  }
+  if (handleEnterKey) {
+    document.removeEventListener('keydown', handleEnterKey);
+  }
+
   // Reset to step 1
   setStep(1);
   
@@ -1979,17 +2207,46 @@ async function populateReview() {
   const unitId = document.getElementById('unit_id').value;
 
 
-  // Venues
+  // Facilitators
   try {
-    const resV = await fetch(withUnitId(LIST_VENUES_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
-    const dataV = await resV.json();
-    const ulV = document.getElementById('rv_venues');
-    ulV.innerHTML = '';
-    if (dataV.ok) {
-      (dataV.venues || []).forEach(v => {
-        const li = document.createElement('li'); li.textContent = v.name || v; ulV.appendChild(li);
+    const resF = await fetch(withUnitId(LIST_FACILITATORS_TEMPLATE, unitId), { headers: { 'X-CSRFToken': CSRF_TOKEN }});
+    const dataF = await resF.json();
+    const ulF = document.getElementById('rv_facilitators');
+    ulF.innerHTML = '';
+    if (dataF.ok) {
+      (dataF.facilitators || []).forEach(f => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3';
+        li.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-300 inline-block"></span>
+            <div>
+              <div class="font-medium">${f}</div>
+              <div class="text-sm text-gray-600">Facilitator</div>
+            </div>
+          </div>
+          <button 
+            class="remove-facilitator-btn text-red-600 hover:text-red-800 transition-colors p-1 rounded"
+            title="Remove facilitator"
+            data-email="${f}"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        `;
+        ulF.appendChild(li);
       });
-      document.getElementById('rv_ven_count').textContent = (dataV.venues || []).length;
+      document.getElementById('rv_fac_count').textContent = (dataF.facilitators || []).length;
+      
+      // Add event listeners for remove buttons
+      ulF.querySelectorAll('.remove-facilitator-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const email = btn.getAttribute('data-email');
+          removeIndividualFacilitator(email, btn);
+        });
+      });
     }
   } catch {}
 

@@ -19,7 +19,7 @@ from auth import login_required, get_current_user
 from utils import role_required
 from models import db
 
-from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Availability, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill
+from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -714,7 +714,7 @@ def dashboard():
         fac_stats["schedule_conflicts"] = conflicts_count
 
     # ----- Facilitator Setup Progress + Details -----
-    fac_progress = {"total": 0, "account": 0, "availability": 0, "ready": 0}
+    fac_progress = {"total": 0, "account": 0, "availability": 0, "skills": 0, "ready": 0}
     facilitators = []
 
     if current_unit:
@@ -738,16 +738,25 @@ def dashboard():
             )
 
             has_avail = (
-                db.session.query(Availability.id)
-                .filter(Availability.user_id == f.id)
+                db.session.query(Unavailability.id)
+                .filter(Unavailability.user_id == f.id)
                 .limit(1)
                 .first()
                 is not None
             )
 
-            is_ready = has_profile and has_avail
+            has_skills = (
+                db.session.query(FacilitatorSkill.id)
+                .filter(FacilitatorSkill.facilitator_id == f.id)
+                .limit(1)
+                .first()
+                is not None
+            )
+
+            is_ready = has_profile and has_avail and has_skills
             fac_progress["account"] += 1 if has_profile else 0
             fac_progress["availability"] += 1 if has_avail else 0
+            fac_progress["skills"] += 1 if has_skills else 0
             fac_progress["ready"] += 1 if is_ready else 0
 
             facilitators.append(
@@ -763,6 +772,7 @@ def dashboard():
                     "last_login": getattr(f, "last_login", None),
                     "has_profile": has_profile,
                     "has_availability": has_avail,
+                    "has_skills": has_skills,
                     "is_ready": is_ready,
                 }
             )
@@ -830,12 +840,62 @@ def approve_swap(swap_id):
     if sr.status != SwapStatus.PENDING:
         flash("Request is no longer pending.", "warning")
         return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
-
     sr.status = SwapStatus.APPROVED
     sr.reviewed_at = datetime.utcnow()
     db.session.commit()
     flash("Swap approved.", "success")
     return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/unavailability")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def unit_unavailability(unit_id):
+    """List all unavailability entries for a unit (UC-owned), optional filters: user_id, start, end (YYYY-MM-DD)."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or access denied"}), 404
+
+    user_id = request.args.get("user_id", type=int)
+    start = request.args.get("start")
+    end = request.args.get("end")
+
+    q = Unavailability.query.filter(Unavailability.unit_id == unit.id)
+    if user_id:
+        q = q.filter(Unavailability.user_id == user_id)
+    try:
+        if start:
+            start_d = datetime.strptime(start, "%Y-%m-%d").date()
+            q = q.filter(Unavailability.date >= start_d)
+        if end:
+            end_d = datetime.strptime(end, "%Y-%m-%d").date()
+            q = q.filter(Unavailability.date <= end_d)
+    except ValueError:
+        return jsonify({"ok": False, "error": "Invalid date format; use YYYY-MM-DD"}), 400
+
+    rows = (
+        q.order_by(Unavailability.date.asc(), Unavailability.start_time.asc().nulls_first()).all()
+    )
+
+    def serialize(u):
+        owner = User.query.get(u.user_id)
+        return {
+            "id": u.id,
+            "user_id": u.user_id,
+            "user": owner.full_name if owner else None,
+            "unit_id": u.unit_id,
+            "date": u.date.isoformat(),
+            "is_full_day": bool(u.is_full_day),
+            "start_time": u.start_time.isoformat() if u.start_time else None,
+            "end_time": u.end_time.isoformat() if u.end_time else None,
+            "recurring_pattern": u.recurring_pattern.value if u.recurring_pattern else None,
+            "recurring_interval": u.recurring_interval,
+            "recurring_end_date": u.recurring_end_date.isoformat() if u.recurring_end_date else None,
+            "reason": u.reason or "",
+        }
+
+    return jsonify({"ok": True, "items": [serialize(r) for r in rows]})
+
 
 
 @unitcoordinator_bp.post("/swap_requests/<int:swap_id>/reject")
@@ -996,9 +1056,9 @@ def facilitator_profile(facilitator_id):
             # Count skills registered
             stats['skills_count'] = FacilitatorSkill.query.filter_by(user_id=facilitator_user.id).count()
             
-            # Check availability status
-            has_availability = Availability.query.filter_by(user_id=facilitator_user.id).first()
-            stats['availability_status'] = 'Available' if has_availability else 'Not Set'
+            # Check unavailability status (configured if any entries exist)
+            has_unavailability = Unavailability.query.filter_by(user_id=facilitator_user.id).first()
+            stats['availability_status'] = 'Configured' if has_unavailability else 'Not Set'
             
         except Exception as e:
             print(f"Error calculating stats: {e}")
@@ -1200,9 +1260,8 @@ def upload_setup_csv():
             "error": "CSV must include header: facilitator_email"
         }), 400
 
-    # Counters
-    created_users = 0
-    linked_facilitators = 0
+    # Process CSV rows
+    facilitators_data = []
     errors = []
 
     for idx, row in enumerate(reader, start=2):  # start=2 because header is row 1
@@ -1212,14 +1271,68 @@ def upload_setup_csv():
         if not _valid_email(email):
             errors.append(f"Row {idx}: invalid facilitator_email '{email}'")
             continue
+        
+        # Check if facilitator user exists
+        user_obj = User.query.filter_by(email=email).first()
+        
+        facilitators_data.append({
+            "email": email,
+            "exists": user_obj is not None,
+            "name": user_obj.full_name if user_obj else "",
+            "row": idx
+        })
 
+    # Return review data
+    return jsonify({
+        "ok": True,
+        "facilitators": facilitators_data,
+        "errors": errors[:20],  # show up to 20 issues
+        "unit_id": unit_id
+    }), 200
+
+
+@unitcoordinator_bp.post("/confirm-facilitators")
+def confirm_facilitators():
+    """
+    Confirm and create facilitator accounts from review step
+    """
+    user = get_current_user()
+    
+    unit_id = request.form.get("unit_id")
+    if not unit_id:
+        return jsonify({"ok": False, "error": "Missing unit_id"}), 400
+
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found"}), 404
+
+    # Get facilitator emails from form
+    facilitator_emails = request.form.getlist("facilitator_emails")
+    
+    created_users = 0
+    linked_facilitators = 0
+    errors = []
+    
+    # Default password for new accounts
+    default_password = "fac123"  # Simple default password for lab facilitators
+    
+    for email in facilitator_emails:
+        email = email.strip().lower()
+        if not email or not _valid_email(email):
+            continue
+            
         # Ensure facilitator user exists
         user_obj = User.query.filter_by(email=email).first()
         if not user_obj:
             user_obj = User(email=email, role=UserRole.FACILITATOR)
+            user_obj.set_password(default_password)
             db.session.add(user_obj)
             db.session.flush()  # <-- ensure user_obj.id is available
             created_users += 1
+        elif user_obj.role != UserRole.FACILITATOR:
+            # If user exists but is not a facilitator, update their role
+            user_obj.role = UserRole.FACILITATOR
+            # Note: We don't change their password as they might already be using the system
 
         # Ensure link to unit exists
         link = UnitFacilitator.query.filter_by(unit_id=unit.id, user_id=user_obj.id).first()
@@ -1227,17 +1340,88 @@ def upload_setup_csv():
             link = UnitFacilitator(unit_id=unit.id, user_id=user_obj.id)
             db.session.add(link)
             linked_facilitators += 1
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            "ok": True,
+            "created_users": created_users,
+            "linked_facilitators": linked_facilitators,
+            "errors": errors[:20],  # show up to 20 issues
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to create facilitators: {e}"}), 500
 
 
+@unitcoordinator_bp.delete("/units/<int:unit_id>/facilitators")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def remove_unit_facilitators(unit_id: int):
+    """
+    Remove all facilitator links for a unit.
+    This effectively "removes" the CSV data by unlinking all facilitators from the unit.
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found"}), 404
 
-    db.session.commit()
+    try:
+        # Count facilitators before removal
+        facilitator_count = UnitFacilitator.query.filter_by(unit_id=unit.id).count()
+        
+        # Remove all facilitator links for this unit
+        UnitFacilitator.query.filter_by(unit_id=unit.id).delete()
+        
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "removed_facilitators": facilitator_count,
+            "message": f"Removed {facilitator_count} facilitator(s) from unit"
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to remove facilitators: {str(e)}"}), 500
 
-    return jsonify({
-        "ok": True,
-        "created_users": created_users,
-        "linked_facilitators": linked_facilitators,
-        "errors": errors[:20],  # show up to 20 issues
-    }), 200
+
+@unitcoordinator_bp.delete("/units/<int:unit_id>/facilitators/<email>")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def remove_individual_facilitator(unit_id: int, email: str):
+    """
+    Remove a specific facilitator from a unit by email.
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found"}), 404
+
+    try:
+        # Find the user by email
+        facilitator_user = User.query.filter_by(email=email, role=UserRole.FACILITATOR).first()
+        if not facilitator_user:
+            return jsonify({"ok": False, "error": "Facilitator not found"}), 404
+
+        # Find and remove the specific facilitator link
+        link = UnitFacilitator.query.filter_by(unit_id=unit.id, user_id=facilitator_user.id).first()
+        if not link:
+            return jsonify({"ok": False, "error": "Facilitator not linked to this unit"}), 404
+
+        db.session.delete(link)
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "message": f"Removed {email} from unit",
+            "removed_email": email
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to remove facilitator: {str(e)}"}), 500
 
 # ---------- Step 3B: Calendar / Sessions ----------
 @unitcoordinator_bp.get("/units/<int:unit_id>/calendar")

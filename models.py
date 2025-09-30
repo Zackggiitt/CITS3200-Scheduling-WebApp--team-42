@@ -83,6 +83,8 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
+    phone_number = db.Column(db.String(20))
+    staff_number = db.Column(db.String(20))
     password_hash = db.Column(db.String(255), nullable=True)
     role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.FACILITATOR)
     
@@ -119,7 +121,7 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
     
     # Relationships
-    availability = db.relationship('Availability', backref='user', lazy=True, cascade='all, delete-orphan')
+    # availability relationship removed; use `user.unavailabilities` via `Unavailability.user` backref instead
     assignments = db.relationship('Assignment', backref='facilitator', lazy=True)
     swap_requests_made = db.relationship('SwapRequest', foreign_keys='SwapRequest.requester_id', backref='requester', lazy=True)
     swap_requests_received = db.relationship('SwapRequest', foreign_keys='SwapRequest.target_id', backref='target', lazy=True)
@@ -189,17 +191,7 @@ class UnitFacilitator(db.Model):
 
 
 
-class Availability(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    day_of_week = db.Column(db.Integer, nullable=False)  # 0=Monday, 6=Sunday
-    start_time = db.Column(db.Time, nullable=False)
-    end_time = db.Column(db.Time, nullable=False)
-    is_available = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def __repr__(self):
-        return f'<Availability {self.user.email} - Day {self.day_of_week}>'
+# Availability model deprecated and removed. Use Unavailability entries (date-based blocks)
 
 class Unavailability(db.Model):
     id = db.Column(db.Integer, primary_key=True)

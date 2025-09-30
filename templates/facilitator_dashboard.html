@@ -26,24 +26,32 @@
                 <span class="material-icons notification-icon" aria-hidden="true" id="bell-icon">notifications</span>
                 <span class="notification-badge" id="header-notification-badge">3</span>
             </div>
-            <div class="user-info">
-                <span class="material-icons profile-icon" aria-hidden="true">account_circle</span>
-                <span class="user-name">facilitator Test</span>
+            <div class="user-profile-dropdown" id="fac-profile-dropdown">
+                <button class="user-info-link" id="fac-profile-trigger" aria-haspopup="true" aria-expanded="false">
+                    <span class="material-icons profile-icon" aria-hidden="true">account_circle</span>
+                    <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
+                    <span class="material-icons" aria-hidden="true">arrow_drop_down</span>
+                </button>
+                <div class="fac-dropdown-menu" id="fac-dropdown-menu" role="menu" aria-label="User menu" style="display:none;">
+                    <a class="fac-dropdown-item" href="{{ url_for('facilitator.profile') }}" role="menuitem">
+                        <span class="material-icons" aria-hidden="true">person</span>
+                        <span>View Profile</span>
+                    </a>
+                    <form method="POST" action="{{ url_for('auth.logout') }}" role="none">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="fac-dropdown-item danger" role="menuitem">
+                            <span class="material-icons" aria-hidden="true">logout</span>
+                            <span>Logout</span>
+                        </button>
+                    </form>
+                </div>
             </div>
             <span class="user-role-tag">Lab Facilitator</span>
-            <div class="user-nav-item">
-                <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button type="submit" class="logout-button">
-                        <span class="material-icons" aria-hidden="true">logout</span>
-                        <span>Logout</span>
-                    </button>
-                </form>
-            </div>
         </nav>
     </div>
 </header>
 
+{% if not has_no_units %}
 <section id="welcome" class="main-content-wrapper">
   <div class="welcome-banner">
     <div class="welcome-text">
@@ -77,6 +85,28 @@
         </a>
     </nav>
 </section>
+{% endif %}
+
+{% if has_no_units %}
+<!-- Empty State for No Units -->
+<section class="main-content-wrapper has-no-units-state">
+    <div class="empty-state-container">
+        <div class="empty-state-card">
+            <span class="material-icons empty-state-icon" aria-hidden="true">school</span>
+            <h2 class="empty-state-title">You have not been assigned to any units</h2>
+            <p class="empty-state-description">
+                Please confirm with your Unit Coordinator to ensure that you are added to the right units.
+            </p>
+            <button class="refresh-units-btn" onclick="refreshPage()">
+                <span class="material-icons">refresh</span>
+                Refresh
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Hide all other sections when no units -->
+{% endif %}
 
 <!-- Notification Popup Modal -->
 <div id="notification-popup" class="notification-popup">
@@ -781,6 +811,11 @@
     window.currentUnitId = {{ current_unit_dict.id if current_unit_dict else 'null' }};
     window.currentUnit = {{ current_unit_dict|tojson if current_unit_dict else 'null' }};
     window.csrfToken = "{{ csrf_token() }}";
+    
+    // Function to refresh the page to check for new unit assignments
+    function refreshPage() {
+        window.location.reload();
+    }
 </script>
 
 <!-- Request Swap Modal -->

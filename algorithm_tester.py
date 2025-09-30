@@ -17,7 +17,7 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super(NumpyEncoder, self).default(obj)
 from algorithm_comparison import AdvancedSchedulingEngine, AlgorithmType, AlgorithmWeights
-from models import db, User, Session, Assignment, Availability, UserRole, SkillLevel, FacilitatorSkill
+from models import db, User, Session, Assignment, UserRole, SkillLevel, FacilitatorSkill
 import random
 from dataclasses import asdict
 

@@ -1,4 +1,4 @@
-from models import db, User, Session, Assignment, Availability, UserRole, SkillLevel, FacilitatorSkill
+from models import db, User, Session, Assignment, Unavailability, UserRole, SkillLevel, FacilitatorSkill
 from datetime import datetime, timedelta
 import json
 import math
@@ -302,28 +302,36 @@ class AdvancedSchedulingEngine:
     
     # Helper methods
     def _is_facilitator_available(self, facilitator: User, session: Session) -> bool:
-        """Check if facilitator is available for the session"""
-        session_day = session.start_time.weekday()
+        """Check availability by ensuring no overlapping Unavailability on the session date."""
+        session_date = session.start_time.date()
         session_start_time = session.start_time.time()
         session_end_time = session.end_time.time()
-        
-        # Get all availability slots for this facilitator on this day
-        availabilities = Availability.query.filter_by(
-            user_id=facilitator.id,
-            day_of_week=session_day,
-            is_available=True
-        ).all()
-        
-        if not availabilities:
-            return False
-        
-        # Check if any availability slot covers the session time
-        for availability in availabilities:
-            if (availability.start_time <= session_start_time and 
-                availability.end_time >= session_end_time):
-                return True
-        
-        return False
+
+        # Find any unavailability on that date for this facilitator
+        blocks = (
+            Unavailability.query
+            .filter(
+                Unavailability.user_id == facilitator.id,
+                Unavailability.date == session_date,
+            )
+            .all()
+        )
+
+        # If any full-day block exists -> unavailable
+        for b in blocks:
+            if b.is_full_day:
+                return False
+
+        # If any time-overlap block exists -> unavailable
+        for b in blocks:
+            if b.start_time is None or b.end_time is None:
+                continue
+            # overlap if block.start < session_end and block.end > session_start
+            if b.start_time < session_end_time and b.end_time > session_start_time:
+                return False
+
+        # Otherwise available
+        return True
     
     def _is_facilitator_available_for_algorithm(self, facilitator: User, session: Session, algorithm: AlgorithmType) -> bool:
         """Algorithm-specific availability checking with different strictness levels"""

@@ -527,6 +527,8 @@
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* Facilitator Header */
@@ -561,6 +563,7 @@
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .facilitator-action-btn {
@@ -1282,6 +1285,41 @@
   color: #9ca3af;
 }
 
+/* Role Group Styling and Animation */
+.role-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.role-group .form-select {
+  border: 1px solid #d1d5db !important;
+  background: #ffffff !important;
+}
+
+.role-group .form-select:focus {
+  outline: none;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.role-group:not([style*=" none"]) {
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .modal-actions {
   display: flex;
   gap: 12px;
@@ -1390,18 +1428,26 @@
   display: block;
 }
 
+/* Facilitator Directory Content */
+.facilitator-directory-content {
+  margin-top: 24px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Search and Filter Section */
 .facilitator-search-section {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
-  align-items: center;
+  display: block;
+  margin-bottom: 24px;
+  margin-top: 0;
+  width: 100%;
 }
 
 .search-bar {
   position: relative;
-  flex: 1;
-  max-width: 400px;
+  width: 100%;
+  margin-bottom: 16px;
 }
 
 .search-icon {
@@ -1433,7 +1479,10 @@
 
 .filter-controls {
   display: flex;
-  gap: 12px;
+  gap: 20px;
+  align-items: center;
+  margin-top: 16px;
+  width: 100%;
 }
 
 .filter-select {
@@ -1444,7 +1493,7 @@
   font-size: 14px;
   color: #111827;
   background: #ffffff;
-  min-width: 140px;
+  min-width: 150px;
   transition: all 0.2s ease;
 }
 
@@ -1467,6 +1516,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
 }
 
 .facilitator-card {
@@ -1531,6 +1581,16 @@
 .badge-experience {
   background: #dbeafe;
   color: #1e40af;
+}
+
+.badge-position {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.badge-role {
+  background: #f3e8ff;
+  color: #6b21a8;
 }
 
 .badge-status {
@@ -1599,6 +1659,57 @@
   font-size: 18px;
 }
 
+/* Dropdown Menu Styles */
+.dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 1000;
+  min-width: 200px;
+  margin-top: 4px;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background: #f9fafb;
+}
+
+.dropdown-item.delete {
+  color: #dc2626;
+}
+
+.dropdown-item.delete:hover {
+  background: #fee2e2;
+}
+
+.dropdown-item .material-icons {
+  font-size: 18px;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;
@@ -1626,24 +1737,76 @@
   margin: 0;
 }
 
+/* Password Reset Section */
+.password-reset-section {
+  margin-top: 24px;
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.password-reset-title {
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 16px 0;
+}
+
+.password-reset-options {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-secondary .material-icons {
+  font-size: 18px;
+}
+
 /* Responsive Design for Facilitator Management */
 @media (max-width: 768px) {
   .facilitator-search-section {
     flex-direction: column;
     align-items: stretch;
+    gap: 16px;
   }
   
   .search-bar {
-    max-width: none;
+    width: 100%;
+    margin-bottom: 16px;
   }
   
   .filter-controls {
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
   }
   
   .filter-select {
     min-width: auto;
-    flex: 1;
+    width: 100%;
   }
   
   .facilitator-card {
@@ -1658,6 +1821,15 @@
   }
   
   .facilitator-actions {
+    justify-content: center;
+  }
+  
+  .password-reset-options {
+    flex-direction: column;
+  }
+  
+  .btn-secondary {
+    width: 100%;
     justify-content: center;
   }
 }
