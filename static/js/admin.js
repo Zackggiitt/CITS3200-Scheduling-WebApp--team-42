@@ -300,7 +300,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      const matchesStatus = statusValue === '' || statusBadge.includes(statusValue);
+      let matchesStatus = true;
+      if (statusValue !== '') {
+        // Normalize both the filter value and badge text for comparison
+        const normalizedFilterValue = statusValue.replace('_', ' ').toLowerCase();
+        const normalizedBadgeText = statusBadge.replace('_', ' ').toLowerCase();
+        matchesStatus = normalizedBadgeText.includes(normalizedFilterValue);
+      }
 
       if (matchesSearch && matchesPosition && matchesStatus) {
         card.style.display = 'flex';
