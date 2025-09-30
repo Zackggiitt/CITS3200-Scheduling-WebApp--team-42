@@ -265,10 +265,17 @@
                     <span class="material-icons">person_off</span>
                     Disable Account
                   </button>
-                  <button class="dropdown-item delete" onclick="deleteAccount({{ facilitator.id }}, '{{ facilitator.full_name }}')">
-                    <span class="material-icons">delete</span>
-                    Delete Employee Account
-                  </button>
+                  {% if facilitator.role.value == 'admin' and admin_count <= 1 %}
+                    <button class="dropdown-item delete disabled" disabled title="Cannot delete the last admin account">
+                      <span class="material-icons">delete</span>
+                      Delete Employee Account
+                    </button>
+                  {% else %}
+                    <button class="dropdown-item delete" onclick="deleteAccount({{ facilitator.id }}, '{{ facilitator.full_name }}')">
+                      <span class="material-icons">delete</span>
+                      Delete Employee Account
+                    </button>
+                  {% endif %}
                 </div>
               </div>
             </div>

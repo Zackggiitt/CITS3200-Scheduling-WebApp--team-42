@@ -1753,6 +1753,17 @@
   background: #fee2e2;
 }
 
+.dropdown-item.delete.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #9ca3af;
+}
+
+.dropdown-item.delete.disabled:hover {
+  background: transparent;
+  color: #9ca3af;
+}
+
 .dropdown-item .material-icons {
   font-size: 18px;
 }
