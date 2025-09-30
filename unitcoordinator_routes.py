@@ -58,13 +58,16 @@ def _valid_email(s: str) -> bool:
 
 
 def _get_user_unit_or_404(user, unit_id: int):
-    """Return Unit if it exists AND is owned by user; else None."""
+    """Return Unit if it exists AND is owned by user (or user is admin); else None."""
     try:
         unit_id = int(unit_id)
     except (TypeError, ValueError):
         return None
     unit = Unit.query.get(unit_id)
-    if not unit or unit.created_by != user.id:
+    if not unit:
+        return None
+    # Allow access if user owns the unit OR is an admin
+    if unit.created_by != user.id and user.role != UserRole.ADMIN:
         return None
     return unit
 
@@ -331,7 +334,7 @@ from sqlalchemy import func
 # unitcoordinator_route.py (dashboard)
 @unitcoordinator_bp.route("/profile")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def profile():
     """Unit Coordinator Profile Page"""
     from datetime import date
@@ -360,7 +363,7 @@ def profile():
 
 @unitcoordinator_bp.route("/account-settings")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def account_settings():
     """Unit Coordinator Account Settings Page"""
     user = get_current_user()
@@ -385,7 +388,7 @@ def account_settings():
 
 @unitcoordinator_bp.route("/update-personal-info", methods=["POST"])
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def update_personal_info():
     """Update user's personal information (name and email)"""
     user = get_current_user()
@@ -437,7 +440,7 @@ def update_personal_info():
 
 @unitcoordinator_bp.route("/update-contact-info", methods=["POST"])
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def update_contact_info():
     """Update user's contact information"""
     user = get_current_user()
@@ -478,7 +481,7 @@ def update_contact_info():
 
 @unitcoordinator_bp.route("/change-password", methods=["POST"])
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def change_password():
     """Change user's password"""
     user = get_current_user()
@@ -541,11 +544,11 @@ def change_password():
 
 @unitcoordinator_bp.route("/dashboard")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def dashboard():
     from sqlalchemy import func, or_
     from sqlalchemy.orm import aliased
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, date
 
     user = get_current_user()
 
@@ -636,8 +639,82 @@ def dashboard():
         )
         fac_stats["schedule_assigned"] = assigned_slots
 
-        # Schedule conflicts (placeholder for now)
-        fac_stats["schedule_conflicts"] = 0
+        # Schedule conflicts: Check for assignment conflicts
+        conflicts_count = 0
+        
+        # Get all assignments for this unit
+        assignments_query = (
+            db.session.query(Assignment, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .filter(Module.unit_id == current_unit.id)
+            .all()
+        )
+        
+        # Check for facilitator double-booking conflicts
+        facilitator_sessions = {}
+        for assignment, session, facilitator in assignments_query:
+            facilitator_id = facilitator.id
+            if facilitator_id not in facilitator_sessions:
+                facilitator_sessions[facilitator_id] = []
+            
+            facilitator_sessions[facilitator_id].append({
+                'assignment_id': assignment.id,
+                'session_id': session.id,
+                'start_time': session.start_time,
+                'end_time': session.end_time,
+                'facilitator_name': f"{facilitator.first_name} {facilitator.last_name}".strip()
+            })
+        
+        # Detect overlapping sessions for each facilitator
+        for facilitator_id, sessions in facilitator_sessions.items():
+            sessions.sort(key=lambda x: x['start_time'])
+            
+            for i in range(len(sessions)):
+                current_session = sessions[i]
+                current_start = current_session['start_time']
+                current_end = current_session['end_time']
+                
+                # Check for overlaps with subsequent sessions
+                for j in range(i + 1, len(sessions)):
+                    next_session = sessions[j]
+                    next_start = next_session['start_time']
+                    next_end = next_session['end_time']
+                    
+                    # Check if sessions overlap
+                    if current_end > next_start:
+                        conflicts_count += 1
+                        
+        # Check for unavailability conflicts
+        unavailability_conflicts = (
+            db.session.query(Assignment, Unavailability, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .join(Unavailability, 
+                  db.and_(
+                      Unavailability.user_id == Assignment.facilitator_id,
+                      Unavailability.unit_id == current_unit.id,
+                      db.func.date(Session.start_time) == Unavailability.date
+                  )
+            )
+            .filter(
+                Module.unit_id == current_unit.id,
+                db.or_(
+                    Unavailability.is_full_day == True,
+                    db.and_(
+                        Unavailability.start_time <= db.func.time(Session.start_time),
+                        Unavailability.end_time >= db.func.time(Session.end_time)
+                    )
+                )
+            )
+            .count()
+        )
+        
+        conflicts_count += unavailability_conflicts
+        
+        fac_stats["schedule_conflicts"] = conflicts_count
 
     # ----- Facilitator Setup Progress + Details -----
     fac_progress = {"total": 0, "account": 0, "availability": 0, "skills": 0, "ready": 0}
@@ -758,23 +835,326 @@ def dashboard():
         pending_requests=pending_requests,
     )
 
+@unitcoordinator_bp.route("/admin-dashboard")
+@login_required
+@role_required(UserRole.ADMIN)
+def admin_dashboard():
+    """Admin view of Unit Coordinator dashboard - shows all units"""
+    from sqlalchemy import func, or_
+    from sqlalchemy.orm import aliased
+    from datetime import datetime, timedelta, date
+
+    user = get_current_user()
+
+    # Build list of ALL units + session counts (admin can see all units)
+    rows = (
+        db.session.query(Unit, func.count(Session.id))
+        .outerjoin(Module, Module.unit_id == Unit.id)
+        .outerjoin(Session, Session.module_id == Module.id)
+        .group_by(Unit.id)
+        .order_by(Unit.unit_code.asc())
+        .all()
+    )
+    units = []
+    for u, cnt in rows:
+        setattr(u, "session_count", int(cnt or 0))
+        units.append(u)
+
+    # Which unit is selected (via ?unit=) — otherwise first
+    selected_id = request.args.get("unit", type=int)
+    current_unit = (
+        next((u for u in units if u.id == selected_id), None)
+        if selected_id
+        else (units[0] if units else None)
+    )
+
+    # ----- Staffing tiles (safe if no current_unit) -----
+    stats = {"total": 0, "fully": 0, "needs_lead": 0, "unstaffed": 0}
+    if current_unit:
+        session_rows = (
+            db.session.query(
+                Session.id.label("sid"),
+                func.coalesce(Session.max_facilitators, 1).label("maxf"),
+                func.count(Assignment.id).label("assigned"),
+            )
+            .join(Module, Module.id == Session.module_id)
+            .outerjoin(Assignment, Assignment.session_id == Session.id)
+            .filter(Module.unit_id == current_unit.id)
+            .group_by(Session.id, Session.max_facilitators)
+            .all()
+        )
+
+        total_sessions = len(session_rows)
+        fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
+        unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
+        needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
+
+        stats = {
+            "total": total_sessions,
+            "fully": fully_staffed,
+            "needs_lead": needs_lead,
+            "unstaffed": unstaffed,
+        }
+
+    # ----- NEW: Facilitator stats -----
+    fac_stats = {
+        "total_schedule": 0,
+        "schedule_assigned": 0, 
+        "schedule_conflicts": 0,
+        "total_facilitators": 0
+    }
+
+    if current_unit:
+        # Total facilitators associated with this unit
+        total_facilitators = (
+            db.session.query(func.count(UnitFacilitator.user_id.distinct()))
+            .filter(UnitFacilitator.unit_id == current_unit.id)
+            .scalar() or 0
+        )
+        fac_stats["total_facilitators"] = total_facilitators
+
+        # Total schedule slots (sessions * max_facilitators)
+        total_schedule_slots = (
+            db.session.query(func.sum(func.coalesce(Session.max_facilitators, 1)))
+            .join(Module, Module.id == Session.module_id)
+            .filter(Module.unit_id == current_unit.id)
+            .scalar() or 0
+        )
+        fac_stats["total_schedule"] = total_schedule_slots
+
+        # Assigned schedule slots (total assignments)
+        assigned_slots = (
+            db.session.query(func.count(Assignment.id))
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .filter(Module.unit_id == current_unit.id)
+            .scalar() or 0
+        )
+        fac_stats["schedule_assigned"] = assigned_slots
+
+        # Schedule conflicts: Check for assignment conflicts
+        conflicts_count = 0
+        
+        # Get all assignments for this unit
+        assignments_query = (
+            db.session.query(Assignment, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .filter(Module.unit_id == current_unit.id)
+            .all()
+        )
+        
+        # Check for facilitator double-booking conflicts
+        facilitator_sessions = {}
+        for assignment, session, facilitator in assignments_query:
+            facilitator_id = facilitator.id
+            if facilitator_id not in facilitator_sessions:
+                facilitator_sessions[facilitator_id] = []
+            
+            facilitator_sessions[facilitator_id].append({
+                'assignment_id': assignment.id,
+                'session_id': session.id,
+                'start_time': session.start_time,
+                'end_time': session.end_time,
+                'facilitator_name': f"{facilitator.first_name} {facilitator.last_name}".strip()
+            })
+        
+        # Detect overlapping sessions for each facilitator
+        for facilitator_id, sessions in facilitator_sessions.items():
+            sessions.sort(key=lambda x: x['start_time'])
+            
+            for i in range(len(sessions)):
+                current_session = sessions[i]
+                current_start = current_session['start_time']
+                current_end = current_session['end_time']
+                
+                # Check for overlaps with subsequent sessions
+                for j in range(i + 1, len(sessions)):
+                    next_session = sessions[j]
+                    next_start = next_session['start_time']
+                    next_end = next_session['end_time']
+                    
+                    # Check if sessions overlap
+                    if current_end > next_start:
+                        conflicts_count += 1
+                        
+        # Check for unavailability conflicts
+        unavailability_conflicts = (
+            db.session.query(Assignment, Unavailability, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .join(Unavailability, 
+                  db.and_(
+                      Unavailability.user_id == Assignment.facilitator_id,
+                      Unavailability.unit_id == current_unit.id,
+                      db.func.date(Session.start_time) == Unavailability.date
+                  )
+            )
+            .filter(
+                Module.unit_id == current_unit.id,
+                db.or_(
+                    Unavailability.is_full_day == True,
+                    db.and_(
+                        Unavailability.start_time <= db.func.time(Session.start_time),
+                        Unavailability.end_time >= db.func.time(Session.end_time)
+                    )
+                )
+            )
+            .count()
+        )
+        
+        conflicts_count += unavailability_conflicts
+        
+        fac_stats["schedule_conflicts"] = conflicts_count
+
+    # ----- Facilitator Setup Progress + Details -----
+    fac_progress = {"total": 0, "account": 0, "availability": 0, "skills": 0, "ready": 0}
+    facilitators = []
+
+    if current_unit:
+        # All facilitator links for this unit
+        links = (
+            db.session.query(UnitFacilitator, User)
+            .join(User, UnitFacilitator.user_id == User.id)
+            .filter(UnitFacilitator.unit_id == current_unit.id)
+            .order_by(User.last_name.asc().nulls_last(), User.first_name.asc().nulls_last())
+            .all()
+        )
+
+        fac_progress["total"] = len(links)
+
+        for _, f in links:
+            has_profile = bool(
+                (getattr(f, "first_name", None) or getattr(f, "last_name", None))
+                or getattr(f, "phone", None)
+                or getattr(f, "staff_number", None)
+                or getattr(f, "avatar_url", None)
+            )
+
+            has_avail = (
+                db.session.query(Unavailability.id)
+                .filter(Unavailability.user_id == f.id)
+                .limit(1)
+                .first()
+                is not None
+            )
+
+            has_skills = (
+                db.session.query(FacilitatorSkill.id)
+                .filter(FacilitatorSkill.facilitator_id == f.id)
+                .limit(1)
+                .first()
+                is not None
+            )
+
+            is_ready = has_profile and has_avail and has_skills
+            fac_progress["account"] += 1 if has_profile else 0
+            fac_progress["availability"] += 1 if has_avail else 0
+            fac_progress["skills"] += 1 if has_skills else 0
+            fac_progress["ready"] += 1 if is_ready else 0
+
+            facilitators.append(
+                {
+                    "id": f.id,
+                    "name": getattr(f, "full_name", None) or f.email,
+                    "email": f.email,
+                    "phone": getattr(f, "phone", None),
+                    "staff_number": getattr(f, "staff_number", None),
+                    "experience_years": None,         # TODO wire real data later
+                    "upcoming_sessions": None,
+                    "total_hours": None,
+                    "last_login": getattr(f, "last_login", None),
+                    "has_profile": has_profile,
+                    "has_availability": has_avail,
+                    "has_skills": has_skills,
+                    "is_ready": is_ready,
+                }
+            )
+
+    # ----- Swap & Approvals counts -----
+    approvals = {"pending": 0, "approved_this_week": 0, "total": 0}
+    approvals_count = 0
+
+    if current_unit:
+        RA = aliased(Assignment)
+        TA = aliased(Assignment)
+        RS = aliased(Session)
+        TS = aliased(Session)
+        RM = aliased(Module)
+        TM = aliased(Module)
+
+        base_q = (
+            db.session.query(SwapRequest)
+            .join(RA, RA.id == SwapRequest.requester_assignment_id)
+            .join(RS, RS.id == RA.session_id)
+            .join(RM, RM.id == RS.module_id)
+            .join(TA, TA.id == SwapRequest.target_assignment_id)
+            .join(TS, TS.id == TA.session_id)
+            .join(TM, TM.id == TS.module_id)
+            .filter(or_(RM.unit_id == current_unit.id, TM.unit_id == current_unit.id))
+        )
+
+        approvals["total"] = base_q.count()
+        approvals["pending"] = base_q.filter(SwapRequest.status == SwapStatus.PENDING).count()
+        approvals_count = approvals["pending"]
+
+        week_ago = datetime.utcnow() - timedelta(days=7)
+        approvals["approved_this_week"] = (
+            base_q.filter(
+                SwapRequest.status == SwapStatus.APPROVED,
+                SwapRequest.reviewed_at != None,
+                SwapRequest.reviewed_at >= week_ago,
+            ).count()
+        )
+    pending_requests = []
+    if current_unit:
+        pending_requests = _pending_swaps_for_unit(current_unit.id)
+
+    # ---- Render ----
+    return render_template(
+        "unitcoordinator_dashboard.html",
+        user=user,
+        units=units,
+        current_unit=current_unit,
+        today=date.today(),
+        stats=stats,
+        fac_progress=fac_progress,
+        facilitators=facilitators,
+        fac_stats=fac_stats,
+        approvals=approvals,
+        approvals_count=approvals_count,
+        pending_requests=pending_requests,
+        is_admin_view=True,  # Flag to indicate this is admin view
+    )
+
 @unitcoordinator_bp.post("/swap_requests/<int:swap_id>/approve")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def approve_swap(swap_id):
+    user = get_current_user()
     sr = SwapRequest.query.get_or_404(swap_id)
     if sr.status != SwapStatus.PENDING:
         flash("Request is no longer pending.", "warning")
-        return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+        unit_id = request.args.get("unit", type=int)
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard", unit=unit_id, _anchor="tab-team"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard", unit=unit_id, _anchor="tab-team"))
     sr.status = SwapStatus.APPROVED
     sr.reviewed_at = datetime.utcnow()
     db.session.commit()
     flash("Swap approved.", "success")
-    return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+    unit_id = request.args.get("unit", type=int)
+    if user.role == UserRole.ADMIN:
+        return redirect(url_for("unitcoordinator.admin_dashboard", unit=unit_id, _anchor="tab-team"))
+    else:
+        return redirect(url_for("unitcoordinator.dashboard", unit=unit_id, _anchor="tab-team"))
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/unavailability")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def unit_unavailability(unit_id):
     """List all unavailability entries for a unit (UC-owned), optional filters: user_id, start, end (YYYY-MM-DD)."""
     user = get_current_user()
@@ -826,24 +1206,34 @@ def unit_unavailability(unit_id):
 
 @unitcoordinator_bp.post("/swap_requests/<int:swap_id>/reject")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def reject_swap(swap_id):
+    user = get_current_user()
     sr = SwapRequest.query.get_or_404(swap_id)
     if sr.status != SwapStatus.PENDING:
         flash("Request is no longer pending.", "warning")
-        return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+        unit_id = request.args.get("unit", type=int)
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard", unit=unit_id, _anchor="tab-team"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard", unit=unit_id, _anchor="tab-team"))
 
     sr.status = SwapStatus.REJECTED
     sr.reviewed_at = datetime.utcnow()
     db.session.commit()
     flash("Swap rejected.", "success")
-    return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+    unit_id = request.args.get("unit", type=int)
+    if user.role == UserRole.ADMIN:
+        return redirect(url_for("unitcoordinator.admin_dashboard", unit=unit_id, _anchor="tab-team"))
+    else:
+        return redirect(url_for("unitcoordinator.dashboard", unit=unit_id, _anchor="tab-team"))
 
 
 @unitcoordinator_bp.route("/create_unit", methods=["POST"])
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def create_unit():
+    user = get_current_user()
     """
     Create OR update a Unit.
     - If unit_id is present and belongs to the current UC -> update
@@ -864,33 +1254,51 @@ def create_unit():
     # Basic validation (Step 1 core)
     if not (unit_code and unit_name and year_raw and semester):
         flash("Please complete Unit Information.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
 
     try:
         year = int(year_raw)
     except ValueError:
         flash("Year must be a number.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
 
     # Dates (Step 2) – optional but validated if present
     start_date = _parse_date_multi(start_raw)
     end_date = _parse_date_multi(end_raw)
     if start_raw and not start_date:
         flash("Invalid Start Date format.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
     if end_raw and not end_date:
         flash("Invalid End Date format.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
     if start_date and end_date and start_date > end_date:
         flash("Start Date must be before End Date.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
 
     # UPDATE path when unit_id exists
     if unit_id:
         unit = _get_user_unit_or_404(user, unit_id)
         if not unit:
             flash("Unit not found or you do not have access.", "error")
-            return redirect(url_for("unitcoordinator.dashboard"))
+            if user.role == UserRole.ADMIN:
+                return redirect(url_for("unitcoordinator.admin_dashboard"))
+            else:
+                return redirect(url_for("unitcoordinator.dashboard"))
 
         # If identity (code/year/semester) changes, guard duplicates
         if (unit.unit_code != unit_code or unit.year != year or unit.semester != semester):
@@ -899,7 +1307,10 @@ def create_unit():
             ).first()
             if dup and dup.id != unit.id:
                 flash("Another unit with that code/year/semester already exists.", "error")
-                return redirect(url_for("unitcoordinator.dashboard"))
+                if user.role == UserRole.ADMIN:
+                    return redirect(url_for("unitcoordinator.admin_dashboard"))
+                else:
+                    return redirect(url_for("unitcoordinator.dashboard"))
 
         # Apply updates
         unit.unit_code = unit_code
@@ -912,7 +1323,10 @@ def create_unit():
         db.session.commit()
 
         flash("Unit updated successfully!", "success")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
 
     # CREATE path (no unit_id)
     # Per-UC uniqueness
@@ -921,7 +1335,10 @@ def create_unit():
     ).first()
     if existing:
         flash("You already created this unit for that semester/year.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
 
     new_unit = Unit(
         unit_code=unit_code,
@@ -940,12 +1357,15 @@ def create_unit():
     _get_or_create_default_module(new_unit)
 
     flash("Unit created successfully!", "success")
-    return redirect(url_for("unitcoordinator.dashboard"))
+    if user.role == UserRole.ADMIN:
+        return redirect(url_for("unitcoordinator.admin_dashboard"))
+    else:
+        return redirect(url_for("unitcoordinator.dashboard"))
 
 
 @unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/profile')
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def facilitator_profile(facilitator_id):
     """View a specific facilitator's profile"""
     user = get_current_user()
@@ -996,7 +1416,7 @@ def facilitator_profile(facilitator_id):
 
 @unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/edit', methods=['GET', 'POST'])
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def edit_facilitator_profile(facilitator_id):
     """Edit a facilitator's profile"""
     user = get_current_user()
@@ -1032,7 +1452,7 @@ def edit_facilitator_profile(facilitator_id):
 
 @unitcoordinator_bp.post("/create_or_get_draft")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def create_or_get_draft():
     user = get_current_user()
     
@@ -1044,7 +1464,7 @@ def create_or_get_draft():
             try:
                 unit_id = int(unit_id)
                 unit = Unit.query.get(unit_id)
-                if unit and unit.created_by == user.id:
+                if unit and (unit.created_by == user.id or user.role == UserRole.ADMIN):
                     # Delete all sessions for this unit
                     sessions = db.session.query(Session).join(Module).filter(Module.unit_id == unit.id).all()
                     for session in sessions:
@@ -1122,7 +1542,7 @@ def create_or_get_draft():
 
 @unitcoordinator_bp.get("/csv-template")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def download_setup_csv_template():
     """
     Returns a CSV with one column:
@@ -1147,7 +1567,7 @@ def download_setup_csv_template():
 # --------------------------------------------------------------------------
 @unitcoordinator_bp.post("/upload-setup-csv")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def upload_setup_csv():
     """
     Accepts a 1-column CSV:
@@ -1282,7 +1702,7 @@ def confirm_facilitators():
 
 @unitcoordinator_bp.delete("/units/<int:unit_id>/facilitators")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def remove_unit_facilitators(unit_id: int):
     """
     Remove all facilitator links for a unit.
@@ -1315,7 +1735,7 @@ def remove_unit_facilitators(unit_id: int):
 
 @unitcoordinator_bp.delete("/units/<int:unit_id>/facilitators/<email>")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def remove_individual_facilitator(unit_id: int, email: str):
     """
     Remove a specific facilitator from a unit by email.
@@ -1352,7 +1772,7 @@ def remove_individual_facilitator(unit_id: int, email: str):
 # ---------- Step 3B: Calendar / Sessions ----------
 @unitcoordinator_bp.get("/units/<int:unit_id>/calendar")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def calendar_week(unit_id: int):
     """Return sessions that intersect the visible week."""
     user = get_current_user()
@@ -1398,7 +1818,7 @@ def calendar_week(unit_id: int):
     
 @unitcoordinator_bp.post("/units/<int:unit_id>/sessions")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def create_session(unit_id: int):
     """Create a session or a weekly series (based on 'recurrence')."""
     user = get_current_user()
@@ -1539,7 +1959,7 @@ def create_session(unit_id: int):
 
 @unitcoordinator_bp.post("/units/<int:unit_id>/upload_sessions_csv")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def upload_sessions_csv(unit_id: int):
     """
     Accept CSV with headers: Venue, Activity, Session, Date, Time
@@ -1704,7 +2124,7 @@ def upload_sessions_csv(unit_id: int):
 
 @unitcoordinator_bp.put("/sessions/<int:session_id>")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def update_session(session_id: int):
     """Move/resize, update venue, or rename session; optional weekly fan-out when apply_to='series'."""
     user = get_current_user()
@@ -1857,7 +2277,7 @@ def update_session(session_id: int):
 
 @unitcoordinator_bp.delete("/sessions/<int:session_id>")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def delete_session(session_id: int):
     """Delete a session."""
     user = get_current_user()
@@ -1877,7 +2297,7 @@ def delete_session(session_id: int):
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/venues")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def list_venues(unit_id: int):
     """Return venues linked to this unit (id + name)."""
     user = get_current_user()
@@ -1900,7 +2320,7 @@ def list_venues(unit_id: int):
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/facilitators")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def list_facilitators(unit_id: int):
     user = get_current_user()
     unit = _get_user_unit_or_404(user, unit_id)
@@ -1921,7 +2341,7 @@ def list_facilitators(unit_id: int):
 # ---------- CAS CSV Upload (auto-generate sessions) ----------
 @unitcoordinator_bp.post("/units/<int:unit_id>/upload_cas_csv")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def upload_cas_csv(unit_id: int):
     """
     Accept a CAS-style CSV and create sessions.
@@ -2296,7 +2716,7 @@ def upload_cas_csv(unit_id: int):
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/dashboard-sessions")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def get_dashboard_sessions(unit_id: int):
     """Get session data for dashboard display - today's sessions, upcoming sessions, and statistics"""
     user = get_current_user()
@@ -2455,7 +2875,7 @@ def get_dashboard_sessions(unit_id: int):
 
 @login_required
 
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 
 def get_bulk_staffing_filters(unit_id: int):
 
@@ -2561,7 +2981,7 @@ def get_bulk_staffing_filters(unit_id: int):
 
 @login_required
 
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 
 def get_bulk_staffing_sessions(unit_id: int):
 
@@ -2657,9 +3077,140 @@ def get_bulk_staffing_sessions(unit_id: int):
 
 
 
+@unitcoordinator_bp.get("/units/<int:unit_id>/conflicts")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def get_schedule_conflicts(unit_id: int):
+    """Get detailed information about schedule conflicts."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+  
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        conflicts = []
+        
+        # Get all assignments for this unit
+        assignments_query = (
+            db.session.query(Assignment, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .filter(Module.unit_id == unit.id)
+            .all()
+        )
+        
+        # Group assignments by facilitator
+        facilitator_sessions = {}
+        for assignment, session, facilitator in assignments_query:
+            facilitator_id = facilitator.id
+            if facilitator_id not in facilitator_sessions:
+                facilitator_sessions[facilitator_id] = []
+            
+            facilitator_sessions[facilitator_id].append({
+                'assignment_id': assignment.id,
+                'session_id': session.id,
+                'start_time': session.start_time,
+                'end_time': session.end_time,
+                'module_name': session.module.module_name,
+                'facilitator_name': f"{facilitator.first_name} {facilitator.last_name}".strip()
+            })
+        
+        # Detect overlapping sessions
+        for facilitator_id, sessions in facilitator_sessions.items():
+            sessions.sort(key=lambda x: x['start_time'])
+            facilitator_name = sessions[0]['facilitator_name']
+            
+            for i in range(len(sessions)):
+                current_session = sessions[i]
+                
+                for j in range(i + 1, len(sessions)):
+                    next_session = sessions[j]
+                    
+                    # Check for time overlap
+                    if current_session['end_time'] > next_session['start_time']:
+                        conflict = {
+                            'type': 'schedule_overlap',
+                            'facilitator_id': facilitator_id,
+                            'facilitator_name': facilitator_name,
+                            'session1': {
+                                'id': current_session['session_id'],
+                                'module': current_session['module_name'],
+                                'start_time': current_session['start_time'].isoformat(),
+                                'end_time': current_session['end_time'].isoformat()
+                            },
+                            'session2': {
+                                'id': next_session['session_id'],
+                                'module': next_session['module_name'],
+                                'start_time': next_session['start_time'].isoformat(),
+                                'end_time': next_session['end_time'].isoformat()
+                            }
+                        }
+                        conflicts.append(conflict)
+        
+        # Check for unavailability conflicts
+        unavailability_conflicts_query = (
+            db.session.query(Assignment, Unavailability, Session, User)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .join(User, User.id == Assignment.facilitator_id)
+            .join(Unavailability, 
+                  db.and_(
+                      Unavailability.user_id == Assignment.facilitator_id,
+                      Unavailability.unit_id == unit.id,
+                      db.func.date(Session.start_time) == Unavailability.date
+                  )
+            )
+            .filter(
+                Module.unit_id == unit.id,
+                db.or_(
+                    Unavailability.is_full_day == True,
+                    db.and_(
+                        Unavailability.start_time <= db.func.time(Session.start_time),
+                        Unavailability.end_time >= db.func.time(Session.end_time)
+                    )
+                )
+            )
+            .all()
+        )
+        
+        for assignment, unavailability, session, facilitator in unavailability_conflicts_query:
+            conflict = {
+                'type': 'unavailability_conflict',
+                'facilitator_id': facilitator.id,
+                'facilitator_name': f"{facilitator.first_name} {facilitator.last_name}".strip(),
+                'session': {
+                    'id': session.id,
+                    'module': session.module.module_name,
+                    'start_time': session.start_time.isoformat(),
+                    'end_time': session.end_time.isoformat()
+                },
+                'unavailability': {
+                    'date': unavailability.date.isoformat(),
+                    'start_time': unavailability.start_time.isoformat() if unavailability.start_time else None,
+                    'end_time': unavailability.end_time.isoformat() if unavailability.end_time else None,
+                    'is_full_day': unavailability.is_full_day,
+                    'reason': unavailability.reason
+                }
+            }
+            conflicts.append(conflict)
+        
+        return jsonify({
+            "ok": True,
+            "conflicts": conflicts,
+            "total_conflicts": len(conflicts),
+            "unit_name": unit.unit_name
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching schedule conflicts: {str(e)}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @unitcoordinator_bp.get("/units/<int:unit_id>/attendance-summary")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def get_attendance_summary(unit_id: int):
     """Get attendance summary data for facilitators in a unit."""
     user = get_current_user()
@@ -2741,7 +3292,7 @@ def get_attendance_summary(unit_id: int):
 
 @login_required
 
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 
 def apply_bulk_staffing(unit_id: int):
 

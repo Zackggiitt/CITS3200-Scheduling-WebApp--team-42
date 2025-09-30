@@ -36,6 +36,9 @@ def dashboard():
     # Get all employees data for the directory
     facilitators = User.query.filter(User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR, UserRole.ADMIN])).all()
     
+    # Count admins to check if we can delete the last one
+    admin_count = User.query.filter_by(role=UserRole.ADMIN).count()
+    
     # Calculate additional statistics
     active_facilitators = User.query.filter_by(role=UserRole.FACILITATOR).count()  # Keep facilitator count for compatibility
     
@@ -91,7 +94,8 @@ def dashboard():
                          avg_rating=avg_rating,
                          expert_facilitators=expert_facilitators,
                          senior_facilitators=senior_facilitators,
-                         junior_facilitators=junior_facilitators)
+                         junior_facilitators=junior_facilitators,
+                         admin_count=admin_count)
 
 @admin_bp.route('/delete-employee/<int:employee_id>', methods=['DELETE'])
 @admin_required

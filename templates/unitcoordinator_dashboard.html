@@ -370,7 +370,7 @@
                     {% set uend = u.end_date %}
                     {% set ucompleted = uend and (uend if uend is string else uend) < today %}
                     <li class="border-b last:border-0">
-                      <a href="{{ url_for('unitcoordinator.dashboard', unit=u.id) }}"
+                      <a href="{{ url_for('unitcoordinator.admin_dashboard' if is_admin_view else 'unitcoordinator.dashboard', unit=u.id) }}"
                         class="block px-3 py-2 hover:bg-gray-50">
                         <div class="flex items-center gap-2">
                           <div class="font-semibold">{{ u.unit_code }}</div>
@@ -412,7 +412,7 @@
                 <ul class="menu">
                   {% for other in units if other.id != unit.id %}
                     <li>
-                      <a href="{{ url_for('unitcoordinator.dashboard', unit=other.id) }}"
+                      <a href="{{ url_for('unitcoordinator.admin_dashboard' if is_admin_view else 'unitcoordinator.dashboard', unit=other.id) }}"
                         class="block px-3 py-2 text-sm hover:bg-gray-50">
                         {{ other.unit_code }} — {{ other.unit_name }}
                       </a>
