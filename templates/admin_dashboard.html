@@ -20,14 +20,22 @@
         <span class="admin-topbar__title">Schedule Manager</span>
       </div>
       <div class="admin-topbar__right">
-        <button class="admin-topbar__icon-btn" type="button" aria-label="Notifications" id="adminNotifBtn">
-          <span class="material-icons" aria-hidden="true">notifications</span>
+        <a href="{{ url_for('unitcoordinator.admin_dashboard') }}" class="admin-topbar-portal-btn" title="Unit Coordinator Portal">
+          <span class="material-icons">school</span>
+          <span>Unit Coordinator Portal</span>
+        </a>
+        <div class="notification-container">
+          <button class="icon-btn notification-btn" type="button" aria-label="Notifications" id="adminNotifBtn">
+            <span class="material-icons" aria-hidden="true">notifications</span>
+          </button>
           {% if pending_swaps and pending_swaps > 0 %}
-            <span class="notif-badge">{{ pending_swaps }}</span>
+            <span class="notification-badge" aria-label="{{ pending_swaps }} unread notifications">
+              {{ pending_swaps }}
+            </span>
           {% else %}
-            <span class="notif-badge">1</span>
+            <span class="notification-badge" aria-label="1 unread notification">1</span>
           {% endif %}
-        </button>
+        </div>
         <div class="admin-topbar__user" aria-label="Current user">
           <span class="material-icons" aria-hidden="true">person</span>
           <span class="admin-topbar__name">{{ user.full_name if user else 'Admin User' }}</span>

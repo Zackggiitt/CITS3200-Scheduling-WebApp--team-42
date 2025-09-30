@@ -26,37 +26,12 @@
   color: #111827; 
 }
 
-.admin-topbar__right { 
+.admin-topbar__right {
   display: flex; 
   align-items: center; 
-  gap: 14px; 
+  gap: 20px; 
 }
 
-.admin-topbar__icon-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  cursor: pointer;
-}
-.admin-topbar__icon-btn:hover { background: #f9fafb; }
-
-.notif-badge { 
-  position: absolute;
-  top: -6px; 
-  right: -6px; 
-  background: #dc2626; 
-  color: #fff; 
-  border-radius: 999px; 
-  padding: 2px 6px; 
-  font-size: 12px; 
-  font-weight: 700; 
-}
 
 .admin-topbar__user { 
   display: inline-flex; 
@@ -210,6 +185,78 @@
 
 .admin-settings-btn .material-icons {
   font-size: 24px;
+}
+
+.admin-topbar-portal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #3b82f6;
+  color: #ffffff;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-topbar-portal-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.admin-topbar-portal-btn .material-icons {
+  font-size: 16px;
+}
+
+/* Notification button styles to match Unit Coordinator portal */
+.notification-container { 
+  position: relative; 
+}
+
+.icon-btn { 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+  padding: 6px; 
+  border-radius: 9999px; 
+  color: #4b5563; 
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.icon-btn:hover { 
+  background: #f3f4f6; 
+}
+
+.notification-btn .material-icons { 
+  font-size: 20px; 
+}
+
+.notification-badge {
+  position: absolute; 
+  top: -2px; 
+  right: -2px; 
+  height: 16px; 
+  width: 16px;
+  background: #dc2626; 
+  color: #fff; 
+  font-size: 11px; 
+  font-weight: 700; 
+  border-radius: 9999px;
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  line-height: 1;
 }
 
 /* Dashboard Metrics */
