@@ -334,7 +334,7 @@ from sqlalchemy import func
 # unitcoordinator_route.py (dashboard)
 @unitcoordinator_bp.route("/profile")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def profile():
     """Unit Coordinator Profile Page"""
     from datetime import date
@@ -363,7 +363,7 @@ def profile():
 
 @unitcoordinator_bp.route("/account-settings")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def account_settings():
     """Unit Coordinator Account Settings Page"""
     user = get_current_user()
@@ -388,7 +388,7 @@ def account_settings():
 
 @unitcoordinator_bp.route("/update-personal-info", methods=["POST"])
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def update_personal_info():
     """Update user's personal information (name and email)"""
     user = get_current_user()
@@ -440,7 +440,7 @@ def update_personal_info():
 
 @unitcoordinator_bp.route("/update-contact-info", methods=["POST"])
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def update_contact_info():
     """Update user's contact information"""
     user = get_current_user()
@@ -481,7 +481,7 @@ def update_contact_info():
 
 @unitcoordinator_bp.route("/change-password", methods=["POST"])
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def change_password():
     """Change user's password"""
     user = get_current_user()
@@ -544,7 +544,7 @@ def change_password():
 
 @unitcoordinator_bp.route("/dashboard")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def dashboard():
     from sqlalchemy import func, or_
     from sqlalchemy.orm import aliased
@@ -1154,7 +1154,7 @@ def approve_swap(swap_id):
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/unavailability")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def unit_unavailability(unit_id):
     """List all unavailability entries for a unit (UC-owned), optional filters: user_id, start, end (YYYY-MM-DD)."""
     user = get_current_user()
@@ -1231,8 +1231,9 @@ def reject_swap(swap_id):
 
 @unitcoordinator_bp.route("/create_unit", methods=["POST"])
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def create_unit():
+    user = get_current_user()
     """
     Create OR update a Unit.
     - If unit_id is present and belongs to the current UC -> update
@@ -1253,33 +1254,51 @@ def create_unit():
     # Basic validation (Step 1 core)
     if not (unit_code and unit_name and year_raw and semester):
         flash("Please complete Unit Information.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
 
     try:
         year = int(year_raw)
     except ValueError:
         flash("Year must be a number.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
 
     # Dates (Step 2) – optional but validated if present
     start_date = _parse_date_multi(start_raw)
     end_date = _parse_date_multi(end_raw)
     if start_raw and not start_date:
         flash("Invalid Start Date format.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
     if end_raw and not end_date:
         flash("Invalid End Date format.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
     if start_date and end_date and start_date > end_date:
         flash("Start Date must be before End Date.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
 
     # UPDATE path when unit_id exists
     if unit_id:
         unit = _get_user_unit_or_404(user, unit_id)
         if not unit:
             flash("Unit not found or you do not have access.", "error")
-            return redirect(url_for("unitcoordinator.dashboard"))
+            if user.role == UserRole.ADMIN:
+                return redirect(url_for("unitcoordinator.admin_dashboard"))
+            else:
+                return redirect(url_for("unitcoordinator.dashboard"))
 
         # If identity (code/year/semester) changes, guard duplicates
         if (unit.unit_code != unit_code or unit.year != year or unit.semester != semester):
@@ -1288,7 +1307,10 @@ def create_unit():
             ).first()
             if dup and dup.id != unit.id:
                 flash("Another unit with that code/year/semester already exists.", "error")
-                return redirect(url_for("unitcoordinator.dashboard"))
+                if user.role == UserRole.ADMIN:
+                    return redirect(url_for("unitcoordinator.admin_dashboard"))
+                else:
+                    return redirect(url_for("unitcoordinator.dashboard"))
 
         # Apply updates
         unit.unit_code = unit_code
@@ -1301,7 +1323,10 @@ def create_unit():
         db.session.commit()
 
         flash("Unit updated successfully!", "success")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
 
     # CREATE path (no unit_id)
     # Per-UC uniqueness
@@ -1310,7 +1335,10 @@ def create_unit():
     ).first()
     if existing:
         flash("You already created this unit for that semester/year.", "error")
-        return redirect(url_for("unitcoordinator.dashboard"))
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard"))
 
     new_unit = Unit(
         unit_code=unit_code,
@@ -1329,12 +1357,15 @@ def create_unit():
     _get_or_create_default_module(new_unit)
 
     flash("Unit created successfully!", "success")
-    return redirect(url_for("unitcoordinator.dashboard"))
+    if user.role == UserRole.ADMIN:
+        return redirect(url_for("unitcoordinator.admin_dashboard"))
+    else:
+        return redirect(url_for("unitcoordinator.dashboard"))
 
 
 @unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/profile')
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def facilitator_profile(facilitator_id):
     """View a specific facilitator's profile"""
     user = get_current_user()
@@ -1385,7 +1416,7 @@ def facilitator_profile(facilitator_id):
 
 @unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/edit', methods=['GET', 'POST'])
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def edit_facilitator_profile(facilitator_id):
     """Edit a facilitator's profile"""
     user = get_current_user()
@@ -1421,7 +1452,7 @@ def edit_facilitator_profile(facilitator_id):
 
 @unitcoordinator_bp.post("/create_or_get_draft")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def create_or_get_draft():
     user = get_current_user()
     
@@ -1433,7 +1464,7 @@ def create_or_get_draft():
             try:
                 unit_id = int(unit_id)
                 unit = Unit.query.get(unit_id)
-                if unit and unit.created_by == user.id:
+                if unit and (unit.created_by == user.id or user.role == UserRole.ADMIN):
                     # Delete all sessions for this unit
                     sessions = db.session.query(Session).join(Module).filter(Module.unit_id == unit.id).all()
                     for session in sessions:
@@ -1511,7 +1542,7 @@ def create_or_get_draft():
 
 @unitcoordinator_bp.get("/csv-template")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def download_setup_csv_template():
     """
     Returns a CSV with one column:
@@ -1536,7 +1567,7 @@ def download_setup_csv_template():
 # --------------------------------------------------------------------------
 @unitcoordinator_bp.post("/upload-setup-csv")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def upload_setup_csv():
     """
     Accepts a 1-column CSV:
@@ -1671,7 +1702,7 @@ def confirm_facilitators():
 
 @unitcoordinator_bp.delete("/units/<int:unit_id>/facilitators")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def remove_unit_facilitators(unit_id: int):
     """
     Remove all facilitator links for a unit.
@@ -1704,7 +1735,7 @@ def remove_unit_facilitators(unit_id: int):
 
 @unitcoordinator_bp.delete("/units/<int:unit_id>/facilitators/<email>")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def remove_individual_facilitator(unit_id: int, email: str):
     """
     Remove a specific facilitator from a unit by email.
@@ -1741,7 +1772,7 @@ def remove_individual_facilitator(unit_id: int, email: str):
 # ---------- Step 3B: Calendar / Sessions ----------
 @unitcoordinator_bp.get("/units/<int:unit_id>/calendar")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def calendar_week(unit_id: int):
     """Return sessions that intersect the visible week."""
     user = get_current_user()
@@ -1787,7 +1818,7 @@ def calendar_week(unit_id: int):
     
 @unitcoordinator_bp.post("/units/<int:unit_id>/sessions")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def create_session(unit_id: int):
     """Create a session or a weekly series (based on 'recurrence')."""
     user = get_current_user()
@@ -1928,7 +1959,7 @@ def create_session(unit_id: int):
 
 @unitcoordinator_bp.post("/units/<int:unit_id>/upload_sessions_csv")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def upload_sessions_csv(unit_id: int):
     """
     Accept CSV with headers: Venue, Activity, Session, Date, Time
@@ -2093,7 +2124,7 @@ def upload_sessions_csv(unit_id: int):
 
 @unitcoordinator_bp.put("/sessions/<int:session_id>")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def update_session(session_id: int):
     """Move/resize, update venue, or rename session; optional weekly fan-out when apply_to='series'."""
     user = get_current_user()
@@ -2246,7 +2277,7 @@ def update_session(session_id: int):
 
 @unitcoordinator_bp.delete("/sessions/<int:session_id>")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def delete_session(session_id: int):
     """Delete a session."""
     user = get_current_user()
@@ -2266,7 +2297,7 @@ def delete_session(session_id: int):
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/venues")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def list_venues(unit_id: int):
     """Return venues linked to this unit (id + name)."""
     user = get_current_user()
@@ -2289,7 +2320,7 @@ def list_venues(unit_id: int):
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/facilitators")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def list_facilitators(unit_id: int):
     user = get_current_user()
     unit = _get_user_unit_or_404(user, unit_id)
@@ -2310,7 +2341,7 @@ def list_facilitators(unit_id: int):
 # ---------- CAS CSV Upload (auto-generate sessions) ----------
 @unitcoordinator_bp.post("/units/<int:unit_id>/upload_cas_csv")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def upload_cas_csv(unit_id: int):
     """
     Accept a CAS-style CSV and create sessions.
@@ -2685,7 +2716,7 @@ def upload_cas_csv(unit_id: int):
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/dashboard-sessions")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def get_dashboard_sessions(unit_id: int):
     """Get session data for dashboard display - today's sessions, upcoming sessions, and statistics"""
     user = get_current_user()
@@ -2844,7 +2875,7 @@ def get_dashboard_sessions(unit_id: int):
 
 @login_required
 
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 
 def get_bulk_staffing_filters(unit_id: int):
 
@@ -2950,7 +2981,7 @@ def get_bulk_staffing_filters(unit_id: int):
 
 @login_required
 
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 
 def get_bulk_staffing_sessions(unit_id: int):
 
@@ -3048,7 +3079,7 @@ def get_bulk_staffing_sessions(unit_id: int):
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/conflicts")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def get_schedule_conflicts(unit_id: int):
     """Get detailed information about schedule conflicts."""
     user = get_current_user()
@@ -3179,7 +3210,7 @@ def get_schedule_conflicts(unit_id: int):
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/attendance-summary")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def get_attendance_summary(unit_id: int):
     """Get attendance summary data for facilitators in a unit."""
     user = get_current_user()
@@ -3261,7 +3292,7 @@ def get_attendance_summary(unit_id: int):
 
 @login_required
 
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 
 def apply_bulk_staffing(unit_id: int):
 
