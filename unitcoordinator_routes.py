@@ -58,13 +58,16 @@ def _valid_email(s: str) -> bool:
 
 
 def _get_user_unit_or_404(user, unit_id: int):
-    """Return Unit if it exists AND is owned by user; else None."""
+    """Return Unit if it exists AND is owned by user (or user is admin); else None."""
     try:
         unit_id = int(unit_id)
     except (TypeError, ValueError):
         return None
     unit = Unit.query.get(unit_id)
-    if not unit or unit.created_by != user.id:
+    if not unit:
+        return None
+    # Allow access if user owns the unit OR is an admin
+    if unit.created_by != user.id and user.role != UserRole.ADMIN:
         return None
     return unit
 
@@ -1128,17 +1131,26 @@ def admin_dashboard():
 
 @unitcoordinator_bp.post("/swap_requests/<int:swap_id>/approve")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def approve_swap(swap_id):
+    user = get_current_user()
     sr = SwapRequest.query.get_or_404(swap_id)
     if sr.status != SwapStatus.PENDING:
         flash("Request is no longer pending.", "warning")
-        return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+        unit_id = request.args.get("unit", type=int)
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard", unit=unit_id, _anchor="tab-team"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard", unit=unit_id, _anchor="tab-team"))
     sr.status = SwapStatus.APPROVED
     sr.reviewed_at = datetime.utcnow()
     db.session.commit()
     flash("Swap approved.", "success")
-    return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+    unit_id = request.args.get("unit", type=int)
+    if user.role == UserRole.ADMIN:
+        return redirect(url_for("unitcoordinator.admin_dashboard", unit=unit_id, _anchor="tab-team"))
+    else:
+        return redirect(url_for("unitcoordinator.dashboard", unit=unit_id, _anchor="tab-team"))
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/unavailability")
 @login_required
@@ -1194,18 +1206,27 @@ def unit_unavailability(unit_id):
 
 @unitcoordinator_bp.post("/swap_requests/<int:swap_id>/reject")
 @login_required
-@role_required(UserRole.UNIT_COORDINATOR)
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def reject_swap(swap_id):
+    user = get_current_user()
     sr = SwapRequest.query.get_or_404(swap_id)
     if sr.status != SwapStatus.PENDING:
         flash("Request is no longer pending.", "warning")
-        return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+        unit_id = request.args.get("unit", type=int)
+        if user.role == UserRole.ADMIN:
+            return redirect(url_for("unitcoordinator.admin_dashboard", unit=unit_id, _anchor="tab-team"))
+        else:
+            return redirect(url_for("unitcoordinator.dashboard", unit=unit_id, _anchor="tab-team"))
 
     sr.status = SwapStatus.REJECTED
     sr.reviewed_at = datetime.utcnow()
     db.session.commit()
     flash("Swap rejected.", "success")
-    return redirect(url_for("unitcoordinator.dashboard", unit=request.args.get("unit", type=int), _anchor="tab-team"))
+    unit_id = request.args.get("unit", type=int)
+    if user.role == UserRole.ADMIN:
+        return redirect(url_for("unitcoordinator.admin_dashboard", unit=unit_id, _anchor="tab-team"))
+    else:
+        return redirect(url_for("unitcoordinator.dashboard", unit=unit_id, _anchor="tab-team"))
 
 
 @unitcoordinator_bp.route("/create_unit", methods=["POST"])
