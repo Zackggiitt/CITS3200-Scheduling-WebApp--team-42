@@ -235,7 +235,7 @@ def index():
     return render_template("login.html")
 
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("100 per minute")
 def login():
     if request.method == "POST":
         email = request.form["email"].strip().lower()
