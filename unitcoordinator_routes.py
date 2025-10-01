@@ -376,13 +376,12 @@ def account_settings():
             preferences = json.loads(user.preferences) if user.preferences else {}
             contact_info = {
                 'phone': preferences.get('phone', ''),
-                'mobile': preferences.get('mobile', ''),
-                'address': preferences.get('address', '')
+                'mobile': preferences.get('mobile', '')
             }
         except:
-            contact_info = {'phone': '', 'mobile': '', 'address': ''}
+            contact_info = {'phone': '', 'mobile': ''}
     else:
-        contact_info = {'phone': '', 'mobile': '', 'address': ''}
+        contact_info = {'phone': '', 'mobile': ''}
     
     return render_template("account_settings.html", user=user, contact_info=contact_info)
 
@@ -390,32 +389,16 @@ def account_settings():
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def update_personal_info():
-    """Update user's personal information (name and email)"""
+    """Update user's personal information (name only - email is locked)"""
     user = get_current_user()
     
     try:
         # Get form data
         full_name = request.form.get('full_name', '').strip()
-        email = request.form.get('email', '').strip()
         
         # Validate required fields
         if not full_name:
             flash('Full name is required', 'error')
-            return redirect(url_for('unitcoordinator.account_settings'))
-        
-        if not email:
-            flash('Email address is required', 'error')
-            return redirect(url_for('unitcoordinator.account_settings'))
-        
-        # Validate email format
-        if not EMAIL_RE.match(email):
-            flash('Please enter a valid email address', 'error')
-            return redirect(url_for('unitcoordinator.account_settings'))
-        
-        # Check if email is already taken by another user
-        existing_user = User.query.filter(User.email == email, User.id != user.id).first()
-        if existing_user:
-            flash('This email address is already in use by another account', 'error')
             return redirect(url_for('unitcoordinator.account_settings'))
         
         # Parse full name into first and last name
@@ -423,10 +406,10 @@ def update_personal_info():
         first_name = name_parts[0] if name_parts else ''
         last_name = name_parts[1] if len(name_parts) > 1 else ''
         
-        # Update user information
+        # Update user information (name only - email is locked)
         user.first_name = first_name
         user.last_name = last_name
-        user.email = email
+        # Note: Email is intentionally not updated as it's locked in the UI
         
         db.session.commit()
         flash('Personal information updated successfully', 'success')
@@ -449,7 +432,6 @@ def update_contact_info():
         # Get form data
         phone = request.form.get('phone', '').strip()
         mobile = request.form.get('mobile', '').strip()
-        address = request.form.get('address', '').strip()
         
         # Store contact info in preferences JSON field
         preferences = {}
@@ -463,7 +445,6 @@ def update_contact_info():
         # Update contact information in preferences
         preferences['phone'] = phone if phone else None
         preferences['mobile'] = mobile if mobile else None
-        preferences['address'] = address if address else None
         
         # Save preferences back to user
         import json
