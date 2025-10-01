@@ -70,13 +70,13 @@ def signup():
         first = request.form["first_name"].strip()
         last = request.form["last_name"].strip()
         phone = request.form["phone"].strip()
-        staff_number = request.form["staff_number"].strip()
+        staff_number = request.form.get("staff_number", "").strip() or None
         email = request.form["email"].strip().lower()
         password = request.form["password"]
 
         # Validation
-        if not all([first, last, phone, staff_number, email, password]):
-            flash("All fields are required!")
+        if not all([first, last, phone, email, password]):
+            flash("All fields except staff number are required!")
             return render_template("signup.html")
 
         # Check if email already exists in User table
@@ -89,8 +89,8 @@ def signup():
             flash("Email already exists!")
             return render_template("signup.html")
         
-        # Check if staff number already exists in Facilitator table
-        if Facilitator.query.filter_by(staff_number=staff_number).first():
+        # Check if staff number already exists in Facilitator table (only if provided)
+        if staff_number and Facilitator.query.filter_by(staff_number=staff_number).first():
             flash("Staff number already exists!")
             return render_template("signup.html")
         
@@ -120,6 +120,8 @@ def signup():
                 first_name=first,
                 last_name=last,
                 email=email,
+                phone_number=phone,
+                staff_number=staff_number,
                 password_hash=generate_password_hash(password),
                 role=UserRole.FACILITATOR
             )
