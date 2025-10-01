@@ -376,13 +376,12 @@ def account_settings():
             preferences = json.loads(user.preferences) if user.preferences else {}
             contact_info = {
                 'phone': preferences.get('phone', ''),
-                'mobile': preferences.get('mobile', ''),
-                'address': preferences.get('address', '')
+                'mobile': preferences.get('mobile', '')
             }
         except:
-            contact_info = {'phone': '', 'mobile': '', 'address': ''}
+            contact_info = {'phone': '', 'mobile': ''}
     else:
-        contact_info = {'phone': '', 'mobile': '', 'address': ''}
+        contact_info = {'phone': '', 'mobile': ''}
     
     return render_template("account_settings.html", user=user, contact_info=contact_info)
 
@@ -433,7 +432,6 @@ def update_contact_info():
         # Get form data
         phone = request.form.get('phone', '').strip()
         mobile = request.form.get('mobile', '').strip()
-        address = request.form.get('address', '').strip()
         
         # Store contact info in preferences JSON field
         preferences = {}
@@ -447,7 +445,6 @@ def update_contact_info():
         # Update contact information in preferences
         preferences['phone'] = phone if phone else None
         preferences['mobile'] = mobile if mobile else None
-        preferences['address'] = address if address else None
         
         # Save preferences back to user
         import json
