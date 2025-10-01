@@ -1349,75 +1349,142 @@ def create_unit():
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def facilitator_profile(facilitator_id):
     """View a specific facilitator's profile"""
-    user = get_current_user()
+    from datetime import date, datetime
     
-    # Get facilitator from Facilitator table
-    facilitator = Facilitator.query.get_or_404(facilitator_id)
+    current_user = get_current_user()
     
-    # Get corresponding User record
-    facilitator_user = User.query.filter_by(email=facilitator.email).first()
+    # Get facilitator user by ID (facilitator_id is actually a User ID)
+    facilitator_user = User.query.get_or_404(facilitator_id)
     
-    # Calculate stats
-    stats = {
-        'units_assigned': 0,
-        'pending_approvals': 0,
-        'total_sessions': 0,
-        'skills_count': 0,
-        'availability_status': 'Not Set'
+    # Verify the user is actually a facilitator
+    if facilitator_user.role != UserRole.FACILITATOR:
+        return "User is not a facilitator", 404
+    
+    # Get all units this facilitator is assigned to
+    unit_facilitator_records = (
+        db.session.query(Unit, UnitFacilitator)
+        .join(UnitFacilitator, UnitFacilitator.unit_id == Unit.id)
+        .filter(UnitFacilitator.user_id == facilitator_user.id)
+        .order_by(Unit.start_date.desc().nulls_last())
+        .all()
+    )
+    
+    today = date.today()
+    current_units = []
+    past_units = []
+    
+    total_sessions = 0
+    total_hours = 0.0
+    
+    for unit, _ in unit_facilitator_records:
+        # Get assignments for this facilitator in this unit
+        assignments = (
+            db.session.query(Assignment, Session)
+            .join(Session, Session.id == Assignment.session_id)
+            .join(Module, Module.id == Session.module_id)
+            .filter(
+                Module.unit_id == unit.id,
+                Assignment.facilitator_id == facilitator_user.id
+            )
+            .all()
+        )
+        
+        # Calculate unit stats
+        completed_sessions = sum(1 for _, s in assignments if s.start_time < datetime.now())
+        unit_total_hours = sum(
+            (s.end_time - s.start_time).total_seconds() / 3600.0
+            for _, s in assignments
+        )
+        
+        # Get unique session types
+        session_types = list(set(s.session_type for _, s in assignments if s.session_type))
+        
+        # Calculate average hours per week
+        avg_hours_per_week = 0.0
+        if unit.start_date and unit.end_date:
+            weeks = max(1, (unit.end_date - unit.start_date).days / 7)
+            avg_hours_per_week = round(unit_total_hours / weeks, 1) if weeks > 0 else 0.0
+        
+        unit_data = {
+            'code': unit.unit_code,
+            'name': unit.unit_name,
+            'start_date': unit.start_date,
+            'end_date': unit.end_date,
+            'semester': unit.semester,
+            'year': unit.year,
+            'completed_sessions': completed_sessions,
+            'total_hours': round(unit_total_hours, 1),
+            'avg_hours_per_week': avg_hours_per_week,
+            'session_types': session_types
+        }
+        
+        # Determine if unit is current or past
+        is_current = False
+        if unit.end_date:
+            is_current = today <= unit.end_date
+        elif unit.start_date:
+            is_current = unit.start_date <= today
+        else:
+            is_current = len(assignments) > 0
+        
+        if is_current:
+            current_units.append(unit_data)
+        else:
+            past_units.append(unit_data)
+        
+        total_sessions += len(assignments)
+        total_hours += unit_total_hours
+    
+    # Calculate years of experience (based on earliest unit start date)
+    years_experience = 0
+    if unit_facilitator_records:
+        earliest_start = min(
+            (u.start_date for u, _ in unit_facilitator_records if u.start_date),
+            default=None
+        )
+        if earliest_start:
+            years_experience = (today - earliest_start).days / 365.25
+            years_experience = round(years_experience, 1)
+    
+    # Build facilitator_info object for template
+    facilitator_info = {
+        'current_units': current_units,
+        'past_units': past_units,
+        'career_summary': {
+            'total_units': len(unit_facilitator_records),
+            'sessions_facilitated': total_sessions,
+            'total_hours': round(total_hours, 1),
+            'years_experience': years_experience
+        }
     }
     
-    if facilitator_user:
-        try:
-            # Count units assigned to this facilitator
-            stats['units_assigned'] = db.session.query(UnitFacilitator).filter_by(user_id=facilitator_user.id).count()
-            
-            # Count pending swap requests
-            stats['pending_approvals'] = SwapRequest.query.filter_by(
-                requested_by=facilitator_user.id, 
-                status=SwapStatus.PENDING
-            ).count()
-            
-            # Count total sessions assigned
-            stats['total_sessions'] = Assignment.query.filter_by(facilitator_id=facilitator_user.id).count()
-            
-            # Count skills registered
-            stats['skills_count'] = FacilitatorSkill.query.filter_by(facilitator_id=facilitator_user.id).count()
-            
-            # Check unavailability status (configured if any entries exist)
-            has_unavailability = Unavailability.query.filter_by(user_id=facilitator_user.id).first()
-            stats['availability_status'] = 'Configured' if has_unavailability else 'Not Set'
-            
-        except Exception as e:
-            print(f"Error calculating stats: {e}")
-    
-    return render_template('unitcoordinator/facilitator_profile.html', 
-                         facilitator=facilitator,
-                         facilitator_user=facilitator_user,
-                         stats=stats)
+    return render_template('facilitator_profile.html', 
+                         user=facilitator_user,
+                         facilitator_info=facilitator_info,
+                         current_user=current_user)
 
 @unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/edit', methods=['GET', 'POST'])
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
 def edit_facilitator_profile(facilitator_id):
     """Edit a facilitator's profile"""
-    user = get_current_user()
-    facilitator = Facilitator.query.get_or_404(facilitator_id)
-    facilitator_user = User.query.filter_by(email=facilitator.email).first()
+    current_user = get_current_user()
+    
+    # Get facilitator user by ID (facilitator_id is actually a User ID)
+    facilitator_user = User.query.get_or_404(facilitator_id)
+    
+    # Verify the user is actually a facilitator
+    if facilitator_user.role != UserRole.FACILITATOR:
+        flash('User is not a facilitator', 'error')
+        return redirect(url_for('unitcoordinator.dashboard'))
     
     if request.method == 'POST':
         try:
-            # Update facilitator data
-            facilitator.first_name = request.form.get('first_name', '').strip()
-            facilitator.last_name = request.form.get('last_name', '').strip()
-            facilitator.phone = request.form.get('phone', '').strip()
-            facilitator.staff_number = request.form.get('staff_number', '').strip()
-            
-            # Update user data if exists
-            if facilitator_user:
-                facilitator_user.first_name = facilitator.first_name
-                facilitator_user.last_name = facilitator.last_name
-                facilitator_user.phone_number = facilitator.phone
-                facilitator_user.staff_number = facilitator.staff_number
+            # Update user data
+            facilitator_user.first_name = request.form.get('first_name', '').strip()
+            facilitator_user.last_name = request.form.get('last_name', '').strip()
+            facilitator_user.phone_number = request.form.get('phone', '').strip()
+            facilitator_user.staff_number = request.form.get('staff_number', '').strip()
             
             db.session.commit()
             flash('Facilitator profile updated successfully!', 'success')
@@ -1427,8 +1494,7 @@ def edit_facilitator_profile(facilitator_id):
             db.session.rollback()
             flash(f'Error updating profile: {str(e)}', 'error')
     
-    return render_template('unitcoordinator/edit_facilitator_profile.html', 
-                         facilitator=facilitator,
+    return render_template('edit_facilitator_profile.html', 
                          facilitator_user=facilitator_user)
 
 

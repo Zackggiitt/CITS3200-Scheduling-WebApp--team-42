@@ -13,7 +13,11 @@
 <body class="profile-page">
     <!-- Profile Header -->
     <div class="profile-header">
-        <a href="{{ url_for('facilitator.dashboard') }}" class="back-button">Back to Dashboard</a>
+        {% if current_user and current_user.role.value in ['unit_coordinator', 'admin'] %}
+            <a href="{{ url_for('unitcoordinator.dashboard') }}" class="back-button">Back to Dashboard</a>
+        {% else %}
+            <a href="{{ url_for('facilitator.dashboard') }}" class="back-button">Back to Dashboard</a>
+        {% endif %}
         <div class="profile-header-right">
             <h1 class="profile-title">
                 <span class="material-icons">person</span>
@@ -28,7 +32,9 @@
         <div class="profile-card">
             <div class="profile-card-header">
                 <h1 class="profile-card-title">Account Information</h1>
-                <a href="{{ url_for('facilitator.edit_profile') }}" class="edit-profile-btn">Edit Profile</a>
+                {% if current_user and current_user.role.value == 'facilitator' %}
+                    <a href="{{ url_for('facilitator.edit_profile') }}" class="edit-profile-btn">Edit Profile</a>
+                {% endif %}
             </div>
 
             <div class="profile-content">
