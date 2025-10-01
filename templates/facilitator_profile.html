@@ -13,7 +13,7 @@
 <body class="profile-page">
     <!-- Profile Header -->
     <div class="profile-header">
-        {% if current_user and current_user.role.value in ['unit_coordinator', 'admin'] %}
+        {% if current_user and current_user.role.value in ['Unit_Coordinator', 'admin'] %}
             <a href="{{ url_for('unitcoordinator.dashboard') }}" class="back-button">Back to Dashboard</a>
         {% else %}
             <a href="{{ url_for('facilitator.dashboard') }}" class="back-button">Back to Dashboard</a>
