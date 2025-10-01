@@ -253,8 +253,10 @@
                          id="email" 
                          name="email" 
                          value="{{ user.email or '' }}"
-                         class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none"
-                         required>
+                         class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none bg-gray-100 text-gray-600 cursor-not-allowed"
+                         disabled
+                         readonly>
+                  <p class="mt-1 text-xs text-gray-500">Email address cannot be changed</p>
                 </div>
               </div>
 
