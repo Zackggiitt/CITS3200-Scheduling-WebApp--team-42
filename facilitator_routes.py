@@ -572,6 +572,15 @@ def edit_profile():
             user.phone_number = request.form.get("phone_number", user.phone_number)
             user.staff_number = request.form.get("staff_number", user.staff_number)
             
+            # Also update the Facilitator table if it exists
+            from models import Facilitator
+            facilitator = Facilitator.query.filter_by(email=user.email).first()
+            if facilitator:
+                facilitator.first_name = user.first_name
+                facilitator.last_name = user.last_name
+                facilitator.phone = user.phone_number
+                facilitator.staff_number = user.staff_number
+            
             # Handle password update if provided
             current_password = request.form.get("current_password")
             new_password = request.form.get("new_password")

@@ -735,7 +735,7 @@ def dashboard():
         for _, f in links:
             has_profile = bool(
                 (getattr(f, "first_name", None) or getattr(f, "last_name", None))
-                or getattr(f, "phone", None)
+                or getattr(f, "phone_number", None)
                 or getattr(f, "staff_number", None)
                 or getattr(f, "avatar_url", None)
             )
@@ -767,7 +767,7 @@ def dashboard():
                     "id": f.id,
                     "name": getattr(f, "full_name", None) or f.email,
                     "email": f.email,
-                    "phone": getattr(f, "phone", None),
+                    "phone": getattr(f, "phone_number", None),
                     "staff_number": getattr(f, "staff_number", None),
                     "experience_years": None,         # TODO wire real data later
                     "upcoming_sessions": None,
@@ -1400,7 +1400,7 @@ def facilitator_profile(facilitator_id):
             stats['total_sessions'] = Assignment.query.filter_by(facilitator_id=facilitator_user.id).count()
             
             # Count skills registered
-            stats['skills_count'] = FacilitatorSkill.query.filter_by(user_id=facilitator_user.id).count()
+            stats['skills_count'] = FacilitatorSkill.query.filter_by(facilitator_id=facilitator_user.id).count()
             
             # Check unavailability status (configured if any entries exist)
             has_unavailability = Unavailability.query.filter_by(user_id=facilitator_user.id).first()
@@ -1435,6 +1435,8 @@ def edit_facilitator_profile(facilitator_id):
             if facilitator_user:
                 facilitator_user.first_name = facilitator.first_name
                 facilitator_user.last_name = facilitator.last_name
+                facilitator_user.phone_number = facilitator.phone
+                facilitator_user.staff_number = facilitator.staff_number
             
             db.session.commit()
             flash('Facilitator profile updated successfully!', 'success')
