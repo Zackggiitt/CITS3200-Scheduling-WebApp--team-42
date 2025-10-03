@@ -203,11 +203,11 @@
         </button>
 
         <div class="notification-container">
-          <button class="icon-btn notification-btn" type="button" aria-label="Notifications">
+          <button class="icon-btn notification-btn" type="button" aria-label="Notifications" id="uc-bell-icon">
             <span class="material-icons" aria-hidden="true">notifications</span>
           </button>
           {% if notifications and notifications > 0 %}
-            <span class="notification-badge" aria-label="{{ notifications }} unread notifications">
+            <span class="notification-badge" aria-label="{{ notifications }} unread notifications" id="uc-header-notification-badge">
               {{ notifications }}
             </span>
           {% endif %}
@@ -1098,6 +1098,41 @@
     {% endif %}
   </main>
 
+  <!-- Notification Popup Modal -->
+  <div id="uc-notification-popup" class="notification-popup">
+    <div class="notification-popup-content">
+      <div class="notification-popup-header">
+        <button id="uc-popup-close" class="popup-close-btn" aria-label="Close notifications">
+          <span class="material-icons">close</span>
+        </button>
+        <div class="popup-header-row">
+          <h3>Notifications <span class="notification-count" id="uc-notification-count">0</span></h3>
+        </div>
+        <div class="popup-subheader-row">
+          <p>View all your notifications and important updates.</p>
+          <div class="notification-popup-actions">
+            <button id="uc-popup-mark-all-read" class="notification-action-btn">
+              <span class="material-icons">done_all</span>
+              Mark All Read
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="notification-popup-filters">
+        <button class="popup-filter-btn active" data-filter="all" id="uc-filter-all">All 0</button>
+        <button class="popup-filter-btn" data-filter="unread" id="uc-filter-unread">Unread 0</button>
+        <button class="popup-filter-btn" data-filter="action" id="uc-filter-action">Action Required 0</button>
+      </div>
+      
+      <div class="notification-popup-list" id="uc-popup-notifications-list">
+        <!-- Notifications will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay for popup -->
+  <div id="uc-popup-overlay" class="popup-overlay"></div>
 
   <!-- MODAL -->
   <div id="createUnitModal" class="modal-overlay hidden">
@@ -1716,8 +1751,389 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
   }
   
   function openNotifications() {
-    alert('Notification settings coming soon!');
-    // window.location.href = '/unitcoordinator/notifications';
+    showUCNotificationPopup();
+  }
+
+  // UC Notification Popup Functions
+  function showUCNotificationPopup() {
+    const popup = document.getElementById('uc-notification-popup');
+    const overlay = document.getElementById('uc-popup-overlay');
+    if (popup && overlay) {
+      popup.style.display = 'block';
+      overlay.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function hideUCNotificationPopup() {
+    const popup = document.getElementById('uc-notification-popup');
+    const overlay = document.getElementById('uc-popup-overlay');
+    if (popup && overlay) {
+      popup.style.display = 'none';
+      overlay.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+  }
+
+  function updateUCHeaderNotificationBadge() {
+    const badge = document.getElementById('uc-header-notification-badge');
+    const unreadCount = document.querySelectorAll('.popup-notification-item.unread').length;
+    
+    if (badge) {
+      if (unreadCount === 0) {
+        badge.style.display = 'none';
+      } else {
+        badge.style.display = 'flex';
+        badge.textContent = unreadCount;
+      }
+    }
+  }
+
+  // Initialize UC notification functionality when DOM is loaded
+  document.addEventListener('DOMContentLoaded', function() {
+    // UC Notification popup elements
+    const ucBellIcon = document.getElementById('uc-bell-icon');
+    const ucNotificationPopup = document.getElementById('uc-notification-popup');
+    const ucPopupOverlay = document.getElementById('uc-popup-overlay');
+    const ucHeaderNotificationBadge = document.getElementById('uc-header-notification-badge');
+    const ucPopupCloseBtn = document.getElementById('uc-popup-close');
+
+    // UC notifications data - will be populated from backend
+    let ucNotifications = [];
+
+    // Sample UC notifications data (fallback)
+    const sampleUcNotifications = [
+      {
+        id: 1,
+        type: 'swap_request',
+        title: 'New Swap Request',
+        message: 'John Smith has requested to swap their CITS3200 session on Friday, August 25, 2025 with Jane Doe.',
+        time: '10 minutes ago',
+        unread: true,
+        actions: ['approve', 'decline']
+      },
+      {
+        id: 2,
+        type: 'facilitator_update',
+        title: 'Facilitator Availability Updated',
+        message: 'Sarah Johnson has updated their availability for CITS1001. Please review the new schedule.',
+        time: '1 hour ago',
+        unread: true,
+        actions: []
+      },
+      {
+        id: 3,
+        type: 'session_change',
+        title: 'Session Venue Changed',
+        message: 'CITS2200 Lab Session on Wednesday, August 30, 2025 has been moved from Room 105 to Room 208.',
+        time: '2 hours ago',
+        unread: false,
+        actions: []
+      },
+      {
+        id: 4,
+        type: 'system_alert',
+        title: 'Schedule Optimization Complete',
+        message: 'The automatic schedule optimization for CITS3200 has been completed. 3 conflicts were resolved.',
+        time: '1 day ago',
+        unread: false,
+        actions: []
+      }
+    ];
+
+    // Fetch notifications from backend
+    async function fetchUCNotifications() {
+      try {
+        const response = await fetch('/unitcoordinator/notifications');
+        const data = await response.json();
+        
+        if (data.ok) {
+          // Convert backend notifications to frontend format
+          ucNotifications = data.notifications.map(notification => ({
+            id: notification.id,
+            type: notification.type || 'system_alert',
+            title: getNotificationTitle(notification.message),
+            message: notification.message,
+            time: getRelativeTime(notification.created_at),
+            unread: !notification.is_read,
+            actions: getNotificationActions(notification.type)
+          }));
+        } else {
+          console.error('Failed to fetch notifications:', data.error);
+          // Fallback to sample data
+          ucNotifications = [...sampleUcNotifications];
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+        // Fallback to sample data
+        ucNotifications = [...sampleUcNotifications];
+      }
+      
+      // Re-render notifications
+      renderUCNotifications();
+    }
+
+    function getNotificationTitle(message) {
+      // Extract title from message or use default
+      if (message.includes('swap')) return 'New Swap Request';
+      if (message.includes('availability')) return 'Facilitator Availability Updated';
+      if (message.includes('venue') || message.includes('room')) return 'Session Venue Changed';
+      if (message.includes('optimization')) return 'Schedule Optimization Complete';
+      return 'System Notification';
+    }
+
+    function getRelativeTime(isoString) {
+      const now = new Date();
+      const date = new Date(isoString);
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return date.toLocaleDateString();
+    }
+
+    function getNotificationActions(type) {
+      switch (type) {
+        case 'swap_request':
+          return ['approve', 'decline'];
+        default:
+          return [];
+      }
+    }
+
+    // Render UC notifications
+    function renderUCNotifications() {
+      const notificationsList = document.getElementById('uc-popup-notifications-list');
+      if (!notificationsList) return;
+
+      notificationsList.innerHTML = '';
+      
+      ucNotifications.forEach(notification => {
+        const notificationElement = createUCNotificationElement(notification);
+        notificationsList.appendChild(notificationElement);
+      });
+
+      // Update filter counts
+      updateUCFilterCounts();
+      updateUCHeaderNotificationBadge();
+    }
+
+    function createUCNotificationElement(notification) {
+      const div = document.createElement('div');
+      div.className = `popup-notification-item ${notification.unread ? 'unread' : ''}`;
+      div.setAttribute('data-type', notification.type);
+
+      const iconClass = getUCIconClass(notification.type);
+      const iconName = getUCIconName(notification.type);
+
+      div.innerHTML = `
+        <div class="popup-notification-icon ${iconClass}">
+          <span class="material-icons">${iconName}</span>
+        </div>
+        <div class="popup-notification-content">
+          <div class="popup-notification-header">
+            <h4>${notification.title}</h4>
+            <span class="popup-notification-time">${notification.time}</span>
+          </div>
+          <p class="popup-notification-message">${notification.message}</p>
+          ${notification.actions.length > 0 ? `
+            <div class="popup-notification-actions-inline">
+              ${notification.actions.includes('approve') ? `
+                <button class="popup-action-btn accept" onclick="handleUCNotificationAction(${notification.id}, 'approve')">
+                  <span class="material-icons">check</span>
+                  Approve
+                </button>
+              ` : ''}
+              ${notification.actions.includes('decline') ? `
+                <button class="popup-action-btn decline" onclick="handleUCNotificationAction(${notification.id}, 'decline')">
+                  <span class="material-icons">close</span>
+                  Decline
+                </button>
+              ` : ''}
+            </div>
+          ` : ''}
+        </div>
+        ${notification.unread ? '<div class="popup-notification-status unread-indicator"></div>' : ''}
+      `;
+
+      return div;
+    }
+
+    function getUCIconClass(type) {
+      const iconMap = {
+        'swap_request': 'alert',
+        'facilitator_update': 'update',
+        'session_change': 'update',
+        'system_alert': 'alert'
+      };
+      return iconMap[type] || 'update';
+    }
+
+    function getUCIconName(type) {
+      const iconMap = {
+        'swap_request': 'swap_horiz',
+        'facilitator_update': 'person',
+        'session_change': 'location_on',
+        'system_alert': 'settings'
+      };
+      return iconMap[type] || 'info';
+    }
+
+    function updateUCFilterCounts() {
+      const allCount = ucNotifications.length;
+      const unreadCount = ucNotifications.filter(n => n.unread).length;
+      const actionCount = ucNotifications.filter(n => n.actions.length > 0 && n.unread).length;
+
+      const allBtn = document.getElementById('uc-filter-all');
+      const unreadBtn = document.getElementById('uc-filter-unread');
+      const actionBtn = document.getElementById('uc-filter-action');
+
+      if (allBtn) allBtn.textContent = `All ${allCount}`;
+      if (unreadBtn) unreadBtn.textContent = `Unread ${unreadCount}`;
+      if (actionBtn) actionBtn.textContent = `Action Required ${actionCount}`;
+
+      // Update main notification count
+      const notificationCount = document.getElementById('uc-notification-count');
+      if (notificationCount) notificationCount.textContent = unreadCount;
+    }
+
+    // UC Bell icon click handler
+    if (ucBellIcon) {
+      ucBellIcon.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        showUCNotificationPopup();
+      });
+    }
+
+    // UC Close button handler
+    if (ucPopupCloseBtn) {
+      ucPopupCloseBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        hideUCNotificationPopup();
+      });
+    }
+
+    // UC Overlay click handler to close popup
+    if (ucPopupOverlay) {
+      ucPopupOverlay.addEventListener('click', function() {
+        hideUCNotificationPopup();
+      });
+    }
+
+    // UC Escape key closes popup
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && ucNotificationPopup && ucNotificationPopup.style.display === 'block') {
+        hideUCNotificationPopup();
+      }
+    });
+
+    // UC Popup filter functionality
+    const ucPopupFilterBtns = document.querySelectorAll('[id^="uc-filter-"]');
+    ucPopupFilterBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        // Update active filter
+        ucPopupFilterBtns.forEach(f => f.classList.remove('active'));
+        this.classList.add('active');
+        
+        const filter = this.getAttribute('data-filter');
+        const ucPopupNotificationItems = document.querySelectorAll('#uc-popup-notifications-list .popup-notification-item');
+        
+        // Filter notifications
+        ucPopupNotificationItems.forEach(item => {
+          if (filter === 'all') {
+            item.style.display = 'flex';
+          } else if (filter === 'unread' && item.classList.contains('unread')) {
+            item.style.display = 'flex';
+          } else if (filter === 'action' && item.querySelector('.popup-action-btn')) {
+            item.style.display = 'flex';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      });
+    });
+
+    // UC Mark all as read in popup
+    const ucPopupMarkAllReadBtn = document.getElementById('uc-popup-mark-all-read');
+    if (ucPopupMarkAllReadBtn) {
+      ucPopupMarkAllReadBtn.addEventListener('click', async function() {
+        try {
+          const response = await fetch('/unitcoordinator/notifications/mark-read', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ notification_ids: [] }) // Empty array means mark all as read
+          });
+          
+          const data = await response.json();
+          if (data.ok) {
+            // Update local notifications
+            ucNotifications.forEach(notification => {
+              notification.unread = false;
+            });
+            renderUCNotifications();
+          } else {
+            console.error('Failed to mark notifications as read:', data.error);
+          }
+        } catch (error) {
+          console.error('Error marking notifications as read:', error);
+        }
+      });
+    }
+
+    // Initialize notifications
+    fetchUCNotifications();
+  });
+
+  // Handle UC notification actions
+  async function handleUCNotificationAction(notificationId, action) {
+    const notification = ucNotifications?.find(n => n.id === notificationId);
+    if (!notification) return;
+
+    try {
+      if (action === 'approve') {
+        // Here you would typically make an API call to approve the swap request
+        alert('Swap request approved successfully!');
+        notification.unread = false;
+        
+        // Mark notification as read in backend
+        await fetch('/unitcoordinator/notifications/mark-read', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ notification_ids: [notificationId] })
+        });
+        
+      } else if (action === 'decline') {
+        // Here you would typically make an API call to decline the swap request
+        alert('Swap request declined.');
+        notification.unread = false;
+        
+        // Mark notification as read in backend
+        await fetch('/unitcoordinator/notifications/mark-read', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ notification_ids: [notificationId] })
+        });
+      }
+
+      // Re-render notifications
+      renderUCNotifications();
+      
+    } catch (error) {
+      console.error('Error handling notification action:', error);
+      alert('Error processing action. Please try again.');
+    }
   }
   
   function openHelp() {

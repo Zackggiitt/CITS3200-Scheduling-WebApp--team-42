@@ -3182,3 +3182,358 @@ main {
   margin-left: 4px;
   color: #9ca3af;
 }
+
+/* Notification Popup Styles */
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: none;
+}
+
+.notification-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    z-index: 1001;
+    max-width: 720px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    display: none;
+}
+
+.notification-popup-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Popup header layout */
+.notification-popup-header {
+    position: relative;
+    padding: 16px 24px 12px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.popup-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    color: #6b7280;
+    transition: all 0.2s;
+}
+
+.popup-close-btn:hover {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.popup-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.popup-header-row h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.notification-count {
+    background-color: #3b82f6;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.popup-subheader-row {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.popup-subheader-row p {
+    margin: 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.notification-popup-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.notification-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background-color: white;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.notification-action-btn:hover {
+    background-color: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.notification-popup-filters {
+    display: flex;
+    gap: 8px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    background-color: white;
+}
+
+.popup-filter-btn {
+    padding: 8px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background-color: white;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.popup-filter-btn.active {
+    background-color: #111827;
+    color: white;
+    border-color: #111827;
+}
+
+.popup-filter-btn:not(.active):hover {
+    background-color: #f9fafb;
+}
+
+.notification-popup-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+    max-height: 400px;
+}
+
+.popup-notification-item {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background-color: white;
+    margin-bottom: 12px;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.popup-notification-item.unread {
+    border-left: 4px solid #3b82f6;
+    background-color: #f8fafc;
+}
+
+.popup-notification-item:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.popup-notification-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.popup-notification-icon.shift {
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+
+.popup-notification-icon.update {
+    background-color: #dbeafe;
+    color: #3b82f6;
+}
+
+.popup-notification-icon.alert {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.popup-notification-content {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.popup-notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.popup-notification-header h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.popup-notification-time {
+    font-size: 11px;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+
+.popup-notification-message {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+
+.popup-notification-meta {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.popup-notification-actions-inline {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.popup-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background-color: white;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.popup-action-btn:hover {
+    background-color: #f9fafb;
+}
+
+.popup-action-btn.accept {
+    border-color: #16a34a;
+    color: #16a34a;
+}
+
+.popup-action-btn.accept:hover {
+    background-color: #dcfce7;
+}
+
+.popup-action-btn.decline {
+    border-color: #dc2626;
+    color: #dc2626;
+}
+
+.popup-action-btn.decline:hover {
+    background-color: #fee2e2;
+}
+
+.popup-action-btn.primary {
+    background-color: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.popup-action-btn.primary:hover {
+    background-color: #2563eb;
+}
+
+.popup-notification-status {
+    width: 6px;
+    flex-shrink: 0;
+}
+
+.unread-indicator {
+    background-color: #3b82f6;
+    border-radius: 50%;
+    height: 6px;
+    width: 6px;
+}
+
+.popup-tag {
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 4px;
+    border-radius: 3px;
+    text-transform: uppercase;
+}
+
+.popup-tag.update {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.popup-tag.confirmed {
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+
+.popup-tag.completed {
+    background-color: #111827;
+    color: white;
+}
+
+/* Mobile responsive styles for popup */
+@media (max-width: 768px) {
+    .notification-popup {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .notification-popup-header {
+        padding: 12px 16px 8px 16px;
+    }
+    
+    .notification-popup-filters {
+        padding: 12px 16px;
+        flex-wrap: wrap;
+    }
+    
+    .notification-popup-list {
+        padding: 12px 16px;
+    }
+    
+    .popup-notification-item {
+        padding: 12px;
+    }
+}

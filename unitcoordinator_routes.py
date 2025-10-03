@@ -19,7 +19,7 @@ from auth import login_required, get_current_user
 from utils import role_required
 from models import db
 
-from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill
+from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill, Notification
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -3441,5 +3441,110 @@ def apply_bulk_staffing(unit_id: int):
 
         db.session.rollback()
 
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ------------------------------------------------------------------------------
+# Notification Routes
+# ------------------------------------------------------------------------------
+
+@unitcoordinator_bp.route("/notifications")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def notifications():
+    """Get notifications for the current unit coordinator."""
+    try:
+        user = get_current_user()
+        
+        # Get notifications for the current user
+        notifications = db.session.query(Notification).filter(
+            Notification.user_id == user.id
+        ).order_by(Notification.created_at.desc()).all()
+        
+        # Convert to JSON-serializable format
+        notifications_data = []
+        for notification in notifications:
+            notifications_data.append({
+                'id': notification.id,
+                'message': notification.message,
+                'is_read': notification.is_read,
+                'created_at': notification.created_at.isoformat(),
+                'type': 'system_alert'  # Default type, can be enhanced
+            })
+        
+        return jsonify({
+            "ok": True,
+            "notifications": notifications_data,
+            "unread_count": len([n for n in notifications_data if not n['is_read']])
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching notifications: {str(e)}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@unitcoordinator_bp.route("/notifications/mark-read", methods=["POST"])
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def mark_notifications_read():
+    """Mark notifications as read."""
+    try:
+        user = get_current_user()
+        data = request.get_json()
+        notification_ids = data.get('notification_ids', [])
+        
+        if not notification_ids:
+            # Mark all notifications as read
+            db.session.query(Notification).filter(
+                Notification.user_id == user.id,
+                Notification.is_read == False
+            ).update({Notification.is_read: True})
+        else:
+            # Mark specific notifications as read
+            db.session.query(Notification).filter(
+                Notification.user_id == user.id,
+                Notification.id.in_(notification_ids)
+            ).update({Notification.is_read: True})
+        
+        db.session.commit()
+        
+        return jsonify({"ok": True, "message": "Notifications marked as read"})
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error marking notifications as read: {str(e)}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@unitcoordinator_bp.route("/notifications/create", methods=["POST"])
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def create_notification():
+    """Create a new notification for testing purposes."""
+    try:
+        user = get_current_user()
+        data = request.get_json()
+        
+        message = data.get('message', 'Test notification')
+        
+        # Create new notification
+        notification = Notification(
+            user_id=user.id,
+            message=message,
+            is_read=False
+        )
+        
+        db.session.add(notification)
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True, 
+            "message": "Notification created successfully",
+            "notification_id": notification.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating notification: {str(e)}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
