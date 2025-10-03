@@ -1066,12 +1066,6 @@
                         </div>
                       </div>
 
-                      {% if r.reason %}
-                        <div class="swap-reason">
-                          <div class="font-semibold mb-1">Reason for swap</div>
-                          <p class="text-gray-700">{{ r.reason }}</p>
-                        </div>
-                      {% endif %}
 
                       <footer class="swap-card__ftr">
                         <form method="POST" action="{{ url_for('unitcoordinator.reject_swap', swap_id=r.id, unit=current_unit.id) }}">
