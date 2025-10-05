@@ -1903,3 +1903,630 @@
     justify-content: center;
   }
 }
+
+/* Schedule Management Styles */
+.schedule-management {
+  display: none;
+}
+
+.schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.schedule-header-content {
+  flex: 1;
+}
+
+.schedule-title {
+  font-family: 'Roboto', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.schedule-title::before {
+  content: "📅";
+  font-size: 24px;
+}
+
+.schedule-subtitle {
+  font-family: 'Roboto', sans-serif;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 400;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.schedule-header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.schedule-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #374151;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.schedule-action-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.schedule-action-btn.secondary {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.schedule-action-btn.secondary:hover {
+  background: #e5e7eb;
+}
+
+/* Schedule Statistics */
+.schedule-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.schedule-stat-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.schedule-stat-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-stat-value {
+  font-family: 'Roboto', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.schedule-stat-label {
+  font-family: 'Roboto', sans-serif;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Schedule Search Section */
+.schedule-search-section {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Unit Schedule List */
+.unit-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.unit-schedule-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.unit-schedule-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.unit-schedule-info {
+  flex: 1;
+}
+
+.unit-schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.unit-schedule-name {
+  font-family: 'Roboto', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.unit-schedule-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.badge-semester {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.badge-status {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+}
+
+.badge-published {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.badge-draft {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.badge-unpublished {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.unit-schedule-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.unit-schedule-meta {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.unit-schedule-coordinator,
+.unit-schedule-dates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.unit-schedule-stats {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.unit-schedule-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.unit-schedule-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.action-btn.unpublish {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.action-btn.unpublish:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+.action-btn.view {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+.action-btn.view:hover {
+  background: #dbeafe;
+  border-color: #60a5fa;
+}
+
+.action-btn.history {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.action-btn.history:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+/* Unpublish Modal Styles */
+.unpublish-unit-info {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.unpublish-unit-info h3 {
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 16px 0;
+}
+
+.unit-info-display {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.unit-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.unit-info-item .label {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  color: #374151;
+}
+
+.unit-info-item .value {
+  font-family: 'Roboto', sans-serif;
+  color: #111827;
+  font-weight: 600;
+}
+
+.status-published {
+  font-family: 'Roboto', sans-serif;
+  color: #166534;
+  background: #dcfce7;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #374151;
+}
+
+.checkbox-label input[type="checkbox"] {
+  display: none;
+}
+
+.checkbox-custom {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  background: #ffffff;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
+  content: "✓";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.unpublish-warning {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.unpublish-warning .material-icons {
+  color: #f59e0b;
+  font-size: 20px;
+}
+
+.warning-content {
+  font-family: 'Roboto', sans-serif;
+  color: #92400e;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.btn-warning {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #dc2626;
+}
+
+.btn-warning:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+/* Version History Modal Styles */
+.version-history-content {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 24px;
+}
+
+.version-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.version-history-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.version-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.version-number {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 600;
+  color: #111827;
+  font-size: 16px;
+}
+
+.version-status {
+  font-family: 'Roboto', sans-serif;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-published {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-unpublished {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.version-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.version-date,
+.version-published,
+.version-unpublished,
+.version-reason,
+.version-admin {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.version-reason,
+.version-admin {
+  font-family: 'Roboto', sans-serif;
+  color: #374151;
+  font-weight: 400;
+}
+
+.empty-version-history {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.empty-version-history .material-icons {
+  font-size: 48px;
+  color: #d1d5db;
+  margin-bottom: 16px;
+}
+
+.empty-version-history h3 {
+  font-family: 'Roboto', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 8px 0;
+}
+
+.empty-version-history p {
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Responsive Design for Schedule Management */
+@media (max-width: 768px) {
+  .schedule-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+  
+  .schedule-header-actions {
+    justify-content: stretch;
+  }
+  
+  .schedule-action-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .schedule-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .schedule-search-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .unit-schedule-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+  
+  .unit-schedule-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .unit-schedule-meta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .unit-schedule-stats {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .unit-schedule-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .unit-info-display {
+    gap: 8px;
+  }
+  
+  .unit-info-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+}

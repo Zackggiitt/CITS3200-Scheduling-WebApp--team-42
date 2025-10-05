@@ -33,6 +33,12 @@ class RecurringPattern(Enum):
     MONTHLY = "monthly"
     CUSTOM = "custom"
 
+# Add enum for schedule states
+class ScheduleStatus(Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    UNPUBLISHED = "unpublished"
+
 # Add new models for units and modules
 class Unit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -45,8 +51,17 @@ class Unit(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     start_date  = db.Column(db.Date)   # first day unit runs
     end_date    = db.Column(db.Date)   # last day unit runs
+    
+    # Schedule state management fields
+    schedule_status = db.Column(db.Enum(ScheduleStatus), default=ScheduleStatus.DRAFT, nullable=False)
+    published_at = db.Column(db.DateTime, nullable=True)
+    unpublished_at = db.Column(db.DateTime, nullable=True)
+    unpublished_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    unpublish_reason = db.Column(db.Text, nullable=True)
+    version_history = db.Column(db.Text, nullable=True)  # JSON string for version tracking
 
-    creator = db.relationship("User", backref="units")
+    creator = db.relationship("User", foreign_keys=[created_by], backref="created_units")
+    unpublisher = db.relationship("User", foreign_keys=[unpublished_by], backref="unpublished_units")
     __table_args__ = (
         db.UniqueConstraint("unit_code", "year", "semester", "created_by", name="uq_unit_per_uc"),
     )
