@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Module Skills{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Manage Your Module Skills</h2>
+    <p>Select your comfort level for each module:</p>
+    
+    <form method="POST" action="{{ url_for('facilitator.manage_skills') }}">
+        <div class="row">
+            {% for module in modules %}
+            <div class="col-lg-4 col-md-6 col-sm-12 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ module.unit.unit_code }} - {{ module.module_name }}</h5>
+                        <p class="card-text"><small class="text-muted">{{ module.module_type.title() }} Module</small></p>
+                        
+                        <div class="form-group">
+                            <label for="skill_level_{{ module.id }}" class="form-label">Skill Level:</label>
+                            <select class="form-select" id="skill_level_{{ module.id }}" name="skill_level_{{ module.id }}">
+                                <option value="uninterested" {% if current_skills[module.id] == 'uninterested' %}selected{% endif %}>Not Interested</option>
+                                <option value="interested" {% if current_skills[module.id] == 'interested' %}selected{% endif %}>Interested</option>
+                                <option value="proficient" {% if current_skills[module.id] == 'proficient' %}selected{% endif %}>Proficient</option>
+                                <option value="leader" {% if current_skills[module.id] == 'leader' %}selected{% endif %}>Leader (Done it before)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="form-group">
+                    <label for="preferences" class="form-label">Teaching Preferences:</label>
+                    <textarea id="preferences" name="preferences" class="form-control" rows="4" placeholder="e.g., Prefer morning modules, Comfortable with large groups, Enjoy hands-on workshops">{{ user.preferences or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group mt-3">
+            <button type="submit" class="btn btn-primary">Update Skills & Preferences</button>
+            <a href="{{ url_for('facilitator.dashboard') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+</div>
+    </div>
+{% endblock %}
+
+    <script>
+        function addSkillEntry() {
+            const container = document.getElementById('skills-container');
+            const newEntry = document.createElement('div');
+            newEntry.className = 'skill-entry';
+            newEntry.innerHTML = `
+                <input type="text" name="skill_names[]" placeholder="Skill name (e.g., Python, JavaScript)">
+                <select name="skill_levels[]">
+                    <option value="interested">Interested</option>
+                    <option value="proficient">Proficient</option>
+                    <option value="leader">Leader</option>
+                    <option value="uninterested">Uninterested</option>
+                </select>
+                <button type="button" class="remove-skill-btn" onclick="removeSkillEntry(this)">-</button>
+            `;
+            container.appendChild(newEntry);
+        }
+
+        function removeSkillEntry(button) {
+            const container = document.getElementById('skills-container');
+            if (container.children.length > 1) {
+                button.parentElement.remove();
+            }
+        }
+    </script>
+</body>
+</html>

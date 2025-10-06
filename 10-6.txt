@@ -1,0 +1,18 @@
+profession  
+    proficient 
+    have run this before
+    interested
+    not interested
+
+    加toggle
+    右上角添加proof按钮
+
+去掉 preference
+
+proficiency 设置-退-重进，状态不一致
+
+assign leader-support
+
+分配结果日历视图
+
+auto-assign 之后生成结果文档  下载按钮

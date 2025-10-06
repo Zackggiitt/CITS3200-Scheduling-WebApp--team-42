@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Schedule{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-white">Generate Schedule</h2>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Schedule Generation</h5>
+                    <p class="card-text">
+                        Generate optimal assignments of facilitators to modules based on availability, skills, and preferences.
+                    </p>
+                    
+                    <div class="alert alert-info">
+                        <strong>Phase 1:</strong> Basic UI infrastructure with dummy data for testing the workflow.
+                    </div>
+                    
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Generation Options</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="clearExisting" name="clear_existing" checked>
+                                <label class="form-check-label" for="clearExisting">
+                                    Clear existing assignments before generating
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="respectConstraints" name="respect_constraints" checked>
+                                <label class="form-check-label" for="respectConstraints">
+                                    Respect facilitator availability constraints
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="algorithm" class="form-label">Algorithm (Phase 1: Dummy only)</label>
+                            <select class="form-select" id="algorithm" name="algorithm">
+                                <option value="dummy">Dummy Data Generator</option>
+                                <option value="greedy" disabled>Greedy Assignment (Coming Soon)</option>
+                                <option value="optimal" disabled>Optimal Solver (Coming Soon)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-play"></i> Generate Schedule
+                            </button>
+                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Current Status</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Phase:</strong> 1 - Basic UI</li>
+                        <li><strong>Data:</strong> Dummy/Test</li>
+                        <li><strong>Algorithm:</strong> Placeholder</li>
+                    </ul>
+                    
+                    <hr>
+                    
+                    <h6 class="card-title">Development Plan</h6>
+                    <ul class="list-unstyled small">
+                        <li>✅ Phase 1: Basic UI & Infrastructure</li>
+                        <li>⏳ Phase 2: Real Facilitator Data</li>
+                        <li>⏳ Phase 3: Dummy/Test Sessions</li>
+                        <li>⏳ Phase 4: Core Algorithm</li>
+                        <li>⏳ Phase 5: Results & Iteration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

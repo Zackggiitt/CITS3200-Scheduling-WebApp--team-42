@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facilitator Portal</title>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='facilitator.css') }}">
+  <script src="{{ url_for('static', filename='js/facilitator.js') }}" defer></script>
+</head>
+<body>
+<header class="site-header">
+    <div class="container">
+        <div class="logo">
+            <span class="material-icons" aria-hidden="true">person</span>
+            <h1>Facilitator Portal</h1>
+        </div>
+        <nav class="user-nav">
+            <div class="notification-wrapper">
+                <span class="material-icons notification-icon" aria-hidden="true" id="bell-icon">notifications</span>
+                <span class="notification-badge" id="header-notification-badge">3</span>
+            </div>
+            <div class="user-info">
+                <a href="{{ url_for('facilitator.profile') }}" class="user-info-link">
+                    <span class="material-icons profile-icon" aria-hidden="true">account_circle</span>
+                    <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
+                </a>
+            </div>
+            <span class="user-role-tag">Lab Facilitator</span>
+            <div class="user-nav-item">
+                <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="logout-button">
+                        <span class="material-icons" aria-hidden="true">logout</span>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+        </nav>
+    </div>
+</header>
+
+{% if not has_no_units %}
+<section id="welcome" class="main-content-wrapper">
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <h2>{{ greeting }}, {{ user.first_name }}! 👋</h2>
+      <p class="user-role">Lab Facilitator</p>
+      <p class="session-info">You have 3 upcoming sessions today.</p>
+    </div>
+    <div class="welcome-icon-wrapper">
+      <span class="material-icons" style="color: white; font-size: 24px;" aria-hidden="true">wb_sunny</span>
+    </div>
+  </div>
+</section>
+
+<section id="navigation" class="main-content-wrapper">
+    <nav class="dashboard-nav">
+        <a href="#dashboard" class="dashboard-nav-item active" id="dashboard-nav">
+            <span class="material-icons" aria-hidden="true">dashboard</span>
+            <span>Dashboard</span>
+        </a>
+        <a href="#setup" class="dashboard-nav-item" id="setup-nav">
+            <span class="material-icons" aria-hidden="true">settings</span>
+            <span>Set Up</span>
+        </a>
+        <a href="#schedule" class="dashboard-nav-item" id="schedule-nav">
+            <span class="material-icons" aria-hidden="true">calendar_today</span>
+            <span>My Schedule</span>
+        </a>
+        <a href="#swaps" class="dashboard-nav-item" id="swaps-nav">
+            <span class="material-icons" aria-hidden="true">swap_horiz</span>
+            <span>Session Swaps</span>
+        </a>
+    </nav>
+</section>
+{% endif %}
+
+{% if has_no_units %}
+<!-- Empty State for No Units -->
+<section class="main-content-wrapper has-no-units-state">
+    <div class="empty-state-container">
+        <div class="empty-state-card">
+            <span class="material-icons empty-state-icon" aria-hidden="true">school</span>
+            <h2 class="empty-state-title">You have not been assigned to any units</h2>
+            <p class="empty-state-description">
+                Please confirm with your Unit Coordinator to ensure that you are added to the right units.
+            </p>
+            <button class="refresh-units-btn" onclick="refreshPage()">
+                <span class="material-icons">refresh</span>
+                Refresh
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Hide all other sections when no units -->
+{% endif %}
+
+<!-- Notification Popup Modal -->
+<div id="notification-popup" class="notification-popup">
+    <div class="notification-popup-content">
+        <div class="notification-popup-header">
+            <button id="popup-close" class="popup-close-btn" aria-label="Close notifications">
+                <span class="material-icons">close</span>
+            </button>
+            <div class="popup-header-row">
+                <h3>Notifications <span class="notification-count">3</span></h3>
+            </div>
+            <div class="popup-subheader-row">
+                <p>View all your notifications and important updates.</p>
+                <div class="notification-popup-actions">
+                    <button id="popup-mark-all-read" class="notification-action-btn">
+                        <span class="material-icons">done_all</span>
+                        Mark All Read
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="notification-popup-filters">
+            <button class="popup-filter-btn active" data-filter="all">All 6</button>
+            <button class="popup-filter-btn" data-filter="unread">Unread 3</button>
+            <button class="popup-filter-btn" data-filter="action">Action Required 3</button>
+        </div>
+        
+        <div class="notification-popup-list" id="popup-notifications-list">
+            <!-- Shift Notifications -->
+            <div class="popup-notification-item unread" data-type="shifts">
+                <div class="popup-notification-icon shift">
+                    <span class="material-icons">schedule</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>New Shift Allocated</h4>
+                        <span class="popup-notification-time">5 minutes ago</span>
+                    </div>
+                    <p class="popup-notification-message">You have been assigned to Lab Session CITS3200 on Friday, August 25, 2025 from 2:00 PM - 6:00 PM in Building 314, Room 105.</p>
+                    <div class="popup-notification-actions-inline">
+                        <button class="popup-action-btn accept">
+                            <span class="material-icons">check</span>
+                            Accept
+                        </button>
+                        <button class="popup-action-btn decline">
+                            <span class="material-icons">close</span>
+                            Decline
+                        </button>
+                    </div>
+                </div>
+                <div class="popup-notification-status unread-indicator"></div>
+            </div>
+
+            <div class="popup-notification-item unread" data-type="updates">
+                <div class="popup-notification-icon update">
+                    <span class="material-icons">info</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>Class Information Updated</h4>
+                        <span class="popup-notification-time">2 hours ago</span>
+                    </div>
+                    <p class="popup-notification-message">CITS3200 Software Engineering Project - Location changed from Building 314 Room 105 to Building 314 Room 208. Session time remains 2:00 PM - 6:00 PM.</p>
+                    <div class="popup-notification-meta">
+                        <span class="popup-tag update">Location Change</span>
+                    </div>
+                </div>
+                <div class="popup-notification-status unread-indicator"></div>
+            </div>
+
+            <div class="popup-notification-item" data-type="shifts">
+                <div class="popup-notification-icon shift">
+                    <span class="material-icons">event_available</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>Shift Confirmed</h4>
+                        <span class="popup-notification-time">1 day ago</span>
+                    </div>
+                    <p class="popup-notification-message">Your shift for CITS1001 Object-Oriented Programming on Thursday, August 24, 2025 from 9:00 AM - 1:00 PM has been confirmed.</p>
+                    <div class="popup-notification-meta">
+                        <span class="popup-tag confirmed">Confirmed</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="popup-notification-item unread" data-type="alerts">
+                <div class="popup-notification-icon alert">
+                    <span class="material-icons">warning</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>Availability Update Required</h4>
+                        <span class="popup-notification-time">3 days ago</span>
+                    </div>
+                    <p class="popup-notification-message">Your availability hasn't been updated in 2 weeks. Please update your available times to ensure optimal shift assignments.</p>
+                    <div class="popup-notification-actions-inline">
+                        <button class="popup-action-btn primary">
+                            <span class="material-icons">edit_calendar</span>
+                            Update Now
+                        </button>
+                    </div>
+                </div>
+                <div class="popup-notification-status unread-indicator"></div>
+            </div>
+
+            <div class="popup-notification-item" data-type="updates">
+                <div class="popup-notification-icon update">
+                    <span class="material-icons">schedule_send</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>Session Time Changed</h4>
+                        <span class="popup-notification-time">1 week ago</span>
+                    </div>
+                    <p class="popup-notification-message">CITS2200 Data Structures session time updated from 10:00 AM - 2:00 PM to 11:00 AM - 3:00 PM for Wednesday, August 30, 2025.</p>
+                    <div class="popup-notification-meta">
+                        <span class="popup-tag update">Time Change</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="popup-notification-item" data-type="shifts">
+                <div class="popup-notification-icon shift">
+                    <span class="material-icons">assignment_turned_in</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>Shift Completed</h4>
+                        <span class="popup-notification-time">1 week ago</span>
+                    </div>
+                    <p class="popup-notification-message">Your shift for CITS1402 Relational Database Management Systems on August 15, 2025 has been marked as completed. Thank you for your service!</p>
+                    <div class="popup-notification-meta">
+                        <span class="popup-tag completed">Completed</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Overlay for popup -->
+<div id="popup-overlay" class="popup-overlay"></div>
+
+<!-- Unit Selector Section -->
+<section id="unit-selector" class="main-content-wrapper">
+    <div class="unit-selector-container">
+        <!-- Left Side: Current Unit Information -->
+        <div class="unit-info-section">
+            <div class="unit-main-info">
+                <h2 class="unit-code">{{ current_unit.unit_code if current_unit else 'No Unit' }}</h2>
+                <h3 class="unit-name">{{ current_unit.unit_name if current_unit else 'No Unit Selected' }}</h3>
+            </div>
+            <div class="unit-details">
+                <div class="unit-badges">
+                    <span class="semester-badge">{{ current_unit.semester if current_unit else 'No Semester' }}</span>
+                    <span class="status-badge active">
+                        <span class="material-icons">check_circle</span>
+                        Active
+                    </span>
+                </div>
+                <div class="session-info">
+                    <span class="material-icons">calendar_today</span>
+                    <span>{{ units_data|selectattr('id', 'equalto', current_unit.id)|map(attribute='sessions')|first if current_unit else 0 }} sessions</span>
+                    <span class="date-range">
+                        {% if current_unit and current_unit.start_date and current_unit.end_date %}
+                            {{ current_unit.start_date.strftime('%d/%m/%Y') }} - {{ current_unit.end_date.strftime('%d/%m/%Y') }}
+                        {% else %}No date range{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Side: Control Buttons -->
+        <div class="unit-controls-section">
+            <button class="control-btn all-units-btn">
+                <span class="material-icons">list</span>
+                All Units
+            </button>
+            <div class="unit-dropdown-wrapper">
+                <button class="control-btn switch-unit-btn" id="switch-unit-trigger">
+                    Switch Unit
+                    <span class="material-icons dropdown-arrow">keyboard_arrow_down</span>
+                </button>
+                <div class="dropdown-menu" id="unit-dropdown-menu" style="display: none;">
+                    <!-- Active Units Group -->
+                    {% set active_units = units_data|selectattr('status', 'equalto', 'active')|list %}
+                    {% if active_units %}
+                    <div class="dropdown-group">
+                        <div class="group-header">
+                            <span class="group-title">Active Units</span>
+                            <span class="group-count">({{ active_units|length }})</span>
+                        </div>
+                        <div class="group-items">
+                            {% for unit in active_units %}
+                            <div class="unit-item" data-unit-id="{{ unit.id }}">
+                                <div class="unit-item-info">
+                                    <span class="unit-item-code">{{ unit.code }}</span>
+                                    <span class="unit-item-name">{{ unit.name }}</span>
+                                </div>
+                                <span class="unit-item-badge active">Active</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Past Units Group -->
+                    {% set past_units = units_data|selectattr('status', 'equalto', 'completed')|list %}
+                    {% if past_units %}
+                    <div class="dropdown-group">
+                        <div class="group-header">
+                            <span class="group-title">Past Units</span>
+                            <span class="group-count">({{ past_units|length }})</span>
+                        </div>
+                        <div class="group-items">
+                            {% for unit in past_units %}
+                            <div class="unit-item" data-unit-id="{{ unit.id }}">
+                                <div class="unit-item-info">
+                                    <span class="unit-item-code">{{ unit.code }}</span>
+                                    <span class="unit-item-name">{{ unit.name }}</span>
+                                </div>
+                                <span class="unit-item-badge completed">
+                                    <span class="material-icons">check_circle</span>
+                                    Completed
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="unavailability-alert" class="main-content-wrapper">
+    <div class="alert-bar">
+        <div class="alert-content">
+            <span class="material-icons" aria-hidden="true">warning</span>
+            <p><strong>Unavailability Update!</strong> Ensure your unavailabilities is up to date across all units.</p>
+        </div>
+        <a href="#" class="alert-button" id="update-now-btn">
+            <span>Update Now</span>
+            <span class="material-icons" aria-hidden="true">arrow_forward</span>
+        </a>
+    </div>
+</section>
+<section id="stats" class="main-content-wrapper">
+    <div class="stats-grid">
+        {% if current_unit %}
+            {% set current_unit_data = units_data|selectattr('id', 'equalto', current_unit.id)|first %}
+            {% if current_unit_data %}
+                <div class="stat-card purple">
+                    <div class="stat-header">
+                        <h4>This Week Hours</h4>
+                        <span class="material-icons" aria-hidden="true">schedule</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.this_week_hours }}</p>
+                    <p class="stat-subtext">{{ current_unit_data.kpis.active_sessions }} sessions</p>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-header">
+                        <h4>Remaining Hours</h4>
+                        <span class="material-icons" aria-hidden="true">pending_actions</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.remaining_hours }}</p>
+                    <p class="stat-subtext">Total - this week</p>
+                </div>
+                <div class="stat-card gray">
+                    <div class="stat-header">
+                        <h4>Total Hours</h4>
+                        <span class="material-icons" aria-hidden="true">calendar_today</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.total_hours }}</p>
+                    <p class="stat-subtext">For this unit</p>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-header">
+                        <h4>Active Sessions</h4>
+                        <span class="material-icons" aria-hidden="true">event_available</span>
+                    </div>
+                    <p class="stat-value">{{ current_unit_data.kpis.active_sessions }}</p>
+                    <p class="stat-subtext">This week</p>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="stat-card purple">
+                <div class="stat-header">
+                    <h4>No Unit Selected</h4>
+                    <span class="material-icons" aria-hidden="true">schedule</span>
+                </div>
+                <p class="stat-value">0</p>
+                <p class="stat-subtext">Select a unit to view stats</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+<section id="details" class="main-content-wrapper">
+    <div class="details-single">
+        <div class="details-card">
+            <div class="card-header">
+                <h3>Your Upcoming Sessions</h3>
+                <a href="#" class="view-all-link">View All</a>
+            </div>
+            <div class="session-list">
+                {% if current_unit %}
+                    {% set current_unit_data = units_data|selectattr('id', 'equalto', current_unit.id)|first %}
+                    {% if current_unit_data and current_unit_data.upcoming_sessions %}
+                        {% for session in current_unit_data.upcoming_sessions[:3] %}
+                        <div class="session-item">
+                            <div class="session-info">
+                                <div class="session-title">
+                                    <div>
+                                        <h4>{{ session.topic }}</h4>
+                                        <p class="session-full-date">{{ session.date }}</p>
+                                    </div>
+                                    <span class="tag {{ session.status }}">{{ session.status }}</span>
+                                </div>
+                                <p class="session-time">{{ session.time }}</p>
+                                <p class="session-location">{{ session.location }}</p>
+                            </div>
+                            {% if session.status == 'pending' %}
+                            <div class="session-actions">
+                                <button class="action-btn accept">
+                                    <span class="material-icons">check</span>
+                                    Accept
+                                </button>
+                                <button class="action-btn decline">Decline</button>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% if current_unit_data.upcoming_sessions|length > 3 %}
+                        <div class="more-sessions-message">
+                            <p>{{ current_unit_data.upcoming_sessions|length - 3 }} more session{{ 's' if current_unit_data.upcoming_sessions|length - 3 > 1 else '' }} available. Click "View All" to see all sessions.</p>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                    <div class="no-sessions">
+                        <span class="material-icons">event_available</span>
+                        <p>No upcoming sessions for this unit.</p>
+                    </div>
+                    {% endif %}
+                {% else %}
+                <div class="no-sessions">
+                    <span class="material-icons">event_available</span>
+                    <p>Select a unit to view sessions.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Setup View -->
+<section id="setup-view" class="main-content-wrapper" style="display: none;">
+  <div class="setup-container">
+    <div class="setup-header">
+      <div>
+        <h2>Facilitator Setup</h2>
+        <p class="setup-subtitle">Configure your availability, proficiency, and skills for <span id="unit-date-range-display">
+          {% if current_unit and current_unit.start_date and current_unit.end_date %}
+            {{ current_unit.start_date.strftime('%d/%m/%Y') }} - {{ current_unit.end_date.strftime('%d/%m/%Y') }}
+          {% else %}No date range{% endif %}
+        </span></p>
+      </div>
+      <div class="setup-actions">
+        <button id="save-all-setup" class="action-btn primary">
+          <span class="material-icons">save</span>
+          Save All
+        </button>
+      </div>
+    </div>
+    
+    <div class="setup-content">
+      <!-- Setup Navigation Tabs -->
+      <div class="setup-tabs">
+        <button class="setup-tab active" data-tab="unavailability">
+          <span class="material-icons">event_busy</span>
+          Unavailability
+        </button>
+        <button class="setup-tab" data-tab="proficiency">
+          <span class="material-icons">trending_up</span>
+          Proficiency
+        </button>
+        <button class="setup-tab" data-tab="skillset">
+          <span class="material-icons">build</span>
+          Skill Set
+        </button>
+        <button class="setup-tab" data-tab="preferences">
+          <span class="material-icons">tune</span>
+          Preferences
+        </button>
+      </div>
+
+      <!-- Unavailability Tab Content -->
+      <div id="unavailability-tab-content" class="setup-tab-content active">
+        <div class="unavailability-content">
+          <div class="unavailability-calendar-section">
+            <div class="calendar-header">
+              <button id="prev-month-unavailability" class="calendar-btn">
+                <span class="material-icons">chevron_left</span>
+              </button>
+              <h3 id="current-month-unavailability">Current Month</h3>
+              <button id="next-month-unavailability" class="calendar-btn">
+                <span class="material-icons">chevron_right</span>
+              </button>
+            </div>
+            
+            <div class="calendar-grid">
+              <div class="calendar-weekdays">
+                <div class="weekday">Sun</div>
+                <div class="weekday">Mon</div>
+                <div class="weekday">Tue</div>
+                <div class="weekday">Wed</div>
+                <div class="weekday">Thu</div>
+                <div class="weekday">Fri</div>
+                <div class="weekday">Sat</div>
+              </div>
+              
+              <div class="calendar-days" id="unavailability-calendar-days">
+                <!-- Calendar days will be generated by JavaScript -->
+              </div>
+            </div>
+          </div>
+          
+          <div class="unavailability-summary-section">
+            <div class="recent-unavailability-card">
+              <h3>Recent Unavailability</h3>
+              <div id="recent-unavailability-list">
+                <!-- Recent unavailability will be populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proficiency Tab Content -->
+      <div id="proficiency-tab-content" class="setup-tab-content">
+        <div class="proficiency-content">
+          <h3>Module Proficiency Levels</h3>
+          <p class="proficiency-description">Rate your experience and interest level for each module. This helps with session assignment optimization.</p>
+          
+          <div id="proficiency-modules-list">
+            <!-- Modules will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Skill Set Tab Content -->
+      <div id="skillset-tab-content" class="setup-tab-content">
+        <div class="skillset-content">
+          <h3>Technical Skills & Expertise</h3>
+          <p class="skillset-description">List your technical skills and areas of expertise. This information helps coordinators make better assignments.</p>
+          
+          <div class="skillset-form">
+            <div class="skill-input-section">
+              <label for="skills-input">Technical Skills</label>
+              <textarea id="skills-input" placeholder="e.g., Python, Java, Circuit Analysis, CAD Software, Laboratory Equipment..." rows="4"></textarea>
+            </div>
+            
+            <div class="experience-input-section">
+              <label for="experience-input">Experience & Background</label>
+              <textarea id="experience-input" placeholder="Describe your relevant experience, certifications, or special expertise..." rows="4"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preferences Tab Content -->
+      <div id="preferences-tab-content" class="setup-tab-content">
+        <div class="preferences-content">
+          <h3>Teaching Preferences & Notes</h3>
+          <p class="preferences-description">Share any preferences or additional information that might help with scheduling and assignments.</p>
+          
+          <div class="preferences-form">
+            <div class="preference-input-section">
+              <label for="teaching-preferences">Teaching Preferences</label>
+              <textarea id="teaching-preferences" placeholder="e.g., Prefer morning sessions, enjoy working with beginner students, comfortable with large groups..." rows="4"></textarea>
+            </div>
+            
+            <div class="notes-input-section">
+              <label for="additional-notes">Additional Notes for Coordinators</label>
+              <textarea id="additional-notes" placeholder="Any other information that might be helpful for scheduling and assignments..." rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Unavailability Modal -->
+<div id="unavailability-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Set Unavailability</h2>
+      <button id="unavailability-modal-close" class="modal-close-btn">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p id="modal-date-subtitle" class="modal-subtitle">Select your unavailable times</p>
+      
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="full-day-toggle">
+          <span class="checkbox-custom"></span>
+          Full day unavailability
+        </label>
+      </div>
+      
+      <div id="time-ranges-container" class="time-ranges-container">
+        <div class="no-time-ranges">
+          <span class="material-icons">schedule</span>
+          <p>No specific time ranges set. Click 'Add Time Range' to specify unavailable hours</p>
+        </div>
+      </div>
+      
+      <button id="add-time-range" class="action-btn">
+        <span class="material-icons">add</span>
+        Add Time Range
+      </button>
+      
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="recurring-toggle">
+          <span class="checkbox-custom"></span>
+          Recurring unavailability
+        </label>
+      </div>
+      
+      <div id="recurring-options" class="recurring-options" style="display: none;">
+        <div class="form-group">
+          <label for="repeat-every">Repeat every</label>
+          <select id="repeat-every">
+            <option value="weekly">Week</option>
+            <option value="monthly">Month</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        
+        <div id="custom-recurrence" class="custom-recurrence" style="display: none;">
+          <div class="form-group">
+            <label for="custom-interval">Every</label>
+            <input type="number" id="custom-interval" min="1" max="52" value="1">
+            <span>weeks</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="until-date">Until</label>
+          <input type="date" id="until-date">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="unavailability-reason">Reason (optional)</label>
+        <textarea id="unavailability-reason" rows="3" placeholder="Enter reason for unavailability..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="cancel-unavailability" class="btn-secondary">Cancel</button>
+      <button id="save-unavailability" class="btn-primary">Save Unavailability</button>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar View -->
+<section id="calendar-view" class="main-content-wrapper" style="display: none;">
+  <div class="schedule-header">
+    <div>
+      <h2>My Schedule</h2>
+      <p class="schedule-subtitle">View your scheduled sessions.</p>
+    </div>
+  </div>
+  
+  <div class="calendar-container">
+    <div class="calendar-navigation">
+      <div class="calendar-view-toggle">
+        <button id="weekly-view-btn" class="view-toggle-btn active" title="Weekly View">
+          <span class="material-icons">view_list</span>
+        </button>
+        <button id="monthly-view-btn" class="view-toggle-btn" title="Monthly View">
+          <span class="material-icons">view_module</span>
+        </button>
+      </div>
+      <div class="calendar-nav-right">
+        <button id="prev-period" class="action-btn">
+          <span class="material-icons">chevron_left</span>
+        </button>
+        <span id="current-period" class="period-title">August 2025</span>
+        <button id="next-period" class="action-btn">
+          <span class="material-icons">chevron_right</span>
+        </button>
+        <button id="today-btn" class="action-btn today-btn">
+          Today
+        </button>
+      </div>
+    </div>
+    
+    <div class="calendar-grid">
+      <div class="calendar-weekdays">
+        <div class="weekday">Sun</div>
+        <div class="weekday">Mon</div>
+        <div class="weekday">Tue</div>
+        <div class="weekday">Wed</div>
+        <div class="weekday">Thu</div>
+        <div class="weekday">Fri</div>
+        <div class="weekday">Sat</div>
+      </div>
+      
+      <div class="calendar-days" id="calendar-days">
+      </div>
+    </div>
+  </div>
+  
+  <div class="schedule-legend">
+    <div class="legend-item">
+      <div class="legend-color confirmed"></div>
+      <span>Confirmed Sessions</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color pending"></div>
+      <span>Pending Sessions</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color past"></div>
+      <span>Past Sessions</span>
+    </div>
+  </div>
+</section>
+
+<!-- Session Swaps View -->
+<section id="swaps-view" class="main-content-wrapper" style="display: none;">
+  <div class="swaps-container">
+    <!-- Header -->
+    <div class="swaps-header">
+      <h2>Session Swaps</h2>
+      <p class="swaps-subtitle">Request shift swaps when you cannot attend scheduled sessions.</p>
+    </div>
+    
+    <!-- Unit Information Card -->
+    <div class="unit-info-card">
+      <div class="unit-info-content">
+        <span class="material-icons unit-icon">swap_horiz</span>
+        <div class="unit-details">
+          <h3 id="current-unit-name">Loading...</h3>
+          <p id="session-count">You have 0 assigned sessions in this unit.</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Request Swap Button -->
+    <div class="request-swap-section">
+      <button id="request-swap-btn" class="request-swap-btn">
+        <span class="material-icons">add</span>
+        Request Swap
+      </button>
+    </div>
+    
+    <!-- Swap Requests Sections -->
+    <div class="swap-requests-container">
+      <!-- Pending Requests -->
+      <div class="requests-section">
+        <div class="section-header">
+          <span class="material-icons section-icon pending">schedule</span>
+          <h3>Pending Requests <span id="pending-count" class="count-badge">0</span></h3>
+        </div>
+        <div id="pending-requests-list" class="requests-list">
+          <!-- Pending requests will be populated here -->
+        </div>
+      </div>
+      
+      <!-- Approved Requests -->
+      <div class="requests-section">
+        <div class="section-header">
+          <span class="material-icons section-icon approved">check_circle</span>
+          <h3>Approved Requests <span id="approved-count" class="count-badge">0</span></h3>
+        </div>
+        <div id="approved-requests-list" class="requests-list">
+          <!-- Approved requests will be populated here -->
+        </div>
+      </div>
+      
+      <!-- Declined Requests -->
+      <div class="requests-section">
+        <div class="section-header">
+          <span class="material-icons section-icon declined">cancel</span>
+          <h3>Declined Requests <span id="declined-count" class="count-badge">0</span></h3>
+        </div>
+        <div id="declined-requests-list" class="requests-list">
+          <!-- Declined requests will be populated here -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- How Swaps Work Section -->
+    <div class="how-swaps-work">
+      <h3>How Session Swaps Work</h3>
+      <div class="steps-container">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Submit Request</h4>
+            <p>Select the session you can't attend and suggest a replacement facilitator you've already spoken with.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Faciiltator and Unit Coordinator Review</h4>
+            <p>Your suggested facilitator will first review the request, and once they approve the request, the request will go through to the unit coordinator for review and approval.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Get Notification</h4>
+            <p>You will receive a notification when your request is approved or if changes are needed.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>Schedule Updated</h4>
+            <p>Once approved, the schedule is automatically updated and all relevant parties are notified.</p>
+          </div>
+        </div>
+      </div>
+      <div class="tip-box">
+        <strong>Tip:</strong> Always discuss with potential replacement facilitators before submitting a request. This helps ensure faster approval and shows consideration for your colleagues.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Sessions Modal -->
+<div id="sessions-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">All Sessions</h2>
+            <button id="modal-close-btn" class="modal-close-btn">
+              <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p id="modal-subtitle" class="modal-subtitle"></p>
+            <div id="modal-sessions-list" class="modal-sessions-list">
+                <!-- Sessions will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+<!-- Date Sessions Modal -->
+<div id="date-sessions-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="date-modal-title">Sessions for Date</h2>
+            <button id="date-modal-close-btn" class="modal-close-btn">
+              <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p id="date-modal-subtitle" class="modal-subtitle"></p>
+            <div id="date-modal-sessions-list" class="modal-sessions-list">
+                <!-- Date sessions will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Pass units data from backend to JavaScript
+    window.unitsData = {{ units_data|tojson }};
+    window.currentUnitId = {{ current_unit_dict.id if current_unit_dict else 'null' }};
+    window.currentUnit = {{ current_unit_dict|tojson if current_unit_dict else 'null' }};
+    window.csrfToken = "{{ csrf_token() }}";
+    
+    // Function to refresh the page to check for new unit assignments
+    function refreshPage() {
+        window.location.reload();
+    }
+</script>
+
+<!-- Request Swap Modal -->
+<div id="request-swap-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Request Session Swap</h2>
+      <button id="request-swap-modal-close" class="modal-close-btn">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-subtitle">Select a session you need to swap and provide details about your request.</p>
+      
+      <form id="request-swap-form">
+        <div class="form-group">
+          <label for="session-select">Select Session*</label>
+          <select id="session-select" name="session_id" required>
+            <option value="">Choose a session to swap</option>
+            <!-- Sessions will be populated by JavaScript -->
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="suggested-facilitator">Suggested Replacement Facilitator*</label>
+          <select id="suggested-facilitator" name="suggested_facilitator_id" required>
+            <option value="">Select a facilitator you've discussed with</option>
+            <!-- Available facilitators will be populated by JavaScript -->
+          </select>
+          <p class="form-help">Choose someone you've already spoken with about covering this session.</p>
+        </div>
+        
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="has-discussed" name="has_discussed" required>
+            <span class="checkbox-custom"></span>
+            I have discussed this swap with the suggested facilitator
+          </label>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" id="cancel-swap-request" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Submit Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+
+
+
+
+
+
+
+

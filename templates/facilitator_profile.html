@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Facilitator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='facilitator_profile.css') }}">
+</head>
+<body class="profile-page">
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <a href="{{ url_for('facilitator.dashboard') }}" class="back-button">Back to Dashboard</a>
+        <div class="profile-header-right">
+            <h1 class="profile-title">
+                <span class="material-icons">person</span>
+                Profile
+            </h1>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="profile-container">
+        <!-- Account Information Card -->
+        <div class="profile-card">
+            <div class="profile-card-header">
+                <h1 class="profile-card-title">Account Information</h1>
+                <a href="{{ url_for('facilitator.edit_profile') }}" class="edit-profile-btn">Edit Profile</a>
+            </div>
+
+            <div class="profile-content">
+                <div class="profile-avatar">
+                    <span class="material-icons">account_circle</span>
+                </div>
+                
+                <div class="profile-info">
+                    <!-- Left Column -->
+                    <div>
+                        <div class="info-group">
+                            <div class="info-label">First Name</div>
+                            <div class="info-value">{{ user.first_name or 'N/A' }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">{{ user.email }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Staff Number</div>
+                            <div class="info-value">{{ user.staff_number or 'N/A' }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div>
+                        <div class="info-group">
+                            <div class="info-label">Last Name</div>
+                            <div class="info-value">{{ user.last_name or 'N/A' }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Phone Number</div>
+                            <div class="info-value">{{ user.phone_number or 'N/A' }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Role</div>
+                            <div class="info-value">
+                                <span class="role-badge">Lab Facilitator</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
