@@ -1,0 +1,83 @@
+========================================
+QUICK START: Facilitator Skills Setup
+========================================
+
+This guide helps you quickly add skills to your facilitators.
+
+STEP 1: Activate Virtual Environment
+-------------------------------------
+source venv/bin/activate
+
+STEP 2: Check Current Status
+-----------------------------
+python inject_facilitator_skills.py --mode list
+
+This shows all facilitators and their current skills (if any).
+
+STEP 3: Add Skills (Choose One Method)
+---------------------------------------
+
+Option A: Distributed (Recommended for realistic testing)
+python inject_facilitator_skills.py --mode distributed
+
+This assigns 3-6 skills per facilitator with varied skill levels:
+- LEADER: Expert level
+- PROFICIENT: Competent level  
+- INTERESTED: Willing to learn
+
+Option B: Random (For variety)
+python inject_facilitator_skills.py --mode random --min-skills 2 --max-skills 8
+
+Option C: All Skills to Everyone (For maximum coverage)
+python inject_facilitator_skills.py --mode all --skill-level proficient
+
+STEP 4: Verify Results
+----------------------
+python inject_facilitator_skills.py --mode list
+
+COMMON SCENARIOS
+================
+
+Scenario 1: Fresh Setup
+-----------------------
+# View what you have
+python inject_facilitator_skills.py --mode list
+
+# Add realistic skills
+python inject_facilitator_skills.py --mode distributed
+
+Scenario 2: Reset Everything
+-----------------------------
+# Clear all skills
+python inject_facilitator_skills.py --mode clear
+
+# Add new skills
+python inject_facilitator_skills.py --mode distributed
+
+Scenario 3: Testing Scheduling Algorithm
+----------------------------------------
+# Give everyone proficiency in all modules
+python inject_facilitator_skills.py --mode all --skill-level proficient
+
+TROUBLESHOOTING
+===============
+
+Problem: "No facilitators found"
+Solution: Upload facilitators via UC dashboard CSV first
+
+Problem: "No modules found"
+Solution: Create modules via UC dashboard first
+
+Problem: Database errors
+Solution: Make sure you're in the project root directory and venv is activated
+
+SKILL LEVELS EXPLAINED
+======================
+
+LEADER      - Can lead sessions, teach, and mentor (highest preference)
+PROFICIENT  - Can handle sessions independently (good match)
+INTERESTED  - Willing to learn/assist (acceptable match)
+UNINTERESTED- Prefer not to be assigned (lowest preference)
+
+The scheduling algorithm uses these levels to optimize assignments.
+

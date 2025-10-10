@@ -2658,6 +2658,7 @@ function initBulkStaffing() {
   const previewBtn = document.getElementById('preview_bulk');
   const applyBtn = document.getElementById('apply_bulk');
   const resetBtn = document.getElementById('reset_bulk');
+  const moduleSelection = document.getElementById('module_selection');
 
   if (!leadCountInput || !supportCountInput) return;
 
@@ -2672,6 +2673,19 @@ function initBulkStaffing() {
   leadIncreaseBtn?.addEventListener('click', () => updateCounter(leadCountInput, 1));
   supportDecreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, -1));
   supportIncreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, 1));
+
+  // Handle radio button changes for filter type
+  const filterTypeRadios = document.querySelectorAll('input[name="bulk_filter_type"]');
+  filterTypeRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      if (e.target.value === 'all_sessions') {
+        moduleSelection.classList.add('hidden');
+      } else if (e.target.value === 'module') {
+        moduleSelection.classList.remove('hidden');
+        updateFilterOptions();
+      }
+    });
+  });
 
   // Update filter options (only modules now)
   async function updateFilterOptions() {
@@ -2710,33 +2724,35 @@ function initBulkStaffing() {
 
   // Preview functionality
   previewBtn?.addEventListener('click', async () => {
+    const selectedFilterType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const selectedFilter = filterSelect.value;
     const leadCount = parseInt(leadCountInput.value) || 0;
     const supportCount = parseInt(supportCountInput.value) || 0;
     
-    if (!selectedFilter) {
-      alert('Please select a filter option first.');
+    if (selectedFilterType === 'module' && !selectedFilter) {
+      alert('Please select a module first.');
       return;
     }
 
     // Show preview of what will be updated
-    const sessions = await getFilteredSessions(selectedFilter);
+    const sessions = await getFilteredSessions(selectedFilterType, selectedFilter);
     alert(`Preview: ${sessions.length} sessions will be updated with ${leadCount} lead staff and ${supportCount} support staff.`);
   });
 
   // Apply functionality
   applyBtn?.addEventListener('click', async () => {
+    const selectedFilterType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const selectedFilter = filterSelect.value;
     const leadCount = parseInt(leadCountInput.value) || 0;
     const supportCount = parseInt(supportCountInput.value) || 0;
     
-    if (!selectedFilter) {
-      alert('Please select a filter option first.');
+    if (selectedFilterType === 'module' && !selectedFilter) {
+      alert('Please select a module first.');
       return;
     }
 
     // Apply bulk staffing to filtered sessions
-    await applyBulkStaffing(selectedFilter, leadCount, supportCount);
+    await applyBulkStaffing(selectedFilterType, selectedFilter, leadCount, supportCount);
   });
 
   // Reset functionality
@@ -2746,12 +2762,16 @@ function initBulkStaffing() {
   });
 
   // Get filtered sessions based on selected filter
-  async function getFilteredSessions(filterValue) {
+  async function getFilteredSessions(filterType, filterValue) {
     const unitId = document.getElementById('unit_id')?.value;
     if (!unitId) return [];
     
     try {
-      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/sessions?type=module&value=${encodeURIComponent(filterValue)}`);
+      let url = `/unitcoordinator/units/${unitId}/bulk-staffing/sessions?type=${filterType}`;
+      if (filterType === 'module' && filterValue) {
+        url += `&value=${encodeURIComponent(filterValue)}`;
+      }
+      const response = await fetch(url);
       const data = await response.json();
       return data.ok ? data.sessions : [];
     } catch (e) {
@@ -2761,7 +2781,7 @@ function initBulkStaffing() {
   }
 
   // Apply bulk staffing to sessions
-  async function applyBulkStaffing(filterValue, leadCount, supportCount) {
+  async function applyBulkStaffing(filterType, filterValue, leadCount, supportCount) {
     const unitId = document.getElementById('unit_id')?.value;
     if (!unitId) {
       alert('No unit ID found. Please complete the previous steps first.');
@@ -2771,19 +2791,25 @@ function initBulkStaffing() {
     const respectOverrides = document.getElementById('respect_overrides')?.checked || false;
     
     try {
+      const requestBody = {
+        type: filterType,
+        lead_staff_required: leadCount,
+        support_staff_required: supportCount,
+        respect_overrides: respectOverrides
+      };
+      
+      // Only add value for module type
+      if (filterType === 'module') {
+        requestBody.value = filterValue;
+      }
+      
       const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': window.CSRF_TOKEN
         },
-        body: JSON.stringify({
-          type: 'module',
-          value: filterValue,
-          lead_staff_required: leadCount,
-          support_staff_required: supportCount,
-          respect_overrides: respectOverrides
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const data = await response.json();
@@ -4340,7 +4366,6 @@ function renderListView() {
           <div class="session-detail">
             <span class="material-icons">book</span>
             <span class="session-detail-value">${session.moduleType}</span>
-            <span>${session.students} students</span>
           </div>
         </div>
       </div>

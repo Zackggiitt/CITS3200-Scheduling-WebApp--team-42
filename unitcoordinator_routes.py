@@ -19,7 +19,7 @@ from auth import login_required, get_current_user
 from utils import role_required
 from models import db
 
-from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill
+from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill, Notification
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -523,6 +523,94 @@ def change_password():
     
     return redirect(url_for('unitcoordinator.account_settings'))
 
+@unitcoordinator_bp.route("/notifications")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def get_notifications():
+    """Get notifications for the current user"""
+    user = get_current_user()
+    
+    # Get notifications from database
+    notifications = Notification.query.filter_by(user_id=user.id).order_by(Notification.created_at.desc()).all()
+    
+    # Convert to JSON-serializable format
+    notifications_data = []
+    for notification in notifications:
+        notification_data = {
+            'id': notification.id,
+            'message': notification.message,
+            'is_read': notification.is_read,
+            'created_at': notification.created_at.isoformat() if notification.created_at else None,
+            'type': 'info',  # Default type, can be extended
+            'title': 'Notification'
+        }
+        notifications_data.append(notification_data)
+    
+    # Calculate counts
+    total_count = len(notifications)
+    unread_count = sum(1 for n in notifications if not n.is_read)
+    action_required_count = 0  # Can be extended to check for specific notification types
+    
+    return jsonify({
+        'success': True,
+        'notifications': notifications_data,
+        'counts': {
+            'total': total_count,
+            'unread': unread_count,
+            'action_required': action_required_count
+        }
+    })
+
+@unitcoordinator_bp.route("/notifications/mark-all-read", methods=["POST"])
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def mark_all_notifications_read():
+    """Mark all notifications as read for the current user"""
+    user = get_current_user()
+    
+    try:
+        # Mark all notifications as read
+        Notification.query.filter_by(user_id=user.id, is_read=False).update({'is_read': True})
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error marking notifications as read: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@unitcoordinator_bp.route("/notifications/action", methods=["POST"])
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def handle_notification_action():
+    """Handle notification actions (accept, decline, etc.)"""
+    user = get_current_user()
+    
+    try:
+        data = request.get_json()
+        action = data.get('action')
+        notification_id = data.get('notification_id')
+        
+        # Find the notification
+        notification = Notification.query.filter_by(id=notification_id, user_id=user.id).first()
+        if not notification:
+            return jsonify({'success': False, 'error': 'Notification not found'})
+        
+        # Handle different actions
+        if action == 'mark_read':
+            notification.is_read = True
+            db.session.commit()
+        elif action == 'delete':
+            db.session.delete(notification)
+            db.session.commit()
+        # Add more actions as needed
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error handling notification action: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
 @unitcoordinator_bp.route("/dashboard")
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
@@ -743,6 +831,22 @@ def dashboard():
             fac_progress["skills"] += 1 if has_skills else 0
             fac_progress["ready"] += 1 if is_ready else 0
 
+            # Get facilitator skills
+            facilitator_skills = (
+                db.session.query(FacilitatorSkill, Module)
+                .join(Module, FacilitatorSkill.module_id == Module.id)
+                .filter(FacilitatorSkill.facilitator_id == f.id)
+                .all()
+            )
+            
+            # Format skills for template
+            skills_list = []
+            for skill, module in facilitator_skills:
+                skills_list.append({
+                    "module": module.module_name,
+                    "level": skill.skill_level.value
+                })
+
             facilitators.append(
                 {
                     "id": f.id,
@@ -758,6 +862,7 @@ def dashboard():
                     "has_availability": has_avail,
                     "has_skills": has_skills,
                     "is_ready": is_ready,
+                    "skills": skills_list,
                 }
             )
 
@@ -1036,6 +1141,22 @@ def admin_dashboard():
             fac_progress["skills"] += 1 if has_skills else 0
             fac_progress["ready"] += 1 if is_ready else 0
 
+            # Get facilitator skills
+            facilitator_skills = (
+                db.session.query(FacilitatorSkill, Module)
+                .join(Module, FacilitatorSkill.module_id == Module.id)
+                .filter(FacilitatorSkill.facilitator_id == f.id)
+                .all()
+            )
+            
+            # Format skills for template
+            skills_list = []
+            for skill, module in facilitator_skills:
+                skills_list.append({
+                    "module": module.module_name,
+                    "level": skill.skill_level.value
+                })
+
             facilitators.append(
                 {
                     "id": f.id,
@@ -1051,6 +1172,7 @@ def admin_dashboard():
                     "has_availability": has_avail,
                     "has_skills": has_skills,
                     "is_ready": is_ready,
+                    "skills": skills_list,
                 }
             )
 
@@ -2946,7 +3068,12 @@ def get_bulk_staffing_filters(unit_id: int):
 
     try:
 
-        if filter_type == "activity":
+        if filter_type == "all_sessions":
+
+            # For all sessions, we don't need to return any options
+            options = []
+
+        elif filter_type == "activity":
 
             # Get unique session types
 
@@ -3052,11 +3179,12 @@ def get_bulk_staffing_sessions(unit_id: int):
 
     
 
-    if not filter_value:
+    # For all_sessions, we don't need a filter value
+    if filter_type != "all_sessions" and not filter_value:
 
         return jsonify({"ok": False, "error": "Filter value required"}), 400
 
-
+    
 
     try:
 
@@ -3064,7 +3192,13 @@ def get_bulk_staffing_sessions(unit_id: int):
 
         
 
-        if filter_type == "activity":
+        if filter_type == "all_sessions":
+
+            # No additional filtering - get all sessions
+
+            pass
+
+        elif filter_type == "activity":
 
             query = query.filter(Session.session_type == filter_value)
 
@@ -3371,11 +3505,12 @@ def apply_bulk_staffing(unit_id: int):
 
 
 
-    if not filter_value:
+    # For all_sessions, we don't need a filter value
+    if filter_type != "all_sessions" and not filter_value:
 
         return jsonify({"ok": False, "error": "Filter value required"}), 400
 
-
+    
 
     try:
 
@@ -3383,7 +3518,13 @@ def apply_bulk_staffing(unit_id: int):
 
         
 
-        if filter_type == "activity":
+        if filter_type == "all_sessions":
+
+            # No additional filtering - apply to all sessions
+
+            pass
+
+        elif filter_type == "activity":
 
             query = query.filter(Session.session_type == filter_value)
 
