@@ -521,122 +521,15 @@ async function ensureDraftAndSetUnitId() {
 }
 
 // ===== CSV Upload (Step 3a) =====
+// Note: CSV upload logic is now handled by facilitator_review.js
+// This section only handles file name display
 const uploadInput = document.getElementById('setup_csv');
 const statusBox = document.getElementById('upload_status');
 const setupFlagEl = document.getElementById('setup_complete');
 const unitIdEl = document.getElementById('unit_id');
 const fileNameEl = document.getElementById('file_name');
 
-if (uploadInput) {
-  uploadInput.addEventListener('change', async (e) => {
-    statusBox.classList.remove('hidden', 'success', 'error');
-    statusBox.textContent = 'Uploading…';
-    setupFlagEl.value = 'false';
-
-    const file = e.target.files?.[0];
-    const unitId = unitIdEl.value;
-    if (!file) {
-      statusBox.textContent = 'No file selected.';
-      statusBox.classList.add('error');
-      fileNameEl.textContent = 'No file selected';
-      return;
-    }
-    fileNameEl.textContent = file.name;
-    if (!unitId) {
-      statusBox.textContent = 'Missing unit id. Go back to Step 2 and try again.';
-      statusBox.classList.add('error');
-      fileNameEl.textContent = 'No file selected';
-      return;
-    }
-
-    const form = new FormData();
-    form.append('unit_id', unitId);
-    form.append('setup_csv', file);
-
-    try {
-      const res = await fetch(UPLOAD_SETUP_CSV, {
-        method: "POST",
-        headers: {
-          "X-CSRFToken": CSRF_TOKEN,
-          "X-CSRF-Token": CSRF_TOKEN,
-        },
-        body: form,
-      });
-
-      let data;
-      try {
-        data = await res.clone().json();
-      } catch (e2) {
-        const text = await res.text();
-        throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
-      }
-
-      if (!res.ok || !data.ok) {
-        const errs = (data.errors || [data.error]).filter(Boolean);
-        statusBox.classList.add("error");
-        statusBox.innerHTML = `
-          <div class="font-semibold mb-1">Upload failed</div>
-          <ul class="list-disc list-inside text-sm">
-            ${errs.map((x) => `<li>${x}</li>`).join("")}
-          </ul>`;
-        setupFlagEl.value = "false";
-        fileNameEl.textContent = "No file selected";
-        statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        return;
-      }
-
-      statusBox.classList.add("success");
-      statusBox.innerHTML = `
-        <div class="flex items-center justify-between">
-          <div>
-            <div class="font-semibold">Upload successful</div>
-            <div class="text-sm mt-1">
-              Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
-            </div>
-          </div>
-          <button 
-            id="remove_csv_btn" 
-            class="ml-3 text-red-600 hover:text-red-800 transition-colors"
-            title="Remove CSV data"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>`;
-      setupFlagEl.value = "true";
-      fileNameEl.textContent = file.name;
-      statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
-
-      // Ensure CSV upload card remains visible after successful upload
-      const wrapUpload = document.getElementById('setup_wrap');
-      if (wrapUpload) {
-        wrapUpload.classList.remove('hidden');
-      }
-      
-      showCalendarIfReady();
-      if (!window.__calendarInitRan) {
-        window.__calendarInitRan = true;
-        initCalendar();
-      } else {
-        refreshCalendarRange();
-      }
-      
-      // Add event listener for remove button
-      const removeBtn = document.getElementById('remove_csv_btn');
-      if (removeBtn) {
-        removeBtn.addEventListener('click', removeFacilitatorsCsv);
-      }
-    } catch (err) {
-      console.error(err);
-      statusBox.textContent = String(err.message || "Unexpected error during upload.");
-      statusBox.classList.add("error");
-      setupFlagEl.value = "false";
-      fileNameEl.textContent = "No file selected";
-      statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
-  });
-
+if (uploadInput && fileNameEl) {
   uploadInput.addEventListener('change', (e) => {
     const f = e.target.files?.[0];
     fileNameEl.textContent = f ? f.name : 'No file selected';
