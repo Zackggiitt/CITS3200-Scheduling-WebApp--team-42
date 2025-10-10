@@ -19,7 +19,7 @@ from auth import login_required, get_current_user
 from utils import role_required
 from models import db
 
-from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill
+from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill, Notification
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -522,6 +522,94 @@ def change_password():
         flash('An error occurred while changing your password. Please try again.', 'error')
     
     return redirect(url_for('unitcoordinator.account_settings'))
+
+@unitcoordinator_bp.route("/notifications")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def get_notifications():
+    """Get notifications for the current user"""
+    user = get_current_user()
+    
+    # Get notifications from database
+    notifications = Notification.query.filter_by(user_id=user.id).order_by(Notification.created_at.desc()).all()
+    
+    # Convert to JSON-serializable format
+    notifications_data = []
+    for notification in notifications:
+        notification_data = {
+            'id': notification.id,
+            'message': notification.message,
+            'is_read': notification.is_read,
+            'created_at': notification.created_at.isoformat() if notification.created_at else None,
+            'type': 'info',  # Default type, can be extended
+            'title': 'Notification'
+        }
+        notifications_data.append(notification_data)
+    
+    # Calculate counts
+    total_count = len(notifications)
+    unread_count = sum(1 for n in notifications if not n.is_read)
+    action_required_count = 0  # Can be extended to check for specific notification types
+    
+    return jsonify({
+        'success': True,
+        'notifications': notifications_data,
+        'counts': {
+            'total': total_count,
+            'unread': unread_count,
+            'action_required': action_required_count
+        }
+    })
+
+@unitcoordinator_bp.route("/notifications/mark-all-read", methods=["POST"])
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def mark_all_notifications_read():
+    """Mark all notifications as read for the current user"""
+    user = get_current_user()
+    
+    try:
+        # Mark all notifications as read
+        Notification.query.filter_by(user_id=user.id, is_read=False).update({'is_read': True})
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error marking notifications as read: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@unitcoordinator_bp.route("/notifications/action", methods=["POST"])
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def handle_notification_action():
+    """Handle notification actions (accept, decline, etc.)"""
+    user = get_current_user()
+    
+    try:
+        data = request.get_json()
+        action = data.get('action')
+        notification_id = data.get('notification_id')
+        
+        # Find the notification
+        notification = Notification.query.filter_by(id=notification_id, user_id=user.id).first()
+        if not notification:
+            return jsonify({'success': False, 'error': 'Notification not found'})
+        
+        # Handle different actions
+        if action == 'mark_read':
+            notification.is_read = True
+            db.session.commit()
+        elif action == 'delete':
+            db.session.delete(notification)
+            db.session.commit()
+        # Add more actions as needed
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error handling notification action: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @unitcoordinator_bp.route("/dashboard")
 @login_required
