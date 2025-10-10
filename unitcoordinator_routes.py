@@ -831,6 +831,22 @@ def dashboard():
             fac_progress["skills"] += 1 if has_skills else 0
             fac_progress["ready"] += 1 if is_ready else 0
 
+            # Get facilitator skills
+            facilitator_skills = (
+                db.session.query(FacilitatorSkill, Module)
+                .join(Module, FacilitatorSkill.module_id == Module.id)
+                .filter(FacilitatorSkill.facilitator_id == f.id)
+                .all()
+            )
+            
+            # Format skills for template
+            skills_list = []
+            for skill, module in facilitator_skills:
+                skills_list.append({
+                    "module": module.module_name,
+                    "level": skill.skill_level.value
+                })
+
             facilitators.append(
                 {
                     "id": f.id,
@@ -846,6 +862,7 @@ def dashboard():
                     "has_availability": has_avail,
                     "has_skills": has_skills,
                     "is_ready": is_ready,
+                    "skills": skills_list,
                 }
             )
 
@@ -1124,6 +1141,22 @@ def admin_dashboard():
             fac_progress["skills"] += 1 if has_skills else 0
             fac_progress["ready"] += 1 if is_ready else 0
 
+            # Get facilitator skills
+            facilitator_skills = (
+                db.session.query(FacilitatorSkill, Module)
+                .join(Module, FacilitatorSkill.module_id == Module.id)
+                .filter(FacilitatorSkill.facilitator_id == f.id)
+                .all()
+            )
+            
+            # Format skills for template
+            skills_list = []
+            for skill, module in facilitator_skills:
+                skills_list.append({
+                    "module": module.module_name,
+                    "level": skill.skill_level.value
+                })
+
             facilitators.append(
                 {
                     "id": f.id,
@@ -1139,6 +1172,7 @@ def admin_dashboard():
                     "has_availability": has_avail,
                     "has_skills": has_skills,
                     "is_ready": is_ready,
+                    "skills": skills_list,
                 }
             )
 
