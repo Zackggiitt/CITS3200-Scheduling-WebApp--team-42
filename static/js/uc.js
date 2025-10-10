@@ -2609,7 +2609,6 @@ function initBulkStaffing() {
   const supportDecreaseBtn = document.getElementById('support_decrease');
   const supportIncreaseBtn = document.getElementById('support_increase');
   const filterSelect = document.getElementById('bulk_filter_select');
-  const filterTypeRadios = document.querySelectorAll('input[name="bulk_filter_type"]');
   const previewBtn = document.getElementById('preview_bulk');
   const applyBtn = document.getElementById('apply_bulk');
   const resetBtn = document.getElementById('reset_bulk');
@@ -2628,16 +2627,8 @@ function initBulkStaffing() {
   supportDecreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, -1));
   supportIncreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, 1));
 
-  // Filter type change
-  filterTypeRadios.forEach(radio => {
-    radio.addEventListener('change', () => {
-      updateFilterOptions();
-    });
-  });
-
-  // Update filter options based on selected type
+  // Update filter options (only modules now)
   async function updateFilterOptions() {
-    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const select = filterSelect;
     
     if (!select) return;
@@ -2645,65 +2636,16 @@ function initBulkStaffing() {
     // Clear existing options
     select.innerHTML = '<option value="">Choose an option...</option>';
 
-    if (selectedType === 'activity') {
-      // Get unique session types from created sessions
-      const sessionTypes = await getSessionTypes();
-      sessionTypes.forEach(type => {
-        const option = document.createElement('option');
-        option.value = type.value;
-        option.textContent = type.label;
-        select.appendChild(option);
-      });
-    } else if (selectedType === 'session_name') {
-      // Get unique session names
-      const sessionNames = await getSessionNames();
-      sessionNames.forEach(name => {
-        const option = document.createElement('option');
-        option.value = name.value;
-        option.textContent = name.label;
-        select.appendChild(option);
-      });
-    } else if (selectedType === 'module') {
-      // Get unique modules
-      const modules = await getModules();
-      modules.forEach(module => {
-        const option = document.createElement('option');
-        option.value = module.value;
-        option.textContent = module.label;
-        select.appendChild(option);
-      });
-    }
+    // Get unique modules
+    const modules = await getModules();
+    modules.forEach(module => {
+      const option = document.createElement('option');
+      option.value = module.value;
+      option.textContent = module.label;
+      select.appendChild(option);
+    });
   }
 
-  // Get session types from created sessions
-  async function getSessionTypes() {
-    const unitId = document.getElementById('unit_id')?.value;
-    if (!unitId) return [];
-    
-    try {
-      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=activity`);
-      const data = await response.json();
-      return data.ok ? data.options : [];
-    } catch (e) {
-      console.error('Failed to fetch session types:', e);
-      return [];
-    }
-  }
-
-  // Get session names from created sessions
-  async function getSessionNames() {
-    const unitId = document.getElementById('unit_id')?.value;
-    if (!unitId) return [];
-    
-    try {
-      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=session_name`);
-      const data = await response.json();
-      return data.ok ? data.options : [];
-    } catch (e) {
-      console.error('Failed to fetch session names:', e);
-      return [];
-    }
-  }
 
   // Get modules from the current unit
   async function getModules() {
@@ -2762,10 +2704,8 @@ function initBulkStaffing() {
     const unitId = document.getElementById('unit_id')?.value;
     if (!unitId) return [];
     
-    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
-    
     try {
-      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/sessions?type=${selectedType}&value=${encodeURIComponent(filterValue)}`);
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/sessions?type=module&value=${encodeURIComponent(filterValue)}`);
       const data = await response.json();
       return data.ok ? data.sessions : [];
     } catch (e) {
@@ -2782,7 +2722,6 @@ function initBulkStaffing() {
       return;
     }
     
-    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const respectOverrides = document.getElementById('respect_overrides')?.checked || false;
     
     try {
@@ -2793,7 +2732,7 @@ function initBulkStaffing() {
           'X-CSRFToken': window.CSRF_TOKEN
         },
         body: JSON.stringify({
-          type: selectedType,
+          type: 'module',
           value: filterValue,
           lead_staff_required: leadCount,
           support_staff_required: supportCount,
