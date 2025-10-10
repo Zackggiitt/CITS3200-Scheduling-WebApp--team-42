@@ -4366,7 +4366,6 @@ function renderListView() {
           <div class="session-detail">
             <span class="material-icons">book</span>
             <span class="session-detail-value">${session.moduleType}</span>
-            <span>${session.students} students</span>
           </div>
         </div>
       </div>
