@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
     const unitSelector = document.getElementById('unit-selector');
     const calendarView = document.getElementById('calendar-view');
-    const unavailabilityView = document.getElementById('unavailability-view');
+    const setupView = document.getElementById('setup-view');
     const swapsView = document.getElementById('swaps-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
     
@@ -1258,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Show unavailability alert only if we're on the dashboard tab
         const unavailabilityAlert = document.getElementById('unavailability-alert');
-        const unavailabilityView = document.getElementById('unavailability-view');
+        const setupView = document.getElementById('setup-view');
         const swapsView = document.getElementById('swaps-view');
         
         if (dashboardNav) dashboardNav.style.display = 'flex';
