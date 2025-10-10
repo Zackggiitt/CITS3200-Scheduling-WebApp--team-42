@@ -116,6 +116,17 @@ function openEditUnitModal() {
   const semesterYear = document.querySelector('.chip--neutral').textContent.trim();
   const [semester, year] = semesterYear.split(', ');
   
+  // Extract dates from the unit card display
+  const dateText = document.querySelector('.unit-card p.text-gray-500.text-sm')?.textContent?.trim();
+  const dateMatch = dateText ? dateText.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s*-\s*(\d{1,2}\/\d{1,2}\/\d{4})/) : null;
+  let startDate = null;
+  let endDate = null;
+  
+  if (dateMatch && dateMatch.length >= 3) {
+    startDate = dateMatch[1]; // MM/DD/YYYY format
+    endDate = dateMatch[2];    // MM/DD/YYYY format
+  }
+  
   // Get current unit ID from the URL or data attribute
   const currentUnitId = getUnitId();
   
@@ -133,6 +144,41 @@ function openEditUnitModal() {
     document.querySelector('input[name="semester"]').value = semester;
     document.querySelector('input[name="year"]').value = year;
     
+    // Set the dates if they were found
+    if (startDate && endDate) {
+      try {
+        // Convert MM/DD/YYYY to DD/MM/YYYY format for flatpickr
+        const startParts = startDate.split('/');
+        const endParts = endDate.split('/');
+        
+        if (startParts.length === 3 && endParts.length === 3) {
+          const startDateFormatted = `${startParts[1]}/${startParts[0]}/${startParts[2]}`;
+          const endDateFormatted = `${endParts[1]}/${endParts[0]}/${endParts[2]}`;
+          
+          // Ensure date pickers are available before setting dates
+          if (typeof startPicker !== 'undefined' && startPicker) {
+            startPicker.setDate(startDateFormatted, true);
+          }
+          if (typeof endPicker !== 'undefined' && endPicker) {
+            endPicker.setDate(endDateFormatted, true);
+          }
+          
+          // Update the hidden input values
+          const startInput = document.getElementById('start_date_input');
+          const endInput = document.getElementById('end_date_input');
+          if (startInput) startInput.value = startDateFormatted;
+          if (endInput) endInput.value = endDateFormatted;
+          
+          // Update the date summary
+          if (typeof updateDateSummary === 'function') {
+            updateDateSummary();
+          }
+        }
+      } catch (error) {
+        console.warn('Error setting unit dates in edit modal:', error);
+      }
+    }
+    
     // Update the modal title to indicate editing
     const modalTitle = document.querySelector('#create-unit-title');
     if (modalTitle) {
@@ -147,7 +193,7 @@ function openEditUnitModal() {
     
     // Skip to step 1 (Unit Information) since we're editing
     setStep(1);
-  }, 100);
+  }, 200);
 }
 
 // Also add this to handle clicking outside the modal

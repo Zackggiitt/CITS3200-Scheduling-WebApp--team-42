@@ -2992,13 +2992,13 @@ def get_bulk_staffing_filters(unit_id: int):
 
         elif filter_type == "module":
 
-            # Get modules for this unit
+            # Get modules for this unit (excluding the default "General" module)
 
             modules = (
 
                 db.session.query(Module.id, Module.module_name)
 
-                .filter(Module.unit_id == unit.id)
+                .filter(Module.unit_id == unit.id, Module.module_name != "General")
 
                 .all()
 
