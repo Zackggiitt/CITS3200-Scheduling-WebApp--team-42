@@ -79,20 +79,23 @@ def signup():
             flash("All fields except staff number are required!")
             return render_template("signup.html")
 
-        # Check if email already exists in User table
-        if User.query.filter_by(email=email).first():
-            flash("Email already exists!")
+        # Check if email was pre-registered by unit coordinator
+        existing_user = User.query.filter_by(email=email).first()
+        if not existing_user or existing_user.role != UserRole.FACILITATOR:
+            flash("This email is not authorized to sign up. Please contact your unit coordinator to be added as a facilitator.")
             return render_template("signup.html")
         
-        # Check if email already exists in Facilitator table
-        if Facilitator.query.filter_by(email=email).first():
-            flash("Email already exists!")
+        # Check if user has already completed signup (has name set)
+        if existing_user.first_name and existing_user.last_name:
+            flash("This account has already been set up. Please log in instead.")
             return render_template("signup.html")
         
-        # Check if staff number already exists in Facilitator table (only if provided)
-        if staff_number and Facilitator.query.filter_by(staff_number=staff_number).first():
-            flash("Staff number already exists!")
-            return render_template("signup.html")
+        # Check if staff number already exists (only if provided)
+        if staff_number:
+            existing_staff = User.query.filter_by(staff_number=staff_number).first()
+            if existing_staff and existing_staff.id != existing_user.id:
+                flash("Staff number already exists!")
+                return render_template("signup.html")
         
         # Optional: Add phone validation
         if len(phone) < 10:
@@ -105,29 +108,13 @@ def signup():
             return render_template("signup.html")
 
         try:
-            # Create facilitator record
-            facilitator = Facilitator(
-                first_name=first,
-                last_name=last,
-                phone=phone,
-                staff_number=staff_number,
-                email=email,
-                password_hash=generate_password_hash(password)
-            )
+            # Update the existing user record with complete profile information
+            existing_user.first_name = first
+            existing_user.last_name = last
+            existing_user.phone_number = phone
+            existing_user.staff_number = staff_number
+            existing_user.password_hash = generate_password_hash(password)
             
-            # Also create user record for authentication
-            user = User(
-                first_name=first,
-                last_name=last,
-                email=email,
-                phone_number=phone,
-                staff_number=staff_number,
-                password_hash=generate_password_hash(password),
-                role=UserRole.FACILITATOR
-            )
-            
-            db.session.add(facilitator)
-            db.session.add(user)
             db.session.commit()
             
             flash("Facilitator account created successfully! Please log in.")
@@ -293,22 +280,22 @@ def google_callback():
 
         user = User.query.filter_by(email=email).first()
         if not user:
-            user = User(
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
-                oauth_provider='google',
-                oauth_id=oauth_id,
-                avatar_url=avatar_url,
-                role=UserRole.FACILITATOR
-            )
-            db.session.add(user)
-            db.session.commit()
-        else:
-            user.oauth_provider = 'google'
-            user.oauth_id = oauth_id
-            user.avatar_url = avatar_url
-            db.session.commit()
+            # Only allow Google sign-in for pre-registered facilitators or admins/coordinators
+            flash('This email is not authorized. Please contact your unit coordinator to be added as a facilitator, or sign up manually if you are an admin or unit coordinator.')
+            return redirect(url_for('login'))
+        
+        # Update OAuth information for existing user
+        user.oauth_provider = 'google'
+        user.oauth_id = oauth_id
+        user.avatar_url = avatar_url
+        
+        # Update name if not already set (for facilitators completing their profile via OAuth)
+        if not user.first_name:
+            user.first_name = first_name
+        if not user.last_name:
+            user.last_name = last_name
+            
+        db.session.commit()
 
         session['user_id'] = user.id
         if user.role == UserRole.ADMIN:
