@@ -2946,7 +2946,12 @@ def get_bulk_staffing_filters(unit_id: int):
 
     try:
 
-        if filter_type == "activity":
+        if filter_type == "all_sessions":
+
+            # For all sessions, we don't need to return any options
+            options = []
+
+        elif filter_type == "activity":
 
             # Get unique session types
 
@@ -3052,11 +3057,12 @@ def get_bulk_staffing_sessions(unit_id: int):
 
     
 
-    if not filter_value:
+    # For all_sessions, we don't need a filter value
+    if filter_type != "all_sessions" and not filter_value:
 
         return jsonify({"ok": False, "error": "Filter value required"}), 400
 
-
+    
 
     try:
 
@@ -3064,7 +3070,13 @@ def get_bulk_staffing_sessions(unit_id: int):
 
         
 
-        if filter_type == "activity":
+        if filter_type == "all_sessions":
+
+            # No additional filtering - get all sessions
+
+            pass
+
+        elif filter_type == "activity":
 
             query = query.filter(Session.session_type == filter_value)
 
@@ -3371,11 +3383,12 @@ def apply_bulk_staffing(unit_id: int):
 
 
 
-    if not filter_value:
+    # For all_sessions, we don't need a filter value
+    if filter_type != "all_sessions" and not filter_value:
 
         return jsonify({"ok": False, "error": "Filter value required"}), 400
 
-
+    
 
     try:
 
@@ -3383,7 +3396,13 @@ def apply_bulk_staffing(unit_id: int):
 
         
 
-        if filter_type == "activity":
+        if filter_type == "all_sessions":
+
+            # No additional filtering - apply to all sessions
+
+            pass
+
+        elif filter_type == "activity":
 
             query = query.filter(Session.session_type == filter_value)
 

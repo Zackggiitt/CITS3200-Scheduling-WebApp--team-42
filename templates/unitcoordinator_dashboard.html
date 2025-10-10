@@ -1549,14 +1549,18 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
                 <label class="block text-sm font-medium text-gray-700 mb-3">Choose what you want to update in bulk:</label>
                 <div class="space-y-3">
                   <label class="flex items-center">
-                    <input type="radio" name="bulk_filter_type" value="module" class="mr-3" checked>
+                    <input type="radio" name="bulk_filter_type" value="all_sessions" class="mr-3" checked>
+                    <span>All sessions</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input type="radio" name="bulk_filter_type" value="module" class="mr-3">
                     <span>By module</span>
                   </label>
                 </div>
               </div>
 
               <!-- Filter Selection -->
-              <div class="mb-6">
+              <div id="module_selection" class="mb-6 hidden">
                 <label for="bulk_filter_select" class="block text-sm font-medium text-gray-700 mb-2">Select module</label>
                 <select id="bulk_filter_select" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Choose an option...</option>
