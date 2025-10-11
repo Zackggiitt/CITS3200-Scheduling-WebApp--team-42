@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facilitator Profile - {{ facilitator.first_name }} {{ facilitator.last_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='facilitator_profile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='uc.css') }}">
+</head>
+<body class="profile-page">
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <a href="{{ url_for('unitcoordinator.dashboard') }}" class="back-button">Back to Dashboard</a>
+        <div class="profile-header-right">
+            <h1 class="profile-title">
+                <span class="material-icons">person</span>
+                Facilitator Profile
+            </h1>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="profile-container">
+        <!-- Account Information Card -->
+        <div class="profile-card">
+            <div class="profile-card-header">
+                <h1 class="profile-card-title">Account Information</h1>
+                <a href="{{ url_for('unitcoordinator.edit_facilitator_profile', facilitator_id=facilitator.id) }}" class="edit-profile-btn">Edit Profile</a>
+            </div>
+
+            <div class="profile-content">
+                <div class="profile-avatar">
+                    <span class="material-icons">account_circle</span>
+                </div>
+                
+                <div class="profile-info">
+                    <!-- Left Column -->
+                    <div>
+                        <div class="info-group">
+                            <div class="info-label">First Name</div>
+                            <div class="info-value">{{ facilitator.first_name or 'N/A' }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">{{ facilitator.email }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Staff Number</div>
+                            <div class="info-value">{{ facilitator.staff_number or 'N/A' }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Units Assigned</div>
+                            <div class="info-value">{{ stats.units_assigned }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div>
+                        <div class="info-group">
+                            <div class="info-label">Last Name</div>
+                            <div class="info-value">{{ facilitator.last_name or 'N/A' }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Phone Number</div>
+                            <div class="info-value">{{ facilitator.phone_number or 'N/A' }}</div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Role</div>
+                            <div class="info-value">
+                                <span class="role-badge">Lab Facilitator</span>
+                            </div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="info-label">Availability Status</div>
+                            <div class="info-value">
+                                <span class="status-badge {{ 'status-available' if stats.availability_status == 'Available' else 'status-pending' }}">
+                                    {{ stats.availability_status }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Card -->
+        <div class="profile-card">
+            <div class="profile-card-header">
+                <h2 class="profile-card-title">Statistics</h2>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ stats.total_sessions }}</div>
+                    <div class="stat-label">Total Sessions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ stats.pending_approvals }}</div>
+                    <div class="stat-label">Pending Approvals</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ stats.skills_count }}</div>
+                    <div class="stat-label">Skills Registered</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Proof Files Card -->
+        <div class="profile-card">
+            <div class="profile-card-header">
+                <h2 class="profile-card-title">
+                    <span class="material-icons">attach_file</span>
+                    Proof Files
+                </h2>
+            </div>
+            <div class="proof-files-content">
+                <div id="proof-files-list" class="proof-files-list">
+                    <!-- Proof files will be loaded here -->
+                </div>
+                <div id="no-proof-files" class="no-files-message" style="display: none;">
+                    <span class="material-icons">description</span>
+                    <p>No proof files uploaded yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load proof files for this facilitator
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProofFiles({{ facilitator.id }});
+        });
+
+        function loadProofFiles(facilitatorId) {
+            fetch(`/unitcoordinator/facilitators/${facilitatorId}/proof-files`)
+                .then(response => response.json())
+                .then(data => {
+                    const filesList = document.getElementById('proof-files-list');
+                    const noFilesMessage = document.getElementById('no-proof-files');
+                    
+                    if (data.files && data.files.length > 0) {
+                        filesList.innerHTML = '';
+                        data.files.forEach(file => {
+                            const fileItem = createFileItem(file, facilitatorId);
+                            filesList.appendChild(fileItem);
+                        });
+                        noFilesMessage.style.display = 'none';
+                    } else {
+                        filesList.innerHTML = '';
+                        noFilesMessage.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading proof files:', error);
+                    document.getElementById('no-proof-files').style.display = 'block';
+                });
+        }
+
+        function createFileItem(file, facilitatorId) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'proof-file-item';
+            
+            const fileIcon = getFileIcon(file.name);
+            const fileSize = formatFileSize(file.size);
+            const uploadDate = new Date(file.upload_date).toLocaleDateString();
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <span class="material-icons file-icon">${fileIcon}</span>
+                    <div class="file-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-meta">${fileSize} • Uploaded ${uploadDate}</div>
+                    </div>
+                </div>
+                <div class="file-actions">
+                    <button onclick="downloadFile('${file.id}', '${file.name}')" class="download-btn" title="Download">
+                        <span class="material-icons">download</span>
+                    </button>
+                </div>
+            `;
+            
+            return fileItem;
+        }
+
+        function getFileIcon(filename) {
+            const extension = filename.split('.').pop().toLowerCase();
+            switch (extension) {
+                case 'pdf': return 'picture_as_pdf';
+                case 'doc':
+                case 'docx': return 'description';
+                case 'jpg':
+                case 'jpeg':
+                case 'png':
+                case 'gif': return 'image';
+                default: return 'attach_file';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function downloadFile(fileId, filename) {
+            const facilitatorId = {{ facilitator.id }};
+            const link = document.createElement('a');
+            link.href = `/unitcoordinator/facilitators/${facilitatorId}/proof-files/${fileId}/download`;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+
+    <style>
+        .proof-files-content {
+            padding: 1rem;
+        }
+
+        .proof-files-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .proof-file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background-color: #f9fafb;
+            transition: background-color 0.2s;
+        }
+
+        .proof-file-item:hover {
+            background-color: #f3f4f6;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+        }
+
+        .file-icon {
+            color: #6b7280;
+            font-size: 1.5rem;
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #111827;
+            margin-bottom: 0.25rem;
+        }
+
+        .file-meta {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .download-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            border: none;
+            border-radius: 0.375rem;
+            background-color: #3b82f6;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .download-btn:hover {
+            background-color: #2563eb;
+        }
+
+        .download-btn .material-icons {
+            font-size: 1rem;
+        }
+
+        .no-files-message {
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+        }
+
+        .no-files-message .material-icons {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background-color: #f9fafb;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-available {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-pending {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</body>
+</html>

@@ -33,6 +33,12 @@ class RecurringPattern(Enum):
     MONTHLY = "monthly"
     CUSTOM = "custom"
 
+# Add enum for schedule status
+class ScheduleStatus(Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    UNPUBLISHED = "unpublished"
+
 # Add new models for units and modules
 class Unit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -45,6 +51,7 @@ class Unit(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     start_date  = db.Column(db.Date)   # first day unit runs
     end_date    = db.Column(db.Date)   # last day unit runs
+    schedule_status = db.Column(db.Enum(ScheduleStatus), nullable=False, default=ScheduleStatus.DRAFT)
 
     creator = db.relationship("User", backref="units")
     __table_args__ = (

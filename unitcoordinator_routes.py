@@ -1,6 +1,7 @@
 import logging
 import csv
 import re
+import os
 from io import StringIO, BytesIO
 from datetime import datetime, date, timedelta
 from sqlalchemy import and_, func
@@ -12,7 +13,7 @@ from werkzeug.security import generate_password_hash
 
 from flask import (
     Blueprint, render_template, redirect, url_for, flash, request,
-    jsonify, send_file
+    jsonify, send_file, current_app
 )
 
 from auth import login_required, get_current_user
@@ -2862,4 +2863,77 @@ def auto_assign_facilitators(unit_id: int):
         db.session.rollback()
         logger.error(f"Auto-assignment error: {str(e)}")
         return jsonify({"success": False, "error": f"Auto-assignment failed: {str(e)}"}), 500
+
+
+@unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/proof-files')
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def get_facilitator_proof_files(facilitator_id):
+    """Get list of proof files for a specific facilitator"""
+    try:
+        # Get facilitator from Facilitator table
+        facilitator = Facilitator.query.get_or_404(facilitator_id)
+        
+        # Get corresponding User record
+        facilitator_user = User.query.filter_by(email=facilitator.email).first()
+        
+        if not facilitator_user:
+            return jsonify({"files": []})
+        
+        # Get proof files directory for this user
+        proof_dir = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'uploads'), 'proof_files', str(facilitator_user.id))
+        
+        files = []
+        if os.path.exists(proof_dir):
+            for filename in os.listdir(proof_dir):
+                file_path = os.path.join(proof_dir, filename)
+                if os.path.isfile(file_path):
+                    stat = os.stat(file_path)
+                    files.append({
+                        'id': filename,  # Using filename as ID for simplicity
+                        'name': filename,
+                        'size': stat.st_size,
+                        'upload_date': datetime.fromtimestamp(stat.st_mtime).isoformat()
+                    })
+        
+        # Sort files by upload date (newest first)
+        files.sort(key=lambda x: x['upload_date'], reverse=True)
+        
+        return jsonify({"files": files})
+        
+    except Exception as e:
+        logger.error(f"Error getting proof files: {str(e)}")
+        return jsonify({"files": []}), 500
+
+
+@unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/proof-files/<filename>/download')
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def download_proof_file(facilitator_id, filename):
+    """Download a proof file"""
+    try:
+        
+        # Get facilitator and corresponding user
+        facilitator = Facilitator.query.get_or_404(facilitator_id)
+        facilitator_user = User.query.filter_by(email=facilitator.email).first()
+        
+        if not facilitator_user:
+            return "Facilitator user not found", 404
+        
+        # Construct file path
+        proof_dir = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'uploads'), 'proof_files', str(facilitator_user.id))
+        file_path = os.path.join(proof_dir, filename)
+        
+        # Security check: ensure file is within the expected directory
+        if not os.path.abspath(file_path).startswith(os.path.abspath(proof_dir)):
+            return "Invalid file path", 400
+        
+        if not os.path.exists(file_path):
+            return "File not found", 404
+        
+        return send_file(file_path, as_attachment=True, download_name=filename)
+        
+    except Exception as e:
+        logger.error(f"Error downloading proof file: {str(e)}")
+        return "Download failed", 500
 

@@ -9,7 +9,7 @@ import os
 def migrate_database():
     """Add has_changed_initial_password column to User table."""
     # Database path
-    db_path = 'dev.db'
+    db_path = 'instance/dev.db'
     
     if not os.path.exists(db_path):
         print(f"Database file {db_path} not found!")
