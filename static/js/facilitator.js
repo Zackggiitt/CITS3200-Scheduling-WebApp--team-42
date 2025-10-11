@@ -30,10 +30,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show/hide sections
             const href = this.getAttribute('href');
 
-            if (href === '#unavailability') {
-                // Show unavailability view
+            if (href === '#setup') {
+                console.log('Setup tab clicked - initializing setup view');
+                // Show setup view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                unavailabilityView.style.display = 'block';
+                setupView.style.display = 'block';
                 calendarView.style.display = 'none';
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
@@ -41,17 +42,23 @@ document.addEventListener('DOMContentLoaded', function() {
                  // Add setup-view-active class to hide All Units button
                 document.body.classList.add('setup-view-active');
                 document.body.classList.remove('swaps-view-active');
-                // Show unit selector in unavailability view
+                // Show unit selector in setup view
                 if (unitSelector) unitSelector.style.display = 'block';
-                // Hide unavailability alert in unavailability view
+                // Hide unavailability alert in setup view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
-                // Initialize unavailability functionality
-                initSetupView();
+                // Initialize setup functionality
+                console.log('About to call initSetupView()');
+                try {
+                    initSetupView();
+                } catch (error) {
+                    console.error('Error in initSetupView:', error);
+                    alert('Error in initSetupView: ' + error.message);
+                }
             } else if (href === '#schedule') {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                unavailabilityView.style.display = 'none';
+                setupView.style.display = 'none';
                 swapsView.style.display = 'none';
                 calendarView.style.display = 'block';
                 // Hide unit selector in schedule view
@@ -67,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (href === '#swaps') {
                 // Show swaps view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                unavailabilityView.style.display = 'none';
+                setupView.style.display = 'none';
                 calendarView.style.display = 'none';
                 swapsView.style.display = 'block';
                 // Remove calendar-view-active class to ensure unit selector is visible
@@ -945,9 +952,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 unavailabilityNavItem.classList.add('active');
             }
             
-            // Hide all sections and show unavailability
+            // Hide all sections and show setup
             dashboardSections.forEach(section => section.style.display = 'none');
-            unavailabilityView.style.display = 'block';
+            setupView.style.display = 'block';
             calendarView.style.display = 'none';
             swapsView.style.display = 'none';
             // Hide unavailability alert in unavailability view
@@ -955,7 +962,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
             
             // Initialize unavailability functionality
-            initSetupView();
+            initUnavailabilityView();
         }
     });
 
@@ -1268,9 +1275,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Only show alert if we're on dashboard tab (other views are hidden)
         if (unavailabilityAlert) {
-            if ((unavailabilityView && unavailabilityView.style.display === 'block') ||
+            if ((setupView && setupView.style.display === 'block') ||
                 (swapsView && swapsView.style.display === 'block')) {
-                // We're on unavailability or swaps tab, hide the alert
+                // We're on setup or swaps tab, hide the alert
                 unavailabilityAlert.style.display = 'none';
             } else {
                 // We're on dashboard tab, show the alert
@@ -3313,6 +3320,8 @@ function initSetupView() {
     initProficiencySection();
     initSkillSetSection();
     initSetupSaveButton();
+    // Initialize proof upload functionality
+    initProofUpload();
 }
 
 // Initialize setup tabs functionality
@@ -3369,6 +3378,28 @@ function initProficiencyLevelSelection() {
 
                 // Add selected class to clicked level
                 level.classList.add('selected');
+            }
+        });
+    });
+}
+
+// Initialize role toggle selection functionality
+function initRoleToggleSelection() {
+    const roleToggles = document.querySelectorAll('.role-toggle');
+
+    roleToggles.forEach(toggle => {
+        toggle.addEventListener('click', () => {
+            const radio = toggle.querySelector('input[type="radio"]');
+            if (radio) {
+                radio.checked = true;
+
+                // Remove selected class from siblings
+                const moduleCard = toggle.closest('.proficiency-module-card');
+                const siblingToggles = moduleCard.querySelectorAll('.role-toggle');
+                siblingToggles.forEach(sibling => sibling.classList.remove('selected'));
+
+                // Add selected class to clicked toggle
+                toggle.classList.add('selected');
             }
         });
     });
@@ -3481,22 +3512,35 @@ function renderProficiencyModules(modules) {
                 <span class="proficiency-module-code">${module.type}</span>
             </div>
             <div class="proficiency-levels">
-                <label class="proficiency-level" data-level="uninterested">
-                    <input type="radio" name="proficiency-${module.id}" value="uninterested">
+                <label class="proficiency-level" data-level="not_interested">
+                    <input type="radio" name="proficiency-${module.id}" value="not_interested">
                     <span>Not Interested</span>
                 </label>
                 <label class="proficiency-level" data-level="interested">
                     <input type="radio" name="proficiency-${module.id}" value="interested">
                     <span>Interested</span>
                 </label>
+                <label class="proficiency-level" data-level="have_run_before">
+                    <input type="radio" name="proficiency-${module.id}" value="have_run_before">
+                    <span>Have Run This Before</span>
+                </label>
                 <label class="proficiency-level" data-level="proficient">
                     <input type="radio" name="proficiency-${module.id}" value="proficient">
                     <span>Proficient</span>
                 </label>
-                <label class="proficiency-level" data-level="leader">
-                    <input type="radio" name="proficiency-${module.id}" value="leader">
-                    <span>Leader</span>
-                </label>
+            </div>
+            <div class="role-toggle-section">
+                <label class="role-toggle-label">Preferred Role:</label>
+                <div class="role-toggle-buttons">
+                    <label class="role-toggle" data-role="leader">
+                        <input type="radio" name="role-${module.id}" value="leader">
+                        <span>Leader</span>
+                    </label>
+                    <label class="role-toggle" data-role="supporter">
+                        <input type="radio" name="role-${module.id}" value="supporter">
+                        <span>Supporter</span>
+                    </label>
+                </div>
             </div>
         `;
         modulesList.appendChild(moduleCard);
@@ -3504,7 +3548,8 @@ function renderProficiencyModules(modules) {
 
     // Re-initialize proficiency level selection for new elements
     initProficiencyLevelSelection();
-}
+    // Initialize role toggle selection
+    initRoleToggleSelection();
 
 // Load skill set data
 function loadSkillSetData() {
@@ -3559,10 +3604,15 @@ function collectProficiencyData() {
     const moduleCards = document.querySelectorAll('.proficiency-module-card');
 
     moduleCards.forEach(card => {
-        const selectedRadio = card.querySelector('input[type="radio"]:checked');
-        if (selectedRadio) {
-            const moduleId = card.getAttribute('data-module-id');
-            proficiencyData[moduleId] = selectedRadio.value;
+        const moduleId = card.getAttribute('data-module-id');
+        const selectedProficiencyRadio = card.querySelector('input[name^="proficiency-"]:checked');
+        const selectedRoleRadio = card.querySelector('input[name^="role-"]:checked');
+
+        if (selectedProficiencyRadio) {
+            proficiencyData[moduleId] = {
+                proficiency: selectedProficiencyRadio.value,
+                role: selectedRoleRadio ? selectedRoleRadio.value : null
+            };
         }
     });
 
@@ -3591,10 +3641,36 @@ function collectPreferencesData() {
     };
 }
 
+// Validate proficiency data
+function validateProficiencyData() {
+    const moduleCards = document.querySelectorAll('.proficiency-module-card');
+    const missingModules = [];
+
+    moduleCards.forEach(card => {
+        const moduleId = card.getAttribute('data-module-id');
+        const moduleName = card.querySelector('.proficiency-module-name').textContent;
+        const selectedProficiencyRadio = card.querySelector('input[name^="proficiency-"]:checked');
+
+        if (!selectedProficiencyRadio) {
+            missingModules.push(moduleName);
+        }
+    });
+
+    if (missingModules.length > 0) {
+        alert(`Please select proficiency level for the following modules:\n${missingModules.join('\n')}`);
+        return false;
+    }
+
+    return true;
+}
+
 // Save all setup data
 function saveAllSetupData() {
     console.log('=== Save All Setup Data Function Called ===');
-    alert('Save button clicked! Starting save process...'); // Temporary debug alert
+    // Validate proficiency data first
+    if (!validateProficiencyData()) {
+        return; // Stop if validation fails
+    }
 
     try {
         // Collect data from all sections
@@ -3654,4 +3730,194 @@ function saveAllSetupData() {
         console.error('Error in saveAllSetupData:', error);
         alert('Error in saveAllSetupData: ' + error.message);
     }
+}
+
+// Initialize proof upload functionality
+function initProofUpload() {
+    const uploadButton = document.getElementById('upload-proof');
+    const modal = document.getElementById('proof-upload-modal');
+    const closeButton = document.getElementById('proof-modal-close');
+    const cancelButton = document.getElementById('proof-cancel');
+    const fileInput = document.getElementById('proof-file-input');
+    const uploadArea = document.querySelector('.file-upload-area');
+    const submitButton = document.getElementById('proof-upload-submit');
+
+    if (!uploadButton || !modal) return;
+
+    // Open modal
+    uploadButton.addEventListener('click', () => {
+        modal.style.display = 'flex';
+    });
+
+    // Close modal
+    const closeModal = () => {
+        modal.style.display = 'none';
+        clearFileList();
+    };
+
+    closeButton.addEventListener('click', closeModal);
+    cancelButton.addEventListener('click', closeModal);
+
+    // Click outside modal to close
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', handleFileSelection);
+
+    // Drag and drop functionality
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('drag-over');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('drag-over');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        handleFiles(files);
+    });
+
+    // Click to select files
+    uploadArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // Submit files
+    submitButton.addEventListener('click', uploadProofFiles);
+}
+
+// Handle file selection
+function handleFileSelection(e) {
+    const files = e.target.files;
+    handleFiles(files);
+}
+
+// Handle files (from input or drag-drop)
+function handleFiles(files) {
+    const filesList = document.getElementById('uploaded-files-list');
+
+    Array.from(files).forEach(file => {
+        // Validate file size (10MB max)
+        if (file.size > 10 * 1024 * 1024) {
+            alert(`File "${file.name}" exceeds 10MB limit`);
+            return;
+        }
+
+        // Validate file type
+        const allowedTypes = ['application/pdf', 'application/msword', 
+                             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                             'image/jpeg', 'image/jpg', 'image/png'];
+        if (!allowedTypes.includes(file.type)) {
+            alert(`File "${file.name}" format is not supported`);
+            return;
+        }
+
+        // Create file item
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.innerHTML = `
+            <div class="file-info">
+                <span class="material-icons">description</span>
+                <div class="file-details">
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">${formatFileSize(file.size)}</span>
+                </div>
+            </div>
+            <button class="remove-file" onclick="removeFile(this)">
+                <span class="material-icons">close</span>
+            </button>
+        `;
+
+        // Store file reference
+        fileItem.fileData = file;
+
+        filesList.appendChild(fileItem);
+    });
+}
+
+// Remove file from list
+function removeFile(button) {
+    button.closest('.file-item').remove();
+}
+
+// Clear file list
+function clearFileList() {
+    const filesList = document.getElementById('uploaded-files-list');
+    filesList.innerHTML = '';
+    const fileInput = document.getElementById('proof-file-input');
+    fileInput.value = '';
+}
+
+// Format file size
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Upload proof files
+function uploadProofFiles() {
+    const fileItems = document.querySelectorAll('.file-item');
+
+    if (fileItems.length === 0) {
+        alert('Please select files to upload');
+        return;
+    }
+
+    const formData = new FormData();
+
+    fileItems.forEach((item, index) => {
+        if (item.fileData) {
+            formData.append('proof_files', item.fileData);
+        }
+    });
+
+    // Add unit ID if available
+    if (currentUnitId) {
+        formData.append('unit_id', currentUnitId);
+    }
+
+    // Show loading state
+    const submitButton = document.getElementById('proof-upload-submit');
+    const originalText = submitButton.innerHTML;
+    submitButton.innerHTML = '<span class="material-icons">hourglass_empty</span> Uploading...';
+    submitButton.disabled = true;
+
+    // Upload files
+    fetch('/facilitator/upload_proof', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': window.csrfToken
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Files uploaded successfully!');
+            document.getElementById('proof-upload-modal').style.display = 'none';
+            clearFileList();
+        } else {
+            alert('Upload failed: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        alert('Upload failed: ' + error.message);
+    })
+    .finally(() => {
+        // Restore button state
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+    });
 }

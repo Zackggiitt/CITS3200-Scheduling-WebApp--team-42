@@ -476,6 +476,10 @@
         </span></p>
       </div>
       <div class="setup-actions">
+        <button id="upload-proof" class="action-btn secondary">
+          <span class="material-icons">upload_file</span>
+          Upload Proof
+        </button>
         <button id="save-all-setup" class="action-btn primary">
           <span class="material-icons">save</span>
           Save All
@@ -599,6 +603,36 @@
     </div>
   </div>
 </section>
+
+<!-- Proof Upload Modal -->
+<div id="proof-upload-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Upload Proof Documents</h3>
+      <button class="modal-close" id="proof-modal-close">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>Upload documents to support your proficiency claims (certificates, transcripts, etc.)</p>
+      <div class="file-upload-area">
+        <input type="file" id="proof-file-input" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+        <div class="file-upload-display">
+          <span class="material-icons">cloud_upload</span>
+          <p>Click to select files or drag and drop</p>
+          <small>Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 10MB each)</small>
+        </div>
+      </div>
+      <div id="uploaded-files-list" class="uploaded-files-list">
+        <!-- Uploaded files will be displayed here -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="action-btn secondary" id="proof-cancel">Cancel</button>
+      <button class="action-btn primary" id="proof-upload-submit">Upload Files</button>
+    </div>
+  </div>
+</div>
 
 <!-- Unavailability Modal -->
 <div id="unavailability-modal" class="modal-overlay" style="display: none;">

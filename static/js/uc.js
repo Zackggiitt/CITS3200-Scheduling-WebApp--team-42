@@ -4140,9 +4140,46 @@ function setupScheduleEventListeners() {
   // Auto assign button
   const autoAssignBtn = document.querySelector('.auto-assign-btn');
   if (autoAssignBtn) {
-    autoAssignBtn.addEventListener('click', () => {
-      // TODO: Implement auto-assign functionality
-      console.log('Auto-assign clicked');
+    autoAssignBtn.addEventListener('click', async () => {
+      const unitId = getUnitId();
+      if (!unitId) {
+        alert('No unit selected');
+        return;
+      }
+
+      // Show loading state
+      const originalText = autoAssignBtn.textContent;
+      autoAssignBtn.textContent = 'Assigning...';
+      autoAssignBtn.disabled = true;
+
+      try {
+        const response = await fetch(`/unitcoordinator/units/${unitId}/auto-assign`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF_TOKEN
+          }
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          alert(`Auto-assignment completed successfully! ${result.assignments_created} assignments created.`);
+          // Refresh the calendar to show new assignments
+          if (typeof calendar !== 'undefined' && calendar) {
+            calendar.refetchEvents();
+          }
+        } else {
+          alert(`Auto-assignment failed: ${result.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Auto-assign error:', error);
+        alert('Auto-assignment failed: Network error');
+      } finally {
+        // Restore button state
+        autoAssignBtn.textContent = originalText;
+        autoAssignBtn.disabled = false;
+      }
     });
   }
 }

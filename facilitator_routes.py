@@ -1417,6 +1417,91 @@ def facilitator_response_to_swap(request_id):
         db.session.rollback()
         return jsonify({'error': f'Failed to process response: {str(e)}'}), 500
 
+@facilitator_bp.route('/upload_proof', methods=['POST'])
+@facilitator_required
+def upload_proof():
+    """Handle proof file uploads for facilitators"""
+    import os
+    from werkzeug.utils import secure_filename
+
+    user = get_current_user()
+
+    # Check if files were uploaded
+    if 'proof_files' not in request.files:
+        return jsonify({'success': False, 'message': 'No files uploaded'}), 400
+
+    files = request.files.getlist('proof_files')
+    if not files or all(f.filename == '' for f in files):
+        return jsonify({'success': False, 'message': 'No files selected'}), 400
+
+    # Get unit ID if provided
+    unit_id = request.form.get('unit_id')
+
+    # Create upload directory if it doesn't exist
+    upload_dir = os.path.join('uploads', 'proof_files', str(user.id))
+    if unit_id:
+        upload_dir = os.path.join(upload_dir, str(unit_id))
+
+    os.makedirs(upload_dir, exist_ok=True)
+
+    uploaded_files = []
+    allowed_extensions = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'}
+    max_file_size = 10 * 1024 * 1024  # 10MB
+
+    try:
+        for file in files:
+            if file.filename == '':
+                continue
+
+            # Check file extension
+            filename = secure_filename(file.filename)
+            if '.' not in filename or filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+                return jsonify({
+                    'success': False, 
+                    'message': f'File type not allowed for {filename}. Allowed types: PDF, DOC, DOCX, JPG, PNG'
+                }), 400
+
+            # Check file size
+            file.seek(0, os.SEEK_END)
+            file_size = file.tell()
+            file.seek(0)
+
+            if file_size > max_file_size:
+                return jsonify({
+                    'success': False, 
+                    'message': f'File {filename} exceeds 10MB limit'
+                }), 400
+
+            # Generate unique filename to avoid conflicts
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            name, ext = os.path.splitext(filename)
+            unique_filename = f"{name}_{timestamp}{ext}"
+
+            # Save file
+            file_path = os.path.join(upload_dir, unique_filename)
+            file.save(file_path)
+
+            uploaded_files.append({
+                'original_name': filename,
+                'saved_name': unique_filename,
+                'path': file_path,
+                'size': file_size
+            })
+
+        # Here you could save file information to database if needed
+        # For now, we'll just return success
+
+        return jsonify({
+            'success': True,
+            'message': f'Successfully uploaded {len(uploaded_files)} file(s)',
+            'files': uploaded_files
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Upload failed: {str(e)}'
+        }), 500
 
 @facilitator_bp.route('/get_unit_modules')
 @login_required
@@ -1530,8 +1615,17 @@ def save_setup():
 
         # Save proficiency data
         if proficiency_data:
-            for module_id_str, level in proficiency_data.items():
+            for module_id_str, proficiency_info in proficiency_data.items():
                 module_id = int(module_id_str)
+
+                 # Handle both old format (string) and new format (object)
+                if isinstance(proficiency_info, dict):
+                    level = proficiency_info.get('proficiency')
+                else:
+                    level = proficiency_info
+
+                if not level:
+                    continue
 
                 # Check if skill already exists
                 existing_skill = FacilitatorSkill.query.filter_by(
