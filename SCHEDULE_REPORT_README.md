@@ -12,7 +12,7 @@ After running the auto-scheduler, you can now download a comprehensive CSV repor
 
 ## Report Contents
 
-The CSV report includes **6 comprehensive sections**:
+The CSV report includes **7 comprehensive sections**:
 
 ### 1. Overview Statistics
 - Total number of assignments created
@@ -49,11 +49,13 @@ For each facilitator, shows:
 - **Within target?** (Yes/No indicator)
 - **% of max hours** used
 - **Average assignment quality score**
+- **Unavailability count** - How many unavailability periods they have
 
 This helps identify:
 - Which facilitators are overloaded or underutilized
 - Whether assignments respect facilitator hour preferences
 - Quality of matches for each facilitator
+- How many constraints each facilitator has
 
 ### 5. Skill Levels Per Facilitator
 Shows how many assignments each facilitator received at each proficiency level:
@@ -64,7 +66,21 @@ Shows how many assignments each facilitator received at each proficiency level:
 
 This helps you see if facilitators are being matched appropriately to their skill levels.
 
-### 6. Detailed Assignment List
+### 6. Unavailability Information ⭐ NEW!
+Shows the unavailability constraints for each facilitator:
+- **Facilitator name and email**
+- **Unavailability count** - Number of unavailable periods
+- **Unavailability details** - Specific dates and times when unavailable
+  - Full day blocks (e.g., "2025-10-15 (Full Day)")
+  - Time-specific blocks (e.g., "2025-10-16 14:00-16:00")
+  - Recurring patterns (e.g., "2025-10-17 09:00-11:00 (Recurring: weekly)")
+
+This helps you understand:
+- Why certain facilitators might not be assigned to specific sessions
+- Which facilitators have the most/least constraints
+- Whether the scheduler is working around unavailability correctly
+
+### 7. Detailed Assignment List
 Complete list of all assignments with:
 - Facilitator name and email
 - Module/session name
@@ -105,9 +121,10 @@ Proficient,10,22.2%
 No Interest,2,4.4%
 
 FACILITATOR HOURS SUMMARY
-Facilitator Name,Email,Sessions Assigned,Total Hours,Min Hours Target,Max Hours Target,Within Target?,% of Max Hours,Avg Assignment Score
-Alice Johnson,alice@gmail.com,5,11.0,8,16,Yes,68.8%,0.912
-Bob Smith,bob@gmail.com,4,9.5,6,20,Yes,47.5%,0.867
+Facilitator Name,Email,Sessions Assigned,Total Hours,Min Hours Target,Max Hours Target,Within Target?,% of Max Hours,Avg Assignment Score,Unavailability Count
+Alice Johnson,alice@gmail.com,5,11.0,8,16,Yes,68.8%,0.912,3
+Bob Smith,bob@gmail.com,4,9.5,6,20,Yes,47.5%,0.867,1
+Carol Davis,carol@gmail.com,3,8.0,6,18,Yes,44.4%,0.845,0
 ...
 
 SKILL LEVELS PER FACILITATOR
@@ -115,6 +132,13 @@ Facilitator Name,Proficient,Have Run Before,Have Some Skill,No Interest
 Alice Johnson,2,2,1,0
 Bob Smith,1,2,1,0
 Carol Davis,0,3,2,1
+...
+
+UNAVAILABILITY INFORMATION
+Facilitator Name,Email,Unavailability Count,Unavailability Details
+Alice Johnson,alice@gmail.com,3,2025-10-15 (Full Day); 2025-10-16 14:00-16:00; 2025-10-17 09:00-11:00 (Recurring: weekly)
+Bob Smith,bob@gmail.com,1,2025-10-18 10:00-12:00
+Carol Davis,carol@gmail.com,0,No unavailabilities
 ...
 
 DETAILED ASSIGNMENTS
@@ -135,6 +159,7 @@ END OF REPORT
 **Utilization Tracking**: See what % of facilitators are being used
 ✅ **Skill Matching**: Verify facilitators are assigned to appropriate skill levels
 ✅ **Proficiency Insights**: See each facilitator's skill level for every assignment
+✅ **Unavailability Transparency**: See exactly when and why facilitators are unavailable
 ✅ **Audit Trail**: Keep records of scheduling runs for reference
 ✅ **Excel Compatible**: Easy to analyze further in spreadsheet software
 ✅ **Stakeholder Reports**: Share with management or facilitators
@@ -146,6 +171,18 @@ END OF REPORT
 - **Character Encoding**: UTF-8
 - **Storage**: Report is cached in session for 24 hours
 - **Regeneration**: New report created each time auto-assignment runs
+
+### Algorithm Constraints
+
+The auto-scheduler enforces these **hard constraints**:
+
+1. **Availability**: Facilitators must be available during session times
+2. **Skill Interest**: Facilitators with "no interest" in a module **cannot** be assigned to it
+3. **Hour Limits**: Assignments respect facilitator min/max hour preferences
+
+**Soft constraints** (optimized for but not strictly enforced):
+- Fair workload distribution among facilitators
+- Skill-level matching (prefer higher proficiency when possible)
 
 ## Notes
 
@@ -166,4 +203,6 @@ END OF REPORT
 7. **Skill Matching Review**: Verify people aren't being assigned to sessions they're not qualified for
 8. **Training Needs**: Identify facilitators who frequently get "No Interest" assignments (may need training)
 9. **Workload Redistribution**: Use proficiency data to balance assignments better next time
+10. **Constraint Analysis**: See which facilitators have the most unavailability constraints
+11. **Scheduling Validation**: Verify the auto-scheduler is working around unavailability correctly
 

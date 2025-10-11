@@ -4,6 +4,14 @@ Uses real facilitator proficiency data from the database
 
 Scoring Function: (W_avail × availability_match) + (W_fair × fairness_factor) + (W_skill × skill_score)
 Skill Levels: proficient=1.0, have_run_before=0.8, have_some_skill=0.5, no_interest=0.0
+
+HARD CONSTRAINTS (must be satisfied):
+1. Availability: Facilitator must be available during session time
+2. Skill Interest: Facilitator cannot have "no_interest" in the module (score = 0.0)
+
+SOFT CONSTRAINTS (optimized for):
+- Fairness: Distribute hours evenly among facilitators
+- Skill Matching: Prefer higher skill levels when possible
 """
 
 import csv
@@ -112,6 +120,9 @@ def get_skill_score(facilitator, session):
     """
     Get skill score for facilitator-session match based on real proficiency data
     Uses the SKILL_SCORES mapping
+    
+    Note: This function assumes skill constraints have already been checked.
+    If a facilitator has "no interest", they should not reach this function.
     """
     module_id = session.get('module_id')
     
@@ -134,11 +145,33 @@ def get_assigned_hours(facilitator, current_assignments):
             total_hours += assignment['session']['duration_hours']
     return total_hours
 
+def check_skill_constraint(facilitator, session):
+    """
+    Check if facilitator has "no interest" in this session (hard constraint)
+    Returns False if facilitator should NOT be assigned (no interest)
+    Returns True if facilitator CAN be assigned (any other skill level)
+    """
+    module_id = session.get('module_id')
+    
+    # Check if facilitator has skills data and has this specific module skill
+    if 'skills' in facilitator and module_id in facilitator['skills']:
+        skill_level = facilitator['skills'][module_id]
+        # Hard constraint: NO_INTEREST means cannot be assigned
+        return skill_level != SkillLevel.NO_INTEREST
+    
+    # If no skill data exists for this module, allow assignment (fallback)
+    # This is safer than blocking assignments due to missing data
+    return True
+
 def calculate_facilitator_score(facilitator, session, current_assignments, total_hours_per_facilitator=None):
     """
     Calculate the score for assigning a facilitator to a session
     Uses the formula: (W_avail × availability_match) + (W_fair × fairness_factor) + (W_skill × skill_score)
     """
+    # Skill constraint check (hard constraint - no interest = cannot be assigned)
+    if not check_skill_constraint(facilitator, session):
+        return 0.0  # Hard constraint violation - no interest in this session
+    
     # Availability check (hard constraint)
     availability_match = check_availability(facilitator, session)
     if availability_match == 0.0:
@@ -218,7 +251,27 @@ def generate_optimal_assignments(facilitators):
                 'score': best_score
             })
         else:
-            conflicts.append(f"No suitable facilitator found for {session['module_name']} ({format_session_time(session)})")
+            # Generate detailed conflict message
+            conflict_reasons = []
+            
+            # Check why no facilitator was suitable
+            for facilitator in facilitators:
+                # Check skill constraints
+                if not check_skill_constraint(facilitator, session):
+                    module_id = session.get('module_id')
+                    if 'skills' in facilitator and module_id in facilitator['skills']:
+                        conflict_reasons.append(f"{facilitator['name']} has no interest in this module")
+                
+                # Check availability constraints
+                if check_availability(facilitator, session) == 0.0:
+                    conflict_reasons.append(f"{facilitator['name']} is unavailable at this time")
+            
+            if conflict_reasons:
+                conflict_msg = f"No suitable facilitator found for {session['module_name']} ({format_session_time(session)}) - Reasons: {'; '.join(conflict_reasons[:3])}"
+            else:
+                conflict_msg = f"No suitable facilitator found for {session['module_name']} ({format_session_time(session)})"
+            
+            conflicts.append(conflict_msg)
     
     return assignments, conflicts
 
@@ -311,6 +364,7 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
     1. Overview Statistics
     2. Per-Facilitator Hours Summary
     3. Detailed Assignment List
+    4. Unavailability Information
     
     Args:
         assignments: List of assignment dictionaries
@@ -328,6 +382,18 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
     metrics = calculate_metrics(assignments)
     fairness = metrics['fairness_metrics']
     
+    # Get unavailability data from database
+    from models import Unavailability, User
+    
+    # Get all facilitators who have assignments
+    facilitator_ids = set(a['facilitator']['id'] for a in assignments)
+    facilitator_unavailabilities = {}
+    
+    for fac_id in facilitator_ids:
+        # Get unavailabilities for this facilitator
+        unavailabilities = Unavailability.query.filter_by(user_id=fac_id).all()
+        facilitator_unavailabilities[fac_id] = unavailabilities
+    
     # Build facilitator statistics
     facilitator_stats = {}
     for assignment in assignments:
@@ -344,7 +410,8 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
                 'min_hours_target': assignment['facilitator'].get('min_hours', 0),
                 'max_hours_target': assignment['facilitator'].get('max_hours', 20),
                 'avg_score': 0,
-                'sessions': []
+                'sessions': [],
+                'unavailabilities': facilitator_unavailabilities.get(fac_id, [])
             }
         
         # Get skill level for this assignment
@@ -385,6 +452,7 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
     else:
         utilization_pct = None
         facilitators_not_assigned = None
+    
     
     writer.writerow(["OVERVIEW STATISTICS"])
     writer.writerow(["Metric", "Value"])
@@ -429,7 +497,8 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
         "Max Hours Target",
         "Within Target?",
         "% of Max Hours",
-        "Avg Assignment Score"
+        "Avg Assignment Score",
+        "Unavailability Count"
     ])
     
     # Sort by total hours descending
@@ -443,6 +512,7 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
         total_hours = stats['total_hours']
         min_target = stats['min_hours_target']
         max_target = stats['max_hours_target']
+        unavail_count = len(stats.get('unavailabilities', []))
         
         within_target = "Yes" if min_target <= total_hours <= max_target else "No"
         pct_of_max = (total_hours / max_target * 100) if max_target > 0 else 0
@@ -456,7 +526,8 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
             max_target,
             within_target,
             f"{pct_of_max:.1f}%",
-            f"{stats['avg_score']:.3f}"
+            f"{stats['avg_score']:.3f}",
+            unavail_count
         ])
     
     writer.writerow([])
@@ -495,7 +566,59 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
     
     writer.writerow([])
     
-    # === SECTION 6: Detailed Assignment List ===
+    # === SECTION 6: Unavailability Information ===
+    writer.writerow(["UNAVAILABILITY INFORMATION"])
+    writer.writerow([
+        "Facilitator Name",
+        "Email",
+        "Unavailability Count",
+        "Unavailability Details"
+    ])
+    
+    # Sort by name for consistency
+    sorted_facilitators_for_unavail = sorted(
+        facilitator_stats.items(), 
+        key=lambda x: x[1]['name']
+    )
+    
+    for fac_id, stats in sorted_facilitators_for_unavail:
+        unavailabilities = stats.get('unavailabilities', [])
+        
+        if not unavailabilities:
+            writer.writerow([
+                stats['name'],
+                stats['email'],
+                0,
+                "No unavailabilities"
+            ])
+        else:
+            # Format unavailability details
+            unavail_details = []
+            for unavail in unavailabilities:
+                if unavail.is_full_day:
+                    detail = f"{unavail.date} (Full Day)"
+                else:
+                    detail = f"{unavail.date} {unavail.start_time.strftime('%H:%M')}-{unavail.end_time.strftime('%H:%M')}"
+                
+                # Add recurring info if applicable
+                if unavail.recurring_pattern:
+                    detail += f" (Recurring: {unavail.recurring_pattern.value})"
+                
+                unavail_details.append(detail)
+            
+            # Join all unavailability details with semicolon separator
+            unavail_string = "; ".join(unavail_details)
+            
+            writer.writerow([
+                stats['name'],
+                stats['email'],
+                len(unavailabilities),
+                unavail_string
+            ])
+    
+    writer.writerow([])
+    
+    # === SECTION 7: Detailed Assignment List ===
     writer.writerow(["DETAILED ASSIGNMENTS"])
     writer.writerow([
         "Facilitator Name",
