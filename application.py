@@ -62,6 +62,9 @@ csrf = CSRFProtect(app)
 app.config['WTF_CSRF_TIME_LIMIT'] = None
 app.config['WTF_CSRF_SSL_STRICT'] = False
 
+# Exempt AJAX endpoints from CSRF protection
+csrf.exempt('facilitator.manage_skills')
+
 
 
 @app.route("/signup", methods=["GET", "POST"])

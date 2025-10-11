@@ -3251,9 +3251,42 @@ function formatDateTime(startTimeString, endTimeString) {
 
 // Show notification (reuse existing notification system)
 function showNotification(message, type = 'info') {
-    // This would integrate with your existing notification system
+    // Create a visible notification
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 5px;
+        color: white;
+        font-weight: bold;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    `;
+    
+    // Set background color based on type
+    if (type === 'success') {
+        notification.style.backgroundColor = '#4CAF50';
+    } else if (type === 'error') {
+        notification.style.backgroundColor = '#f44336';
+    } else {
+        notification.style.backgroundColor = '#2196F3';
+    }
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+    
     console.log(`${type.toUpperCase()}: ${message}`);
-    // You can implement a toast notification here
 }
 
 // Setup view initialization function

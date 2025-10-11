@@ -2825,11 +2825,13 @@ def auto_assign_facilitators(unit_id: int):
                 'end_time': session.end_time.time(),
                 'duration_hours': duration,
                 'location': session.location or 'TBA',
-                'required_skill_level': SkillLevel.INTERESTED  # Default skill level for sessions
+                'required_skill_level': SkillLevel.INTERESTED,  # Default skill level for sessions
+                'lead_staff_required': session.lead_staff_required or 1,
+                'support_staff_required': session.support_staff_required or 0
             })
         
         # Generate optimal assignments
-        assignments, conflicts = generate_optimal_assignments(facilitator_data, session_data)
+        assignments, conflicts = generate_optimal_assignments(facilitator_data)
         
         if not assignments:
             return jsonify({"success": False, "error": "No optimal assignments could be generated"}), 400
@@ -2843,7 +2845,8 @@ def auto_assign_facilitators(unit_id: int):
         for assignment in assignments:
             new_assignment = Assignment(
                 session_id=assignment['session']['id'],
-                facilitator_id=assignment['facilitator']['id']
+                facilitator_id=assignment['facilitator']['id'],
+                is_confirmed=False  # Require confirmation
             )
             db.session.add(new_assignment)
             created_assignments += 1
