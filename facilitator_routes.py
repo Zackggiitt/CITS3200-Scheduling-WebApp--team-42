@@ -1462,8 +1462,17 @@ def save_setup():
         
         # Save proficiency data
         if proficiency_data:
-            for module_id_str, level in proficiency_data.items():
+            for module_id_str, proficiency_info in proficiency_data.items():
                 module_id = int(module_id_str)
+                
+                # Handle both old format (string) and new format (object)
+                if isinstance(proficiency_info, dict):
+                    level = proficiency_info.get('proficiency')
+                else:
+                    level = proficiency_info
+                
+                if not level:
+                    continue
                 
                 # Check if skill already exists
                 existing_skill = FacilitatorSkill.query.filter_by(
