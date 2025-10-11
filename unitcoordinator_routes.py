@@ -844,7 +844,8 @@ def dashboard():
             for skill, module in facilitator_skills:
                 skills_list.append({
                     "module": module.module_name,
-                    "level": skill.skill_level.value
+                    "level": skill.skill_level.value,
+                    "experience": skill.experience_description or "No additional details provided"
                 })
 
             facilitators.append(
@@ -855,9 +856,6 @@ def dashboard():
                     "phone": getattr(f, "phone_number", None),
                     "staff_number": getattr(f, "staff_number", None),
                     "experience_years": None,         # TODO wire real data later
-                    "upcoming_sessions": None,
-                    "total_hours": None,
-                    "last_login": getattr(f, "last_login", None),
                     "has_profile": has_profile,
                     "has_availability": has_avail,
                     "has_skills": has_skills,
@@ -1154,7 +1152,8 @@ def admin_dashboard():
             for skill, module in facilitator_skills:
                 skills_list.append({
                     "module": module.module_name,
-                    "level": skill.skill_level.value
+                    "level": skill.skill_level.value,
+                    "experience": skill.experience_description or "No additional details provided"
                 })
 
             facilitators.append(
@@ -1165,9 +1164,6 @@ def admin_dashboard():
                     "phone": getattr(f, "phone", None),
                     "staff_number": getattr(f, "staff_number", None),
                     "experience_years": None,         # TODO wire real data later
-                    "upcoming_sessions": None,
-                    "total_hours": None,
-                    "last_login": getattr(f, "last_login", None),
                     "has_profile": has_profile,
                     "has_availability": has_avail,
                     "has_skills": has_skills,

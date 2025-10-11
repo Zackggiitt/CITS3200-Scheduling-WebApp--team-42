@@ -185,6 +185,62 @@
     .logout-item:hover .material-icons {
       color: #b91c1c;
     }
+    
+    /* Skill tag tooltip styling */
+    .skill-tag {
+      position: relative;
+      cursor: help;
+    }
+    
+    .skill-tag:hover {
+      background-color: #f3f4f6;
+      border-color: #6366f1;
+    }
+    
+    /* Custom tooltip for skill tags */
+    .skill-tag::after {
+      content: attr(data-experience);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #1f2937;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: normal;
+      max-width: 250px;
+      word-wrap: break-word;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      z-index: 1000;
+      margin-bottom: 5px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      text-align: center;
+    }
+    
+    .skill-tag::before {
+      content: "";
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: #1f2937;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      z-index: 1000;
+      margin-bottom: -5px;
+    }
+    
+    .skill-tag:hover::after,
+    .skill-tag:hover::before {
+      opacity: 1;
+      visibility: visible;
+    }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -899,7 +955,8 @@
                         {% if f.skills and f.skills|length %}
                           <div class="flex flex-wrap gap-2 mb-3">
                             {% for s in f.skills %}
-                              <span class="inline-flex items-center rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-700">
+                              <span class="inline-flex items-center rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-700 skill-tag" 
+                                    data-experience="{{ s.experience }}">
                                 {{ s.module }} — {{ s.level|replace('_',' ')|title }}
                               </span>
                             {% endfor %}
@@ -908,22 +965,6 @@
                           <div class="text-sm text-gray-400 mb-3">—</div>
                         {% endif %}
 
-                        <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-2 text-sm">
-                          <div>
-                            <dt class="text-gray-500">Upcoming Sessions</dt>
-                            <dd class="font-medium">{{ f.upcoming_sessions or '—' }}</dd>
-                          </div>
-                          <div>
-                            <dt class="text-gray-500">Total Hours</dt>
-                            <dd class="font-medium">{{ f.total_hours or '—' }}</dd>
-                          </div>
-                          <div>
-                            <dt class="text-gray-500">Last Login</dt>
-                            <dd class="font-medium">
-                              {% if f.last_login %}{{ f.last_login.strftime("%-m/%-d/%Y") }}{% else %}—{% endif %}
-                            </dd>
-                          </div>
-                        </dl>
                       </div>
                     </div>
 
