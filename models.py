@@ -33,7 +33,7 @@ class RecurringPattern(Enum):
     MONTHLY = "monthly"
     CUSTOM = "custom"
 
-# Add enum for schedule status
+# Add enum for schedule states
 class ScheduleStatus(Enum):
     DRAFT = "draft"
     PUBLISHED = "published"
@@ -51,9 +51,17 @@ class Unit(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     start_date  = db.Column(db.Date)   # first day unit runs
     end_date    = db.Column(db.Date)   # last day unit runs
-    schedule_status = db.Column(db.Enum(ScheduleStatus), nullable=False, default=ScheduleStatus.DRAFT)
+    
+    # Schedule state management fields
+    schedule_status = db.Column(db.Enum(ScheduleStatus), default=ScheduleStatus.DRAFT, nullable=False)
+    published_at = db.Column(db.DateTime, nullable=True)
+    unpublished_at = db.Column(db.DateTime, nullable=True)
+    unpublished_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    unpublish_reason = db.Column(db.Text, nullable=True)
+    version_history = db.Column(db.Text, nullable=True)  # JSON string for version tracking
 
-    creator = db.relationship("User", backref="units")
+    creator = db.relationship("User", foreign_keys=[created_by], backref="created_units")
+    unpublisher = db.relationship("User", foreign_keys=[unpublished_by], backref="unpublished_units")
     __table_args__ = (
         db.UniqueConstraint("unit_code", "year", "semester", "created_by", name="uq_unit_per_uc"),
     )
@@ -93,7 +101,6 @@ class User(db.Model):
     phone_number = db.Column(db.String(20))
     staff_number = db.Column(db.String(20))
     password_hash = db.Column(db.String(255), nullable=True)
-    has_changed_initial_password = db.Column(db.Boolean, default=False)  # Track if user has changed initial password
     role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.FACILITATOR)
     
     # OAuth related fields
@@ -129,7 +136,7 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
     
     # Relationships
-    availability = db.relationship('Availability', backref='user', lazy=True, cascade='all, delete-orphan')
+    # availability relationship removed; use `user.unavailabilities` via `Unavailability.user` backref instead
     assignments = db.relationship('Assignment', backref='facilitator', lazy=True)
     swap_requests_made = db.relationship('SwapRequest', foreign_keys='SwapRequest.requester_id', backref='requester', lazy=True)
     swap_requests_received = db.relationship('SwapRequest', foreign_keys='SwapRequest.target_id', backref='target', lazy=True)
@@ -172,7 +179,7 @@ class Facilitator(db.Model):
     first_name = db.Column(db.String(80), nullable=False)
     last_name = db.Column(db.String(80), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
-    staff_number = db.Column(db.String(50), unique=True, nullable=False)
+    staff_number = db.Column(db.String(50), unique=True, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -199,17 +206,7 @@ class UnitFacilitator(db.Model):
 
 
 
-class Availability(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    day_of_week = db.Column(db.Integer, nullable=False)  # 0=Monday, 6=Sunday
-    start_time = db.Column(db.Time, nullable=False)
-    end_time = db.Column(db.Time, nullable=False)
-    is_available = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def __repr__(self):
-        return f'<Availability {self.user.email} - Day {self.day_of_week}>'
+# Availability model deprecated and removed. Use Unavailability entries (date-based blocks)
 
 class Unavailability(db.Model):
     id = db.Column(db.Integer, primary_key=True)

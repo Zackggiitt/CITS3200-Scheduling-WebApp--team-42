@@ -116,6 +116,17 @@ function openEditUnitModal() {
   const semesterYear = document.querySelector('.chip--neutral').textContent.trim();
   const [semester, year] = semesterYear.split(', ');
   
+  // Extract dates from the unit card display
+  const dateText = document.querySelector('.unit-card p.text-gray-500.text-sm')?.textContent?.trim();
+  const dateMatch = dateText ? dateText.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s*-\s*(\d{1,2}\/\d{1,2}\/\d{4})/) : null;
+  let startDate = null;
+  let endDate = null;
+  
+  if (dateMatch && dateMatch.length >= 3) {
+    startDate = dateMatch[1]; // MM/DD/YYYY format
+    endDate = dateMatch[2];    // MM/DD/YYYY format
+  }
+  
   // Get current unit ID from the URL or data attribute
   const currentUnitId = getUnitId();
   
@@ -133,6 +144,41 @@ function openEditUnitModal() {
     document.querySelector('input[name="semester"]').value = semester;
     document.querySelector('input[name="year"]').value = year;
     
+    // Set the dates if they were found
+    if (startDate && endDate) {
+      try {
+        // Convert MM/DD/YYYY to DD/MM/YYYY format for flatpickr
+        const startParts = startDate.split('/');
+        const endParts = endDate.split('/');
+        
+        if (startParts.length === 3 && endParts.length === 3) {
+          const startDateFormatted = `${startParts[1]}/${startParts[0]}/${startParts[2]}`;
+          const endDateFormatted = `${endParts[1]}/${endParts[0]}/${endParts[2]}`;
+          
+          // Ensure date pickers are available before setting dates
+          if (typeof startPicker !== 'undefined' && startPicker) {
+            startPicker.setDate(startDateFormatted, true);
+          }
+          if (typeof endPicker !== 'undefined' && endPicker) {
+            endPicker.setDate(endDateFormatted, true);
+          }
+          
+          // Update the hidden input values
+          const startInput = document.getElementById('start_date_input');
+          const endInput = document.getElementById('end_date_input');
+          if (startInput) startInput.value = startDateFormatted;
+          if (endInput) endInput.value = endDateFormatted;
+          
+          // Update the date summary
+          if (typeof updateDateSummary === 'function') {
+            updateDateSummary();
+          }
+        }
+      } catch (error) {
+        console.warn('Error setting unit dates in edit modal:', error);
+      }
+    }
+    
     // Update the modal title to indicate editing
     const modalTitle = document.querySelector('#create-unit-title');
     if (modalTitle) {
@@ -147,7 +193,7 @@ function openEditUnitModal() {
     
     // Skip to step 1 (Unit Information) since we're editing
     setStep(1);
-  }, 100);
+  }, 200);
 }
 
 // Also add this to handle clicking outside the modal
@@ -398,34 +444,7 @@ async function nextStep() {
       box.textContent = 'Please upload the facilitators & venues CSV before continuing.';
       return;
     }
-    
-    // Check if any sessions have been created
-    const unitId = document.getElementById('unit_id')?.value;
-    if (unitId) {
-      // Check if there are any sessions before proceeding to bulk staffing
-      checkSessionsBeforeBulkStaffing().then(hasSessions => {
-        if (hasSessions) {
-          setStep(4);
-        } else {
-          // Show a confirmation dialog
-          const proceed = confirm(
-            'No sessions have been created yet. You can either:\n\n' +
-            '• Create sessions now using the calendar or CAS CSV upload\n' +
-            '• Skip to bulk staffing (you can return to create sessions later)\n\n' +
-            'Click OK to skip to bulk staffing, or Cancel to stay and create sessions.'
-          );
-          if (proceed) {
-            setStep(4);
-          }
-        }
-      }).catch(e => {
-        console.error('Failed to check sessions:', e);
-        setStep(4); // Proceed anyway if check fails
-      });
-    } else {
-      setStep(4);
-    }
-    return;
+    return setStep(4);
   }
 
   if (currentStep === 4) {
@@ -594,9 +613,6 @@ if (uploadInput) {
       if (wrapUpload) {
         wrapUpload.classList.remove('hidden');
       }
-      
-      // Refresh the facilitator list to show newly uploaded facilitators
-      await populateReview();
       
       showCalendarIfReady();
       if (!window.__calendarInitRan) {
@@ -2639,10 +2655,10 @@ function initBulkStaffing() {
   const supportDecreaseBtn = document.getElementById('support_decrease');
   const supportIncreaseBtn = document.getElementById('support_increase');
   const filterSelect = document.getElementById('bulk_filter_select');
-  const filterTypeRadios = document.querySelectorAll('input[name="bulk_filter_type"]');
   const previewBtn = document.getElementById('preview_bulk');
   const applyBtn = document.getElementById('apply_bulk');
   const resetBtn = document.getElementById('reset_bulk');
+  const moduleSelection = document.getElementById('module_selection');
 
   if (!leadCountInput || !supportCountInput) return;
 
@@ -2658,16 +2674,21 @@ function initBulkStaffing() {
   supportDecreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, -1));
   supportIncreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, 1));
 
-  // Filter type change
+  // Handle radio button changes for filter type
+  const filterTypeRadios = document.querySelectorAll('input[name="bulk_filter_type"]');
   filterTypeRadios.forEach(radio => {
-    radio.addEventListener('change', () => {
-      updateFilterOptions();
+    radio.addEventListener('change', (e) => {
+      if (e.target.value === 'all_sessions') {
+        moduleSelection.classList.add('hidden');
+      } else if (e.target.value === 'module') {
+        moduleSelection.classList.remove('hidden');
+        updateFilterOptions();
+      }
     });
   });
 
-  // Update filter options based on selected type
+  // Update filter options (only modules now)
   async function updateFilterOptions() {
-    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const select = filterSelect;
     
     if (!select) return;
@@ -2675,65 +2696,16 @@ function initBulkStaffing() {
     // Clear existing options
     select.innerHTML = '<option value="">Choose an option...</option>';
 
-    if (selectedType === 'activity') {
-      // Get unique session types from created sessions
-      const sessionTypes = await getSessionTypes();
-      sessionTypes.forEach(type => {
-        const option = document.createElement('option');
-        option.value = type.value;
-        option.textContent = type.label;
-        select.appendChild(option);
-      });
-    } else if (selectedType === 'session_name') {
-      // Get unique session names
-      const sessionNames = await getSessionNames();
-      sessionNames.forEach(name => {
-        const option = document.createElement('option');
-        option.value = name.value;
-        option.textContent = name.label;
-        select.appendChild(option);
-      });
-    } else if (selectedType === 'module') {
-      // Get unique modules
-      const modules = await getModules();
-      modules.forEach(module => {
-        const option = document.createElement('option');
-        option.value = module.value;
-        option.textContent = module.label;
-        select.appendChild(option);
-      });
-    }
+    // Get unique modules
+    const modules = await getModules();
+    modules.forEach(module => {
+      const option = document.createElement('option');
+      option.value = module.value;
+      option.textContent = module.label;
+      select.appendChild(option);
+    });
   }
 
-  // Get session types from created sessions
-  async function getSessionTypes() {
-    const unitId = document.getElementById('unit_id')?.value;
-    if (!unitId) return [];
-    
-    try {
-      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=activity`);
-      const data = await response.json();
-      return data.ok ? data.options : [];
-    } catch (e) {
-      console.error('Failed to fetch session types:', e);
-      return [];
-    }
-  }
-
-  // Get session names from created sessions
-  async function getSessionNames() {
-    const unitId = document.getElementById('unit_id')?.value;
-    if (!unitId) return [];
-    
-    try {
-      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=session_name`);
-      const data = await response.json();
-      return data.ok ? data.options : [];
-    } catch (e) {
-      console.error('Failed to fetch session names:', e);
-      return [];
-    }
-  }
 
   // Get modules from the current unit
   async function getModules() {
@@ -2752,33 +2724,35 @@ function initBulkStaffing() {
 
   // Preview functionality
   previewBtn?.addEventListener('click', async () => {
+    const selectedFilterType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const selectedFilter = filterSelect.value;
     const leadCount = parseInt(leadCountInput.value) || 0;
     const supportCount = parseInt(supportCountInput.value) || 0;
     
-    if (!selectedFilter) {
-      alert('Please select a filter option first.');
+    if (selectedFilterType === 'module' && !selectedFilter) {
+      alert('Please select a module first.');
       return;
     }
 
     // Show preview of what will be updated
-    const sessions = await getFilteredSessions(selectedFilter);
+    const sessions = await getFilteredSessions(selectedFilterType, selectedFilter);
     alert(`Preview: ${sessions.length} sessions will be updated with ${leadCount} lead staff and ${supportCount} support staff.`);
   });
 
   // Apply functionality
   applyBtn?.addEventListener('click', async () => {
+    const selectedFilterType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const selectedFilter = filterSelect.value;
     const leadCount = parseInt(leadCountInput.value) || 0;
     const supportCount = parseInt(supportCountInput.value) || 0;
     
-    if (!selectedFilter) {
-      alert('Please select a filter option first.');
+    if (selectedFilterType === 'module' && !selectedFilter) {
+      alert('Please select a module first.');
       return;
     }
 
     // Apply bulk staffing to filtered sessions
-    await applyBulkStaffing(selectedFilter, leadCount, supportCount);
+    await applyBulkStaffing(selectedFilterType, selectedFilter, leadCount, supportCount);
   });
 
   // Reset functionality
@@ -2788,14 +2762,16 @@ function initBulkStaffing() {
   });
 
   // Get filtered sessions based on selected filter
-  async function getFilteredSessions(filterValue) {
+  async function getFilteredSessions(filterType, filterValue) {
     const unitId = document.getElementById('unit_id')?.value;
     if (!unitId) return [];
     
-    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
-    
     try {
-      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/sessions?type=${selectedType}&value=${encodeURIComponent(filterValue)}`);
+      let url = `/unitcoordinator/units/${unitId}/bulk-staffing/sessions?type=${filterType}`;
+      if (filterType === 'module' && filterValue) {
+        url += `&value=${encodeURIComponent(filterValue)}`;
+      }
+      const response = await fetch(url);
       const data = await response.json();
       return data.ok ? data.sessions : [];
     } catch (e) {
@@ -2805,39 +2781,40 @@ function initBulkStaffing() {
   }
 
   // Apply bulk staffing to sessions
-  async function applyBulkStaffing(filterValue, leadCount, supportCount) {
+  async function applyBulkStaffing(filterType, filterValue, leadCount, supportCount) {
     const unitId = document.getElementById('unit_id')?.value;
     if (!unitId) {
       alert('No unit ID found. Please complete the previous steps first.');
       return;
     }
     
-    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const respectOverrides = document.getElementById('respect_overrides')?.checked || false;
     
     try {
+      const requestBody = {
+        type: filterType,
+        lead_staff_required: leadCount,
+        support_staff_required: supportCount,
+        respect_overrides: respectOverrides
+      };
+      
+      // Only add value for module type
+      if (filterType === 'module') {
+        requestBody.value = filterValue;
+      }
+      
       const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': window.CSRF_TOKEN
         },
-        body: JSON.stringify({
-          type: selectedType,
-          value: filterValue,
-          lead_staff_required: leadCount,
-          support_staff_required: supportCount,
-          respect_overrides: respectOverrides
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const data = await response.json();
       if (data.ok) {
-        if (data.total_sessions === 0) {
-          alert('No sessions found to update. Please create sessions in Step 3 first, then return to apply bulk staffing.');
-        } else {
-          alert(`Bulk staffing applied: ${data.updated_sessions} out of ${data.total_sessions} sessions updated with ${leadCount} lead staff and ${supportCount} support staff.`);
-        }
+        alert(`Bulk staffing applied: ${data.updated_sessions} out of ${data.total_sessions} sessions updated with ${leadCount} lead staff and ${supportCount} support staff.`);
         // Refresh the review step if we're currently on it
         if (currentStep === 5) {
           populateReview();
@@ -2851,36 +2828,6 @@ function initBulkStaffing() {
     }
   }
 
-  // Check if there are any sessions and show warning if none
-  async function checkSessionsAndShowWarning() {
-    const unitId = document.getElementById('unit_id')?.value;
-    if (!unitId) return;
-    
-    try {
-      // Check all filter types to see if any have sessions
-      const activityTypes = await getSessionTypes();
-      const sessionNames = await getSessionNames();
-      const modules = await getModules();
-      
-      const hasAnySessions = activityTypes.length > 0 || sessionNames.length > 0 || modules.length > 0;
-      
-      const warningDiv = document.getElementById('no_sessions_warning');
-      const bulkStaffingContent = document.querySelector('[data-step="4"] .bg-white.border.border-gray-200');
-      
-      if (!hasAnySessions) {
-        // Show warning and hide bulk staffing content
-        if (warningDiv) warningDiv.classList.remove('hidden');
-        if (bulkStaffingContent) bulkStaffingContent.style.opacity = '0.5';
-      } else {
-        // Hide warning and show bulk staffing content
-        if (warningDiv) warningDiv.classList.add('hidden');
-        if (bulkStaffingContent) bulkStaffingContent.style.opacity = '1';
-      }
-    } catch (e) {
-      console.error('Failed to check sessions:', e);
-    }
-  }
-
   // Initialize filter options when step 4 is shown
   const step4Section = document.querySelector('[data-step="4"]');
   if (step4Section) {
@@ -2888,7 +2835,6 @@ function initBulkStaffing() {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
           if (!step4Section.classList.contains('hidden')) {
-            checkSessionsAndShowWarning();
             updateFilterOptions();
           }
         }
@@ -2900,32 +2846,6 @@ function initBulkStaffing() {
 
 // Initialize bulk staffing when DOM is loaded
 document.addEventListener('DOMContentLoaded', initBulkStaffing);
-
-// Function to skip bulk staffing step
-function skipBulkStaffing() {
-  // Go directly to the review step
-  goToStep(5);
-}
-
-// Function to check if sessions exist before going to bulk staffing
-async function checkSessionsBeforeBulkStaffing() {
-  const unitId = document.getElementById('unit_id')?.value;
-  if (!unitId) return false;
-  
-  try {
-    // Check if there are any sessions by trying to get filter options
-    const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=activity`);
-    const data = await response.json();
-    return data.ok && data.options && data.options.length > 0;
-  } catch (e) {
-    console.error('Failed to check sessions:', e);
-    return false;
-  }
-}
-
-// Make functions globally available for onclick handlers
-window.skipBulkStaffing = skipBulkStaffing;
-window.checkSessionsBeforeBulkStaffing = checkSessionsBeforeBulkStaffing;
 
 // ===== Unit Code Auto-Uppercase =====
 function initUnitCodeUppercase() {
@@ -3269,22 +3189,8 @@ function showSampleSessionsData() {
     todayCountElement.textContent = sampleData.today.length;
   }
   
-  // Create sample facilitator data for the activity log
-  const sampleFacilitators = [
-    { name: "John Smith", session_count: 5 },
-    { name: "Sarah Johnson", session_count: 3 },
-    { name: "Mike Davis", session_count: 7 },
-    { name: "Lisa Wilson", session_count: 4 },
-    { name: "Alex Chen", session_count: 6 },
-    { name: "Emma Rodriguez", session_count: 4 },
-    { name: "David Kim", session_count: 8 },
-    { name: "Maria Garcia", session_count: 5 },
-    { name: "James Wilson", session_count: 7 },
-    { name: "Sophie Brown", session_count: 3 },
-    { name: "Ryan Taylor", session_count: 6 },
-    { name: "Olivia Martinez", session_count: 4 }
-  ];
-  renderActivityLog(sampleFacilitators);
+  // Load real attendance data from the API
+  loadAttendanceData();
 }
 
 function waitForVisible(el, tries = 20) {
@@ -3554,7 +3460,9 @@ function renderActivityLog(facilitatorData = []) {
     // Show empty state
     tableBody.innerHTML = `
       <div class="px-6 py-8 text-center">
-        <div class="text-xs text-gray-500">No facilitator data available</div>
+        <span class="material-icons text-gray-400 text-4xl mb-2">person_add</span>
+        <div class="text-xs text-gray-500 mb-2">No facilitators assigned to sessions yet</div>
+        <div class="text-xs text-gray-400">Assign facilitators to sessions in the Schedule tab</div>
       </div>
     `;
   } else {
@@ -3566,22 +3474,20 @@ function createFacilitatorRow(facilitator, index) {
   const row = document.createElement('div');
   row.className = 'grid grid-cols-5 gap-4 px-6 py-3 hover:bg-gray-50';
   
-  // Generate random assigned hours data for demo
-  const assignedHours = generateAssignedHours();
-  const totalHours = generateTotalHours();
-  
-  // Generate a student number for demo purposes
-  // In real implementation, this would come from facilitator.student_number or facilitator.staff_number
-  const studentNumber = facilitator.student_number || facilitator.staff_number || `STU${String(index + 1).padStart(4, '0')}`;
+  // Use real data from the API
+  const assignedHours = facilitator.assigned_hours || 0;
+  const totalHours = facilitator.total_hours || 0;
+  const studentNumber = facilitator.student_number || facilitator.email.split('@')[0] || `STU${String(index + 1).padStart(4, '0')}`;
+  const sessionDate = facilitator.date || 'N/A';
   
   row.innerHTML = `
     <div class="flex items-center">
       <span class="text-xs font-medium text-gray-900">${facilitator.name}</span>
     </div>
     <div class="text-xs text-gray-600 font-mono">${studentNumber}</div>
-    <div class="text-xs text-gray-600">${getCurrentDate()}</div>
-    <div class="text-xs text-gray-600 text-center">${assignedHours}</div>
-    <div class="text-xs text-gray-600 text-center">${totalHours}</div>
+    <div class="text-xs text-gray-600">${sessionDate}</div>
+    <div class="text-xs text-gray-600 text-center">${assignedHours}h</div>
+    <div class="text-xs text-gray-600 text-center">${totalHours}h</div>
   `;
   
   return row;
@@ -4234,46 +4140,9 @@ function setupScheduleEventListeners() {
   // Auto assign button
   const autoAssignBtn = document.querySelector('.auto-assign-btn');
   if (autoAssignBtn) {
-    autoAssignBtn.addEventListener('click', async () => {
-      const unitId = getUnitId();
-      if (!unitId) {
-        alert('No unit selected');
-        return;
-      }
-
-      // Show loading state
-      const originalText = autoAssignBtn.textContent;
-      autoAssignBtn.textContent = 'Assigning...';
-      autoAssignBtn.disabled = true;
-
-      try {
-        const response = await fetch(`/unitcoordinator/units/${unitId}/auto-assign`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': CSRF_TOKEN
-          }
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-          alert(`Auto-assignment completed successfully! ${result.assignments_created} assignments created.`);
-          // Refresh the calendar to show new assignments
-          if (typeof calendar !== 'undefined' && calendar) {
-            calendar.refetchEvents();
-          }
-        } else {
-          alert(`Auto-assignment failed: ${result.error || 'Unknown error'}`);
-        }
-      } catch (error) {
-        console.error('Auto-assign error:', error);
-        alert('Auto-assignment failed: Network error');
-      } finally {
-        // Restore button state
-        autoAssignBtn.textContent = originalText;
-        autoAssignBtn.disabled = false;
-      }
+    autoAssignBtn.addEventListener('click', () => {
+      // TODO: Implement auto-assign functionality
+      console.log('Auto-assign clicked');
     });
   }
 }
@@ -4497,7 +4366,6 @@ function renderListView() {
           <div class="session-detail">
             <span class="material-icons">book</span>
             <span class="session-detail-value">${session.moduleType}</span>
-            <span>${session.students} students</span>
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ from werkzeug.security import generate_password_hash
 # Add the project directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from models import db, User, UserRole, Module, FacilitatorSkill, SkillLevel, Availability
+from models import db, User, UserRole, Module, FacilitatorSkill, SkillLevel
 from flask import Flask
 
 # Create a minimal app for database operations
@@ -143,21 +143,7 @@ def add_sample_facilitators():
             db.session.add(facilitator)
             db.session.flush()  # Get the ID without committing
             
-            # Add availability
-            for day in facilitator_data['availability_days']:
-                for hour_str in facilitator_data['availability_hours']:
-                    hour, minute = map(int, hour_str.split(':'))
-                    start_time = time(hour, minute)
-                    end_time = time(hour, minute)  # Same as start for slot-based availability
-                    
-                    availability = Availability(
-                        user_id=facilitator.id,
-                        day_of_week=day,
-                        start_time=start_time,
-                        end_time=end_time,
-                        is_available=True
-                    )
-                    db.session.add(availability)
+            # Deprecated: weekly Availability model removed. Not seeding unavailability here (default = free).
             
             # Add module skills for ALL modules using skill pattern
             skill_assignments = []
@@ -179,7 +165,6 @@ def add_sample_facilitators():
             print(f"  Skills assigned for {len(modules)} modules:")
             for skill_assignment in skill_assignments:
                 print(f"    - {skill_assignment}")
-            print(f"  Available: {len(facilitator_data['availability_days'])} days, {len(facilitator_data['availability_hours'])} hours per day")
             print()
         
         db.session.commit()
