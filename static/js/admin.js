@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Tab switching functionality
   const tabs = document.querySelectorAll('.admin-tab');
   const facilitatorManagement = document.querySelector('.facilitator-management');
-  const scheduleManagement = document.querySelector('.schedule-management');
   const unitStatusCard = document.querySelector('.unit-status-card');
   const welcomeBanner = document.querySelector('.admin-welcome-banner');
 
@@ -30,25 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (welcomeBanner) welcomeBanner.style.display = 'none';
       if (unitStatusCard) unitStatusCard.style.display = 'none';
       if (facilitatorManagement) facilitatorManagement.style.display = 'block';
-      if (scheduleManagement) scheduleManagement.style.display = 'none';
       console.log('Employees tab activated');
-    } else if (tabName === 'schedule') {
-      const scheduleTab = document.querySelector('.admin-tab[data-tab="schedule"]');
-      if (scheduleTab) scheduleTab.classList.add('active');
-      if (welcomeBanner) welcomeBanner.style.display = 'none';
-      if (unitStatusCard) unitStatusCard.style.display = 'none';
-      if (facilitatorManagement) facilitatorManagement.style.display = 'none';
-      if (scheduleManagement) scheduleManagement.style.display = 'block';
-      console.log('Schedule tab activated');
-      // Initialize schedule management when switching to schedule tab
-      setTimeout(initializeScheduleManagement, 100);
     } else {
       const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
       if (dashboardTab) dashboardTab.classList.add('active');
       if (welcomeBanner) welcomeBanner.style.display = 'block';
       if (unitStatusCard) unitStatusCard.style.display = 'block';
       if (facilitatorManagement) facilitatorManagement.style.display = 'none';
-      if (scheduleManagement) scheduleManagement.style.display = 'none';
       console.log('Dashboard tab activated');
     }
   }
@@ -60,10 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeTab = urlParams.get('tab');
     if (activeTab === 'employees') {
       showTab('employees');
-    } else if (activeTab === 'schedule') {
-      showTab('schedule');
-      // Initialize schedule management when schedule tab is active
-      setTimeout(initializeScheduleManagement, 100);
     } else {
       showTab('dashboard');
     }
@@ -396,161 +379,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Schedule Management Functionality
-  const scheduleSearchInput = document.getElementById('scheduleSearch');
-  const scheduleStatusFilter = document.getElementById('statusFilter');
-  const scheduleSemesterFilter = document.getElementById('semesterFilter');
-  const unitScheduleList = document.getElementById('unitScheduleList');
-  const scheduleResultsCount = document.getElementById('scheduleResultsCount');
 
-  // Global variable to store all units
-  let allUnits = [];
-  let filteredUnits = [];
+});
 
-  // Initialize schedule management when page loads
-  function initializeScheduleManagement() {
-    if (window.unitsData) {
-      allUnits = window.unitsData;
-      filteredUnits = [...allUnits];
-      renderUnits();
-      updateScheduleResultsCount();
+// Dropdown functionality (global)
+function toggleDropdown(facilitatorId) {
+  const dropdown = document.getElementById(`dropdown-${facilitatorId}`);
+  const allDropdowns = document.querySelectorAll('.dropdown-menu');
+
+  // Close all other dropdowns
+  allDropdowns.forEach(d => {
+    if (d.id !== `dropdown-${facilitatorId}`) {
+      d.style.display = 'none';
     }
+  });
+
+  // Toggle current dropdown
+  if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+    dropdown.style.display = 'block';
+  } else {
+    dropdown.style.display = 'none';
   }
-
-  // Render units to the DOM
-  function renderUnits() {
-    if (!unitScheduleList) return;
-
-    if (filteredUnits.length === 0) {
-      unitScheduleList.innerHTML = `
-        <div class="empty-state">
-          <span class="material-icons">event</span>
-          <h3>No units found</h3>
-          <p>No units match your current search and filter criteria.</p>
-        </div>
-      `;
-      return;
-    }
-
-    unitScheduleList.innerHTML = filteredUnits.map(unit => {
-      const scheduleStatus = unit.schedule_status || 'draft';
-      const statusClass = scheduleStatus === 'published' ? 'published' : scheduleStatus === 'unpublished' ? 'unpublished' : 'draft';
-      const coordinatorName = unit.creator ? unit.creator.full_name : 'Unknown Coordinator';
-      const startDate = unit.start_date ? new Date(unit.start_date).toLocaleDateString('en-GB') : 'Not set';
-      const endDate = unit.end_date ? new Date(unit.end_date).toLocaleDateString('en-GB') : 'Not set';
-      const publishedDate = unit.published_at ? new Date(unit.published_at).toLocaleString('en-GB') : null;
-      const unpublishedDate = unit.unpublished_at ? new Date(unit.unpublished_at).toLocaleString('en-GB') : null;
-
-      return `
-        <div class="unit-schedule-card" data-unit-id="${unit.id}">
-          <div class="unit-schedule-info">
-            <div class="unit-schedule-header">
-              <h3 class="unit-schedule-name">${unit.unit_code} - ${unit.unit_name}</h3>
-              <div class="unit-schedule-badges">
-                <span class="badge badge-semester">${unit.semester} ${unit.year}</span>
-                <span class="badge badge-status badge-${statusClass}">
-                  ${scheduleStatus.charAt(0).toUpperCase() + scheduleStatus.slice(1)}
-                </span>
-              </div>
-            </div>
-            <div class="unit-schedule-details">
-              <div class="unit-schedule-meta">
-                <span class="unit-schedule-coordinator">
-                  <span class="material-icons">person</span>
-                  ${coordinatorName}
-                </span>
-                <span class="unit-schedule-dates">
-                  <span class="material-icons">calendar_today</span>
-                  ${startDate} - ${endDate}
-                </span>
-              </div>
-              <div class="unit-schedule-stats">
-                <span class="unit-schedule-stat">
-                  <span class="material-icons">event</span>
-                  ${unit.modules ? unit.modules.length : 0} modules
-                </span>
-                ${publishedDate ? `
-                <span class="unit-schedule-stat">
-                  <span class="material-icons">publish</span>
-                  Published ${publishedDate}
-                </span>
-                ` : ''}
-                ${unpublishedDate ? `
-                <span class="unit-schedule-stat">
-                  <span class="material-icons">unpublish</span>
-                  Unpublished ${unpublishedDate}
-                </span>
-                ` : ''}
-              </div>
-            </div>
-          </div>
-          <div class="unit-schedule-actions">
-            ${scheduleStatus === 'published' ? `
-            <button class="action-btn unpublish" title="Unpublish Schedule" onclick="openUnpublishModal(${unit.id}, '${unit.unit_code}', '${coordinatorName}')">
-              <span class="material-icons">unpublish</span>
-              <span>Unpublish</span>
-            </button>
-            ` : ''}
-            <button class="action-btn view" title="View Schedule" onclick="viewUnitSchedule(${unit.id})">
-              <span class="material-icons">visibility</span>
-              <span>View</span>
-            </button>
-            <button class="action-btn history" title="Version History" onclick="viewVersionHistory(${unit.id})">
-              <span class="material-icons">history</span>
-              <span>History</span>
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function filterScheduleUnits() {
-    if (!scheduleSearchInput || !scheduleStatusFilter || !scheduleSemesterFilter) return;
-
-    const searchTerm = scheduleSearchInput.value.toLowerCase();
-    const statusValue = scheduleStatusFilter.value;
-    const semesterValue = scheduleSemesterFilter.value;
-
-    filteredUnits = allUnits.filter(unit => {
-      // Search filter
-      const matchesSearch = searchTerm === '' || 
-        unit.unit_code.toLowerCase().includes(searchTerm) ||
-        unit.unit_name.toLowerCase().includes(searchTerm);
-
-      // Status filter
-      let matchesStatus = true;
-      if (statusValue !== '') {
-        const unitStatus = unit.schedule_status || 'draft';
-        matchesStatus = unitStatus === statusValue;
-      }
-
-      // Semester filter
-      let matchesSemester = true;
-      if (semesterValue !== '') {
-        matchesSemester = unit.semester.toLowerCase().includes(semesterValue.toLowerCase());
-      }
-
-      return matchesSearch && matchesStatus && matchesSemester;
-    });
-
-    renderUnits();
-    updateScheduleResultsCount();
-  }
-
-  // Add event listeners for schedule search and filters
-  if (scheduleSearchInput) scheduleSearchInput.addEventListener('input', filterScheduleUnits);
-  if (scheduleStatusFilter) scheduleStatusFilter.addEventListener('change', filterScheduleUnits);
-  if (scheduleSemesterFilter) scheduleSemesterFilter.addEventListener('change', filterScheduleUnits);
-
-  // Initialize schedule management when dashboard loads
-  initializeScheduleManagement();
-
-  // Unpublish Modal functionality
-  const unpublishModal = document.getElementById('unpublishModal');
-  const closeUnpublishModalBtn = document.getElementById('closeUnpublishModal');
-  const cancelUnpublishBtn = document.getElementById('cancelUnpublishBtn');
-  const unpublishForm = document.getElementById('unpublishForm');
+}
 
   if (closeUnpublishModalBtn && unpublishModal) {
     closeUnpublishModalBtn.addEventListener('click', () => {

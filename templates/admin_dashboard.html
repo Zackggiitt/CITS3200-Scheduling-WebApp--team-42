@@ -62,10 +62,6 @@
         <span class="material-icons">bar_chart</span>
         <span>Dashboard</span>
       </button>
-      <button class="admin-tab {% if tab == 'schedule' %}active{% endif %}" data-tab="schedule">
-        <span class="material-icons">event</span>
-        <span>Schedule</span>
-      </button>
       <button class="admin-tab {% if tab == 'employees' %}active{% endif %}" data-tab="employees">
         <span class="material-icons">group</span>
         <span>Employees</span>
@@ -73,7 +69,7 @@
     </nav>
 
     <!-- Welcome Banner -->
-    <div class="admin-welcome-banner" {% if tab == 'employees' or tab == 'schedule' %}style="display: none;"{% endif %}>
+    <div class="admin-welcome-banner" {% if tab == 'employees' %}style="display: none;"{% endif %}>
       <div class="admin-welcome-content">
         <h1 class="admin-welcome-greeting">Good afternoon, {{ user.first_name if user else 'Admin' }}! 👋</h1>
         <p class="admin-welcome-role">System Administrator • Schedule Manager</p>
@@ -88,7 +84,7 @@
 
 
     <!-- Unit Status Distribution -->
-    <div class="unit-status-card" {% if tab == 'employees' or tab == 'schedule' %}style="display: none;"{% endif %}>
+    <div class="unit-status-card" {% if tab == 'employees' %}style="display: none;"{% endif %}>
       <h3 class="unit-status-title">Unit Status Distribution</h3>
       
       <!-- Top Row - Unit Status -->
@@ -279,74 +275,6 @@
       </div>
     </div>
 
-    <!-- Schedule Management Section (Hidden by default) -->
-    <div class="schedule-management" id="scheduleManagement" {% if tab == 'schedule' %}style="display: block;"{% else %}style="display: none;"{% endif %}>
-      <!-- Header -->
-      <div class="schedule-header">
-        <div class="schedule-header-content">
-          <h2 class="schedule-title">Schedule Management</h2>
-          <p class="schedule-subtitle">Manage unit schedules, publish/unpublish schedules, and track version history.</p>
-        </div>
-        <div class="schedule-header-actions">
-          <button class="schedule-action-btn secondary">
-            <span class="material-icons">refresh</span>
-            Refresh Data
-          </button>
-          <button class="schedule-action-btn secondary">
-            <span class="material-icons">download</span>
-            Export Reports
-          </button>
-        </div>
-      </div>
-
-      <!-- Schedule Statistics -->
-      <div class="schedule-stats">
-        <div class="schedule-stat-card">
-          <div class="schedule-stat-value">{{ published_units_count or 0 }}</div>
-          <div class="schedule-stat-label">Published Schedules</div>
-        </div>
-        <div class="schedule-stat-card">
-          <div class="schedule-stat-value">{{ draft_units_count or 0 }}</div>
-          <div class="schedule-stat-label">Draft Schedules</div>
-        </div>
-        <div class="schedule-stat-card">
-          <div class="schedule-stat-value">{{ unpublished_units_count or 0 }}</div>
-          <div class="schedule-stat-label">Recently Unpublished</div>
-        </div>
-      </div>
-
-      <!-- Search and Filter Section -->
-      <div class="schedule-search-section">
-        <div class="search-bar">
-          <span class="material-icons search-icon">search</span>
-          <input type="text" id="scheduleSearch" placeholder="Search units by code or name..." class="search-input">
-        </div>
-        <div class="filter-controls">
-          <select id="statusFilter" class="filter-select">
-            <option value="">All Status</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
-            <option value="unpublished">Unpublished</option>
-          </select>
-          <select id="semesterFilter" class="filter-select">
-            <option value="">All Semesters</option>
-            <option value="S1">Semester 1</option>
-            <option value="S2">Semester 2</option>
-            <option value="Summer">Summer</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Results Summary -->
-      <div class="results-summary">
-        <span id="scheduleResultsCount">Showing {{ units|length or 0 }} of {{ units|length or 0 }} units</span>
-      </div>
-
-      <!-- Unit Schedule List -->
-      <div class="unit-schedule-list" id="unitScheduleList">
-        <!-- Units will be populated by JavaScript -->
-      </div>
-    </div>
 
   </main>
 
@@ -507,106 +435,7 @@
     </div>
   </div>
 
-  <!-- Unpublish Schedule Modal -->
-  <div class="modal-overlay" id="unpublishModal" style="display: none;">
-    <div class="modal-container">
-      <div class="modal-header">
-        <h2 class="modal-title">Unpublish Schedule</h2>
-        <p class="modal-description">Revert this unit's schedule from Published to Draft state. This will unlock the schedule for edits and re-enable scheduling functionality.</p>
-        <button class="modal-close" id="closeUnpublishModal">
-          <span class="material-icons">close</span>
-        </button>
-      </div>
-      
-      <form class="modal-form" id="unpublishForm">
-        <input type="hidden" id="unpublishUnitId" name="unitId">
-        
-        <!-- Unit Information -->
-        <div class="unpublish-unit-info">
-          <h3>Unit Information</h3>
-          <div class="unit-info-display">
-            <div class="unit-info-item">
-              <span class="label">Unit Code:</span>
-              <span class="value" id="unpublishUnitCode">-</span>
-            </div>
-            <div class="unit-info-item">
-              <span class="label">Unit Coordinator:</span>
-              <span class="value" id="unpublishUnitCoordinator">-</span>
-            </div>
-            <div class="unit-info-item">
-              <span class="label">Current Status:</span>
-              <span class="value status-published">Published</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Reason for Unpublishing -->
-        <div class="form-group">
-          <label for="unpublishReason" class="form-label">Reason for Unpublishing *</label>
-          <textarea id="unpublishReason" name="reason" class="form-textarea" placeholder="Please provide a reason for unpublishing this schedule (e.g., timetable changes, session modifications, algorithm re-run required)..." required rows="4"></textarea>
-        </div>
-        
-        <!-- Notification Options -->
-        <div class="form-group">
-          <label class="form-label">Notification Options</label>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="notifyCoordinator" name="notifyCoordinator" checked>
-              <span class="checkbox-custom"></span>
-              <span class="checkbox-text">Notify Unit Coordinator via email</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="notifyFacilitators" name="notifyFacilitators">
-              <span class="checkbox-custom"></span>
-              <span class="checkbox-text">Notify assigned facilitators</span>
-            </label>
-          </div>
-        </div>
-        
-        <!-- Warning Message -->
-        <div class="unpublish-warning">
-          <span class="material-icons">warning</span>
-          <div class="warning-content">
-            <strong>Important:</strong> Unpublishing will revert the schedule to draft state, allowing the Unit Coordinator to make changes. The previously published version will be preserved in the version history for audit purposes.
-          </div>
-        </div>
-        
-        <div class="modal-actions">
-          <button type="button" class="btn-cancel" id="cancelUnpublishBtn">Cancel</button>
-          <button type="submit" class="btn-warning">Unpublish Schedule</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
-  <!-- Version History Modal -->
-  <div class="modal-overlay" id="versionHistoryModal" style="display: none;">
-    <div class="modal-container">
-      <div class="modal-header">
-        <h2 class="modal-title">Version History</h2>
-        <p class="modal-description">View the complete version history for this unit's schedule.</p>
-        <button class="modal-close" id="closeVersionHistoryModal">
-          <span class="material-icons">close</span>
-        </button>
-      </div>
-      
-      <div class="version-history-content">
-        <div class="version-history-list" id="versionHistoryList">
-          <!-- Version history items will be populated here -->
-        </div>
-      </div>
-      
-      <div class="modal-actions">
-        <button type="button" class="btn-cancel" id="closeVersionHistoryBtn">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Pass units data to JavaScript -->
-  <script>
-    window.unitsData = {{ units|tojson }};
-  </script>
-  
   <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
 </body>
 </html>
