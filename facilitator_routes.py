@@ -397,7 +397,6 @@ def root():
 @role_required(UserRole.FACILITATOR)
 def profile():
     user = get_current_user()
-    today = date.today()
     
     # Get facilitator's current units and stats
     units = (
@@ -407,154 +406,7 @@ def profile():
         .all()
     )
     
-    # Facilitator Information Calculations
-    facilitator_info = calculate_facilitator_info(user, today)
-    
-    return render_template("facilitator_profile.html", 
-                         user=user, 
-                         units=units,
-                         facilitator_info=facilitator_info)
-
-
-def calculate_facilitator_info(user, today):
-    """Calculate comprehensive facilitator information including units, sessions, and career metrics."""
-    
-    # Get all units the facilitator has been assigned to
-    all_units = (
-        Unit.query
-        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
-        .filter(UnitFacilitator.user_id == user.id)
-        .all()
-    )
-    
-    current_units = []
-    past_units = []
-    
-    for unit in all_units:
-        # Determine if unit is current or past
-        is_current = False
-        
-        if unit.start_date and unit.end_date:
-            is_current = unit.start_date <= today <= unit.end_date
-        elif unit.start_date and not unit.end_date:
-            is_current = unit.start_date <= today
-        elif not unit.start_date and unit.end_date:
-            is_current = today <= unit.end_date
-        else:
-            # Check if there are future assignments for this unit
-            has_future_sessions = (
-                db.session.query(Assignment)
-                .join(Session, Assignment.session_id == Session.id)
-                .join(Module, Session.module_id == Module.id)
-                .filter(
-                    Assignment.facilitator_id == user.id,
-                    Module.unit_id == unit.id,
-                    Session.start_time > datetime.utcnow()
-                )
-                .first() is not None
-            )
-            is_current = has_future_sessions
-        
-        # Get sessions for this unit
-        sessions_query = (
-            db.session.query(Assignment, Session, Module)
-            .join(Session, Assignment.session_id == Session.id)
-            .join(Module, Session.module_id == Module.id)
-            .filter(
-                Assignment.facilitator_id == user.id,
-                Module.unit_id == unit.id
-            )
-            .all()
-        )
-        
-        # Separate current and past sessions
-        current_sessions = [(a, s, m) for a, s, m in sessions_query if s.start_time >= datetime.utcnow()]
-        past_sessions = [(a, s, m) for a, s, m in sessions_query if s.start_time < datetime.utcnow()]
-        
-        # Calculate metrics for this unit
-        completed_sessions = len(past_sessions)
-        total_hours = sum((s.end_time - s.start_time).total_seconds() / 3600.0 for _, s, _ in past_sessions)
-        
-        # Calculate average hours per week based on weeks with sessions assigned (completed only)
-        avg_hours_per_week = 0
-        if completed_sessions > 0:
-            week_keys = set()
-            for _, s, _ in past_sessions:
-                iso = s.start_time.isocalendar()
-                # Python's isocalendar may return a namedtuple (year, week, weekday)
-                try:
-                    week_key = (iso.year, iso.week)
-                except AttributeError:
-                    week_key = (iso[0], iso[1])
-                week_keys.add(week_key)
-            weeks_count = max(1, len(week_keys))
-            avg_hours_per_week = total_hours / weeks_count
-        
-        # Get session types (module names)
-        session_types = list(set(m.module_name for _, _, m in past_sessions if m.module_name))
-        
-        unit_info = {
-            'id': unit.id,
-            'code': unit.unit_code,
-            'name': unit.unit_name,
-            'year': unit.year,
-            'semester': unit.semester,
-            'start_date': unit.start_date,
-            'end_date': unit.end_date,
-            'completed_sessions': completed_sessions,
-            'total_hours': round(total_hours, 1),
-            'avg_hours_per_week': round(avg_hours_per_week, 1),
-            'session_types': session_types,
-            'sessions': past_sessions
-        }
-        
-        if is_current:
-            current_units.append(unit_info)
-        else:
-            past_units.append(unit_info)
-    
-    # Calculate career summary metrics
-    # Total Units
-    total_units = len(all_units)
-    
-    # Sessions Facilitated (completed sessions across all units)
-    all_completed_sessions = (
-        db.session.query(Assignment, Session)
-        .join(Session, Assignment.session_id == Session.id)
-        .join(Module, Session.module_id == Module.id)
-        .join(UnitFacilitator, Module.unit_id == UnitFacilitator.unit_id)
-        .filter(
-            Assignment.facilitator_id == user.id,
-            Session.start_time < datetime.utcnow()
-        )
-        .all()
-    )
-    
-    sessions_facilitated = len(all_completed_sessions)
-    
-    # Total Hours (across all units)
-    total_hours = sum((s.end_time - s.start_time).total_seconds() / 3600.0 for _, s in all_completed_sessions)
-    
-    # Years Experience (from earliest unit start date)
-    years_experience = 0
-    if all_units:
-        earliest_start = min(unit.start_date for unit in all_units if unit.start_date)
-        if earliest_start:
-            years_experience = (today - earliest_start).days / 365.25
-    
-    # Sort past units by end date (most recent first)
-    past_units.sort(key=lambda x: x['end_date'] or date.min, reverse=True)
-    
-    return {
-        'current_units': current_units,
-        'past_units': past_units,
-        'career_summary': {
-            'total_units': total_units,
-            'sessions_facilitated': sessions_facilitated,
-            'total_hours': round(total_hours, 1),
-            'years_experience': round(years_experience, 1)
-        }
-    }
+    return render_template("facilitator_profile.html", user=user, units=units)
 
 
 @facilitator_bp.route("/profile/edit", methods=["GET", "POST"])
@@ -572,33 +424,24 @@ def edit_profile():
             user.phone_number = request.form.get("phone_number", user.phone_number)
             user.staff_number = request.form.get("staff_number", user.staff_number)
             
-            # Also update the Facilitator table if it exists
-            from models import Facilitator
-            facilitator = Facilitator.query.filter_by(email=user.email).first()
-            if facilitator:
-                facilitator.first_name = user.first_name
-                facilitator.last_name = user.last_name
-                facilitator.phone = user.phone_number
-                facilitator.staff_number = user.staff_number
-            
             # Handle password update if provided
-            current_password = request.form.get("current_password")
-            new_password = request.form.get("new_password")
+            new_password = request.form.get("password")
             confirm_password = request.form.get("confirm_password")
             
             if new_password and new_password.strip():
-                # Verify current password if provided
-                if current_password and not user.check_password(current_password):
-                    flash("Current password is incorrect.", "error")
+                # Validate password confirmation
+                if not confirm_password or new_password != confirm_password:
+                    flash("Passwords do not match. Please try again.", "error")
                     return render_template("edit_facilitator_profile.html", user=user)
                 
-                # Validate new passwords match
-                if new_password != confirm_password:
-                    flash("New passwords do not match.", "error")
+                # Validate password length
+                if len(new_password) < 6:
+                    flash("Password must be at least 6 characters long.", "error")
                     return render_template("edit_facilitator_profile.html", user=user)
                 
-                # Set new password
                 user.set_password(new_password)
+                user.has_changed_initial_password = True  # Mark as having changed initial password
+                flash("Password updated successfully!", "success")
             
             db.session.commit()
             flash("Profile updated successfully!", "success")
@@ -1418,57 +1261,173 @@ def facilitator_response_to_swap(request_id):
         return jsonify({'error': f'Failed to process response: {str(e)}'}), 500
 
 
-# -------------------------- Unavailability (Facilitator) --------------------------
-@facilitator_bp.get("/unavailability")
+@facilitator_bp.route('/get_unit_modules')
 @login_required
 @role_required(UserRole.FACILITATOR)
-def list_unavailability():
-    """List current facilitator's unavailability. Optional filter by unit_id and date range."""
+def get_unit_modules():
+    """Get modules for a specific unit for proficiency configuration."""
     user = get_current_user()
-    unit_id = request.args.get("unit_id", type=int)
-    start = request.args.get("start")  # YYYY-MM-DD
-    end = request.args.get("end")      # YYYY-MM-DD
-
-    q = Unavailability.query.filter_by(user_id=user.id)
-    if unit_id:
-        q = q.filter(Unavailability.unit_id == unit_id)
+    unit_id = request.args.get('unit_id', type=int)
+    
+    if not unit_id:
+        return jsonify({'error': 'Unit ID is required'}), 400
+    
     try:
-        if start:
-            start_d = datetime.strptime(start, "%Y-%m-%d").date()
-            q = q.filter(Unavailability.date >= start_d)
-        if end:
-            end_d = datetime.strptime(end, "%Y-%m-%d").date()
-            q = q.filter(Unavailability.date <= end_d)
-    except ValueError:
-        return jsonify({"ok": False, "error": "Invalid date format; use YYYY-MM-DD"}), 400
+        # Verify user has access to this unit
+        unit_facilitator = UnitFacilitator.query.filter_by(
+            user_id=user.id, 
+            unit_id=unit_id
+        ).first()
+        
+        if not unit_facilitator:
+            return jsonify({'error': 'Access denied to this unit'}), 403
+        
+        # Get modules for the unit
+        modules = Module.query.filter_by(unit_id=unit_id).all()
+        
+        # Get existing facilitator skills for these modules
+        existing_skills = {}
+        facilitator_skills = FacilitatorSkill.query.filter_by(
+            facilitator_id=user.id
+        ).filter(
+            FacilitatorSkill.module_id.in_([m.id for m in modules])
+        ).all()
+        
+        for skill in facilitator_skills:
+            existing_skills[skill.module_id] = skill.skill_level.value
+        
+        modules_data = []
+        for module in modules:
+            modules_data.append({
+                'id': module.id,
+                'name': module.module_name,
+                'type': module.module_type,
+                'current_level': existing_skills.get(module.id, 'uninterested')
+            })
+        
+        return jsonify({
+            'success': True,
+            'modules': modules_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch modules: {str(e)}'}), 500
 
-    rows = q.order_by(Unavailability.date.asc(), Unavailability.start_time.asc().nulls_first()).all()
 
-    def serialize(u):
-        return {
-            "id": u.id,
-            "unit_id": u.unit_id,
-            "date": u.date.isoformat(),
-            "is_full_day": bool(u.is_full_day),
-            "start_time": u.start_time.isoformat() if u.start_time else None,
-            "end_time": u.end_time.isoformat() if u.end_time else None,
-            "recurring_pattern": u.recurring_pattern.value if u.recurring_pattern else None,
-            "recurring_interval": u.recurring_interval,
-            "recurring_end_date": u.recurring_end_date.isoformat() if u.recurring_end_date else None,
-            "reason": u.reason or "",
-        }
-
-    return jsonify({"ok": True, "items": [serialize(r) for r in rows]})
-
-
-def _parse_hhmm(val: str):
-    if not val:
-        return None
+@facilitator_bp.route('/get_skill_set')
+@login_required
+@role_required(UserRole.FACILITATOR)
+def get_skill_set():
+    """Get existing skill set data for the facilitator."""
+    user = get_current_user()
+    
     try:
-        hh, mm = map(int, val.split(":", 1))
-        return time(hh, mm)
-    except Exception:
-        return None
+        # Get existing skill set data from user
+        skill_set_data = {}
+        if user.skills_with_levels:
+            skill_set_data = json.loads(user.skills_with_levels)
+        
+        # Get preferences data
+        preferences_data = {}
+        if user.preferences:
+            preferences_data = json.loads(user.preferences)
+        
+        return jsonify({
+            'success': True,
+            'skillSet': skill_set_data,
+            'preferences': preferences_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch skill set: {str(e)}'}), 500
+
+
+@facilitator_bp.route('/save_setup', methods=['POST'])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def save_setup():
+    """Save all setup configuration data."""
+    user = get_current_user()
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        unit_id = data.get('unit_id')
+        proficiency_data = data.get('proficiency', {})
+        skill_set_data = data.get('skill_set', {})
+        preferences_data = data.get('preferences', {})
+        unavailability_data = data.get('unavailability', [])
+        
+        if not unit_id:
+            return jsonify({'error': 'Unit ID is required'}), 400
+        
+        # Verify user has access to this unit
+        unit_facilitator = UnitFacilitator.query.filter_by(
+            user_id=user.id, 
+            unit_id=unit_id
+        ).first()
+        
+        if not unit_facilitator:
+            return jsonify({'error': 'Access denied to this unit'}), 403
+        
+        # Save proficiency data
+        if proficiency_data:
+            for module_id_str, level in proficiency_data.items():
+                module_id = int(module_id_str)
+                
+                # Check if skill already exists
+                existing_skill = FacilitatorSkill.query.filter_by(
+                    facilitator_id=user.id,
+                    module_id=module_id
+                ).first()
+                
+                if existing_skill:
+                    existing_skill.skill_level = SkillLevel(level)
+                else:
+                    new_skill = FacilitatorSkill(
+                        facilitator_id=user.id,
+                        module_id=module_id,
+                        skill_level=SkillLevel(level)
+                    )
+                    db.session.add(new_skill)
+        
+        # Save unavailability data (if provided)
+        if unavailability_data:
+            # Remove existing unavailability for this user
+            Unavailability.query.filter_by(user_id=user.id).delete()
+            
+            # Add new unavailability entries
+            for unavail in unavailability_data:
+                new_unavail = Unavailability(
+                    user_id=user.id,
+                    start_date=datetime.fromisoformat(unavail['start_date']),
+                    end_date=datetime.fromisoformat(unavail['end_date']),
+                    reason=unavail.get('reason', ''),
+                    is_recurring=unavail.get('is_recurring', False)
+                )
+                db.session.add(new_unavail)
+        
+        # Save skill set data
+        if skill_set_data:
+            user.skills_with_levels = json.dumps(skill_set_data)
+        
+        # Save preferences data
+        if preferences_data:
+            user.preferences = json.dumps(preferences_data)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Setup configuration saved successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to save setup: {str(e)}'}), 500
 
 
 @facilitator_bp.route('/swap-requests/<int:request_id>/coordinator-response', methods=['POST'])

@@ -26,12 +26,37 @@
   color: #111827; 
 }
 
-.admin-topbar__right {
+.admin-topbar__right { 
   display: flex; 
   align-items: center; 
-  gap: 20px; 
+  gap: 14px; 
 }
 
+.admin-topbar__icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+}
+.admin-topbar__icon-btn:hover { background: #f9fafb; }
+
+.notif-badge { 
+  position: absolute;
+  top: -6px; 
+  right: -6px; 
+  background: #dc2626; 
+  color: #fff; 
+  border-radius: 999px; 
+  padding: 2px 6px; 
+  font-size: 12px; 
+  font-weight: 700; 
+}
 
 .admin-topbar__user { 
   display: inline-flex; 
@@ -185,78 +210,6 @@
 
 .admin-settings-btn .material-icons {
   font-size: 24px;
-}
-
-.admin-topbar-portal-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: #3b82f6;
-  color: #ffffff;
-  text-decoration: none;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 12px;
-  transition: all 0.2s ease;
-  border: none;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.admin-topbar-portal-btn:hover {
-  background: #2563eb;
-  color: #ffffff;
-  text-decoration: none;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-}
-
-.admin-topbar-portal-btn .material-icons {
-  font-size: 16px;
-}
-
-/* Notification button styles to match Unit Coordinator portal */
-.notification-container { 
-  position: relative; 
-}
-
-.icon-btn { 
-  display: inline-flex; 
-  align-items: center; 
-  justify-content: center; 
-  padding: 6px; 
-  border-radius: 9999px; 
-  color: #4b5563; 
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.icon-btn:hover { 
-  background: #f3f4f6; 
-}
-
-.notification-btn .material-icons { 
-  font-size: 20px; 
-}
-
-.notification-badge {
-  position: absolute; 
-  top: -2px; 
-  right: -2px; 
-  height: 16px; 
-  width: 16px;
-  background: #dc2626; 
-  color: #fff; 
-  font-size: 11px; 
-  font-weight: 700; 
-  border-radius: 9999px;
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  line-height: 1;
 }
 
 /* Dashboard Metrics */
@@ -574,8 +527,6 @@
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
-  overflow: hidden;
-  box-sizing: border-box;
 }
 
 /* Facilitator Header */
@@ -610,7 +561,6 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  flex-shrink: 0;
 }
 
 .facilitator-action-btn {
@@ -1332,41 +1282,6 @@
   color: #9ca3af;
 }
 
-/* Role Group Styling and Animation */
-.role-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  transition: all 0.3s ease;
-  overflow: hidden;
-}
-
-.role-group .form-select {
-  border: 1px solid #d1d5db !important;
-  background: #ffffff !important;
-}
-
-.role-group .form-select:focus {
-  outline: none;
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-}
-
-.role-group:not([style*=" none"]) {
-  animation: slideDown 0.3s ease;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .modal-actions {
   display: flex;
   gap: 12px;
@@ -1475,26 +1390,18 @@
   display: block;
 }
 
-/* Facilitator Directory Content */
-.facilitator-directory-content {
-  margin-top: 24px;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
 /* Search and Filter Section */
 .facilitator-search-section {
-  display: block;
-  margin-bottom: 24px;
-  margin-top: 0;
-  width: 100%;
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  align-items: center;
 }
 
 .search-bar {
   position: relative;
-  width: 100%;
-  margin-bottom: 16px;
+  flex: 1;
+  max-width: 400px;
 }
 
 .search-icon {
@@ -1526,10 +1433,7 @@
 
 .filter-controls {
   display: flex;
-  gap: 20px;
-  align-items: center;
-  margin-top: 16px;
-  width: 100%;
+  gap: 12px;
 }
 
 .filter-select {
@@ -1540,7 +1444,7 @@
   font-size: 14px;
   color: #111827;
   background: #ffffff;
-  min-width: 150px;
+  min-width: 140px;
   transition: all 0.2s ease;
 }
 
@@ -1560,21 +1464,20 @@
 
 /* Facilitator List */
 .facilitator-list {
-  display: block;
-  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .facilitator-card {
   display: flex;
   align-items: center;
-  padding: 20px;
+  gap: 16px;
+  padding: 16px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   transition: all 0.2s ease;
-  width: 100%;
-  box-sizing: border-box;
-  margin-bottom: 16px;
 }
 
 .facilitator-card:hover {
@@ -1583,16 +1486,14 @@
 }
 
 .facilitator-avatar {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 12px;
   background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #6b7280;
-  flex-shrink: 0;
-  margin-right: 16px;
 }
 
 .facilitator-avatar .material-icons {
@@ -1600,25 +1501,23 @@
 }
 
 .facilitator-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-width: 0;
+  gap: 8px;
 }
 
 .facilitator-name {
   font-family: 'Roboto', sans-serif;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: #111827;
-  margin: 0 0 8px 0;
+  margin: 0;
 }
 
 .facilitator-badges {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
 }
 
 .badge {
@@ -1634,16 +1533,6 @@
   color: #1e40af;
 }
 
-.badge-position {
-  background: #e0e7ff;
-  color: #3730a3;
-}
-
-.badge-role {
-  background: #f3e8ff;
-  color: #6b21a8;
-}
-
 .badge-status {
   background: #d1fae5;
   color: #065f46;
@@ -1651,12 +1540,10 @@
 
 .facilitator-details {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 16px;
   font-family: 'Roboto', sans-serif;
   font-size: 14px;
   color: #6b7280;
-  margin-bottom: 8px;
 }
 
 .facilitator-role,
@@ -1666,21 +1553,17 @@
 
 .facilitator-metrics {
   display: flex;
-  gap: 20px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 4px;
 }
 
 .metric-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-family: 'Roboto', sans-serif;
   font-size: 14px;
   color: #6b7280;
-  background: #f9fafb;
-  padding: 6px 10px;
-  border-radius: 6px;
 }
 
 .metric-item .material-icons {
@@ -1689,9 +1572,7 @@
 
 .facilitator-actions {
   display: flex;
-  flex-direction: row;
   gap: 8px;
-  flex-shrink: 0;
 }
 
 .action-btn {
@@ -1715,68 +1596,6 @@
 }
 
 .action-btn .material-icons {
-  font-size: 18px;
-}
-
-/* Dropdown Menu Styles */
-.dropdown-container {
-  position: relative;
-  display: inline-block;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  z-index: 1000;
-  min-width: 200px;
-  margin-top: 4px;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 16px;
-  border: none;
-  background: none;
-  text-align: left;
-  font-family: 'Roboto', sans-serif;
-  font-size: 14px;
-  color: #374151;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.dropdown-item:hover {
-  background: #f9fafb;
-}
-
-.dropdown-item.delete {
-  color: #dc2626;
-}
-
-.dropdown-item.delete:hover {
-  background: #fee2e2;
-}
-
-.dropdown-item.delete.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  color: #9ca3af;
-}
-
-.dropdown-item.delete.disabled:hover {
-  background: transparent;
-  color: #9ca3af;
-}
-
-.dropdown-item .material-icons {
   font-size: 18px;
 }
 
@@ -1807,76 +1626,24 @@
   margin: 0;
 }
 
-/* Password Reset Section */
-.password-reset-section {
-  margin-top: 24px;
-  padding: 20px;
-  background: #f9fafb;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-}
-
-.password-reset-title {
-  font-family: 'Roboto', sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 16px 0;
-}
-
-.password-reset-options {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.btn-secondary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #374151;
-  font-family: 'Roboto', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.btn-secondary .material-icons {
-  font-size: 18px;
-}
-
 /* Responsive Design for Facilitator Management */
 @media (max-width: 768px) {
   .facilitator-search-section {
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
   }
   
   .search-bar {
-    width: 100%;
-    margin-bottom: 16px;
+    max-width: none;
   }
   
   .filter-controls {
-    flex-direction: column;
-    gap: 12px;
-    align-items: stretch;
+    flex-wrap: wrap;
   }
   
   .filter-select {
     min-width: auto;
-    width: 100%;
+    flex: 1;
   }
   
   .facilitator-card {
@@ -1892,641 +1659,5 @@
   
   .facilitator-actions {
     justify-content: center;
-  }
-  
-  .password-reset-options {
-    flex-direction: column;
-  }
-  
-  .btn-secondary {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-/* Schedule Management Styles */
-.schedule-management {
-  display: none;
-}
-
-.schedule-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 32px;
-  padding: 24px;
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-}
-
-.schedule-header-content {
-  flex: 1;
-}
-
-.schedule-title {
-  font-family: 'Roboto', sans-serif;
-  font-size: 32px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.schedule-title::before {
-  content: "📅";
-  font-size: 24px;
-}
-
-.schedule-subtitle {
-  font-family: 'Roboto', sans-serif;
-  color: #6b7280;
-  font-size: 16px;
-  font-weight: 400;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.schedule-header-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.schedule-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #374151;
-  font-family: 'Roboto', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.schedule-action-btn:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.schedule-action-btn.secondary {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-}
-
-.schedule-action-btn.secondary:hover {
-  background: #e5e7eb;
-}
-
-/* Schedule Statistics */
-.schedule-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 32px;
-}
-
-.schedule-stat-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 24px;
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.schedule-stat-card:hover {
-  border-color: #d1d5db;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.schedule-stat-value {
-  font-family: 'Roboto', sans-serif;
-  font-size: 32px;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 8px;
-}
-
-.schedule-stat-label {
-  font-family: 'Roboto', sans-serif;
-  color: #6b7280;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-/* Schedule Search Section */
-.schedule-search-section {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  margin-bottom: 24px;
-  padding: 20px;
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-}
-
-/* Unit Schedule List */
-.unit-schedule-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.unit-schedule-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  transition: all 0.2s ease;
-}
-
-.unit-schedule-card:hover {
-  border-color: #d1d5db;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.unit-schedule-info {
-  flex: 1;
-}
-
-.unit-schedule-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.unit-schedule-name {
-  font-family: 'Roboto', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-}
-
-.unit-schedule-badges {
-  display: flex;
-  gap: 8px;
-}
-
-.badge-semester {
-  background: #dbeafe;
-  color: #1e40af;
-  border: 1px solid #93c5fd;
-}
-
-.badge-status {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 500;
-}
-
-.badge-published {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #86efac;
-}
-
-.badge-draft {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fcd34d;
-}
-
-.badge-unpublished {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
-}
-
-.unit-schedule-details {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.unit-schedule-meta {
-  display: flex;
-  gap: 24px;
-  align-items: center;
-}
-
-.unit-schedule-coordinator,
-.unit-schedule-dates {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #6b7280;
-  font-family: 'Roboto', sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-.unit-schedule-stats {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-
-.unit-schedule-stat {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #6b7280;
-  font-family: 'Roboto', sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-.unit-schedule-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #374151;
-  font-family: 'Roboto', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.action-btn:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.action-btn.unpublish {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #991b1b;
-}
-
-.action-btn.unpublish:hover {
-  background: #fee2e2;
-  border-color: #f87171;
-}
-
-.action-btn.view {
-  background: #eff6ff;
-  border-color: #93c5fd;
-  color: #1e40af;
-}
-
-.action-btn.view:hover {
-  background: #dbeafe;
-  border-color: #60a5fa;
-}
-
-.action-btn.history {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-  color: #374151;
-}
-
-.action-btn.history:hover {
-  background: #e5e7eb;
-  border-color: #9ca3af;
-}
-
-/* Unpublish Modal Styles */
-.unpublish-unit-info {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 24px;
-}
-
-.unpublish-unit-info h3 {
-  font-family: 'Roboto', sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 16px 0;
-}
-
-.unit-info-display {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.unit-info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.unit-info-item .label {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 500;
-  color: #374151;
-}
-
-.unit-info-item .value {
-  font-family: 'Roboto', sans-serif;
-  color: #111827;
-  font-weight: 600;
-}
-
-.status-published {
-  font-family: 'Roboto', sans-serif;
-  color: #166534;
-  background: #dcfce7;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.form-textarea {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-  font-family: 'Roboto', sans-serif;
-  resize: vertical;
-  min-height: 100px;
-}
-
-.form-textarea:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.checkbox-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  font-family: 'Roboto', sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-  color: #374151;
-}
-
-.checkbox-label input[type="checkbox"] {
-  display: none;
-}
-
-.checkbox-custom {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #d1d5db;
-  border-radius: 4px;
-  background: #ffffff;
-  position: relative;
-  transition: all 0.2s ease;
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
-  background: #3b82f6;
-  border-color: #3b82f6;
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
-  content: "✓";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.unpublish-warning {
-  display: flex;
-  gap: 12px;
-  padding: 16px;
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
-  border-radius: 8px;
-  margin-bottom: 24px;
-}
-
-.unpublish-warning .material-icons {
-  color: #f59e0b;
-  font-size: 20px;
-}
-
-.warning-content {
-  font-family: 'Roboto', sans-serif;
-  color: #92400e;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.5;
-}
-
-.btn-warning {
-  background: #dc2626;
-  color: #ffffff;
-  border: 1px solid #dc2626;
-}
-
-.btn-warning:hover {
-  background: #b91c1c;
-  border-color: #b91c1c;
-}
-
-/* Version History Modal Styles */
-.version-history-content {
-  max-height: 400px;
-  overflow-y: auto;
-  margin-bottom: 24px;
-}
-
-.version-history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.version-history-item {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.version-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.version-number {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 600;
-  color: #111827;
-  font-size: 16px;
-}
-
-.version-status {
-  font-family: 'Roboto', sans-serif;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.status-published {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-unpublished {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.version-details {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.version-date,
-.version-published,
-.version-unpublished,
-.version-reason,
-.version-admin {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #6b7280;
-  font-family: 'Roboto', sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-.version-reason,
-.version-admin {
-  font-family: 'Roboto', sans-serif;
-  color: #374151;
-  font-weight: 400;
-}
-
-.empty-version-history {
-  text-align: center;
-  padding: 40px 20px;
-  color: #6b7280;
-}
-
-.empty-version-history .material-icons {
-  font-size: 48px;
-  color: #d1d5db;
-  margin-bottom: 16px;
-}
-
-.empty-version-history h3 {
-  font-family: 'Roboto', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: #374151;
-  margin: 0 0 8px 0;
-}
-
-.empty-version-history p {
-  font-family: 'Roboto', sans-serif;
-  margin: 0;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-/* Responsive Design for Schedule Management */
-@media (max-width: 768px) {
-  .schedule-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 20px;
-  }
-  
-  .schedule-header-actions {
-    justify-content: stretch;
-  }
-  
-  .schedule-action-btn {
-    flex: 1;
-    justify-content: center;
-  }
-  
-  .schedule-stats {
-    grid-template-columns: 1fr;
-  }
-  
-  .schedule-search-section {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-  }
-  
-  .unit-schedule-card {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 20px;
-  }
-  
-  .unit-schedule-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-  
-  .unit-schedule-meta {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-  
-  .unit-schedule-stats {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-  
-  .unit-schedule-actions {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  
-  .unit-info-display {
-    gap: 8px;
-  }
-  
-  .unit-info-item {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 4px;
   }
 }

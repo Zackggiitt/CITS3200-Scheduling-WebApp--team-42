@@ -5177,40 +5177,6 @@ textarea::placeholder {
   color: inherit;
 }
 
-/* Facilitator header: profile dropdown */
-.user-profile-dropdown { position: relative; display: inline-block; }
-.user-profile-dropdown .user-info-link { display: inline-flex; align-items: center; gap: 6px; }
-.user-profile-dropdown .user-info-link .material-icons { font-size: 18px; }
-.fac-dropdown-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  min-width: 200px;
-  z-index: 1100;
-}
-.fac-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  text-decoration: none;
-  color: var(--color-text-primary);
-  font-size: 14px;
-  background: transparent;
-  width: 100%;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-}
-.fac-dropdown-item:hover { background: var(--surface-secondary); }
-.fac-dropdown-item .material-icons { font-size: 18px; color: #6b7280; }
-.fac-dropdown-item.danger { color: var(--status-red); }
-.fac-dropdown-item.danger .material-icons { color: var(--status-red); }
-
 /* Hide All Units button on specific tabs */
 .setup-view-active .all-units-btn,
 .swaps-view-active .all-units-btn {
@@ -5451,7 +5417,7 @@ textarea::placeholder {
   gap: 25px;
 }
 
-/* Responsive Design for Setup */
+/* Responsive Design */
 @media (max-width: 768px) {
   .setup-header {
     flex-direction: column;

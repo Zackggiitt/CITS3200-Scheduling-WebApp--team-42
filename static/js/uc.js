@@ -116,17 +116,6 @@ function openEditUnitModal() {
   const semesterYear = document.querySelector('.chip--neutral').textContent.trim();
   const [semester, year] = semesterYear.split(', ');
   
-  // Extract dates from the unit card display
-  const dateText = document.querySelector('.unit-card p.text-gray-500.text-sm')?.textContent?.trim();
-  const dateMatch = dateText ? dateText.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s*-\s*(\d{1,2}\/\d{1,2}\/\d{4})/) : null;
-  let startDate = null;
-  let endDate = null;
-  
-  if (dateMatch && dateMatch.length >= 3) {
-    startDate = dateMatch[1]; // MM/DD/YYYY format
-    endDate = dateMatch[2];    // MM/DD/YYYY format
-  }
-  
   // Get current unit ID from the URL or data attribute
   const currentUnitId = getUnitId();
   
@@ -144,41 +133,6 @@ function openEditUnitModal() {
     document.querySelector('input[name="semester"]').value = semester;
     document.querySelector('input[name="year"]').value = year;
     
-    // Set the dates if they were found
-    if (startDate && endDate) {
-      try {
-        // Convert MM/DD/YYYY to DD/MM/YYYY format for flatpickr
-        const startParts = startDate.split('/');
-        const endParts = endDate.split('/');
-        
-        if (startParts.length === 3 && endParts.length === 3) {
-          const startDateFormatted = `${startParts[1]}/${startParts[0]}/${startParts[2]}`;
-          const endDateFormatted = `${endParts[1]}/${endParts[0]}/${endParts[2]}`;
-          
-          // Ensure date pickers are available before setting dates
-          if (typeof startPicker !== 'undefined' && startPicker) {
-            startPicker.setDate(startDateFormatted, true);
-          }
-          if (typeof endPicker !== 'undefined' && endPicker) {
-            endPicker.setDate(endDateFormatted, true);
-          }
-          
-          // Update the hidden input values
-          const startInput = document.getElementById('start_date_input');
-          const endInput = document.getElementById('end_date_input');
-          if (startInput) startInput.value = startDateFormatted;
-          if (endInput) endInput.value = endDateFormatted;
-          
-          // Update the date summary
-          if (typeof updateDateSummary === 'function') {
-            updateDateSummary();
-          }
-        }
-      } catch (error) {
-        console.warn('Error setting unit dates in edit modal:', error);
-      }
-    }
-    
     // Update the modal title to indicate editing
     const modalTitle = document.querySelector('#create-unit-title');
     if (modalTitle) {
@@ -193,7 +147,7 @@ function openEditUnitModal() {
     
     // Skip to step 1 (Unit Information) since we're editing
     setStep(1);
-  }, 200);
+  }, 100);
 }
 
 // Also add this to handle clicking outside the modal
@@ -521,15 +475,125 @@ async function ensureDraftAndSetUnitId() {
 }
 
 // ===== CSV Upload (Step 3a) =====
-// Note: CSV upload logic is now handled by facilitator_review.js
-// This section only handles file name display
 const uploadInput = document.getElementById('setup_csv');
 const statusBox = document.getElementById('upload_status');
 const setupFlagEl = document.getElementById('setup_complete');
 const unitIdEl = document.getElementById('unit_id');
 const fileNameEl = document.getElementById('file_name');
 
-if (uploadInput && fileNameEl) {
+if (uploadInput) {
+  uploadInput.addEventListener('change', async (e) => {
+    statusBox.classList.remove('hidden', 'success', 'error');
+    statusBox.textContent = 'Uploading…';
+    setupFlagEl.value = 'false';
+
+    const file = e.target.files?.[0];
+    const unitId = unitIdEl.value;
+    if (!file) {
+      statusBox.textContent = 'No file selected.';
+      statusBox.classList.add('error');
+      fileNameEl.textContent = 'No file selected';
+      return;
+    }
+    fileNameEl.textContent = file.name;
+    if (!unitId) {
+      statusBox.textContent = 'Missing unit id. Go back to Step 2 and try again.';
+      statusBox.classList.add('error');
+      fileNameEl.textContent = 'No file selected';
+      return;
+    }
+
+    const form = new FormData();
+    form.append('unit_id', unitId);
+    form.append('setup_csv', file);
+
+    try {
+      const res = await fetch(UPLOAD_SETUP_CSV, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": CSRF_TOKEN,
+          "X-CSRF-Token": CSRF_TOKEN,
+        },
+        body: form,
+      });
+
+      let data;
+      try {
+        data = await res.clone().json();
+      } catch (e2) {
+        const text = await res.text();
+        throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
+      }
+
+      if (!res.ok || !data.ok) {
+        const errs = (data.errors || [data.error]).filter(Boolean);
+        statusBox.classList.add("error");
+        statusBox.innerHTML = `
+          <div class="font-semibold mb-1">Upload failed</div>
+          <ul class="list-disc list-inside text-sm">
+            ${errs.map((x) => `<li>${x}</li>`).join("")}
+          </ul>`;
+        setupFlagEl.value = "false";
+        fileNameEl.textContent = "No file selected";
+        statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        return;
+      }
+
+      statusBox.classList.add("success");
+      statusBox.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-semibold">Upload successful</div>
+            <div class="text-sm mt-1">
+              Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
+            </div>
+          </div>
+          <button 
+            id="remove_csv_btn" 
+            class="ml-3 text-red-600 hover:text-red-800 transition-colors"
+            title="Remove CSV data"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>`;
+      setupFlagEl.value = "true";
+      fileNameEl.textContent = file.name;
+      statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+
+      // Ensure CSV upload card remains visible after successful upload
+      const wrapUpload = document.getElementById('setup_wrap');
+      if (wrapUpload) {
+        wrapUpload.classList.remove('hidden');
+      }
+      
+      // Refresh the facilitator list to show newly uploaded facilitators
+      await populateReview();
+      
+      showCalendarIfReady();
+      if (!window.__calendarInitRan) {
+        window.__calendarInitRan = true;
+        initCalendar();
+      } else {
+        refreshCalendarRange();
+      }
+      
+      // Add event listener for remove button
+      const removeBtn = document.getElementById('remove_csv_btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', removeFacilitatorsCsv);
+      }
+    } catch (err) {
+      console.error(err);
+      statusBox.textContent = String(err.message || "Unexpected error during upload.");
+      statusBox.classList.add("error");
+      setupFlagEl.value = "false";
+      fileNameEl.textContent = "No file selected";
+      statusBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  });
+
   uploadInput.addEventListener('change', (e) => {
     const f = e.target.files?.[0];
     fileNameEl.textContent = f ? f.name : 'No file selected';
@@ -2548,10 +2612,10 @@ function initBulkStaffing() {
   const supportDecreaseBtn = document.getElementById('support_decrease');
   const supportIncreaseBtn = document.getElementById('support_increase');
   const filterSelect = document.getElementById('bulk_filter_select');
+  const filterTypeRadios = document.querySelectorAll('input[name="bulk_filter_type"]');
   const previewBtn = document.getElementById('preview_bulk');
   const applyBtn = document.getElementById('apply_bulk');
   const resetBtn = document.getElementById('reset_bulk');
-  const moduleSelection = document.getElementById('module_selection');
 
   if (!leadCountInput || !supportCountInput) return;
 
@@ -2567,21 +2631,16 @@ function initBulkStaffing() {
   supportDecreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, -1));
   supportIncreaseBtn?.addEventListener('click', () => updateCounter(supportCountInput, 1));
 
-  // Handle radio button changes for filter type
-  const filterTypeRadios = document.querySelectorAll('input[name="bulk_filter_type"]');
+  // Filter type change
   filterTypeRadios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      if (e.target.value === 'all_sessions') {
-        moduleSelection.classList.add('hidden');
-      } else if (e.target.value === 'module') {
-        moduleSelection.classList.remove('hidden');
-        updateFilterOptions();
-      }
+    radio.addEventListener('change', () => {
+      updateFilterOptions();
     });
   });
 
-  // Update filter options (only modules now)
+  // Update filter options based on selected type
   async function updateFilterOptions() {
+    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const select = filterSelect;
     
     if (!select) return;
@@ -2589,16 +2648,65 @@ function initBulkStaffing() {
     // Clear existing options
     select.innerHTML = '<option value="">Choose an option...</option>';
 
-    // Get unique modules
-    const modules = await getModules();
-    modules.forEach(module => {
-      const option = document.createElement('option');
-      option.value = module.value;
-      option.textContent = module.label;
-      select.appendChild(option);
-    });
+    if (selectedType === 'activity') {
+      // Get unique session types from created sessions
+      const sessionTypes = await getSessionTypes();
+      sessionTypes.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type.value;
+        option.textContent = type.label;
+        select.appendChild(option);
+      });
+    } else if (selectedType === 'session_name') {
+      // Get unique session names
+      const sessionNames = await getSessionNames();
+      sessionNames.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name.value;
+        option.textContent = name.label;
+        select.appendChild(option);
+      });
+    } else if (selectedType === 'module') {
+      // Get unique modules
+      const modules = await getModules();
+      modules.forEach(module => {
+        const option = document.createElement('option');
+        option.value = module.value;
+        option.textContent = module.label;
+        select.appendChild(option);
+      });
+    }
   }
 
+  // Get session types from created sessions
+  async function getSessionTypes() {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return [];
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=activity`);
+      const data = await response.json();
+      return data.ok ? data.options : [];
+    } catch (e) {
+      console.error('Failed to fetch session types:', e);
+      return [];
+    }
+  }
+
+  // Get session names from created sessions
+  async function getSessionNames() {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return [];
+    
+    try {
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=session_name`);
+      const data = await response.json();
+      return data.ok ? data.options : [];
+    } catch (e) {
+      console.error('Failed to fetch session names:', e);
+      return [];
+    }
+  }
 
   // Get modules from the current unit
   async function getModules() {
@@ -2617,35 +2725,33 @@ function initBulkStaffing() {
 
   // Preview functionality
   previewBtn?.addEventListener('click', async () => {
-    const selectedFilterType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const selectedFilter = filterSelect.value;
     const leadCount = parseInt(leadCountInput.value) || 0;
     const supportCount = parseInt(supportCountInput.value) || 0;
     
-    if (selectedFilterType === 'module' && !selectedFilter) {
-      alert('Please select a module first.');
+    if (!selectedFilter) {
+      alert('Please select a filter option first.');
       return;
     }
 
     // Show preview of what will be updated
-    const sessions = await getFilteredSessions(selectedFilterType, selectedFilter);
+    const sessions = await getFilteredSessions(selectedFilter);
     alert(`Preview: ${sessions.length} sessions will be updated with ${leadCount} lead staff and ${supportCount} support staff.`);
   });
 
   // Apply functionality
   applyBtn?.addEventListener('click', async () => {
-    const selectedFilterType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const selectedFilter = filterSelect.value;
     const leadCount = parseInt(leadCountInput.value) || 0;
     const supportCount = parseInt(supportCountInput.value) || 0;
     
-    if (selectedFilterType === 'module' && !selectedFilter) {
-      alert('Please select a module first.');
+    if (!selectedFilter) {
+      alert('Please select a filter option first.');
       return;
     }
 
     // Apply bulk staffing to filtered sessions
-    await applyBulkStaffing(selectedFilterType, selectedFilter, leadCount, supportCount);
+    await applyBulkStaffing(selectedFilter, leadCount, supportCount);
   });
 
   // Reset functionality
@@ -2655,16 +2761,14 @@ function initBulkStaffing() {
   });
 
   // Get filtered sessions based on selected filter
-  async function getFilteredSessions(filterType, filterValue) {
+  async function getFilteredSessions(filterValue) {
     const unitId = document.getElementById('unit_id')?.value;
     if (!unitId) return [];
     
+    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
+    
     try {
-      let url = `/unitcoordinator/units/${unitId}/bulk-staffing/sessions?type=${filterType}`;
-      if (filterType === 'module' && filterValue) {
-        url += `&value=${encodeURIComponent(filterValue)}`;
-      }
-      const response = await fetch(url);
+      const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/sessions?type=${selectedType}&value=${encodeURIComponent(filterValue)}`);
       const data = await response.json();
       return data.ok ? data.sessions : [];
     } catch (e) {
@@ -2674,35 +2778,30 @@ function initBulkStaffing() {
   }
 
   // Apply bulk staffing to sessions
-  async function applyBulkStaffing(filterType, filterValue, leadCount, supportCount) {
+  async function applyBulkStaffing(filterValue, leadCount, supportCount) {
     const unitId = document.getElementById('unit_id')?.value;
     if (!unitId) {
       alert('No unit ID found. Please complete the previous steps first.');
       return;
     }
     
+    const selectedType = document.querySelector('input[name="bulk_filter_type"]:checked')?.value;
     const respectOverrides = document.getElementById('respect_overrides')?.checked || false;
     
     try {
-      const requestBody = {
-        type: filterType,
-        lead_staff_required: leadCount,
-        support_staff_required: supportCount,
-        respect_overrides: respectOverrides
-      };
-      
-      // Only add value for module type
-      if (filterType === 'module') {
-        requestBody.value = filterValue;
-      }
-      
       const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': window.CSRF_TOKEN
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({
+          type: selectedType,
+          value: filterValue,
+          lead_staff_required: leadCount,
+          support_staff_required: supportCount,
+          respect_overrides: respectOverrides
+        })
       });
       
       const data = await response.json();
@@ -3082,8 +3181,22 @@ function showSampleSessionsData() {
     todayCountElement.textContent = sampleData.today.length;
   }
   
-  // Load real attendance data from the API
-  loadAttendanceData();
+  // Create sample facilitator data for the activity log
+  const sampleFacilitators = [
+    { name: "John Smith", session_count: 5 },
+    { name: "Sarah Johnson", session_count: 3 },
+    { name: "Mike Davis", session_count: 7 },
+    { name: "Lisa Wilson", session_count: 4 },
+    { name: "Alex Chen", session_count: 6 },
+    { name: "Emma Rodriguez", session_count: 4 },
+    { name: "David Kim", session_count: 8 },
+    { name: "Maria Garcia", session_count: 5 },
+    { name: "James Wilson", session_count: 7 },
+    { name: "Sophie Brown", session_count: 3 },
+    { name: "Ryan Taylor", session_count: 6 },
+    { name: "Olivia Martinez", session_count: 4 }
+  ];
+  renderActivityLog(sampleFacilitators);
 }
 
 function waitForVisible(el, tries = 20) {
@@ -3353,9 +3466,7 @@ function renderActivityLog(facilitatorData = []) {
     // Show empty state
     tableBody.innerHTML = `
       <div class="px-6 py-8 text-center">
-        <span class="material-icons text-gray-400 text-4xl mb-2">person_add</span>
-        <div class="text-xs text-gray-500 mb-2">No facilitators assigned to sessions yet</div>
-        <div class="text-xs text-gray-400">Assign facilitators to sessions in the Schedule tab</div>
+        <div class="text-xs text-gray-500">No facilitator data available</div>
       </div>
     `;
   } else {
@@ -3367,20 +3478,22 @@ function createFacilitatorRow(facilitator, index) {
   const row = document.createElement('div');
   row.className = 'grid grid-cols-5 gap-4 px-6 py-3 hover:bg-gray-50';
   
-  // Use real data from the API
-  const assignedHours = facilitator.assigned_hours || 0;
-  const totalHours = facilitator.total_hours || 0;
-  const studentNumber = facilitator.student_number || facilitator.email.split('@')[0] || `STU${String(index + 1).padStart(4, '0')}`;
-  const sessionDate = facilitator.date || 'N/A';
+  // Generate random assigned hours data for demo
+  const assignedHours = generateAssignedHours();
+  const totalHours = generateTotalHours();
+  
+  // Generate a student number for demo purposes
+  // In real implementation, this would come from facilitator.student_number or facilitator.staff_number
+  const studentNumber = facilitator.student_number || facilitator.staff_number || `STU${String(index + 1).padStart(4, '0')}`;
   
   row.innerHTML = `
     <div class="flex items-center">
       <span class="text-xs font-medium text-gray-900">${facilitator.name}</span>
     </div>
     <div class="text-xs text-gray-600 font-mono">${studentNumber}</div>
-    <div class="text-xs text-gray-600">${sessionDate}</div>
-    <div class="text-xs text-gray-600 text-center">${assignedHours}h</div>
-    <div class="text-xs text-gray-600 text-center">${totalHours}h</div>
+    <div class="text-xs text-gray-600">${getCurrentDate()}</div>
+    <div class="text-xs text-gray-600 text-center">${assignedHours}</div>
+    <div class="text-xs text-gray-600 text-center">${totalHours}</div>
   `;
   
   return row;
@@ -4033,9 +4146,46 @@ function setupScheduleEventListeners() {
   // Auto assign button
   const autoAssignBtn = document.querySelector('.auto-assign-btn');
   if (autoAssignBtn) {
-    autoAssignBtn.addEventListener('click', () => {
-      // TODO: Implement auto-assign functionality
-      console.log('Auto-assign clicked');
+    autoAssignBtn.addEventListener('click', async () => {
+      const unitId = getUnitId();
+      if (!unitId) {
+        alert('No unit selected');
+        return;
+      }
+
+      // Show loading state
+      const originalText = autoAssignBtn.textContent;
+      autoAssignBtn.textContent = 'Assigning...';
+      autoAssignBtn.disabled = true;
+
+      try {
+        const response = await fetch(`/unitcoordinator/units/${unitId}/auto-assign`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF_TOKEN
+          }
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          alert(`Auto-assignment completed successfully! ${result.assignments_created} assignments created.`);
+          // Refresh the calendar to show new assignments
+          if (typeof calendar !== 'undefined' && calendar) {
+            calendar.refetchEvents();
+          }
+        } else {
+          alert(`Auto-assignment failed: ${result.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Auto-assign error:', error);
+        alert('Auto-assignment failed: Network error');
+      } finally {
+        // Restore button state
+        autoAssignBtn.textContent = originalText;
+        autoAssignBtn.disabled = false;
+      }
     });
   }
 }
@@ -4259,6 +4409,7 @@ function renderListView() {
           <div class="session-detail">
             <span class="material-icons">book</span>
             <span class="session-detail-value">${session.moduleType}</span>
+            <span>${session.students} students</span>
           </div>
         </div>
       </div>

@@ -14,10 +14,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const headerNotificationBadge = document.getElementById('header-notification-badge');
     const popupCloseBtn = document.getElementById('popup-close');
     
-    // Profile dropdown elements (facilitator header)
-    const facProfileTrigger = document.getElementById('fac-profile-trigger');
-    const facDropdownMenu = document.getElementById('fac-dropdown-menu');
-    
     // Navigation click handlers
     navItems.forEach(item => {
         item.addEventListener('click', function(e) {
@@ -30,35 +26,42 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show/hide sections
             const href = this.getAttribute('href');
 
-            if (href === '#unavailability') {
-                // Show unavailability view
+            if (href === '#setup') {
+                console.log('Setup tab clicked - initializing setup view');
+                // Show setup view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                unavailabilityView.style.display = 'block';
+                setupView.style.display = 'block';
                 calendarView.style.display = 'none';
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
                 // Add setup-view-active class to hide All Units button
-        document.body.classList.add('setup-view-active');
+                document.body.classList.add('setup-view-active');
                 document.body.classList.remove('swaps-view-active');
-                // Show unit selector in unavailability view
+                // Show unit selector in setup view
                 if (unitSelector) unitSelector.style.display = 'block';
-                // Hide unavailability alert in unavailability view
+                // Hide unavailability alert in setup view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
-                // Initialize unavailability functionality
-                initSetupView();
+                // Initialize setup functionality
+                console.log('About to call initSetupView()');
+                try {
+                    initSetupView();
+                } catch (error) {
+                    console.error('Error in initSetupView:', error);
+                    alert('Error in initSetupView: ' + error.message);
+                }
             } else if (href === '#schedule') {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                unavailabilityView.style.display = 'none';
+                setupView.style.display = 'none';
                 swapsView.style.display = 'none';
                 calendarView.style.display = 'block';
                 // Hide unit selector in schedule view
                 if (unitSelector) unitSelector.style.display = 'none';
                 document.body.classList.add('calendar-view-active');
                 // Remove view-specific classes since unit selector is hidden anyway
-                document.body.classList.remove('setup-view-active');
+                document.body.classList.remove('unavailability-view-active');
                 document.body.classList.remove('swaps-view-active');
                 initCalendar();
                 // Hide unavailability alert in schedule view
@@ -67,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (href === '#swaps') {
                 // Show swaps view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                unavailabilityView.style.display = 'none';
+                setupView.style.display = 'none';
                 calendarView.style.display = 'none';
                 swapsView.style.display = 'block';
                 // Remove calendar-view-active class to ensure unit selector is visible
@@ -85,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
-                unavailabilityView.style.display = 'none';
+                setupView.style.display = 'none';
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
@@ -152,34 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 hideNotificationPopup();
             }
         }
-        // Close facilitator profile dropdown when clicking outside
-        if (facDropdownMenu && facDropdownMenu.style.display === 'block') {
-            const withinTrigger = facProfileTrigger && facProfileTrigger.contains(e.target);
-            const withinMenu = facDropdownMenu.contains(e.target);
-            if (!withinTrigger && !withinMenu) {
-                facDropdownMenu.style.display = 'none';
-                if (facProfileTrigger) facProfileTrigger.setAttribute('aria-expanded', 'false');
-            }
-        }
     });
-
-    // Toggle facilitator profile dropdown
-    if (facProfileTrigger && facDropdownMenu) {
-        facProfileTrigger.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const isOpen = facDropdownMenu.style.display === 'block';
-            facDropdownMenu.style.display = isOpen ? 'none' : 'block';
-            facProfileTrigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-        });
-        // ESC closes the dropdown
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && facDropdownMenu.style.display === 'block') {
-                facDropdownMenu.style.display = 'none';
-                facProfileTrigger.setAttribute('aria-expanded', 'false');
-            }
-        });
-    }
 
     // Popup filter functionality
     const popupFilterBtns = document.querySelectorAll('.popup-filter-btn');
@@ -945,9 +921,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 unavailabilityNavItem.classList.add('active');
             }
             
-            // Hide all sections and show unavailability
+            // Hide all sections and show setup
             dashboardSections.forEach(section => section.style.display = 'none');
-            unavailabilityView.style.display = 'block';
+            setupView.style.display = 'block';
             calendarView.style.display = 'none';
             swapsView.style.display = 'none';
             // Hide unavailability alert in unavailability view
@@ -955,7 +931,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
             
             // Initialize unavailability functionality
-            initSetupView();
+            initUnavailabilityView();
         }
     });
 
@@ -1258,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Show unavailability alert only if we're on the dashboard tab
         const unavailabilityAlert = document.getElementById('unavailability-alert');
-        const setupView = document.getElementById('setup-view');
+        const unavailabilityView = document.getElementById('unavailability-view');
         const swapsView = document.getElementById('swaps-view');
         
         if (dashboardNav) dashboardNav.style.display = 'flex';
@@ -1268,9 +1244,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Only show alert if we're on dashboard tab (other views are hidden)
         if (unavailabilityAlert) {
-            if ((unavailabilityView && unavailabilityView.style.display === 'block') ||
+            if ((setupView && setupView.style.display === 'block') ||
                 (swapsView && swapsView.style.display === 'block')) {
-                // We're on unavailability or swaps tab, hide the alert
+                // We're on setup or swaps tab, hide the alert
                 unavailabilityAlert.style.display = 'none';
             } else {
                 // We're on dashboard tab, show the alert
