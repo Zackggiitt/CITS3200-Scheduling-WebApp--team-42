@@ -43,19 +43,19 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="first_name">First Name *</label>
-                        <input type="text" id="first_name" name="first_name" value="{{ facilitator_user.first_name or '' }}" required>
+                        <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="last_name">Last Name *</label>
-                        <input type="text" id="last_name" name="last_name" value="{{ facilitator_user.last_name or '' }}" required>
+                        <input type="text" id="last_name" name="last_name" value="{{ user.last_name or '' }}" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="email">Email *</label>
-                        <input type="email" id="email" name="email" value="{{ facilitator_user.email }}" required>
+                        <input type="email" id="email" name="email" value="{{ user.email }}" required>
                     </div>
                     
                     <div class="form-group">
@@ -78,12 +78,12 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="phone_number">Phone Number</label>
-                        <input type="tel" id="phone_number" name="phone_number" value="{{ facilitator_user.phone_number or '' }}">
+                        <input type="tel" id="phone_number" name="phone_number" value="{{ user.phone_number or '' }}">
                     </div>
                     
                     <div class="form-group">
                         <label for="staff_number">Staff Number</label>
-                        <input type="text" id="staff_number" name="staff_number" value="{{ facilitator_user.staff_number or '' }}">
+                        <input type="text" id="staff_number" name="staff_number" value="{{ user.staff_number or '' }}">
                     </div>
                 </div>
 

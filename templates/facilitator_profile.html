@@ -32,7 +32,7 @@
         <div class="profile-card">
             <div class="profile-card-header">
                 <h1 class="profile-card-title">Account Information</h1>
-                {% if current_user and current_user.role.value == 'facilitator' %}
+                {% if user and user.role.value == 'facilitator' %}
                     <a href="{{ url_for('facilitator.edit_profile') }}" class="edit-profile-btn">Edit Profile</a>
                 {% endif %}
             </div>
