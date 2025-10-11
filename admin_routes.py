@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import db, User, UserRole, Unit, Module, FacilitatorSkill, SkillLevel, SwapRequest, SwapStatus, Session, Assignment, UnitFacilitator, Unavailability, RecurringPattern, ScheduleStatus
+from models import db, User, UserRole, Unit, Module, FacilitatorSkill, SkillLevel, SwapRequest, SwapStatus, Session, Assignment, UnitFacilitator, Unavailability, RecurringPattern
 from werkzeug.security import generate_password_hash
 from datetime import datetime, time
 from auth import admin_required, get_current_user
@@ -39,13 +39,6 @@ def dashboard():
     # Count admins to check if we can delete the last one
     admin_count = User.query.filter_by(role=UserRole.ADMIN).count()
     
-    # Get all units for schedule management
-    units = Unit.query.all()
-    
-    # Calculate schedule statistics
-    published_units_count = Unit.query.filter_by(schedule_status=ScheduleStatus.PUBLISHED).count()
-    draft_units_count = Unit.query.filter_by(schedule_status=ScheduleStatus.DRAFT).count()
-    unpublished_units_count = Unit.query.filter_by(schedule_status=ScheduleStatus.UNPUBLISHED).count()
     
     # Calculate additional statistics
     active_facilitators = User.query.filter_by(role=UserRole.FACILITATOR).count()  # Keep facilitator count for compatibility
@@ -103,11 +96,7 @@ def dashboard():
                          expert_facilitators=expert_facilitators,
                          senior_facilitators=senior_facilitators,
                          junior_facilitators=junior_facilitators,
-                         admin_count=admin_count,
-                         units=units,
-                         published_units_count=published_units_count,
-                         draft_units_count=draft_units_count,
-                         unpublished_units_count=unpublished_units_count)
+                         admin_count=admin_count)
 
 @admin_bp.route('/delete-employee/<int:employee_id>', methods=['DELETE'])
 @admin_required
@@ -1467,159 +1456,3 @@ def admin_delete_unavailability(item_id):
         db.session.rollback()
         return jsonify({'ok': False, 'error': f'Failed to delete: {e}'}), 500
 
-@admin_bp.route('/unpublish-schedule', methods=['POST'])
-@admin_required
-def unpublish_schedule():
-    """Unpublish a unit's schedule, reverting it from Published to Draft state"""
-    try:
-        data = request.get_json()
-        print(f"Unpublish schedule request received: {data}")
-        
-        # Validate required fields
-        if not data.get('unitId'):
-            return jsonify({'success': False, 'error': 'Unit ID is required'}), 400
-        if not data.get('reason'):
-            return jsonify({'success': False, 'error': 'Reason for unpublishing is required'}), 400
-        
-        # Get the unit to unpublish
-        unit = Unit.query.get(data['unitId'])
-        if not unit:
-            return jsonify({'success': False, 'error': 'Unit not found'}), 404
-        
-        # Check if unit is currently published
-        if not unit.schedule_status or unit.schedule_status != ScheduleStatus.PUBLISHED:
-            return jsonify({'success': False, 'error': 'Unit schedule is not currently published'}), 400
-        
-        # Get current user (admin performing the unpublish)
-        current_user = get_current_user()
-        
-        # Create version history entry before unpublishing
-        version_history = []
-        if unit.version_history:
-            try:
-                version_history = json.loads(unit.version_history)
-            except (json.JSONDecodeError, TypeError):
-                version_history = []
-        
-        # Add current published version to history
-        version_entry = {
-            'version': len(version_history) + 1,
-            'status': 'published',
-            'published_at': unit.published_at.isoformat() if unit.published_at else None,
-            'unpublished_at': datetime.utcnow().isoformat(),
-            'unpublished_by': current_user.full_name,
-            'unpublish_reason': data['reason'],
-            'created_at': datetime.utcnow().isoformat()
-        }
-        version_history.append(version_entry)
-        
-        # Update unit with unpublish information
-        unit.schedule_status = ScheduleStatus.UNPUBLISHED
-        unit.unpublished_at = datetime.utcnow()
-        unit.unpublished_by = current_user.id
-        unit.unpublish_reason = data['reason']
-        unit.version_history = json.dumps(version_history)
-        
-        # Save changes
-        db.session.commit()
-        
-        # TODO: Send notifications if requested
-        if data.get('notifyCoordinator'):
-            # TODO: Implement email notification to unit coordinator
-            print(f"Would send notification to coordinator: {unit.creator.email}")
-        
-        if data.get('notifyFacilitators'):
-            # TODO: Implement email notification to assigned facilitators
-            print("Would send notification to assigned facilitators")
-        
-        print(f"Successfully unpublished schedule for unit: {unit.unit_code}")
-        
-        return jsonify({
-            'success': True, 
-            'message': f'Schedule for {unit.unit_code} has been unpublished successfully',
-            'unit_id': unit.id,
-            'unit_code': unit.unit_code,
-            'new_status': 'unpublished'
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error unpublishing schedule: {e}")
-        import traceback
-        print(f"Traceback: {traceback.format_exc()}")
-        return jsonify({'success': False, 'error': f'An error occurred while unpublishing the schedule: {str(e)}'}), 500
-
-@admin_bp.route('/publish-schedule', methods=['POST'])
-@admin_required
-def publish_schedule():
-    """Publish a unit's schedule, changing it from Draft to Published state"""
-    try:
-        data = request.get_json()
-        print(f"Publish schedule request received: {data}")
-        
-        # Validate required fields
-        if not data.get('unitId'):
-            return jsonify({'success': False, 'error': 'Unit ID is required'}), 400
-        
-        # Get the unit to publish
-        unit = Unit.query.get(data['unitId'])
-        if not unit:
-            return jsonify({'success': False, 'error': 'Unit not found'}), 404
-        
-        # Check if unit is currently in draft or unpublished state
-        if unit.schedule_status and unit.schedule_status == ScheduleStatus.PUBLISHED:
-            return jsonify({'success': False, 'error': 'Unit schedule is already published'}), 400
-        
-        # Update unit with publish information
-        unit.schedule_status = ScheduleStatus.PUBLISHED
-        unit.published_at = datetime.utcnow()
-        unit.unpublished_at = None
-        unit.unpublished_by = None
-        unit.unpublish_reason = None
-        
-        # Save changes
-        db.session.commit()
-        
-        print(f"Successfully published schedule for unit: {unit.unit_code}")
-        
-        return jsonify({
-            'success': True, 
-            'message': f'Schedule for {unit.unit_code} has been published successfully',
-            'unit_id': unit.id,
-            'unit_code': unit.unit_code,
-            'new_status': 'published'
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error publishing schedule: {e}")
-        import traceback
-        print(f"Traceback: {traceback.format_exc()}")
-        return jsonify({'success': False, 'error': f'An error occurred while publishing the schedule: {str(e)}'}), 500
-
-@admin_bp.route('/version-history/<int:unit_id>', methods=['GET'])
-@admin_required
-def get_version_history(unit_id):
-    """Get version history for a unit's schedule"""
-    try:
-        unit = Unit.query.get(unit_id)
-        if not unit:
-            return jsonify({'success': False, 'error': 'Unit not found'}), 404
-        
-        version_history = []
-        if unit.version_history:
-            try:
-                version_history = json.loads(unit.version_history)
-            except (json.JSONDecodeError, TypeError):
-                version_history = []
-        
-        return jsonify({
-            'success': True,
-            'unit_id': unit.id,
-            'unit_code': unit.unit_code,
-            'version_history': version_history
-        }), 200
-        
-    except Exception as e:
-        print(f"Error getting version history: {e}")
-        return jsonify({'success': False, 'error': f'An error occurred while getting version history: {str(e)}'}), 500
