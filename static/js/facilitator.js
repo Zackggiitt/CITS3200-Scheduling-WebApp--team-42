@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
     const unitSelector = document.getElementById('unit-selector');
     const calendarView = document.getElementById('calendar-view');
-    const unavailabilityView = document.getElementById('unavailability-view');
+    const setupView = document.getElementById('setup-view');
     const swapsView = document.getElementById('swaps-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
     
@@ -38,8 +38,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
-                // Add unavailability-view-active class to hide All Units button
-                document.body.classList.add('unavailability-view-active');
+                 // Add setup-view-active class to hide All Units button
+                document.body.classList.add('setup-view-active');
                 document.body.classList.remove('swaps-view-active');
                 // Show unit selector in unavailability view
                 if (unitSelector) unitSelector.style.display = 'block';
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
                 // Initialize unavailability functionality
-                initUnavailabilityView();
+                initSetupView();
             } else if (href === '#schedule') {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (unitSelector) unitSelector.style.display = 'none';
                 document.body.classList.add('calendar-view-active');
                 // Remove view-specific classes since unit selector is hidden anyway
-                document.body.classList.remove('unavailability-view-active');
+                document.body.classList.remove('setup-view-active');
                 document.body.classList.remove('swaps-view-active');
                 initCalendar();
                 // Hide unavailability alert in schedule view
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.body.classList.remove('calendar-view-active');
                 // Add swaps-view-active class to hide All Units button
                 document.body.classList.add('swaps-view-active');
-                document.body.classList.remove('unavailability-view-active');
+                document.body.classList.remove('setup-view-active');
                 // Show unit selector in swaps view
                 if (unitSelector) unitSelector.style.display = 'block';
                 // Hide unavailability alert in swaps view
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
                 // Remove view-specific classes to show All Units button
-                document.body.classList.remove('unavailability-view-active');
+                document.body.classList.remove('setup-view-active');
                 document.body.classList.remove('swaps-view-active');
                 // Show unit selector in dashboard view
                 if (unitSelector) unitSelector.style.display = 'block';
@@ -955,7 +955,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
             
             // Initialize unavailability functionality
-            initUnavailabilityView();
+            initSetupView();
         }
     });
 
@@ -1258,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Show unavailability alert only if we're on the dashboard tab
         const unavailabilityAlert = document.getElementById('unavailability-alert');
-        const unavailabilityView = document.getElementById('unavailability-view');
+        const setupView = document.getElementById('setup-view');
         const swapsView = document.getElementById('swaps-view');
         
         if (dashboardNav) dashboardNav.style.display = 'flex';
@@ -3278,4 +3278,380 @@ function showNotification(message, type = 'info') {
     // This would integrate with your existing notification system
     console.log(`${type.toUpperCase()}: ${message}`);
     // You can implement a toast notification here
+}
+
+// Setup view initialization function
+function initSetupView() {
+    console.log('Initializing setup view');
+    console.log('window.currentUnit:', window.currentUnit);
+
+    // Get current unit from window data
+    if (window.currentUnit) {
+        currentUnitId = window.currentUnit.id;
+        currentUnit = window.currentUnit;
+        console.log('Current unit set:', currentUnit);
+    } else {
+        console.error('No current unit found');
+        return;
+    }
+
+    // Update unit information display
+    updateUnitInfo();
+
+    // Initialize tab functionality
+    initSetupTabs();
+
+    // Initialize unavailability section (same as before)
+    loadUnavailabilityData();
+    initUnavailabilityCalendar();
+    initUnavailabilityModal();
+    initUnavailabilityControls();
+    initAdvancedModalFeatures();
+    initializeAJAXFeatures();
+
+    // Initialize new setup sections
+    initProficiencySection();
+    initSkillSetSection();
+    initSetupSaveButton();
+}
+
+// Initialize setup tabs functionality
+function initSetupTabs() {
+    const tabs = document.querySelectorAll('.setup-tab');
+    const tabContents = document.querySelectorAll('.setup-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.getAttribute('data-tab');
+
+            // Remove active class from all tabs and contents
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // Add active class to clicked tab and corresponding content
+            tab.classList.add('active');
+            const targetContent = document.getElementById(targetTab + '-tab-content');
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+
+    // Activate first tab by default
+    if (tabs.length > 0) {
+        tabs[0].click();
+    }
+}
+
+// Initialize proficiency section
+function initProficiencySection() {
+    console.log('Initializing proficiency section');
+    // Load existing proficiency data if any
+    loadProficiencyData();
+    // Initialize proficiency level selection
+    initProficiencyLevelSelection();
+}
+
+// Initialize proficiency level selection functionality
+function initProficiencyLevelSelection() {
+    const proficiencyLevels = document.querySelectorAll('.proficiency-level');
+
+    proficiencyLevels.forEach(level => {
+        level.addEventListener('click', () => {
+            const radio = level.querySelector('input[type="radio"]');
+            if (radio) {
+                radio.checked = true;
+
+                // Remove selected class from siblings
+                const moduleCard = level.closest('.proficiency-module-card');
+                const siblingLevels = moduleCard.querySelectorAll('.proficiency-level');
+                siblingLevels.forEach(sibling => sibling.classList.remove('selected'));
+
+                // Add selected class to clicked level
+                level.classList.add('selected');
+            }
+        });
+    });
+}
+
+// Initialize skill set section
+function initSkillSetSection() {
+    console.log('Initializing skill set section');
+    // Load existing skill set data if any
+    loadSkillSetData();
+}
+
+// Initialize setup save button
+function initSetupSaveButton() {
+    console.log('=== Initializing Setup Save Button ===');
+
+    // Use a timeout to ensure DOM is fully loaded
+    setTimeout(() => {
+        const saveButton = document.getElementById('save-all-setup');
+        console.log('Save button found:', saveButton);
+        if (saveButton) {
+            // Remove any existing event listeners first
+            saveButton.removeEventListener('click', saveAllSetupData);
+            // Add the event listener
+            saveButton.addEventListener('click', saveAllSetupData);
+            console.log('Event listener added to save button');
+
+            // Test the button by adding a visual indicator
+            saveButton.style.border = '2px solid red';
+            console.log('Added red border to save button for testing');
+        } else {
+            console.error('Save button not found! Retrying in 1 second...');
+            // Retry after 1 second
+            setTimeout(() => {
+                const retryButton = document.getElementById('save-all-setup');
+                if (retryButton) {
+                    retryButton.addEventListener('click', saveAllSetupData);
+                    console.log('Event listener added on retry');
+                } else {
+                    console.error('Save button still not found after retry!');
+                }
+            }, 1000);
+        }
+    }, 100);
+}
+
+// Load proficiency data
+function loadProficiencyData() {
+    console.log('Loading proficiency data...');
+    console.log('currentUnit in loadProficiencyData:', currentUnit);
+
+    if (!currentUnit) {
+        console.error('No currentUnit available for loading proficiency data');
+        return;
+    }
+
+    const apiUrl = `/facilitator/get_unit_modules?unit_id=${currentUnit.id}`;
+    console.log('Making API call to:', apiUrl);
+
+    // Load modules for the current unit
+    fetch(apiUrl)
+        .then(response => {
+            console.log('API response received:', response.status, response.statusText);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('API data received:', data);
+            if (data.success) {
+                renderProficiencyModules(data.modules);
+            } else {
+                console.error('Error loading modules:', data.message);
+                // Fallback to sample data for demo
+                renderProficiencyModules([
+                    { id: 1, name: 'Introduction to Programming', type: 'lab' },
+                    { id: 2, name: 'Data Structures and Algorithms', type: 'tutorial' },
+                    { id: 3, name: 'Software Engineering', type: 'workshop' },
+                    { id: 4, name: 'Computer Graphics', type: 'lab' }
+                ]);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading modules:', error);
+            // Fallback to sample data for demo
+            renderProficiencyModules([
+                { id: 1, name: 'Introduction to Programming', type: 'lab' },
+                { id: 2, name: 'Data Structures and Algorithms', type: 'tutorial' },
+                { id: 3, name: 'Software Engineering', type: 'workshop' },
+                { id: 4, name: 'Computer Graphics', type: 'lab' }
+            ]);
+        });
+}
+
+// Render proficiency modules
+function renderProficiencyModules(modules) {
+    const modulesList = document.querySelector('#proficiency-modules-list');
+    if (!modulesList) return;
+
+    modulesList.innerHTML = '';
+
+    modules.forEach(module => {
+        const moduleCard = document.createElement('div');
+        moduleCard.className = 'proficiency-module-card';
+        moduleCard.setAttribute('data-module-id', module.id);
+        moduleCard.innerHTML = `
+            <div class="proficiency-module-header">
+                <span class="proficiency-module-name">${module.name}</span>
+                <span class="proficiency-module-code">${module.type}</span>
+            </div>
+            <div class="proficiency-levels">
+                <label class="proficiency-level" data-level="uninterested">
+                    <input type="radio" name="proficiency-${module.id}" value="uninterested">
+                    <span>Not Interested</span>
+                </label>
+                <label class="proficiency-level" data-level="interested">
+                    <input type="radio" name="proficiency-${module.id}" value="interested">
+                    <span>Interested</span>
+                </label>
+                <label class="proficiency-level" data-level="proficient">
+                    <input type="radio" name="proficiency-${module.id}" value="proficient">
+                    <span>Proficient</span>
+                </label>
+                <label class="proficiency-level" data-level="leader">
+                    <input type="radio" name="proficiency-${module.id}" value="leader">
+                    <span>Leader</span>
+                </label>
+            </div>
+        `;
+        modulesList.appendChild(moduleCard);
+    });
+
+    // Re-initialize proficiency level selection for new elements
+    initProficiencyLevelSelection();
+}
+
+// Load skill set data
+function loadSkillSetData() {
+    console.log('Loading skill set data...');
+
+    // Load existing skill set data from backend
+    fetch('/facilitator/get_skill_set')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                populateSkillSetForm(data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading skill set data:', error);
+        });
+}
+
+// Populate skill set form with existing data
+function populateSkillSetForm(data) {
+    if (!data) return;
+
+    const technicalSkills = document.getElementById('skills-input');
+    const teachingExperience = document.getElementById('experience-input');
+    const teachingPreferences = document.getElementById('teaching-preferences');
+    const additionalNotes = document.getElementById('additional-notes');
+
+    // Populate skill set data
+    if (data.skillSet) {
+        if (technicalSkills && data.skillSet.technicalSkills) {
+            technicalSkills.value = data.skillSet.technicalSkills;
+        }
+        if (teachingExperience && data.skillSet.teachingExperience) {
+            teachingExperience.value = data.skillSet.teachingExperience;
+        }
+    }
+
+    // Populate preferences data
+    if (data.preferences) {
+        if (teachingPreferences && data.preferences.teachingPreferences) {
+            teachingPreferences.value = data.preferences.teachingPreferences;
+        }
+        if (additionalNotes && data.preferences.additionalNotes) {
+            additionalNotes.value = data.preferences.additionalNotes;
+        }
+    }
+}
+
+// Collect proficiency data from form
+function collectProficiencyData() {
+    const proficiencyData = {};
+    const moduleCards = document.querySelectorAll('.proficiency-module-card');
+
+    moduleCards.forEach(card => {
+        const selectedRadio = card.querySelector('input[type="radio"]:checked');
+        if (selectedRadio) {
+            const moduleId = card.getAttribute('data-module-id');
+            proficiencyData[moduleId] = selectedRadio.value;
+        }
+    });
+
+    return proficiencyData;
+}
+
+// Collect skill set data from form
+function collectSkillSetData() {
+    const technicalSkills = document.getElementById('skills-input');
+    const teachingExperience = document.getElementById('experience-input');
+
+    return {
+        technicalSkills: technicalSkills ? technicalSkills.value : '',
+        teachingExperience: teachingExperience ? teachingExperience.value : ''
+    };
+}
+
+// Collect preferences data from form
+function collectPreferencesData() {
+    const teachingPreferences = document.getElementById('teaching-preferences');
+    const additionalNotes = document.getElementById('additional-notes');
+
+    return {
+        teachingPreferences: teachingPreferences ? teachingPreferences.value : '',
+        additionalNotes: additionalNotes ? additionalNotes.value : ''
+    };
+}
+
+// Save all setup data
+function saveAllSetupData() {
+    console.log('=== Save All Setup Data Function Called ===');
+    alert('Save button clicked! Starting save process...'); // Temporary debug alert
+
+    try {
+        // Collect data from all sections
+        console.log('Collecting proficiency data...');
+        const proficiencyData = collectProficiencyData();
+        console.log('Proficiency data:', proficiencyData);
+
+        console.log('Collecting skill set data...');
+        const skillSetData = collectSkillSetData();
+        console.log('Skill set data:', skillSetData);
+
+        console.log('Collecting preferences data...');
+        const preferencesData = collectPreferencesData();
+        console.log('Preferences data:', preferencesData);
+
+        const setupData = {
+            unit_id: currentUnitId || 3, // Default to unit 3 for testing
+            unavailability: window.unavailabilityData || [],
+            proficiency: proficiencyData,
+            skill_set: skillSetData,
+            preferences: preferencesData
+        };
+
+        console.log('Complete setup data to save:', setupData);
+        alert('Data collected: ' + JSON.stringify(setupData, null, 2));
+
+        // Send to backend
+        console.log('Sending data to backend...');
+        fetch('/facilitator/save_setup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify(setupData)
+        })
+        .then(response => {
+            console.log('Response received:', response);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            if (data.success) {
+                alert('Setup saved successfully!');
+                showNotification('Setup saved successfully!', 'success');
+            } else {
+                alert('Error saving setup: ' + data.message);
+                showNotification('Error saving setup: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error saving setup: ' + error.message);
+            showNotification('Error saving setup', 'error');
+        });
+    } catch (error) {
+        console.error('Error in saveAllSetupData:', error);
+        alert('Error in saveAllSetupData: ' + error.message);
+    }
 }

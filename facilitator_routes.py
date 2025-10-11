@@ -1418,58 +1418,171 @@ def facilitator_response_to_swap(request_id):
         return jsonify({'error': f'Failed to process response: {str(e)}'}), 500
 
 
-# -------------------------- Unavailability (Facilitator) --------------------------
-@facilitator_bp.get("/unavailability")
+@facilitator_bp.route('/get_unit_modules')
 @login_required
 @role_required(UserRole.FACILITATOR)
-def list_unavailability():
-    """List current facilitator's unavailability. Optional filter by unit_id and date range."""
+def get_unit_modules():
+    """Get modules for a specific unit for proficiency configuration."""
     user = get_current_user()
-    unit_id = request.args.get("unit_id", type=int)
-    start = request.args.get("start")  # YYYY-MM-DD
-    end = request.args.get("end")      # YYYY-MM-DD
+    unit_id = request.args.get('unit_id', type=int)
 
-    q = Unavailability.query.filter_by(user_id=user.id)
-    if unit_id:
-        q = q.filter(Unavailability.unit_id == unit_id)
+    if not unit_id:
+        return jsonify({'error': 'Unit ID is required'}), 400
     try:
-        if start:
-            start_d = datetime.strptime(start, "%Y-%m-%d").date()
-            q = q.filter(Unavailability.date >= start_d)
-        if end:
-            end_d = datetime.strptime(end, "%Y-%m-%d").date()
-            q = q.filter(Unavailability.date <= end_d)
-    except ValueError:
-        return jsonify({"ok": False, "error": "Invalid date format; use YYYY-MM-DD"}), 400
+        # Verify user has access to this unit
+        unit_facilitator = UnitFacilitator.query.filter_by(
+            user_id=user.id, 
+            unit_id=unit_id
+        ).first()
 
-    rows = q.order_by(Unavailability.date.asc(), Unavailability.start_time.asc().nulls_first()).all()
+        if not unit_facilitator:
+            return jsonify({'error': 'Access denied to this unit'}), 403
 
-    def serialize(u):
-        return {
-            "id": u.id,
-            "unit_id": u.unit_id,
-            "date": u.date.isoformat(),
-            "is_full_day": bool(u.is_full_day),
-            "start_time": u.start_time.isoformat() if u.start_time else None,
-            "end_time": u.end_time.isoformat() if u.end_time else None,
-            "recurring_pattern": u.recurring_pattern.value if u.recurring_pattern else None,
-            "recurring_interval": u.recurring_interval,
-            "recurring_end_date": u.recurring_end_date.isoformat() if u.recurring_end_date else None,
-            "reason": u.reason or "",
-        }
+        # Get modules for the unit
+        modules = Module.query.filter_by(unit_id=unit_id).all()
 
-    return jsonify({"ok": True, "items": [serialize(r) for r in rows]})
+        # Get existing facilitator skills for these modules
+        existing_skills = {}
+        facilitator_skills = FacilitatorSkill.query.filter_by(
+            facilitator_id=user.id
+        ).filter(
+            FacilitatorSkill.module_id.in_([m.id for m in modules])
+        ).all()
 
+        for skill in facilitator_skills:
+            existing_skills[skill.module_id] = skill.skill_level.value
 
-def _parse_hhmm(val: str):
-    if not val:
-        return None
+        modules_data = []
+        for module in modules:
+            modules_data.append({
+                'id': module.id,
+                'name': module.module_name,
+                'type': module.module_type,
+                'current_level': existing_skills.get(module.id, 'uninterested')
+            })
+
+        return jsonify({
+            'success': True,
+            'modules': modules_data
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch modules: {str(e)}'}), 500
+
+@facilitator_bp.route('/get_skill_set')
+@login_required
+@role_required(UserRole.FACILITATOR)
+def get_skill_set():
+    """Get existing skill set data for the facilitator."""
+    user = get_current_user()
+
     try:
-        hh, mm = map(int, val.split(":", 1))
-        return time(hh, mm)
-    except Exception:
-        return None
+        # Get existing skill set data from user
+        skill_set_data = {}
+        if user.skills_with_levels:
+            skill_set_data = json.loads(user.skills_with_levels)
 
+        # Get preferences data
+        preferences_data = {}
+        if user.preferences:
+            preferences_data = json.loads(user.preferences)
+
+        return jsonify({
+            'success': True,
+            'skillSet': skill_set_data,
+            'preferences': preferences_data
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch skill set: {str(e)}'}), 500
+
+
+@facilitator_bp.route('/save_setup', methods=['POST'])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def save_setup():
+    """Save all setup configuration data."""
+    user = get_current_user()
+
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        unit_id = data.get('unit_id')
+        proficiency_data = data.get('proficiency', {})
+        skill_set_data = data.get('skill_set', {})
+        preferences_data = data.get('preferences', {})
+        unavailability_data = data.get('unavailability', [])
+
+        if not unit_id:
+            return jsonify({'error': 'Unit ID is required'}), 400
+
+        # Verify user has access to this unit
+        unit_facilitator = UnitFacilitator.query.filter_by(
+            user_id=user.id, 
+            unit_id=unit_id
+        ).first()
+
+        if not unit_facilitator:
+            return jsonify({'error': 'Access denied to this unit'}), 403
+
+        # Save proficiency data
+        if proficiency_data:
+            for module_id_str, level in proficiency_data.items():
+                module_id = int(module_id_str)
+
+                # Check if skill already exists
+                existing_skill = FacilitatorSkill.query.filter_by(
+                    facilitator_id=user.id,
+                    module_id=module_id
+                ).first()
+
+                if existing_skill:
+                    existing_skill.skill_level = SkillLevel(level)
+                else:
+                    new_skill = FacilitatorSkill(
+                        facilitator_id=user.id,
+                        module_id=module_id,
+                        skill_level=SkillLevel(level)
+                    )
+                    db.session.add(new_skill)
+
+        # Save unavailability data (if provided)
+        if unavailability_data:
+            # Remove existing unavailability for this user
+            Unavailability.query.filter_by(user_id=user.id).delete()
+
+            # Add new unavailability entries
+            for unavail in unavailability_data:
+                new_unavail = Unavailability(
+                    user_id=user.id,
+                    start_date=datetime.fromisoformat(unavail['start_date']),
+                    end_date=datetime.fromisoformat(unavail['end_date']),
+                    reason=unavail.get('reason', ''),
+                    is_recurring=unavail.get('is_recurring', False)
+                )
+                db.session.add(new_unavail)
+
+        # Save skill set data
+        if skill_set_data:
+            user.skills_with_levels = json.dumps(skill_set_data)
+
+        # Save preferences data
+        if preferences_data:
+            user.preferences = json.dumps(preferences_data)
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Setup configuration saved successfully'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to save setup: {str(e)}'}), 500
 
 @facilitator_bp.route('/swap-requests/<int:request_id>/coordinator-response', methods=['POST'])
 @login_required

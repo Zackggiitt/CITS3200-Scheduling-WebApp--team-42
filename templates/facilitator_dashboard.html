@@ -71,9 +71,9 @@
             <span class="material-icons" aria-hidden="true">dashboard</span>
             <span>Dashboard</span>
         </a>
-        <a href="#unavailability" class="dashboard-nav-item" id="unavailability-nav">
-            <span class="material-icons" aria-hidden="true">event_busy</span>
-            <span>Unavailability</span>
+        <a href="#setup" class="dashboard-nav-item" id="setup-nav">
+            <span class="material-icons" aria-hidden="true">settings</span>
+            <span>Set Up</span>
         </a>
         <a href="#schedule" class="dashboard-nav-item" id="schedule-nav">
             <span class="material-icons" aria-hidden="true">calendar_today</span>
@@ -463,60 +463,136 @@
         </div>
     </div>
 </section>
-<!-- Unavailability View -->
-<section id="unavailability-view" class="main-content-wrapper" style="display: none;">
-  <div class="unavailability-container">
-    <div class="unavailability-header">
+<!-- Setup View -->
+<section id="setup-view" class="main-content-wrapper" style="display: none;">
+  <div class="setup-container">
+    <div class="setup-header">
       <div>
-        <h2>My Unavailability</h2>
-        <p class="unavailability-subtitle">Set your unavailable days and times for <span id="unit-date-range-display">
+        <h2>Facilitator Setup</h2>
+        <p class="setup-subtitle">Configure your availability, proficiency, and skills for <span id="unit-date-range-display">
           {% if current_unit and current_unit.start_date and current_unit.end_date %}
             {{ current_unit.start_date.strftime('%d/%m/%Y') }} - {{ current_unit.end_date.strftime('%d/%m/%Y') }}
           {% else %}No date range{% endif %}
         </span></p>
       </div>
-      <div class="unavailability-actions">
-        <button id="refresh-unavailability" class="action-btn">
-          <span class="material-icons">refresh</span>
-          Refresh
+      <div class="setup-actions">
+        <button id="save-all-setup" class="action-btn primary">
+          <span class="material-icons">save</span>
+          Save All
         </button>
       </div>
     </div>
     
-    <div class="unavailability-content">
-      <div class="unavailability-calendar-section">
-        <div class="calendar-header">
-          <button id="prev-month-unavailability" class="calendar-btn">
-            <span class="material-icons">chevron_left</span>
-          </button>
-          <h3 id="current-month-unavailability">Current Month</h3>
-          <button id="next-month-unavailability" class="calendar-btn">
-            <span class="material-icons">chevron_right</span>
-          </button>
-        </div>
-        
-        <div class="calendar-grid">
-          <div class="calendar-weekdays">
-            <div class="weekday">Sun</div>
-            <div class="weekday">Mon</div>
-            <div class="weekday">Tue</div>
-            <div class="weekday">Wed</div>
-            <div class="weekday">Thu</div>
-            <div class="weekday">Fri</div>
-            <div class="weekday">Sat</div>
+    <div class="setup-content">
+      <!-- Setup Navigation Tabs -->
+      <div class="setup-tabs">
+        <button class="setup-tab active" data-tab="unavailability">
+          <span class="material-icons">event_busy</span>
+          Unavailability
+        </button>
+        <button class="setup-tab" data-tab="proficiency">
+          <span class="material-icons">trending_up</span>
+          Proficiency
+        </button>
+        <button class="setup-tab" data-tab="skillset">
+          <span class="material-icons">build</span>
+          Skill Set
+        </button>
+        <button class="setup-tab" data-tab="preferences">
+          <span class="material-icons">tune</span>
+          Preferences
+        </button>
+      </div>
+
+      <!-- Unavailability Tab Content -->
+      <div id="unavailability-tab-content" class="setup-tab-content active">
+        <div class="unavailability-content">
+          <div class="unavailability-calendar-section">
+            <div class="calendar-header">
+              <button id="prev-month-unavailability" class="calendar-btn">
+                <span class="material-icons">chevron_left</span>
+              </button>
+              <h3 id="current-month-unavailability">Current Month</h3>
+              <button id="next-month-unavailability" class="calendar-btn">
+                <span class="material-icons">chevron_right</span>
+              </button>
+            </div>
+
+            <div class="calendar-grid">
+              <div class="calendar-weekdays">
+                <div class="weekday">Sun</div>
+                <div class="weekday">Mon</div>
+                <div class="weekday">Tue</div>
+                <div class="weekday">Wed</div>
+                <div class="weekday">Thu</div>
+                <div class="weekday">Fri</div>
+                <div class="weekday">Sat</div>
+              </div>
+
+              <div class="calendar-days" id="unavailability-calendar-days">
+                <!-- Calendar days will be generated by JavaScript -->
+              </div>
+            </div>
           </div>
-          
-          <div class="calendar-days" id="unavailability-calendar-days">
-            <!-- Calendar days will be generated by JavaScript -->
+
+          <div class="unavailability-summary-section">
+            <div class="recent-unavailability-card">
+              <h3>Recent Unavailability</h3>
+              <div id="recent-unavailability-list">
+                <!-- Recent unavailability will be populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proficiency Tab Content -->
+      <div id="proficiency-tab-content" class="setup-tab-content">
+        <div class="proficiency-content">
+          <h3>Module Proficiency Levels</h3>
+          <p class="proficiency-description">Rate your experience and interest level for each module. This helps with session assignment optimization.</p>
+
+          <div id="proficiency-modules-list">
+            <!-- Modules will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Skill Set Tab Content -->
+      <div id="skillset-tab-content" class="setup-tab-content">
+        <div class="skillset-content">
+          <h3>Technical Skills & Expertise</h3>
+          <p class="skillset-description">List your technical skills and areas of expertise. This information helps coordinators make better assignments.</p>
+          <div class="skillset-form">
+            <div class="skill-input-section">
+              <label for="skills-input">Technical Skills</label>
+              <textarea id="skills-input" placeholder="e.g., Python, Java, Circuit Analysis, CAD Software, Laboratory Equipment..." rows="4"></textarea>
+            </div>
+
+            <div class="experience-input-section">
+              <label for="experience-input">Experience & Background</label>
+              <textarea id="experience-input" placeholder="Describe your relevant experience, certifications, or special expertise..." rows="4"></textarea>
+            </div>
           </div>
         </div>
       </div>
       
-      <div class="unavailability-summary-section">
-        <div class="recent-unavailability-card">
-          <h3>Recent Unavailability</h3>
-          <div id="recent-unavailability-list">
-            <!-- Recent unavailability will be populated by JavaScript -->
+      <!-- Preferences Tab Content -->
+      <div id="preferences-tab-content" class="setup-tab-content">
+        <div class="preferences-content">
+          <h3>Teaching Preferences & Notes</h3>
+          <p class="preferences-description">Share any preferences or additional information that might help with scheduling and assignments.</p>
+
+          <div class="preferences-form">
+            <div class="preference-input-section">
+              <label for="teaching-preferences">Teaching Preferences</label>
+              <textarea id="teaching-preferences" placeholder="e.g., Prefer morning sessions, enjoy working with beginner students, comfortable with large groups..." rows="4"></textarea>
+            </div>
+
+            <div class="notes-input-section">
+              <label for="additional-notes">Additional Notes for Coordinators</label>
+              <textarea id="additional-notes" placeholder="Any other information that might be helpful for scheduling and assignments..." rows="3"></textarea>
+            </div>
           </div>
         </div>
       </div>
