@@ -92,7 +92,8 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
-                unavailabilityView.style.display = 'none';
+                setupView.style.display = 'none';
+                calendarView.style.display = 'none';
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
@@ -3550,6 +3551,7 @@ function renderProficiencyModules(modules) {
     initProficiencyLevelSelection();
     // Initialize role toggle selection
     initRoleToggleSelection();
+}
 
 // Load skill set data
 function loadSkillSetData() {
