@@ -83,10 +83,14 @@ def is_safe_url(target):
 
 def get_current_user():
     if "user_id" in session:
-        user = User.query.get(session['user_id'])
-        if user is None:
-            session.pop("user_id", None)
-        return user
+        try:
+            user = User.query.get(session['user_id'])
+            if user is None:
+                session.pop("user_id", None)
+            return user
+        except Exception:
+            # Database tables might not exist yet during startup
+            return None
     return None
 
 @auth_bp.route("/logout", methods=["POST"])

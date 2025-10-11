@@ -43,50 +43,53 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="first_name">First Name *</label>
-                        <input type="text" id="first_name" name="first_name" value="{{ facilitator_user.first_name or '' }}" required>
+                        <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="last_name">Last Name *</label>
-                        <input type="text" id="last_name" name="last_name" value="{{ facilitator_user.last_name or '' }}" required>
+                        <input type="text" id="last_name" name="last_name" value="{{ user.last_name or '' }}" required>
                     </div>
                 </div>
 
                 <div class="form-row">
-                    <div class="form-group">
+                    <div class="form-group full-width">
                         <label for="email">Email *</label>
-                        <input type="email" id="email" name="email" value="{{ facilitator_user.email }}" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <div class="password-change-section">
-                            <label for="change_password">Change Password</label>
-                            <button type="button" id="togglePasswordSection" class="password-toggle-btn">
-                                <span class="material-icons">key</span>
-                                Change Password
-                            </button>
-                            <div id="passwordFields" class="password-fields" style="display: none;">
-                                <input type="password" id="current_password" name="current_password" placeholder="Current Password">
-                                <input type="password" id="new_password" name="new_password" placeholder="New Password">
-                                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm New Password">
-                                <small class="password-hint">Leave blank to keep current password</small>
-                            </div>
-                        </div>
+                        <input type="email" id="email" name="email" value="{{ user.email }}" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="phone_number">Phone Number</label>
-                        <input type="tel" id="phone_number" name="phone_number" value="{{ facilitator_user.phone_number or '' }}">
+                        <input type="tel" id="phone_number" name="phone_number" value="{{ user.phone_number or '' }}">
                     </div>
                     
                     <div class="form-group">
                         <label for="staff_number">Staff Number</label>
-                        <input type="text" id="staff_number" name="staff_number" value="{{ facilitator_user.staff_number or '' }}">
+                        <input type="text" id="staff_number" name="staff_number" value="{{ user.staff_number or '' }}">
                     </div>
                 </div>
 
+                <!-- Password Change Section -->
+                <div class="form-section">
+                    <h3>Change Password</h3>
+                    <p class="form-help-text">Leave blank if you don't want to change your password</p>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="password">New Password</label>
+                            <input type="password" id="password" name="password" placeholder="Enter new password">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="confirm_password">Confirm New Password</label>
+                            <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password">
+                        </div>
+                    </div>
+                </div>
 
                 <div class="button-group">
                     <a href="{{ url_for('facilitator.profile') }}" class="btn btn-secondary">Cancel</a>
@@ -95,49 +98,5 @@
             </form>
         </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const toggleBtn = document.getElementById('togglePasswordSection');
-            const passwordFields = document.getElementById('passwordFields');
-            const newPasswordField = document.getElementById('new_password');
-            const confirmPasswordField = document.getElementById('confirm_password');
-
-            // Toggle password section visibility
-            toggleBtn.addEventListener('click', function() {
-                const isVisible = passwordFields.style.display !== 'none';
-                passwordFields.style.display = isVisible ? 'none' : 'block';
-                toggleBtn.innerHTML = isVisible ? 
-                    '<span class="material-icons">key</span>Change Password' : 
-                    '<span class="material-icons">close</span>Hide Password Section';
-            });
-
-            // Validate password match
-            function validatePasswordMatch() {
-                const newPassword = newPasswordField.value;
-                const confirmPassword = confirmPasswordField.value;
-                
-                if (newPassword && confirmPassword && newPassword !== confirmPassword) {
-                    confirmPasswordField.setCustomValidity('Passwords do not match');
-                    return false;
-                } else {
-                    confirmPasswordField.setCustomValidity('');
-                    return true;
-                }
-            }
-
-            // Real-time password validation
-            newPasswordField.addEventListener('input', validatePasswordMatch);
-            confirmPasswordField.addEventListener('input', validatePasswordMatch);
-
-            // Form submission validation
-            document.querySelector('.edit-form').addEventListener('submit', function(e) {
-                if (!validatePasswordMatch()) {
-                    e.preventDefault();
-                    alert('Passwords do not match. Please check your password confirmation.');
-                }
-            });
-        });
-    </script>
 </body>
 </html>

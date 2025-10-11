@@ -26,27 +26,22 @@
                 <span class="material-icons notification-icon" aria-hidden="true" id="bell-icon">notifications</span>
                 <span class="notification-badge" id="header-notification-badge">3</span>
             </div>
-            <div class="user-profile-dropdown" id="fac-profile-dropdown">
-                <button class="user-info-link" id="fac-profile-trigger" aria-haspopup="true" aria-expanded="false">
+            <div class="user-info">
+                <a href="{{ url_for('facilitator.profile') }}" class="user-info-link">
                     <span class="material-icons profile-icon" aria-hidden="true">account_circle</span>
                     <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
-                    <span class="material-icons" aria-hidden="true">arrow_drop_down</span>
-                </button>
-                <div class="fac-dropdown-menu" id="fac-dropdown-menu" role="menu" aria-label="User menu" style="display:none;">
-                    <a class="fac-dropdown-item" href="{{ url_for('facilitator.profile') }}" role="menuitem">
-                        <span class="material-icons" aria-hidden="true">person</span>
-                        <span>View Profile</span>
-                    </a>
-                    <form method="POST" action="{{ url_for('auth.logout') }}" role="none">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <button type="submit" class="fac-dropdown-item danger" role="menuitem">
-                            <span class="material-icons" aria-hidden="true">logout</span>
-                            <span>Logout</span>
-                        </button>
-                    </form>
-                </div>
+                </a>
             </div>
             <span class="user-role-tag">Lab Facilitator</span>
+            <div class="user-nav-item">
+                <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="logout-button">
+                        <span class="material-icons" aria-hidden="true">logout</span>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
         </nav>
     </div>
 </header>
@@ -71,9 +66,9 @@
             <span class="material-icons" aria-hidden="true">dashboard</span>
             <span>Dashboard</span>
         </a>
-        <a href="#unavailability" class="dashboard-nav-item" id="unavailability-nav">
-            <span class="material-icons" aria-hidden="true">event_busy</span>
-            <span>Unavailability</span>
+        <a href="#setup" class="dashboard-nav-item" id="setup-nav">
+            <span class="material-icons" aria-hidden="true">settings</span>
+            <span>Set Up</span>
         </a>
         <a href="#schedule" class="dashboard-nav-item" id="schedule-nav">
             <span class="material-icons" aria-hidden="true">calendar_today</span>
@@ -463,66 +458,177 @@
         </div>
     </div>
 </section>
-<!-- Unavailability View -->
-<section id="unavailability-view" class="main-content-wrapper" style="display: none;">
-  <div class="unavailability-container">
-    <div class="unavailability-header">
+<!-- Setup View -->
+<section id="setup-view" class="main-content-wrapper" style="display: none;">
+  <div class="setup-container">
+    <div class="setup-header">
       <div>
-        <h2>My Unavailability</h2>
-        <p class="unavailability-subtitle">Set your unavailable days and times for <span id="unit-date-range-display">
+        <h2>Facilitator Setup</h2>
+        <p class="setup-subtitle">Configure your availability, proficiency, and skills for <span id="unit-date-range-display">
           {% if current_unit and current_unit.start_date and current_unit.end_date %}
             {{ current_unit.start_date.strftime('%d/%m/%Y') }} - {{ current_unit.end_date.strftime('%d/%m/%Y') }}
           {% else %}No date range{% endif %}
         </span></p>
       </div>
-      <div class="unavailability-actions">
-        <button id="refresh-unavailability" class="action-btn">
-          <span class="material-icons">refresh</span>
-          Refresh
+      <div class="setup-actions">
+        <button id="upload-proof" class="action-btn secondary">
+          <span class="material-icons">upload_file</span>
+          Upload Proof
+        </button>
+        <button id="save-all-setup" class="action-btn primary">
+          <span class="material-icons">save</span>
+          Save All
         </button>
       </div>
     </div>
     
-    <div class="unavailability-content">
-      <div class="unavailability-calendar-section">
-        <div class="calendar-header">
-          <button id="prev-month-unavailability" class="calendar-btn">
-            <span class="material-icons">chevron_left</span>
-          </button>
-          <h3 id="current-month-unavailability">Current Month</h3>
-          <button id="next-month-unavailability" class="calendar-btn">
-            <span class="material-icons">chevron_right</span>
-          </button>
-        </div>
-        
-        <div class="calendar-grid">
-          <div class="calendar-weekdays">
-            <div class="weekday">Sun</div>
-            <div class="weekday">Mon</div>
-            <div class="weekday">Tue</div>
-            <div class="weekday">Wed</div>
-            <div class="weekday">Thu</div>
-            <div class="weekday">Fri</div>
-            <div class="weekday">Sat</div>
+    <div class="setup-content">
+      <!-- Setup Navigation Tabs -->
+      <div class="setup-tabs">
+        <button class="setup-tab active" data-tab="unavailability">
+          <span class="material-icons">event_busy</span>
+          Unavailability
+        </button>
+        <button class="setup-tab" data-tab="proficiency">
+          <span class="material-icons">trending_up</span>
+          Proficiency
+        </button>
+        <button class="setup-tab" data-tab="skillset">
+          <span class="material-icons">build</span>
+          Skill Set
+        </button>
+        <button class="setup-tab" data-tab="preferences">
+          <span class="material-icons">tune</span>
+          Preferences
+        </button>
+      </div>
+
+      <!-- Unavailability Tab Content -->
+      <div id="unavailability-tab-content" class="setup-tab-content active">
+        <div class="unavailability-content">
+          <div class="unavailability-calendar-section">
+            <div class="calendar-header">
+              <button id="prev-month-unavailability" class="calendar-btn">
+                <span class="material-icons">chevron_left</span>
+              </button>
+              <h3 id="current-month-unavailability">Current Month</h3>
+              <button id="next-month-unavailability" class="calendar-btn">
+                <span class="material-icons">chevron_right</span>
+              </button>
+            </div>
+            
+            <div class="calendar-grid">
+              <div class="calendar-weekdays">
+                <div class="weekday">Sun</div>
+                <div class="weekday">Mon</div>
+                <div class="weekday">Tue</div>
+                <div class="weekday">Wed</div>
+                <div class="weekday">Thu</div>
+                <div class="weekday">Fri</div>
+                <div class="weekday">Sat</div>
+              </div>
+              
+              <div class="calendar-days" id="unavailability-calendar-days">
+                <!-- Calendar days will be generated by JavaScript -->
+              </div>
+            </div>
           </div>
           
-          <div class="calendar-days" id="unavailability-calendar-days">
-            <!-- Calendar days will be generated by JavaScript -->
+          <div class="unavailability-summary-section">
+            <div class="recent-unavailability-card">
+              <h3>Recent Unavailability</h3>
+              <div id="recent-unavailability-list">
+                <!-- Recent unavailability will be populated by JavaScript -->
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      
-      <div class="unavailability-summary-section">
-        <div class="recent-unavailability-card">
-          <h3>Recent Unavailability</h3>
-          <div id="recent-unavailability-list">
-            <!-- Recent unavailability will be populated by JavaScript -->
+
+      <!-- Proficiency Tab Content -->
+      <div id="proficiency-tab-content" class="setup-tab-content">
+        <div class="proficiency-content">
+          <h3>Module Proficiency Levels</h3>
+          <p class="proficiency-description">Rate your experience and interest level for each module. This helps with session assignment optimization.</p>
+          
+          <div id="proficiency-modules-list">
+            <!-- Modules will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Skill Set Tab Content -->
+      <div id="skillset-tab-content" class="setup-tab-content">
+        <div class="skillset-content">
+          <h3>Technical Skills & Expertise</h3>
+          <p class="skillset-description">List your technical skills and areas of expertise. This information helps coordinators make better assignments.</p>
+          
+          <div class="skillset-form">
+            <div class="skill-input-section">
+              <label for="skills-input">Technical Skills</label>
+              <textarea id="skills-input" placeholder="e.g., Python, Java, Circuit Analysis, CAD Software, Laboratory Equipment..." rows="4"></textarea>
+            </div>
+            
+            <div class="experience-input-section">
+              <label for="experience-input">Experience & Background</label>
+              <textarea id="experience-input" placeholder="Describe your relevant experience, certifications, or special expertise..." rows="4"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preferences Tab Content -->
+      <div id="preferences-tab-content" class="setup-tab-content">
+        <div class="preferences-content">
+          <h3>Teaching Preferences & Notes</h3>
+          <p class="preferences-description">Share any preferences or additional information that might help with scheduling and assignments.</p>
+          
+          <div class="preferences-form">
+            <div class="preference-input-section">
+              <label for="teaching-preferences">Teaching Preferences</label>
+              <textarea id="teaching-preferences" placeholder="e.g., Prefer morning sessions, enjoy working with beginner students, comfortable with large groups..." rows="4"></textarea>
+            </div>
+            
+            <div class="notes-input-section">
+              <label for="additional-notes">Additional Notes for Coordinators</label>
+              <textarea id="additional-notes" placeholder="Any other information that might be helpful for scheduling and assignments..." rows="3"></textarea>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </section>
+
+<!-- Proof Upload Modal -->
+<div id="proof-upload-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Upload Proof Documents</h3>
+      <button class="modal-close" id="proof-modal-close">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>Upload documents to support your proficiency claims (certificates, transcripts, etc.)</p>
+      <div class="file-upload-area">
+        <input type="file" id="proof-file-input" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+        <div class="file-upload-display">
+          <span class="material-icons">cloud_upload</span>
+          <p>Click to select files or drag and drop</p>
+          <small>Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 10MB each)</small>
+        </div>
+      </div>
+      <div id="uploaded-files-list" class="uploaded-files-list">
+        <!-- Uploaded files will be displayed here -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="action-btn secondary" id="proof-cancel">Cancel</button>
+      <button class="action-btn primary" id="proof-upload-submit">Upload Files</button>
+    </div>
+  </div>
+</div>
 
 <!-- Unavailability Modal -->
 <div id="unavailability-modal" class="modal-overlay" style="display: none;">
