@@ -4140,11 +4140,145 @@ function setupScheduleEventListeners() {
   // Auto assign button
   const autoAssignBtn = document.querySelector('.auto-assign-btn');
   if (autoAssignBtn) {
-    autoAssignBtn.addEventListener('click', () => {
-      // TODO: Implement auto-assign functionality
-      console.log('Auto-assign clicked');
+    autoAssignBtn.addEventListener('click', async () => {
+      await autoAssignFacilitators();
     });
   }
+}
+
+// ===== Auto-Assign Facilitators =====
+
+async function autoAssignFacilitators() {
+  const unitId = getUnitId();
+  if (!unitId) {
+    alert('Please select a unit first.');
+    return;
+  }
+
+  const autoAssignBtn = document.querySelector('.auto-assign-btn');
+  if (!autoAssignBtn) return;
+
+  // Show loading state
+  const originalText = autoAssignBtn.innerHTML;
+  autoAssignBtn.disabled = true;
+  autoAssignBtn.innerHTML = '<span class="material-icons">hourglass_empty</span>Assigning...';
+
+  try {
+    const url = withUnitId(window.FLASK_ROUTES.AUTO_ASSIGN_TEMPLATE, unitId);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': window.CSRF_TOKEN
+      }
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      // Show success message with details
+      let message = data.message;
+      
+      if (data.assignments && data.assignments.length > 0) {
+        message += '\n\nAssignments created:';
+        data.assignments.forEach(assignment => {
+          message += `\n• ${assignment.facilitator_name} → ${assignment.session_name} (${assignment.time}) - Score: ${assignment.score}`;
+        });
+      }
+      
+      if (data.conflicts && data.conflicts.length > 0) {
+        message += '\n\nConflicts:';
+        data.conflicts.forEach(conflict => {
+          message += `\n• ${conflict}`;
+        });
+      }
+      
+      if (data.metrics) {
+        message += `\n\nMetrics:`;
+        message += `\n• Average Score: ${data.metrics.avg_score}`;
+        message += `\n• Total Hours: ${data.metrics.total_hours}`;
+        message += `\n• Facilitators Used: ${data.metrics.facilitator_count}`;
+        
+        if (data.metrics.fairness_metrics) {
+          message += `\n\nFairness Distribution:`;
+          const fm = data.metrics.fairness_metrics;
+          message += `\n• Hours per facilitator:`;
+          Object.entries(fm.hours_per_facilitator).forEach(([name, hours]) => {
+            message += `\n  - ${name}: ${hours} hours`;
+          });
+          message += `\n• Min hours: ${fm.min_hours}`;
+          message += `\n• Max hours: ${fm.max_hours}`;
+          message += `\n• Average hours: ${fm.avg_hours.toFixed(1)}`;
+          message += `\n• Distribution fairness: ${(fm.max_hours - fm.min_hours).toFixed(1)} hours difference`;
+        }
+      }
+      
+      // Add CSV download option to the message
+      if (data.csv_available) {
+        message += '\n\n📊 A detailed CSV report is available for download.';
+      }
+      
+      alert(message);
+      
+      // Show CSV download button if available
+      if (data.csv_available && data.csv_download_url) {
+        showCsvDownloadButton(data.csv_download_url);
+      }
+      
+      // Refresh the schedule view to show new assignments
+      if (typeof loadScheduleSessions === 'function') {
+        loadScheduleSessions();
+      }
+      if (typeof loadListSessionData === 'function') {
+        loadListSessionData();
+      }
+      
+    } else {
+      alert(`Auto-assignment failed: ${data.error}`);
+    }
+
+  } catch (error) {
+    console.error('Auto-assign error:', error);
+    alert('Failed to auto-assign facilitators. Please try again.');
+  } finally {
+    // Restore button state
+    autoAssignBtn.disabled = false;
+    autoAssignBtn.innerHTML = originalText;
+  }
+}
+
+function showCsvDownloadButton(downloadUrl) {
+  // Find or create a container for the download button
+  const autoAssignBtn = document.querySelector('.auto-assign-btn');
+  if (!autoAssignBtn) return;
+  
+  // Check if button already exists
+  let downloadBtn = document.getElementById('csv-download-btn');
+  
+  if (!downloadBtn) {
+    // Create the download button
+    downloadBtn = document.createElement('button');
+    downloadBtn.id = 'csv-download-btn';
+    downloadBtn.className = 'btn btn-secondary ml-2';
+    downloadBtn.style.cssText = 'margin-left: 10px; display: inline-flex; align-items: center; gap: 5px;';
+    downloadBtn.innerHTML = '<span class="material-icons">download</span>Download Report (CSV)';
+    
+    // Insert after auto-assign button
+    autoAssignBtn.parentNode.insertBefore(downloadBtn, autoAssignBtn.nextSibling);
+  }
+  
+  // Update the download URL
+  downloadBtn.onclick = function() {
+    window.location.href = downloadUrl;
+  };
+  
+  // Show the button with a subtle animation
+  downloadBtn.style.display = 'inline-flex';
+  downloadBtn.style.opacity = '0';
+  setTimeout(() => {
+    downloadBtn.style.transition = 'opacity 0.3s';
+    downloadBtn.style.opacity = '1';
+  }, 100);
 }
 
 // ===== List View Functions =====
