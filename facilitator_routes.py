@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import db, User, Session, Assignment, SwapRequest, Unavailability, SwapStatus, FacilitatorSkill, SkillLevel, Unit, Module, UnitFacilitator, RecurringPattern
+from models import db, User, Session, Assignment, SwapRequest, Unavailability, SwapStatus, FacilitatorSkill, SkillLevel, Unit, Module, UnitFacilitator, RecurringPattern, Notification
 from auth import facilitator_required, get_current_user, login_required
 from datetime import datetime, time, date, timedelta
 from utils import role_required
@@ -117,6 +117,54 @@ def list_units_grouped():
         "past_units": past_units
     })
 
+
+@facilitator_bp.route("/notifications")
+@login_required
+@role_required(UserRole.FACILITATOR)
+def get_notifications():
+    """Get notifications for the current facilitator"""
+    user = get_current_user()
+    
+    # Get notifications from database
+    notifications = Notification.query.filter_by(user_id=user.id).order_by(Notification.created_at.desc()).all()
+    
+    # Convert to JSON-serializable format
+    notifications_data = []
+    for notification in notifications:
+        notifications_data.append({
+            'id': notification.id,
+            'title': notification.title,
+            'message': notification.message,
+            'type': notification.notification_type,
+            'is_read': notification.is_read,
+            'created_at': notification.created_at.isoformat() if notification.created_at else None
+        })
+    
+    return jsonify({
+        'notifications': notifications_data,
+        'counts': {
+            'total': len(notifications),
+            'unread': len([n for n in notifications if not n.is_read])
+        }
+    })
+
+@facilitator_bp.route("/notifications/mark-read", methods=["POST"])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def mark_notifications_read():
+    """Mark all notifications as read for the current facilitator"""
+    user = get_current_user()
+    
+    try:
+        # Mark all notifications as read
+        Notification.query.filter_by(user_id=user.id, is_read=False).update({'is_read': True})
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error marking notifications as read: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @facilitator_bp.route("/dashboard")
 @login_required

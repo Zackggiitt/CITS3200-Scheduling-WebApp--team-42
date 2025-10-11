@@ -101,6 +101,131 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Load notifications from backend
+    function loadNotifications() {
+        fetch('/facilitator/notifications')
+            .then(response => response.json())
+            .then(data => {
+                displayNotifications(data.notifications || []);
+                updateNotificationCounts(data.counts || {});
+            })
+            .catch(error => {
+                console.error('Error loading notifications:', error);
+                // Keep the static notifications as fallback
+            });
+    }
+
+    // Display notifications in the popup
+    function displayNotifications(notifications) {
+        const notificationsList = document.getElementById('popup-notifications-list');
+        if (!notificationsList) return;
+        
+        if (notifications.length === 0) {
+            notificationsList.innerHTML = `
+                <div class="popup-notification-item">
+                    <div class="popup-notification-content">
+                        <div class="popup-notification-header">
+                            <h4>No notifications</h4>
+                        </div>
+                        <p class="popup-notification-message">You have no notifications at this time.</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        notificationsList.innerHTML = notifications.map(notification => `
+            <div class="popup-notification-item ${notification.is_read ? '' : 'unread'}" data-id="${notification.id}">
+                <div class="popup-notification-icon ${notification.type || 'info'}">
+                    <span class="material-icons">${getNotificationIcon(notification.type)}</span>
+                </div>
+                <div class="popup-notification-content">
+                    <div class="popup-notification-header">
+                        <h4>${notification.title || 'Notification'}</h4>
+                        <span class="popup-notification-time">${formatTimeAgo(notification.created_at)}</span>
+                    </div>
+                    <p class="popup-notification-message">${notification.message}</p>
+                </div>
+                ${!notification.is_read ? '<div class="popup-notification-status unread-indicator"></div>' : ''}
+            </div>
+        `).join('');
+    }
+
+    // Get appropriate icon for notification type
+    function getNotificationIcon(type) {
+        const icons = {
+            'schedule_published': 'schedule',
+            'shift': 'schedule',
+            'update': 'info',
+            'alert': 'warning',
+            'success': 'check_circle',
+            'info': 'info'
+        };
+        return icons[type] || 'info';
+    }
+
+    // Format time ago
+    function formatTimeAgo(dateString) {
+        if (!dateString) return 'Unknown time';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+        
+        if (diffInMinutes < 1) return 'Just now';
+        if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
+        
+        const diffInHours = Math.floor(diffInMinutes / 60);
+        if (diffInHours < 24) return `${diffInHours} hours ago`;
+        
+        const diffInDays = Math.floor(diffInHours / 24);
+        return `${diffInDays} days ago`;
+    }
+
+    // Update notification counts
+    function updateNotificationCounts(counts) {
+        // Update header badge
+        if (headerNotificationBadge) {
+            if (counts.unread > 0) {
+                headerNotificationBadge.style.display = 'flex';
+                headerNotificationBadge.textContent = counts.unread;
+            } else {
+                headerNotificationBadge.style.display = 'none';
+            }
+        }
+        
+        // Update filter counts
+        const allCount = document.querySelector('[data-filter="all"]');
+        const unreadCount = document.querySelector('[data-filter="unread"]');
+        const actionCount = document.querySelector('[data-filter="action"]');
+        
+        if (allCount) allCount.textContent = `All ${counts.total}`;
+        if (unreadCount) unreadCount.textContent = `Unread ${counts.unread}`;
+        if (actionCount) actionCount.textContent = `Action Required ${counts.action_required || 0}`;
+    }
+
+    // Mark all notifications as read
+    function markAllNotificationsRead() {
+        fetch('/facilitator/notifications/mark-read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken || ''
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadNotifications(); // Reload notifications
+            }
+        })
+        .catch(error => {
+            console.error('Error marking notifications as read:', error);
+        });
+    }
+
+    // Load notifications when page loads
+    loadNotifications();
+
     // Notification popup functionality
     function showNotificationPopup() {
         notificationPopup.style.display = 'block';
@@ -212,13 +337,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const popupMarkAllReadBtn = document.getElementById('popup-mark-all-read');
     if (popupMarkAllReadBtn) {
         popupMarkAllReadBtn.addEventListener('click', function() {
-            const unreadItems = document.querySelectorAll('.popup-notification-item.unread');
-            unreadItems.forEach(item => {
-                item.classList.remove('unread');
-            });
-            
-            // Update notification badge
-            updateHeaderNotificationBadge();
+            markAllNotificationsRead();
         });
     }
 

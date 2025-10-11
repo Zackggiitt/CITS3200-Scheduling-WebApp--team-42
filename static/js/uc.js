@@ -5105,6 +5105,87 @@ function closePublishConfirmation() {
   document.getElementById('publish-confirmation-modal').style.display = 'none';
 }
 
+// Simple notification function
+function showSimpleNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `simple-notification simple-notification--${type}`;
+  notification.innerHTML = `
+    <span class="material-icons">${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info'}</span>
+    <span>${message}</span>
+  `;
+  
+  // Add to page
+  document.body.appendChild(notification);
+  
+  // Show notification
+  setTimeout(() => notification.classList.add('show'), 100);
+  
+  // Remove after 5 seconds
+  setTimeout(() => {
+    notification.classList.remove('show');
+    setTimeout(() => document.body.removeChild(notification), 300);
+  }, 5000);
+}
+
+// Add CSS for notifications
+const notificationStyles = `
+  .simple-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10000;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    max-width: 400px;
+  }
+  
+  .simple-notification.show {
+    transform: translateX(0);
+  }
+  
+  .simple-notification--success {
+    border-left: 4px solid #10b981;
+  }
+  
+  .simple-notification--error {
+    border-left: 4px solid #ef4444;
+  }
+  
+  .simple-notification--info {
+    border-left: 4px solid #3b82f6;
+  }
+  
+  .simple-notification .material-icons {
+    font-size: 20px;
+  }
+  
+  .simple-notification--success .material-icons {
+    color: #10b981;
+  }
+  
+  .simple-notification--error .material-icons {
+    color: #ef4444;
+  }
+  
+  .simple-notification--info .material-icons {
+    color: #3b82f6;
+  }
+`;
+
+// Add styles to page
+const styleSheet = document.createElement('style');
+styleSheet.textContent = notificationStyles;
+document.head.appendChild(styleSheet);
+
 async function confirmPublish() {
   try {
     // Get current unit ID
@@ -5120,7 +5201,7 @@ async function confirmPublish() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': window.csrfToken
+        'X-CSRFToken': window.CSRF_TOKEN
       }
     });
     
@@ -5131,7 +5212,7 @@ async function confirmPublish() {
     const result = await response.json();
     
     if (result.ok) {
-      showSimpleNotification('Schedule published successfully! Facilitators have been notified.', 'success');
+      showSimpleNotification(result.message || 'Schedule published successfully!', 'success');
       closePublishConfirmation();
       
       // Update publish button state
