@@ -1,9 +1,9 @@
 """
 Optimization Engine for Facilitator-to-Module Assignment
-Phase 2: Real facilitator data integration with dummy session support
+Uses real facilitator proficiency data from the database
 
 Scoring Function: (W_avail × availability_match) + (W_fair × fairness_factor) + (W_skill × skill_score)
-Skill Levels: proficient=1.0, done_it_before=0.8, interested=0.5, not_interested=0.0
+Skill Levels: proficient=1.0, have_run_before=0.8, have_some_skill=0.5, no_interest=0.0
 """
 
 from datetime import datetime, time
@@ -11,15 +11,15 @@ from models import User, UserRole, FacilitatorSkill, SkillLevel
 
 # Tunable weights for scoring function
 W_AVAILABILITY = 0.4
-W_FAIRNESS = 0.3  
-W_SKILL = 0.3
+W_FAIRNESS = 0.4  # Increased fairness weight
+W_SKILL = 0.2     # Reduced skill weight to balance with fairness
 
-# Skill level to score mapping
+# Skill level to score mapping (matches models.py SkillLevel enum)
 SKILL_SCORES = {
     SkillLevel.PROFICIENT: 1.0,
-    SkillLevel.LEADER: 0.8,  # "done it before"
-    SkillLevel.INTERESTED: 0.5,
-    SkillLevel.UNINTERESTED: 0.0
+    SkillLevel.HAVE_RUN_BEFORE: 0.8,  # "done it before"
+    SkillLevel.HAVE_SOME_SKILL: 0.5,  # "interested/has some skill"
+    SkillLevel.NO_INTEREST: 0.0
 }
 
 def get_real_sessions():
@@ -39,12 +39,13 @@ def get_real_sessions():
         
         sessions_data.append({
             'id': session.id,
+            'module_id': session.module_id,  # Add module_id for skill matching
             'module_name': f"{session.module.unit.unit_code} - {session.module.module_name}",
             'day_of_week': session.day_of_week if session.day_of_week is not None else 0,
             'start_time': session.start_time.time(),
             'end_time': session.end_time.time(),
             'duration_hours': duration,
-            'required_skill_level': SkillLevel.INTERESTED,  # Default skill level
+            'required_skill_level': SkillLevel.HAVE_SOME_SKILL,  # Default skill level
             'location': session.location or 'TBA'
         })
     
@@ -107,25 +108,19 @@ def check_availability(facilitator, session):
 
 def get_skill_score(facilitator, session):
     """
-    Get skill score for facilitator-session match
+    Get skill score for facilitator-session match based on real proficiency data
     Uses the SKILL_SCORES mapping
     """
-    # For dummy sessions, we'll use a generic skill check
-    # In real implementation, this would check facilitator['skills'][session['module_id']]
+    module_id = session.get('module_id')
     
-    # For now, simulate some skill levels for testing
-    facilitator_id = facilitator['id']
-    session_id = session['id']
+    # Check if facilitator has skills data and has this specific module skill
+    if 'skills' in facilitator and module_id in facilitator['skills']:
+        skill_level = facilitator['skills'][module_id]
+        return SKILL_SCORES.get(skill_level, 0.0)
     
-    # Simple simulation: alternate skill levels based on IDs
-    if (facilitator_id + session_id) % 4 == 0:
-        return SKILL_SCORES[SkillLevel.PROFICIENT]
-    elif (facilitator_id + session_id) % 4 == 1:
-        return SKILL_SCORES[SkillLevel.LEADER]
-    elif (facilitator_id + session_id) % 4 == 2:
-        return SKILL_SCORES[SkillLevel.INTERESTED]
-    else:
-        return SKILL_SCORES[SkillLevel.UNINTERESTED]
+    # If no skill data exists for this module, return lowest score
+    # This encourages assigning facilitators who have declared their skills
+    return SKILL_SCORES[SkillLevel.NO_INTEREST]
 
 def get_assigned_hours(facilitator, current_assignments):
     """
@@ -137,7 +132,7 @@ def get_assigned_hours(facilitator, current_assignments):
             total_hours += assignment['session']['duration_hours']
     return total_hours
 
-def calculate_facilitator_score(facilitator, session, current_assignments):
+def calculate_facilitator_score(facilitator, session, current_assignments, total_hours_per_facilitator=None):
     """
     Calculate the score for assigning a facilitator to a session
     Uses the formula: (W_avail × availability_match) + (W_fair × fairness_factor) + (W_skill × skill_score)
@@ -147,13 +142,26 @@ def calculate_facilitator_score(facilitator, session, current_assignments):
     if availability_match == 0.0:
         return 0.0  # Hard constraint violation
     
-    # Fairness factor (1 - assigned_hours/target_hours)
+    # Enhanced fairness calculation
     assigned_hours = get_assigned_hours(facilitator, current_assignments)
-    target_hours = (facilitator['min_hours'] + facilitator['max_hours']) / 2
-    if target_hours == 0:
-        target_hours = 10  # Default target
     
-    fairness_factor = max(0, 1 - (assigned_hours / target_hours))
+    # Calculate fairness based on relative distribution
+    if total_hours_per_facilitator and len(total_hours_per_facilitator) > 1:
+        # Find the minimum assigned hours among all facilitators
+        min_assigned = min(total_hours_per_facilitator.values())
+        max_assigned = max(total_hours_per_facilitator.values())
+        
+        if max_assigned > min_assigned:
+            # Normalize fairness: facilitators with fewer hours get higher scores
+            fairness_factor = 1.0 - ((assigned_hours - min_assigned) / (max_assigned - min_assigned))
+        else:
+            fairness_factor = 1.0  # All facilitators have equal hours
+    else:
+        # Fallback to original fairness calculation
+        target_hours = (facilitator['min_hours'] + facilitator['max_hours']) / 2
+        if target_hours == 0:
+            target_hours = 10  # Default target
+        fairness_factor = max(0, 1 - (assigned_hours / target_hours))
     
     # Skill score
     skill_score = get_skill_score(facilitator, session)
@@ -166,8 +174,7 @@ def calculate_facilitator_score(facilitator, session, current_assignments):
 def generate_optimal_assignments(facilitators):
     """
     Main function to generate optimal facilitator-to-session assignments
-    Takes facilitator data as parameter (from Flask route)
-    Returns assignments and conflicts
+    Uses enhanced fairness algorithm to ensure equal distribution of hours
     """
     sessions = get_real_sessions()
     
@@ -184,9 +191,19 @@ def generate_optimal_assignments(facilitators):
         best_facilitator = None
         best_score = 0.0
         
+        # Calculate current hours per facilitator for fairness calculation
+        total_hours_per_facilitator = {}
+        for facilitator in facilitators:
+            total_hours_per_facilitator[facilitator['id']] = get_assigned_hours(facilitator, assignments)
+        
         # Find the best facilitator for this session
         for facilitator in facilitators:
-            score = calculate_facilitator_score(facilitator, session, assignments)
+            score = calculate_facilitator_score(
+                facilitator, 
+                session, 
+                assignments, 
+                total_hours_per_facilitator
+            )
             if score > best_score:
                 best_score = score
                 best_facilitator = facilitator
@@ -219,22 +236,23 @@ def get_skill_level_name(skill_level):
     """
     skill_names = {
         SkillLevel.PROFICIENT: 'Proficient',
-        SkillLevel.LEADER: 'Leader',
-        SkillLevel.INTERESTED: 'Interested',
-        SkillLevel.UNINTERESTED: 'Uninterested'
+        SkillLevel.HAVE_RUN_BEFORE: 'Have Run Before',
+        SkillLevel.HAVE_SOME_SKILL: 'Have Some Skill',
+        SkillLevel.NO_INTEREST: 'No Interest'
     }
     return skill_names.get(skill_level, 'Unknown')
 
 def calculate_metrics(assignments):
     """
-    Calculate performance metrics for the assignments
+    Calculate performance metrics for the assignments including fairness distribution
     """
     if not assignments:
         return {
             'avg_score': 0,
             'total_hours': 0,
             'facilitator_count': 0,
-            'skill_distribution': {}
+            'skill_distribution': {},
+            'fairness_metrics': {}
         }
     
     total_score = sum(a['score'] for a in assignments)
@@ -244,6 +262,25 @@ def calculate_metrics(assignments):
     
     facilitator_ids = set(a['facilitator']['id'] for a in assignments)
     facilitator_count = len(facilitator_ids)
+    
+    # Calculate hours per facilitator for fairness analysis
+    facilitator_hours = {}
+    for assignment in assignments:
+        fac_id = assignment['facilitator']['id']
+        fac_name = assignment['facilitator']['name']
+        if fac_id not in facilitator_hours:
+            facilitator_hours[fac_id] = {'name': fac_name, 'hours': 0}
+        facilitator_hours[fac_id]['hours'] += assignment['session']['duration_hours']
+    
+    # Fairness metrics
+    hours_list = [data['hours'] for data in facilitator_hours.values()]
+    fairness_metrics = {
+        'hours_per_facilitator': {data['name']: data['hours'] for data in facilitator_hours.values()},
+        'min_hours': min(hours_list) if hours_list else 0,
+        'max_hours': max(hours_list) if hours_list else 0,
+        'avg_hours': sum(hours_list) / len(hours_list) if hours_list else 0,
+        'hours_std_dev': (sum((h - sum(hours_list)/len(hours_list))**2 for h in hours_list) / len(hours_list))**0.5 if hours_list else 0
+    }
     
     # Skill distribution
     skill_dist = {}
@@ -258,7 +295,8 @@ def calculate_metrics(assignments):
     
     return {
         'avg_score': round(avg_score, 3),
-        'total_hours': total_hours,
+        'total_hours': round(total_hours, 1),
         'facilitator_count': facilitator_count,
-        'skill_distribution': skill_dist
+        'skill_distribution': skill_dist,
+        'fairness_metrics': fairness_metrics
     }

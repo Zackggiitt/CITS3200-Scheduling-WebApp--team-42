@@ -133,6 +133,8 @@ def _serialize_session(s: Session, venues_by_name=None):
             "venue_id": vid,
             "session_name": title,
             "location": s.location,
+            "facilitator_name": facilitator,
+            "facilitator_id": s.assignments[0].facilitator_id if s.assignments else None,
             "lead_staff_required": s.lead_staff_required or 1,
             "support_staff_required": s.support_staff_required or 0,
         }
@@ -2134,6 +2136,95 @@ def create_session(unit_id: int):
         "session": _serialize_session(first, venues_by_name),
     }), 201
 
+
+
+@unitcoordinator_bp.post("/units/<int:unit_id>/auto_assign")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def auto_assign_facilitators(unit_id: int):
+    """
+    Auto-assign facilitators to sessions using the optimization algorithm
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        # Import the optimization engine
+        from optimization_engine import generate_optimal_assignments, calculate_metrics, format_session_time, prepare_facilitator_data
+        
+        # Get facilitators assigned to this unit
+        facilitators_from_db = (
+            db.session.query(User)
+            .join(UnitFacilitator, User.id == UnitFacilitator.user_id)
+            .filter(UnitFacilitator.unit_id == unit_id)
+            .filter(User.role == UserRole.FACILITATOR)
+            .all()
+        )
+        
+        if not facilitators_from_db:
+            return jsonify({
+                "ok": False, 
+                "error": "No facilitators assigned to this unit"
+            }), 400
+        
+        # Prepare facilitator data for optimization
+        facilitators = prepare_facilitator_data(facilitators_from_db)
+        
+        # Generate assignments using the optimization algorithm
+        assignments, conflicts = generate_optimal_assignments(facilitators)
+        
+        if not assignments:
+            return jsonify({
+                "ok": False,
+                "error": "No assignments could be generated. Check facilitator availability and skills.",
+                "conflicts": conflicts
+            }), 400
+        
+        # Create actual Assignment records in the database
+        created_assignments = []
+        for assignment in assignments:
+            # Check if assignment already exists
+            existing = Assignment.query.filter_by(
+                session_id=assignment['session']['id'],
+                facilitator_id=assignment['facilitator']['id']
+            ).first()
+            
+            if not existing:
+                new_assignment = Assignment(
+                    session_id=assignment['session']['id'],
+                    facilitator_id=assignment['facilitator']['id'],
+                    is_confirmed=False  # Require confirmation
+                )
+                db.session.add(new_assignment)
+                created_assignments.append({
+                    'facilitator_name': assignment['facilitator']['name'],
+                    'session_name': assignment['session']['module_name'],
+                    'time': format_session_time(assignment['session']),
+                    'score': round(assignment['score'], 2)
+                })
+        
+        db.session.commit()
+        
+        # Calculate metrics
+        metrics = calculate_metrics(assignments)
+        
+        return jsonify({
+            "ok": True,
+            "message": f"Successfully created {len(created_assignments)} assignments",
+            "assignments": created_assignments,
+            "conflicts": conflicts,
+            "metrics": metrics
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Auto-assign error: {str(e)}")
+        return jsonify({
+            "ok": False, 
+            "error": f"Auto-assignment failed: {str(e)}"
+        }), 500
 
 
 @unitcoordinator_bp.post("/units/<int:unit_id>/upload_sessions_csv")
