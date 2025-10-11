@@ -2499,14 +2499,26 @@ def list_facilitators(unit_id: int):
         return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
 
     facs = (
-        db.session.query(User.email)
+        db.session.query(User)
         .join(UnitFacilitator, UnitFacilitator.user_id == User.id)
         .filter(UnitFacilitator.unit_id == unit.id)
-        .order_by(User.email.asc())
+        .order_by(User.first_name.asc(), User.last_name.asc())
         .all()
     )
-    emails = [e for (e,) in facs]
-    return jsonify({"ok": True, "facilitators": emails})
+    
+    facilitators = []
+    for fac in facs:
+        facilitators.append({
+            "id": fac.id,
+            "name": fac.full_name,
+            "email": fac.email,
+            "first_name": fac.first_name,
+            "last_name": fac.last_name,
+            "phone_number": fac.phone_number,
+            "staff_number": fac.staff_number
+        })
+    
+    return jsonify({"ok": True, "facilitators": facilitators})
 
 
 # ---------- CAS CSV Upload (auto-generate sessions) ----------

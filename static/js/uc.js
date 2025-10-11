@@ -4047,9 +4047,9 @@ function renderDaySessions(sessions) {
   }
 
   return sessions.map(session => `
-    <div class="session-card">
+    <div class="session-card" data-session-id="${session.id || 'new'}" data-session-name="${session.session_name || session.title || 'New Session'}" data-session-time="${formatTime(session.start)} - ${formatTime(session.end)}" data-session-location="${session.location || 'TBA'}">
       <div class="session-header">
-        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}">
+        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="openFacilitatorModal(this)"' : ''}>
           ${session.facilitator ? getInitials(session.facilitator) : 'Unassigned'}
         </div>
         <div class="session-time">
@@ -4591,3 +4591,181 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     loadAttendanceData();
   }, 1000);
+
+// Facilitator Selection Modal Functions
+let currentSessionData = null;
+let allFacilitators = [];
+let filteredFacilitators = [];
+
+// Open facilitator selection modal
+function openFacilitatorModal(element) {
+  const sessionCard = element.closest('.session-card');
+  currentSessionData = {
+    id: sessionCard.dataset.sessionId,
+    name: sessionCard.dataset.sessionName,
+    time: sessionCard.dataset.sessionTime,
+    location: sessionCard.dataset.sessionLocation
+  };
+  
+  // Update modal content
+  document.getElementById('modal-session-name').textContent = currentSessionData.name;
+  document.getElementById('modal-session-time').textContent = `Time: ${currentSessionData.time}`;
+  document.getElementById('modal-session-location').textContent = `Location: ${currentSessionData.location}`;
+  
+  // Show modal
+  document.getElementById('facilitator-modal').style.display = 'flex';
+  
+  // Load facilitators
+  loadFacilitators();
+}
+
+// Close facilitator modal
+function closeFacilitatorModal() {
+  document.getElementById('facilitator-modal').style.display = 'none';
+  currentSessionData = null;
+  allFacilitators = [];
+  filteredFacilitators = [];
+}
+
+// Load facilitators from API
+async function loadFacilitators() {
+  const facilitatorList = document.getElementById('facilitator-list');
+  const currentUnitId = window.currentUnitId;
+  
+  if (!currentUnitId) {
+    facilitatorList.innerHTML = `
+      <div class="facilitator-loading">
+        <span class="material-icons">error</span>
+        <p>No unit selected</p>
+      </div>
+    `;
+    return;
+  }
+  
+  try {
+    facilitatorList.innerHTML = `
+      <div class="facilitator-loading">
+        <span class="material-icons">hourglass_empty</span>
+        <p>Loading facilitators...</p>
+      </div>
+    `;
+    
+    const response = await fetch(`/unitcoordinator/units/${currentUnitId}/facilitators`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': window.csrfToken
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.ok) {
+      allFacilitators = data.facilitators;
+      filteredFacilitators = [...allFacilitators];
+      renderFacilitatorList();
+    } else {
+      throw new Error(data.error || 'Failed to load facilitators');
+    }
+    
+  } catch (error) {
+    console.error('Error loading facilitators:', error);
+    facilitatorList.innerHTML = `
+      <div class="facilitator-loading">
+        <span class="material-icons">error</span>
+        <p>Error loading facilitators: ${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+// Render facilitator list
+function renderFacilitatorList() {
+  const facilitatorList = document.getElementById('facilitator-list');
+  
+  if (filteredFacilitators.length === 0) {
+    facilitatorList.innerHTML = `
+      <div class="facilitator-loading">
+        <span class="material-icons">person_off</span>
+        <p>No facilitators found</p>
+      </div>
+    `;
+    return;
+  }
+  
+  facilitatorList.innerHTML = filteredFacilitators.map(facilitator => `
+    <div class="facilitator-item" onclick="selectFacilitator(${facilitator.id}, '${facilitator.name}', '${facilitator.email}')">
+      <div class="facilitator-avatar">
+        ${getFacilitatorInitials(facilitator.name)}
+      </div>
+      <div class="facilitator-info">
+        <div class="facilitator-name">${facilitator.name}</div>
+        <div class="facilitator-email">${facilitator.email}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Get facilitator initials
+function getFacilitatorInitials(name) {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
+
+// Select facilitator
+function selectFacilitator(facilitatorId, facilitatorName, facilitatorEmail) {
+  // Here you would typically make an API call to assign the facilitator to the session
+  // For now, we'll just show a success message and close the modal
+  
+  console.log('Selected facilitator:', {
+    id: facilitatorId,
+    name: facilitatorName,
+    email: facilitatorEmail,
+    session: currentSessionData
+  });
+  
+  // Show success message
+  showNotification(`Facilitator ${facilitatorName} selected for ${currentSessionData.name}`, 'success');
+  
+  // Close modal
+  closeFacilitatorModal();
+  
+  // TODO: Implement actual assignment logic here
+  // This would involve making an API call to assign the facilitator to the session
+}
+
+// Search facilitators
+function searchFacilitators() {
+  const searchTerm = document.getElementById('facilitator-search').value.toLowerCase();
+  
+  if (searchTerm === '') {
+    filteredFacilitators = [...allFacilitators];
+  } else {
+    filteredFacilitators = allFacilitators.filter(facilitator => 
+      facilitator.name.toLowerCase().includes(searchTerm) ||
+      facilitator.email.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  renderFacilitatorList();
+}
+
+// Initialize facilitator modal event listeners
+document.addEventListener('DOMContentLoaded', function() {
+  // Close modal when clicking outside
+  document.getElementById('facilitator-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeFacilitatorModal();
+    }
+  });
+  
+  // Close modal buttons
+  document.getElementById('facilitator-modal-close').addEventListener('click', closeFacilitatorModal);
+  document.getElementById('facilitator-modal-cancel').addEventListener('click', closeFacilitatorModal);
+  
+  // Search functionality
+  document.getElementById('facilitator-search').addEventListener('input', searchFacilitators);
+});

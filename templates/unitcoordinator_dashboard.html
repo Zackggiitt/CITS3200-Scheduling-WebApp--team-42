@@ -1989,6 +1989,42 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
   </div>
 </div>
 
+<!-- Facilitator Selection Modal -->
+<div id="facilitator-modal" class="facilitator-modal" style="display: none;">
+  <div class="facilitator-modal-content">
+    <div class="facilitator-modal-header">
+      <h3>Select Facilitator</h3>
+      <button id="facilitator-modal-close" class="facilitator-modal-close" aria-label="Close">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    
+    <div class="facilitator-modal-body">
+      <div class="session-info">
+        <h4 id="modal-session-name">Session Name</h4>
+        <p id="modal-session-time">Time: Loading...</p>
+        <p id="modal-session-location">Location: Loading...</p>
+      </div>
+      
+      <div class="facilitator-search">
+        <input type="text" id="facilitator-search" placeholder="Search facilitators..." class="facilitator-search-input">
+      </div>
+      
+      <div class="facilitator-list" id="facilitator-list">
+        <!-- Facilitators will be loaded here -->
+        <div class="facilitator-loading">
+          <span class="material-icons">hourglass_empty</span>
+          <p>Loading facilitators...</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="facilitator-modal-footer">
+      <button id="facilitator-modal-cancel" class="btn btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- External JS -->
 <script src="{{ url_for('static', filename='js/uc.js') }}"></script>
 <script src="{{ url_for('static', filename='js/facilitator_review.js') }}"></script>
