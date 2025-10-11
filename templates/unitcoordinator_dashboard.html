@@ -525,22 +525,30 @@
 
             <!-- Assignment Status Legend -->
             <div class="status-legend">
-              <div class="legend-item">
-                <div class="legend-dot approved"></div>
-                <span>Approved</span>
+              <div class="legend-items">
+                <div class="legend-item">
+                  <div class="legend-dot approved"></div>
+                  <span>Approved</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot pending"></div>
+                  <span>Pending</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot unassigned"></div>
+                  <span>Unassigned</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot proposed"></div>
+                  <span>Proposed</span>
+                </div>
               </div>
-              <div class="legend-item">
-                <div class="legend-dot pending"></div>
-                <span>Pending</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-dot unassigned"></div>
-                <span>Unassigned</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-dot proposed"></div>
-                <span>Proposed</span>
-              </div>
+              
+              <!-- Publish Button -->
+              <button type="button" class="publish-btn" id="publish-schedule-btn">
+                <span class="material-icons">publish</span>
+                Publish
+              </button>
             </div>
 
             <!-- Calendar View -->
@@ -1985,6 +1993,40 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
         <span class="material-icons">notifications_none</span>
         <p>No notifications yet</p>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Publish Confirmation Modal -->
+<div id="publish-confirmation-modal" class="publish-confirmation-modal" style="display: none;">
+  <div class="publish-confirmation-content">
+    <div class="publish-confirmation-header">
+      <span class="material-icons publish-icon">publish</span>
+      <h2>Publish Schedule</h2>
+      <button id="publish-confirmation-close" class="publish-confirmation-close" aria-label="Close">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    
+    <div class="publish-confirmation-body">
+      <p class="confirmation-question">Are you sure you want to publish this schedule?</p>
+      <p class="confirmation-description">This will send notifications to all assigned facilitators about their session assignments.</p>
+      
+      <div class="publish-summary">
+        <div class="summary-item">
+          <span class="material-icons">event</span>
+          <span id="publish-session-count">0 sessions</span>
+        </div>
+        <div class="summary-item">
+          <span class="material-icons">group</span>
+          <span id="publish-facilitator-count">0 facilitators</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="publish-confirmation-footer">
+      <button id="publish-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="publish-confirm" class="btn btn-primary">Yes, Publish</button>
     </div>
   </div>
 </div>

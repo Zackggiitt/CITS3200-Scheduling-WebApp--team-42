@@ -5071,8 +5071,99 @@ function searchFacilitators() {
   renderFacilitatorList();
 }
 
+// Publish Schedule Functions
+function openPublishConfirmation() {
+  // Count sessions and facilitators
+  const sessionCards = document.querySelectorAll('.session-card');
+  const assignedSessions = Array.from(sessionCards).filter(card => {
+    const facilitatorElement = card.querySelector('.session-facilitator');
+    return facilitatorElement && !facilitatorElement.classList.contains('unassigned');
+  });
+  
+  // Count unique facilitators
+  const facilitatorNames = new Set();
+  assignedSessions.forEach(card => {
+    const facilitatorElement = card.querySelector('.session-facilitator');
+    if (facilitatorElement && facilitatorElement.title) {
+      const title = facilitatorElement.title;
+      if (title.includes('Assigned to:')) {
+        const facilitators = title.replace('Assigned to: ', '').split(', ');
+        facilitators.forEach(fac => facilitatorNames.add(fac.trim()));
+      }
+    }
+  });
+  
+  // Update summary
+  document.getElementById('publish-session-count').textContent = `${assignedSessions.length} sessions`;
+  document.getElementById('publish-facilitator-count').textContent = `${facilitatorNames.size} facilitators`;
+  
+  // Show modal
+  document.getElementById('publish-confirmation-modal').style.display = 'flex';
+}
+
+function closePublishConfirmation() {
+  document.getElementById('publish-confirmation-modal').style.display = 'none';
+}
+
+async function confirmPublish() {
+  try {
+    // Get current unit ID
+    const tabsNav = document.querySelector('.uc-tabs[data-unit-id]');
+    const currentUnitId = tabsNav ? tabsNav.getAttribute('data-unit-id') : null;
+    
+    if (!currentUnitId) {
+      showSimpleNotification('No unit selected', 'error');
+      return;
+    }
+    
+    const response = await fetch(`/unitcoordinator/units/${currentUnitId}/publish`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': window.csrfToken
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      showSimpleNotification('Schedule published successfully! Facilitators have been notified.', 'success');
+      closePublishConfirmation();
+      
+      // Update publish button state
+      const publishBtn = document.getElementById('publish-schedule-btn');
+      publishBtn.disabled = true;
+      publishBtn.innerHTML = '<span class="material-icons">check</span>Published';
+    } else {
+      throw new Error(result.error || 'Failed to publish schedule');
+    }
+    
+  } catch (error) {
+    console.error('Error publishing schedule:', error);
+    showSimpleNotification(`Error publishing schedule: ${error.message}`, 'error');
+  }
+}
+
 // Initialize modal event listeners
 document.addEventListener('DOMContentLoaded', function() {
+  // Publish Confirmation Modal
+  document.getElementById('publish-confirmation-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closePublishConfirmation();
+    }
+  });
+  
+  document.getElementById('publish-confirmation-close').addEventListener('click', closePublishConfirmation);
+  document.getElementById('publish-cancel').addEventListener('click', closePublishConfirmation);
+  document.getElementById('publish-confirm').addEventListener('click', confirmPublish);
+  
+  // Publish Button
+  document.getElementById('publish-schedule-btn').addEventListener('click', openPublishConfirmation);
+  
   // Create Session Modal
   document.getElementById('create-session-modal').addEventListener('click', function(e) {
     if (e.target === this) {

@@ -2489,6 +2489,68 @@ def list_venues(unit_id: int):
     })
 
 
+@unitcoordinator_bp.post("/units/<int:unit_id>/publish")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def publish_schedule(unit_id: int):
+    """Publish the schedule and notify facilitators."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        # Get all sessions for this unit that have facilitators assigned
+        sessions = (
+            db.session.query(Session)
+            .join(Module, Session.module_id == Module.id)
+            .filter(Module.unit_id == unit_id)
+            .filter(Session.status.in_(['pending', 'assigned']))
+            .all()
+        )
+        
+        if not sessions:
+            return jsonify({"ok": False, "error": "No assigned sessions found to publish"}), 400
+        
+        # Get all facilitators who will be notified
+        facilitator_ids = set()
+        for session in sessions:
+            # Get facilitators assigned to this session
+            assignments = SessionFacilitator.query.filter_by(session_id=session.id).all()
+            for assignment in assignments:
+                facilitator_ids.add(assignment.facilitator_id)
+        
+        # Create notifications for facilitators
+        notifications_created = 0
+        for facilitator_id in facilitator_ids:
+            notification = Notification(
+                user_id=facilitator_id,
+                title="Schedule Published",
+                message=f"Your schedule for {unit.unit_code} has been published. Please review your assigned sessions.",
+                notification_type="schedule_published",
+                is_read=False
+            )
+            db.session.add(notification)
+            notifications_created += 1
+        
+        # Update session statuses to 'published'
+        for session in sessions:
+            session.status = 'published'
+        
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "message": f"Schedule published successfully. {notifications_created} facilitators notified.",
+            "sessions_published": len(sessions),
+            "facilitators_notified": notifications_created
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to publish schedule: {str(e)}"}), 500
+
+
 @unitcoordinator_bp.post("/units/<int:unit_id>/sessions/manual")
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
