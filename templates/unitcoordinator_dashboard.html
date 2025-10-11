@@ -1515,6 +1515,28 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
           <h2 id="bulk-staffing-title">Bulk Staffing</h2>
           <p class="subtext">Set staff requirements across multiple sessions</p>
 
+          <!-- No Sessions Warning -->
+          <div id="no_sessions_warning" class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 mb-6 hidden">
+            <div class="flex items-start">
+              <span class="material-icons text-yellow-600 mr-3 mt-0.5">warning</span>
+              <div>
+                <h3 class="text-lg font-semibold text-yellow-800 mb-2">No Sessions Found</h3>
+                <p class="text-yellow-700 text-sm mb-3">
+                  You need to create sessions before you can apply bulk staffing settings. 
+                  Please go back to Step 3 (Sessions) to create sessions first.
+                </p>
+                <div class="flex space-x-3">
+                  <button type="button" onclick="goToStep(3)" class="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm">
+                    Go to Sessions Step
+                  </button>
+                  <button type="button" onclick="skipBulkStaffing()" class="px-4 py-2 border border-yellow-600 text-yellow-600 rounded-md hover:bg-yellow-50 text-sm">
+                    Skip This Step
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="bg-white border border-gray-200 rounded-xl p-6">
             <div class="mb-6">
               <h3 class="text-lg font-semibold mb-2">Set Staff Requirements</h3>

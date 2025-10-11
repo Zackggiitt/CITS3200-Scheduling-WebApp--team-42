@@ -398,7 +398,34 @@ async function nextStep() {
       box.textContent = 'Please upload the facilitators & venues CSV before continuing.';
       return;
     }
-    return setStep(4);
+    
+    // Check if any sessions have been created
+    const unitId = document.getElementById('unit_id')?.value;
+    if (unitId) {
+      // Check if there are any sessions before proceeding to bulk staffing
+      checkSessionsBeforeBulkStaffing().then(hasSessions => {
+        if (hasSessions) {
+          setStep(4);
+        } else {
+          // Show a confirmation dialog
+          const proceed = confirm(
+            'No sessions have been created yet. You can either:\n\n' +
+            '• Create sessions now using the calendar or CAS CSV upload\n' +
+            '• Skip to bulk staffing (you can return to create sessions later)\n\n' +
+            'Click OK to skip to bulk staffing, or Cancel to stay and create sessions.'
+          );
+          if (proceed) {
+            setStep(4);
+          }
+        }
+      }).catch(e => {
+        console.error('Failed to check sessions:', e);
+        setStep(4); // Proceed anyway if check fails
+      });
+    } else {
+      setStep(4);
+    }
+    return;
   }
 
   if (currentStep === 4) {
@@ -2806,7 +2833,11 @@ function initBulkStaffing() {
       
       const data = await response.json();
       if (data.ok) {
-        alert(`Bulk staffing applied: ${data.updated_sessions} out of ${data.total_sessions} sessions updated with ${leadCount} lead staff and ${supportCount} support staff.`);
+        if (data.total_sessions === 0) {
+          alert('No sessions found to update. Please create sessions in Step 3 first, then return to apply bulk staffing.');
+        } else {
+          alert(`Bulk staffing applied: ${data.updated_sessions} out of ${data.total_sessions} sessions updated with ${leadCount} lead staff and ${supportCount} support staff.`);
+        }
         // Refresh the review step if we're currently on it
         if (currentStep === 5) {
           populateReview();
@@ -2820,6 +2851,36 @@ function initBulkStaffing() {
     }
   }
 
+  // Check if there are any sessions and show warning if none
+  async function checkSessionsAndShowWarning() {
+    const unitId = document.getElementById('unit_id')?.value;
+    if (!unitId) return;
+    
+    try {
+      // Check all filter types to see if any have sessions
+      const activityTypes = await getSessionTypes();
+      const sessionNames = await getSessionNames();
+      const modules = await getModules();
+      
+      const hasAnySessions = activityTypes.length > 0 || sessionNames.length > 0 || modules.length > 0;
+      
+      const warningDiv = document.getElementById('no_sessions_warning');
+      const bulkStaffingContent = document.querySelector('[data-step="4"] .bg-white.border.border-gray-200');
+      
+      if (!hasAnySessions) {
+        // Show warning and hide bulk staffing content
+        if (warningDiv) warningDiv.classList.remove('hidden');
+        if (bulkStaffingContent) bulkStaffingContent.style.opacity = '0.5';
+      } else {
+        // Hide warning and show bulk staffing content
+        if (warningDiv) warningDiv.classList.add('hidden');
+        if (bulkStaffingContent) bulkStaffingContent.style.opacity = '1';
+      }
+    } catch (e) {
+      console.error('Failed to check sessions:', e);
+    }
+  }
+
   // Initialize filter options when step 4 is shown
   const step4Section = document.querySelector('[data-step="4"]');
   if (step4Section) {
@@ -2827,6 +2888,7 @@ function initBulkStaffing() {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
           if (!step4Section.classList.contains('hidden')) {
+            checkSessionsAndShowWarning();
             updateFilterOptions();
           }
         }
@@ -2838,6 +2900,32 @@ function initBulkStaffing() {
 
 // Initialize bulk staffing when DOM is loaded
 document.addEventListener('DOMContentLoaded', initBulkStaffing);
+
+// Function to skip bulk staffing step
+function skipBulkStaffing() {
+  // Go directly to the review step
+  goToStep(5);
+}
+
+// Function to check if sessions exist before going to bulk staffing
+async function checkSessionsBeforeBulkStaffing() {
+  const unitId = document.getElementById('unit_id')?.value;
+  if (!unitId) return false;
+  
+  try {
+    // Check if there are any sessions by trying to get filter options
+    const response = await fetch(`/unitcoordinator/units/${unitId}/bulk-staffing/filters?type=activity`);
+    const data = await response.json();
+    return data.ok && data.options && data.options.length > 0;
+  } catch (e) {
+    console.error('Failed to check sessions:', e);
+    return false;
+  }
+}
+
+// Make functions globally available for onclick handlers
+window.skipBulkStaffing = skipBulkStaffing;
+window.checkSessionsBeforeBulkStaffing = checkSessionsBeforeBulkStaffing;
 
 // ===== Unit Code Auto-Uppercase =====
 function initUnitCodeUppercase() {
