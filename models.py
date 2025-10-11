@@ -22,9 +22,9 @@ class SwapStatus(Enum):
 # Add new enum for skill levels
 class SkillLevel(Enum):
     PROFICIENT = "proficient"
-    LEADER = "leader"
-    INTERESTED = "interested"
-    UNINTERESTED = "uninterested"
+    HAVE_RUN_BEFORE = "have_run_before"
+    HAVE_SOME_SKILL = "have_some_skill"
+    NO_INTEREST = "no_interest"
 
 # Add enum for recurring patterns
 class RecurringPattern(Enum):
@@ -318,7 +318,7 @@ class FacilitatorSkill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     facilitator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     module_id = db.Column(db.Integer, db.ForeignKey('module.id'), nullable=False)
-    skill_level = db.Column(db.Enum(SkillLevel), nullable=False, default=SkillLevel.INTERESTED)
+    skill_level = db.Column(db.Enum(SkillLevel), nullable=False, default=SkillLevel.HAVE_SOME_SKILL)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

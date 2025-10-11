@@ -75,6 +75,10 @@
             <span class="material-icons" aria-hidden="true">event_busy</span>
             <span>Unavailability</span>
         </a>
+        <a href="#skills" class="dashboard-nav-item" id="skills-nav">
+            <span class="material-icons" aria-hidden="true">psychology</span>
+            <span>Skills</span>
+        </a>
         <a href="#schedule" class="dashboard-nav-item" id="schedule-nav">
             <span class="material-icons" aria-hidden="true">calendar_today</span>
             <span>My Schedule</span>
@@ -599,6 +603,34 @@
     </div>
   </div>
 </div>
+
+<!-- Skills View -->
+<section id="skills-view" class="main-content-wrapper" style="display: none;">
+  <div class="skills-container">
+    <div class="skills-header">
+      <div>
+        <h2>My Skills</h2>
+        <p class="skills-subtitle">View all modules for this unit and your assigned skill levels.</p>
+      </div>
+    </div>
+    
+    <div class="skills-content">
+      <div class="skills-grid" id="skills-grid">
+        <!-- Skills will be loaded dynamically here -->
+        <div class="loading-message">
+          <span class="material-icons">psychology</span>
+          <p>Loading your skills...</p>
+        </div>
+      </div>
+      <div class="skills-actions" id="skills-actions" style="display: none;">
+        <button id="save-skills-btn" class="btn-primary">
+          <span class="material-icons">save</span>
+          Save Skills
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- Calendar View -->
 <section id="calendar-view" class="main-content-wrapper" style="display: none;">
