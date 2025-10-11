@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (welcomeBanner) welcomeBanner.style.display = 'none';
       if (unitStatusCard) unitStatusCard.style.display = 'none';
       if (facilitatorManagement) facilitatorManagement.style.display = 'block';
-      console.log('Employees tab activated');
+      console.log('Users tab activated');
     } else {
       const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
       if (dashboardTab) dashboardTab.classList.add('active');
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', (e) => {
     if (e.target.closest('.facilitator-action-btn.primary')) {
       e.preventDefault();
-      console.log('Add Employee button clicked!');
+      console.log('Add User button clicked!');
       if (modal) {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         status: formData.get('status')
       };
 
-      console.log('Submitting employee data:', employeeData);
+      console.log('Submitting user data:', employeeData);
 
       const submitBtn = addEmployeeForm.querySelector('.btn-primary');
       const originalText = submitBtn.textContent;
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await response.json();
 
         if (result.success) {
-          alert('Employee added successfully! They will receive login credentials via email.');
+          alert('User added successfully! They will receive login credentials via email.');
           modal.style.display = 'none';
           document.body.style.overflow = 'auto';
           addEmployeeForm.reset();
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } catch (error) {
         console.error('Error submitting form:', error);
-        alert('An error occurred while adding the employee. Please try again.');
+        alert('An error occurred while adding the user. Please try again.');
       } finally {
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         status: formData.get('status')
       };
 
-      console.log('Updating employee data:', employeeData);
+      console.log('Updating user data:', employeeData);
 
       const submitBtn = editEmployeeForm.querySelector('.btn-primary');
       const originalText = submitBtn.textContent;
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await response.json();
 
         if (result.success) {
-          alert('Employee details updated successfully!');
+          alert('User details updated successfully!');
           editModal.style.display = 'none';
           document.body.style.overflow = 'auto';
           updateEmployeeCardInPlace(employeeData);
@@ -252,8 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
           alert(`Error: ${result.error}`);
         }
       } catch (error) {
-        console.error('Error updating employee:', error);
-        alert('An error occurred while updating the employee. Please try again.');
+        console.error('Error updating user:', error);
+        alert('An error occurred while updating the user. Please try again.');
       } finally {
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
@@ -438,7 +438,7 @@ async function deleteAccount(facilitatorId, facilitatorName) {
         }
 
         updateResultsCount();
-        alert(`${facilitatorName}'s employee account has been deleted successfully.`);
+        alert(`${facilitatorName}'s user account has been deleted successfully.`);
       } else {
         alert(`Error: ${result.message || 'Failed to delete account'}`);
       }
@@ -457,12 +457,12 @@ function updateResultsCount() {
   if (!resultsCountEl) return;
   const allCards = Array.from(document.querySelectorAll('.facilitator-card'));
   const visibleCards = allCards.filter(c => c.style.display !== 'none');
-  resultsCountEl.textContent = `Showing ${visibleCards.length} of ${allCards.length} employees`;
+  resultsCountEl.textContent = `Showing ${visibleCards.length} of ${allCards.length} users`;
 }
 
 // Open edit modal function
 function openEditModal(facilitatorId, facilitatorName, facilitatorEmail) {
-  console.log(`Opening edit modal for employee ID: ${facilitatorId}, Name: ${facilitatorName}`);
+  console.log(`Opening edit modal for user ID: ${facilitatorId}, Name: ${facilitatorName}`);
 
   document.getElementById('editEmployeeId').value = facilitatorId;
   document.getElementById('editEmail').value = facilitatorEmail;
@@ -534,7 +534,7 @@ async function sendResetLink() {
   const employeeEmail = document.getElementById('editEmail').value;
 
   if (!employeeId || !employeeEmail) {
-    alert('Employee information not found. Please try again.');
+    alert('User information not found. Please try again.');
     return;
   }
 
@@ -611,7 +611,7 @@ function updateEmployeeCardInPlace(employeeData) {
     const phoneElement = employeeCard.querySelector('.facilitator-phone');
     if (phoneElement) phoneElement.textContent = employeeData.phone;
 
-    console.log('Employee card updated in place successfully');
+    console.log('User card updated in place successfully');
   }
 }
 
@@ -621,7 +621,7 @@ async function adminResetPassword() {
   const employeeName = document.getElementById('editFullName').value;
 
   if (!employeeId || !employeeName) {
-    alert('Employee information not found. Please try again.');
+    alert('User information not found. Please try again.');
     return;
   }
 

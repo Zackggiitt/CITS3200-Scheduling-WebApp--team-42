@@ -64,7 +64,7 @@
       </button>
       <button class="admin-tab {% if tab == 'employees' %}active{% endif %}" data-tab="employees">
         <span class="material-icons">group</span>
-        <span>Employees</span>
+        <span>Users</span>
       </button>
     </nav>
 
@@ -121,8 +121,8 @@
       <!-- Header -->
       <div class="facilitator-header">
         <div class="facilitator-header-content">
-          <h2 class="facilitator-title">Facilitator Management</h2>
-          <p class="facilitator-subtitle">Comprehensive facilitator oversight, performance tracking, and workforce management.</p>
+          <h2 class="facilitator-title">User Management</h2>
+          <p class="facilitator-subtitle">Comprehensive user oversight, performance tracking, and workforce management.</p>
         </div>
         <div class="facilitator-header-actions">
           <button class="facilitator-action-btn secondary">
@@ -135,7 +135,7 @@
           </button>
           <button class="facilitator-action-btn primary">
             <span class="material-icons">person_add</span>
-            <span>Add Employee</span>
+            <span>Add User</span>
           </button>
         </div>
       </div>
@@ -147,7 +147,7 @@
         <div class="facilitator-search-section">
           <div class="search-bar">
             <span class="material-icons search-icon">search</span>
-            <input type="text" id="facilitatorSearch" placeholder="Search employees by name or email..." class="search-input">
+            <input type="text" id="facilitatorSearch" placeholder="Search users by name or email..." class="search-input">
           </div>
           <div class="filter-controls">
             <select id="positionFilter" class="filter-select">
@@ -167,7 +167,7 @@
 
         <!-- Results Summary -->
         <div class="results-summary">
-          <span id="resultsCount">Showing {{ facilitators|length or 0 }} of {{ facilitators|length or 0 }} facilitators</span>
+          <span id="resultsCount">Showing {{ facilitators|length or 0 }} of {{ facilitators|length or 0 }} users</span>
         </div>
 
         <!-- Facilitator List -->
@@ -267,8 +267,8 @@
           {% if not facilitators %}
           <div class="empty-state">
             <span class="material-icons">group</span>
-            <h3>No facilitators found</h3>
-            <p>Add your first facilitator using the "Add Employee" button above.</p>
+            <h3>No users found</h3>
+            <p>Add your first user using the "Add User" button above.</p>
           </div>
           {% endif %}
         </div>
@@ -282,8 +282,8 @@
   <div class="modal-overlay" id="addEmployeeModal" style="display: none;">
     <div class="modal-container">
       <div class="modal-header">
-        <h2 class="modal-title">Add New Employee</h2>
-        <p class="modal-description">Add a new employee with their contact information and role details.</p>
+        <h2 class="modal-title">Add New User</h2>
+        <p class="modal-description">Add a new user with their contact information and role details.</p>
         <button class="modal-close" id="closeModal">
           <span class="material-icons">close</span>
         </button>
@@ -343,7 +343,7 @@
         
         <div class="modal-actions">
           <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
-          <button type="submit" class="btn-primary">Add Employee</button>
+          <button type="submit" class="btn-primary">Add User</button>
         </div>
       </form>
     </div>
@@ -353,8 +353,8 @@
   <div class="modal-overlay" id="editEmployeeModal" style="display: none;">
     <div class="modal-container">
       <div class="modal-header">
-        <h2 class="modal-title">Edit Employee Details</h2>
-        <p class="modal-description">Update employee information and manage account settings.</p>
+        <h2 class="modal-title">Edit User Details</h2>
+        <p class="modal-description">Update user information and manage account settings.</p>
         <button class="modal-close" id="closeEditModal">
           <span class="material-icons">close</span>
         </button>
@@ -418,7 +418,7 @@
           <div class="password-reset-options">
             <button type="button" class="btn-secondary" onclick="sendResetLink()">
               <span class="material-icons">email</span>
-              Send Reset Link to Employee
+              Send Reset Link to User
             </button>
             <button type="button" class="btn-secondary" onclick="adminResetPassword()">
               <span class="material-icons">lock_reset</span>
@@ -429,7 +429,7 @@
         
         <div class="modal-actions">
           <button type="button" class="btn-cancel" id="cancelEditBtn">Cancel</button>
-          <button type="submit" class="btn-primary">Update Employee</button>
+          <button type="submit" class="btn-primary">Update User</button>
         </div>
       </form>
     </div>

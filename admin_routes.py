@@ -101,7 +101,7 @@ def dashboard():
 @admin_bp.route('/delete-employee/<int:employee_id>', methods=['DELETE'])
 @admin_required
 def delete_employee(employee_id):
-    """Delete an employee (facilitator, unit coordinator, or admin) account"""
+    """Delete a user (facilitator, unit coordinator, or admin) account"""
     try:
         print(f"Delete request received for employee ID: {employee_id}")
         
@@ -110,17 +110,17 @@ def delete_employee(employee_id):
         print(f"Found employee: {employee}")
         
         if not employee:
-            print("Employee not found")
-            return jsonify({'success': False, 'message': 'Employee not found'}), 404
+            print("User not found")
+            return jsonify({'success': False, 'message': 'User not found'}), 404
         
         
-        # Delete the employee from database
+        # Delete the user from database
         employee_name = employee.full_name if employee else 'Unknown'
-        print(f"Deleting employee: {employee_name} (Role: {employee.role})")
+        print(f"Deleting user: {employee_name} (Role: {employee.role})")
         
         db.session.delete(employee)
         db.session.commit()
-        print("Employee deleted successfully")
+        print("User deleted successfully")
         
         # Get position name for success message
         position_mapping = {
@@ -128,14 +128,14 @@ def delete_employee(employee_id):
             UserRole.UNIT_COORDINATOR: 'Unit Coordinator', 
             UserRole.ADMIN: 'Admin'
         }
-        position_name = position_mapping.get(employee.role, 'Employee')
+        position_name = position_mapping.get(employee.role, 'User')
         
         return jsonify({'success': True, 'message': f'{position_name} account deleted successfully'})
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error deleting employee: {e}")
-        return jsonify({'success': False, 'message': 'An error occurred while deleting the employee'}), 500
+        print(f"Error deleting user: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while deleting the user'}), 500
 
 @admin_bp.route('/delete-facilitator/<int:facilitator_id>', methods=['DELETE'])
 @admin_required
@@ -171,21 +171,21 @@ def delete_facilitator(facilitator_id):
 @admin_bp.route('/update-employee', methods=['PUT'])
 @admin_required
 def update_employee():
-    """Update an employee (facilitator, unit coordinator, or admin) information"""
+    """Update a user (facilitator, unit coordinator, or admin) information"""
     try:
         data = request.get_json()
-        print(f"Update employee request received: {data}")
-        print(f"Employee ID from request: {data.get('employeeId')}")
+        print(f"Update user request received: {data}")
+        print(f"User ID from request: {data.get('employeeId')}")
         
-        # Get the employee to update
+        # Get the user to update
         employee_id = data.get('employeeId')
         if not employee_id:
-            return jsonify({'success': False, 'error': 'Employee ID is required'}), 400
+            return jsonify({'success': False, 'error': 'User ID is required'}), 400
             
         employee = User.query.get(employee_id)
-        print(f"Found employee: {employee}")
+        print(f"Found user: {employee}")
         if not employee:
-            return jsonify({'success': False, 'error': 'Employee not found'}), 404
+            return jsonify({'success': False, 'error': 'User not found'}), 404
         
         # Validate required fields
         if not data.get('fullName'):
@@ -257,11 +257,11 @@ def update_employee():
         # Save changes
         db.session.commit()
         
-        print(f"Updated employee: {employee.email} with role: {employee.role}")
+        print(f"Updated user: {employee.email} with role: {employee.role}")
         
         return jsonify({
             'success': True, 
-            'message': 'Employee updated successfully',
+            'message': 'User updated successfully',
             'employee_id': employee.id,
             'email': employee.email,
             'position': data['position']
@@ -269,10 +269,10 @@ def update_employee():
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error updating employee: {e}")
+        print(f"Error updating user: {e}")
         import traceback
         print(f"Traceback: {traceback.format_exc()}")
-        return jsonify({'success': False, 'error': f'An error occurred while updating the employee: {str(e)}'}), 500
+        return jsonify({'success': False, 'error': f'An error occurred while updating the user: {str(e)}'}), 500
 
 @admin_bp.route('/update-facilitator', methods=['PUT'])
 @admin_required
@@ -403,7 +403,7 @@ def admin_reset_password():
 @admin_bp.route('/create-employee', methods=['POST'])
 @admin_required
 def create_employee():
-    """Create a new employee (facilitator, unit coordinator, or admin) from the admin dashboard modal"""
+    """Create a new user (facilitator, unit coordinator, or admin) from the admin dashboard modal"""
     try:
         data = request.get_json()
         
@@ -488,8 +488,8 @@ def create_employee():
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error creating employee: {e}")
-        return jsonify({'success': False, 'error': 'An error occurred while creating the employee'}), 500
+        print(f"Error creating user: {e}")
+        return jsonify({'success': False, 'error': 'An error occurred while creating the user'}), 500
 
 @admin_bp.route('/create-facilitator-modal', methods=['POST'])
 @admin_required
