@@ -4213,7 +4213,17 @@ async function autoAssignFacilitators() {
         }
       }
       
+      // Add CSV download option to the message
+      if (data.csv_available) {
+        message += '\n\n📊 A detailed CSV report is available for download.';
+      }
+      
       alert(message);
+      
+      // Show CSV download button if available
+      if (data.csv_available && data.csv_download_url) {
+        showCsvDownloadButton(data.csv_download_url);
+      }
       
       // Refresh the schedule view to show new assignments
       if (typeof loadScheduleSessions === 'function') {
@@ -4235,6 +4245,40 @@ async function autoAssignFacilitators() {
     autoAssignBtn.disabled = false;
     autoAssignBtn.innerHTML = originalText;
   }
+}
+
+function showCsvDownloadButton(downloadUrl) {
+  // Find or create a container for the download button
+  const autoAssignBtn = document.querySelector('.auto-assign-btn');
+  if (!autoAssignBtn) return;
+  
+  // Check if button already exists
+  let downloadBtn = document.getElementById('csv-download-btn');
+  
+  if (!downloadBtn) {
+    // Create the download button
+    downloadBtn = document.createElement('button');
+    downloadBtn.id = 'csv-download-btn';
+    downloadBtn.className = 'btn btn-secondary ml-2';
+    downloadBtn.style.cssText = 'margin-left: 10px; display: inline-flex; align-items: center; gap: 5px;';
+    downloadBtn.innerHTML = '<span class="material-icons">download</span>Download Report (CSV)';
+    
+    // Insert after auto-assign button
+    autoAssignBtn.parentNode.insertBefore(downloadBtn, autoAssignBtn.nextSibling);
+  }
+  
+  // Update the download URL
+  downloadBtn.onclick = function() {
+    window.location.href = downloadUrl;
+  };
+  
+  // Show the button with a subtle animation
+  downloadBtn.style.display = 'inline-flex';
+  downloadBtn.style.opacity = '0';
+  setTimeout(() => {
+    downloadBtn.style.transition = 'opacity 0.3s';
+    downloadBtn.style.opacity = '1';
+  }, 100);
 }
 
 // ===== List View Functions =====

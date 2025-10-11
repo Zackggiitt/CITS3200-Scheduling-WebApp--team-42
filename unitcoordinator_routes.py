@@ -2152,7 +2152,14 @@ def auto_assign_facilitators(unit_id: int):
     
     try:
         # Import the optimization engine
-        from optimization_engine import generate_optimal_assignments, calculate_metrics, format_session_time, prepare_facilitator_data
+        from optimization_engine import (
+            generate_optimal_assignments, 
+            calculate_metrics, 
+            format_session_time, 
+            prepare_facilitator_data,
+            generate_schedule_report_csv
+        )
+        from flask import session as flask_session
         
         # Get facilitators assigned to this unit
         facilitators_from_db = (
@@ -2210,12 +2217,26 @@ def auto_assign_facilitators(unit_id: int):
         # Calculate metrics
         metrics = calculate_metrics(assignments)
         
+        # Generate CSV report and cache it in the session
+        unit_display_name = f"{unit.unit_code} - {unit.unit_name}" if unit else "Unit"
+        csv_report = generate_schedule_report_csv(
+            assignments, 
+            unit_display_name,
+            total_facilitators_in_pool=len(facilitators_from_db)
+        )
+        
+        # Store CSV in session (or you could store in a temporary file)
+        flask_session[f'schedule_report_{unit_id}'] = csv_report
+        flask_session[f'schedule_report_timestamp_{unit_id}'] = datetime.now().isoformat()
+        
         return jsonify({
             "ok": True,
             "message": f"Successfully created {len(created_assignments)} assignments",
             "assignments": created_assignments,
             "conflicts": conflicts,
-            "metrics": metrics
+            "metrics": metrics,
+            "csv_available": True,
+            "csv_download_url": f"/unitcoordinator/units/{unit_id}/download_schedule_report"
         })
         
     except Exception as e:
@@ -2225,6 +2246,46 @@ def auto_assign_facilitators(unit_id: int):
             "ok": False, 
             "error": f"Auto-assignment failed: {str(e)}"
         }), 500
+
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/download_schedule_report")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def download_schedule_report(unit_id: int):
+    """
+    Download the CSV report from the last auto-assignment run
+    """
+    from flask import session as flask_session, Response
+    from datetime import datetime
+    
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    # Check if report exists in session
+    report_key = f'schedule_report_{unit_id}'
+    if report_key not in flask_session:
+        return jsonify({
+            "ok": False, 
+            "error": "No report available. Please run auto-assignment first."
+        }), 404
+    
+    csv_content = flask_session[report_key]
+    timestamp = flask_session.get(f'schedule_report_timestamp_{unit_id}', datetime.now().isoformat())
+    
+    # Generate filename with timestamp
+    timestamp_str = datetime.fromisoformat(timestamp).strftime('%Y%m%d_%H%M%S')
+    filename = f"schedule_report_{unit.unit_code}_{timestamp_str}.csv"
+    
+    # Return as downloadable file
+    return Response(
+        csv_content,
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename}"'
+        }
+    )
 
 
 @unitcoordinator_bp.post("/units/<int:unit_id>/upload_sessions_csv")

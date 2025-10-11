@@ -6,6 +6,8 @@ Scoring Function: (W_avail × availability_match) + (W_fair × fairness_factor) 
 Skill Levels: proficient=1.0, have_run_before=0.8, have_some_skill=0.5, no_interest=0.0
 """
 
+import csv
+import io
 from datetime import datetime, time
 from models import User, UserRole, FacilitatorSkill, SkillLevel
 
@@ -300,3 +302,240 @@ def calculate_metrics(assignments):
         'skill_distribution': skill_dist,
         'fairness_metrics': fairness_metrics
     }
+
+def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitators_in_pool=None):
+    """
+    Generate a comprehensive CSV report of the auto-scheduling results
+    
+    Returns a CSV string with multiple sections:
+    1. Overview Statistics
+    2. Per-Facilitator Hours Summary
+    3. Detailed Assignment List
+    
+    Args:
+        assignments: List of assignment dictionaries
+        unit_name: Name of the unit for the report header
+        total_facilitators_in_pool: Total number of facilitators available (for utilization %)
+    """
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    if not assignments:
+        writer.writerow(["No assignments to report"])
+        return output.getvalue()
+    
+    # Calculate metrics
+    metrics = calculate_metrics(assignments)
+    fairness = metrics['fairness_metrics']
+    
+    # Build facilitator statistics
+    facilitator_stats = {}
+    for assignment in assignments:
+        fac_id = assignment['facilitator']['id']
+        fac_name = assignment['facilitator']['name']
+        fac_email = assignment['facilitator']['email']
+        
+        if fac_id not in facilitator_stats:
+            facilitator_stats[fac_id] = {
+                'name': fac_name,
+                'email': fac_email,
+                'total_hours': 0,
+                'session_count': 0,
+                'min_hours_target': assignment['facilitator'].get('min_hours', 0),
+                'max_hours_target': assignment['facilitator'].get('max_hours', 20),
+                'avg_score': 0,
+                'sessions': []
+            }
+        
+        # Get skill level for this assignment
+        skill_score = get_skill_score(assignment['facilitator'], assignment['session'])
+        skill_level_name = "Unknown"
+        for skill_level, score in SKILL_SCORES.items():
+            if abs(score - skill_score) < 0.01:
+                skill_level_name = get_skill_level_name(skill_level)
+                break
+        
+        facilitator_stats[fac_id]['total_hours'] += assignment['session']['duration_hours']
+        facilitator_stats[fac_id]['session_count'] += 1
+        facilitator_stats[fac_id]['avg_score'] += assignment['score']
+        facilitator_stats[fac_id]['sessions'].append({
+            'module': assignment['session']['module_name'],
+            'time': format_session_time(assignment['session']),
+            'hours': assignment['session']['duration_hours'],
+            'score': assignment['score'],
+            'skill_level': skill_level_name
+        })
+    
+    # Calculate average scores
+    for fac_id in facilitator_stats:
+        count = facilitator_stats[fac_id]['session_count']
+        if count > 0:
+            facilitator_stats[fac_id]['avg_score'] /= count
+    
+    # === SECTION 1: Overview Statistics ===
+    writer.writerow([f"AUTO-SCHEDULING REPORT - {unit_name}"])
+    writer.writerow([f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"])
+    writer.writerow([])
+    
+    # Calculate utilization percentage
+    facilitators_assigned = metrics['facilitator_count']
+    if total_facilitators_in_pool and total_facilitators_in_pool > 0:
+        utilization_pct = (facilitators_assigned / total_facilitators_in_pool) * 100
+        facilitators_not_assigned = total_facilitators_in_pool - facilitators_assigned
+    else:
+        utilization_pct = None
+        facilitators_not_assigned = None
+    
+    writer.writerow(["OVERVIEW STATISTICS"])
+    writer.writerow(["Metric", "Value"])
+    writer.writerow(["Total Assignments", len(assignments)])
+    writer.writerow(["Total Facilitators Used", metrics['facilitator_count']])
+    if total_facilitators_in_pool:
+        writer.writerow(["Total Facilitators in Pool", total_facilitators_in_pool])
+        writer.writerow(["Facilitators Assigned (%)", f"{utilization_pct:.1f}%"])
+        writer.writerow(["Facilitators Not Assigned", facilitators_not_assigned])
+    writer.writerow(["Total Hours Scheduled", f"{metrics['total_hours']:.1f}"])
+    writer.writerow(["Average Assignment Score", f"{metrics['avg_score']:.3f}"])
+    writer.writerow([])
+    
+    # === SECTION 2: Fairness Metrics ===
+    writer.writerow(["FAIRNESS METRICS"])
+    writer.writerow(["Metric", "Value"])
+    writer.writerow(["Minimum Hours Assigned", f"{fairness['min_hours']:.1f}"])
+    writer.writerow(["Maximum Hours Assigned", f"{fairness['max_hours']:.1f}"])
+    writer.writerow(["Average Hours Per Facilitator", f"{fairness['avg_hours']:.1f}"])
+    writer.writerow(["Hours Standard Deviation", f"{fairness['hours_std_dev']:.2f}"])
+    writer.writerow(["Hours Range (Max - Min)", f"{fairness['max_hours'] - fairness['min_hours']:.1f}"])
+    writer.writerow([])
+    
+    # === SECTION 3: Skill Distribution ===
+    writer.writerow(["SKILL LEVEL DISTRIBUTION"])
+    writer.writerow(["Skill Level", "Count", "Percentage"])
+    skill_dist = metrics['skill_distribution']
+    total_assignments = len(assignments)
+    for skill_name, count in sorted(skill_dist.items(), key=lambda x: x[1], reverse=True):
+        percentage = (count / total_assignments * 100) if total_assignments > 0 else 0
+        writer.writerow([skill_name, count, f"{percentage:.1f}%"])
+    writer.writerow([])
+    
+    # === SECTION 4: Per-Facilitator Summary ===
+    writer.writerow(["FACILITATOR HOURS SUMMARY"])
+    writer.writerow([
+        "Facilitator Name", 
+        "Email",
+        "Sessions Assigned",
+        "Total Hours", 
+        "Min Hours Target",
+        "Max Hours Target",
+        "Within Target?",
+        "% of Max Hours",
+        "Avg Assignment Score"
+    ])
+    
+    # Sort by total hours descending
+    sorted_facilitators = sorted(
+        facilitator_stats.items(), 
+        key=lambda x: x[1]['total_hours'], 
+        reverse=True
+    )
+    
+    for fac_id, stats in sorted_facilitators:
+        total_hours = stats['total_hours']
+        min_target = stats['min_hours_target']
+        max_target = stats['max_hours_target']
+        
+        within_target = "Yes" if min_target <= total_hours <= max_target else "No"
+        pct_of_max = (total_hours / max_target * 100) if max_target > 0 else 0
+        
+        writer.writerow([
+            stats['name'],
+            stats['email'],
+            stats['session_count'],
+            f"{total_hours:.1f}",
+            min_target,
+            max_target,
+            within_target,
+            f"{pct_of_max:.1f}%",
+            f"{stats['avg_score']:.3f}"
+        ])
+    
+    writer.writerow([])
+    
+    # === SECTION 5: Facilitator Skill Level Breakdown ===
+    writer.writerow(["SKILL LEVELS PER FACILITATOR"])
+    writer.writerow([
+        "Facilitator Name",
+        "Proficient",
+        "Have Run Before", 
+        "Have Some Skill",
+        "No Interest"
+    ])
+    
+    # Build skill breakdown per facilitator
+    for fac_id, stats in sorted_facilitators:
+        skill_counts = {
+            'Proficient': 0,
+            'Have Run Before': 0,
+            'Have Some Skill': 0,
+            'No Interest': 0
+        }
+        
+        for session in stats['sessions']:
+            skill_level = session.get('skill_level', 'Unknown')
+            if skill_level in skill_counts:
+                skill_counts[skill_level] += 1
+        
+        writer.writerow([
+            stats['name'],
+            skill_counts['Proficient'],
+            skill_counts['Have Run Before'],
+            skill_counts['Have Some Skill'],
+            skill_counts['No Interest']
+        ])
+    
+    writer.writerow([])
+    
+    # === SECTION 6: Detailed Assignment List ===
+    writer.writerow(["DETAILED ASSIGNMENTS"])
+    writer.writerow([
+        "Facilitator Name",
+        "Email", 
+        "Module/Session",
+        "Day & Time",
+        "Duration (Hours)",
+        "Facilitator Skill Level",
+        "Assignment Score"
+    ])
+    
+    # Sort by facilitator name, then by session time
+    all_assignments = []
+    for fac_id, stats in facilitator_stats.items():
+        for session in stats['sessions']:
+            all_assignments.append({
+                'name': stats['name'],
+                'email': stats['email'],
+                'module': session['module'],
+                'time': session['time'],
+                'hours': session['hours'],
+                'skill_level': session['skill_level'],
+                'score': session['score']
+            })
+    
+    # Sort by name, then by time
+    all_assignments.sort(key=lambda x: (x['name'], x['time']))
+    
+    for assignment in all_assignments:
+        writer.writerow([
+            assignment['name'],
+            assignment['email'],
+            assignment['module'],
+            assignment['time'],
+            f"{assignment['hours']:.1f}",
+            assignment['skill_level'],
+            f"{assignment['score']:.3f}"
+        ])
+    
+    writer.writerow([])
+    writer.writerow(["END OF REPORT"])
+    
+    return output.getvalue()
