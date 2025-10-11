@@ -4630,7 +4630,29 @@ function closeFacilitatorModal() {
 // Load facilitators from API
 async function loadFacilitators() {
   const facilitatorList = document.getElementById('facilitator-list');
-  const currentUnitId = window.currentUnitId;
+  
+  // Get current unit ID from multiple possible sources
+  let currentUnitId = null;
+  
+  // Try to get from tabs navigation data attribute
+  const tabsNav = document.querySelector('.uc-tabs[data-unit-id]');
+  if (tabsNav) {
+    currentUnitId = tabsNav.getAttribute('data-unit-id');
+  }
+  
+  // Try to get from URL parameters
+  if (!currentUnitId) {
+    const urlParams = new URLSearchParams(window.location.search);
+    currentUnitId = urlParams.get('unit');
+  }
+  
+  // Try to get from unit_id input (for create unit modal)
+  if (!currentUnitId) {
+    const unitIdInput = document.getElementById('unit_id');
+    if (unitIdInput && unitIdInput.value) {
+      currentUnitId = unitIdInput.value;
+    }
+  }
   
   if (!currentUnitId) {
     facilitatorList.innerHTML = `

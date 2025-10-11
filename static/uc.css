@@ -3696,21 +3696,32 @@ main {
 }
 
 .btn-primary {
-  background-color: #3b82f6;
+  background-color: #111827;
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #2563eb;
+  background-color: #1f2937;
 }
 
 /* Make unassigned facilitator sections clickable */
 .session-facilitator.unassigned {
   cursor: pointer;
   transition: all 0.2s;
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
 }
 
 .session-facilitator.unassigned:hover {
-  background-color: #f3f4f6;
-  transform: scale(1.05);
+  background-color: #e5e7eb;
+  color: #111827;
+  border-color: #9ca3af;
+  transform: scale(1.02);
+}
+
+.session-facilitator.unassigned:active {
+  background-color: #d1d5db;
+  color: #111827;
+  transform: scale(0.98);
 }
