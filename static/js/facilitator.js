@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashboardSections = document.querySelectorAll('#welcome, #alert, #stats, #details');
     const unitSelector = document.getElementById('unit-selector');
     const calendarView = document.getElementById('calendar-view');
-    const setupView = document.getElementById('setup-view');
+    const unavailabilityView = document.getElementById('unavailability-view');
     const swapsView = document.getElementById('swaps-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
     
@@ -13,6 +13,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const popupOverlay = document.getElementById('popup-overlay');
     const headerNotificationBadge = document.getElementById('header-notification-badge');
     const popupCloseBtn = document.getElementById('popup-close');
+    
+    // Profile dropdown elements (facilitator header)
+    const facProfileTrigger = document.getElementById('fac-profile-trigger');
+    const facDropdownMenu = document.getElementById('fac-dropdown-menu');
     
     // Navigation click handlers
     navItems.forEach(item => {
@@ -26,35 +30,28 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show/hide sections
             const href = this.getAttribute('href');
 
-            if (href === '#setup') {
-                console.log('Setup tab clicked - initializing setup view');
-                // Show setup view
+            if (href === '#unavailability') {
+                // Show unavailability view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                setupView.style.display = 'block';
+                unavailabilityView.style.display = 'block';
                 calendarView.style.display = 'none';
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
-                // Add setup-view-active class to hide All Units button
-                document.body.classList.add('setup-view-active');
+                // Add unavailability-view-active class to hide All Units button
+                document.body.classList.add('unavailability-view-active');
                 document.body.classList.remove('swaps-view-active');
-                // Show unit selector in setup view
+                // Show unit selector in unavailability view
                 if (unitSelector) unitSelector.style.display = 'block';
-                // Hide unavailability alert in setup view
+                // Hide unavailability alert in unavailability view
                 const unavailabilityAlert = document.getElementById('unavailability-alert');
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
-                // Initialize setup functionality
-                console.log('About to call initSetupView()');
-                try {
-                    initSetupView();
-                } catch (error) {
-                    console.error('Error in initSetupView:', error);
-                    alert('Error in initSetupView: ' + error.message);
-                }
+                // Initialize unavailability functionality
+                initUnavailabilityView();
             } else if (href === '#schedule') {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                setupView.style.display = 'none';
+                unavailabilityView.style.display = 'none';
                 swapsView.style.display = 'none';
                 calendarView.style.display = 'block';
                 // Hide unit selector in schedule view
@@ -70,14 +67,14 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (href === '#swaps') {
                 // Show swaps view
                 dashboardSections.forEach(section => section.style.display = 'none');
-                setupView.style.display = 'none';
+                unavailabilityView.style.display = 'none';
                 calendarView.style.display = 'none';
                 swapsView.style.display = 'block';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
                 // Add swaps-view-active class to hide All Units button
                 document.body.classList.add('swaps-view-active');
-                document.body.classList.remove('setup-view-active');
+                document.body.classList.remove('unavailability-view-active');
                 // Show unit selector in swaps view
                 if (unitSelector) unitSelector.style.display = 'block';
                 // Hide unavailability alert in swaps view
@@ -88,12 +85,12 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
-                setupView.style.display = 'none';
+                unavailabilityView.style.display = 'none';
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
                 // Remove view-specific classes to show All Units button
-                document.body.classList.remove('setup-view-active');
+                document.body.classList.remove('unavailability-view-active');
                 document.body.classList.remove('swaps-view-active');
                 // Show unit selector in dashboard view
                 if (unitSelector) unitSelector.style.display = 'block';
@@ -155,7 +152,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 hideNotificationPopup();
             }
         }
+        // Close facilitator profile dropdown when clicking outside
+        if (facDropdownMenu && facDropdownMenu.style.display === 'block') {
+            const withinTrigger = facProfileTrigger && facProfileTrigger.contains(e.target);
+            const withinMenu = facDropdownMenu.contains(e.target);
+            if (!withinTrigger && !withinMenu) {
+                facDropdownMenu.style.display = 'none';
+                if (facProfileTrigger) facProfileTrigger.setAttribute('aria-expanded', 'false');
+            }
+        }
     });
+
+    // Toggle facilitator profile dropdown
+    if (facProfileTrigger && facDropdownMenu) {
+        facProfileTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = facDropdownMenu.style.display === 'block';
+            facDropdownMenu.style.display = isOpen ? 'none' : 'block';
+            facProfileTrigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        });
+        // ESC closes the dropdown
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && facDropdownMenu.style.display === 'block') {
+                facDropdownMenu.style.display = 'none';
+                facProfileTrigger.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
 
     // Popup filter functionality
     const popupFilterBtns = document.querySelectorAll('.popup-filter-btn');
@@ -921,9 +945,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 unavailabilityNavItem.classList.add('active');
             }
             
-            // Hide all sections and show setup
+            // Hide all sections and show unavailability
             dashboardSections.forEach(section => section.style.display = 'none');
-            setupView.style.display = 'block';
+            unavailabilityView.style.display = 'block';
             calendarView.style.display = 'none';
             swapsView.style.display = 'none';
             // Hide unavailability alert in unavailability view
@@ -1244,9 +1268,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Only show alert if we're on dashboard tab (other views are hidden)
         if (unavailabilityAlert) {
-            if ((setupView && setupView.style.display === 'block') ||
+            if ((unavailabilityView && unavailabilityView.style.display === 'block') ||
                 (swapsView && swapsView.style.display === 'block')) {
-                // We're on setup or swaps tab, hide the alert
+                // We're on unavailability or swaps tab, hide the alert
                 unavailabilityAlert.style.display = 'none';
             } else {
                 // We're on dashboard tab, show the alert
@@ -3254,642 +3278,4 @@ function showNotification(message, type = 'info') {
     // This would integrate with your existing notification system
     console.log(`${type.toUpperCase()}: ${message}`);
     // You can implement a toast notification here
-}
-
-// Setup view initialization function
-function initSetupView() {
-    console.log('Initializing setup view');
-    console.log('window.currentUnit:', window.currentUnit);
-    
-    // Get current unit from window data
-    if (window.currentUnit) {
-        currentUnitId = window.currentUnit.id;
-        currentUnit = window.currentUnit;
-        console.log('Current unit set:', currentUnit);
-    } else {
-        console.error('No current unit found');
-        return;
-    }
-    
-    // Update unit information display
-    updateUnitInfo();
-    
-    // Initialize tab functionality
-    initSetupTabs();
-    
-    // Initialize unavailability section (same as before)
-    loadUnavailabilityData();
-    initUnavailabilityCalendar();
-    initUnavailabilityModal();
-    initUnavailabilityControls();
-    initAdvancedModalFeatures();
-    initializeAJAXFeatures();
-    
-    // Initialize new setup sections
-    initProficiencySection();
-    initSkillSetSection();
-    initSetupSaveButton();
-    
-    // Initialize proof upload functionality
-    initProofUpload();
-}
-
-// Initialize setup tabs functionality
-function initSetupTabs() {
-    const tabs = document.querySelectorAll('.setup-tab');
-    const tabContents = document.querySelectorAll('.setup-tab-content');
-    
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const targetTab = tab.getAttribute('data-tab');
-            
-            // Remove active class from all tabs and contents
-            tabs.forEach(t => t.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            
-            // Add active class to clicked tab and corresponding content
-            tab.classList.add('active');
-            const targetContent = document.getElementById(targetTab + '-tab-content');
-            if (targetContent) {
-                targetContent.classList.add('active');
-            }
-        });
-    });
-    
-    // Activate first tab by default
-    if (tabs.length > 0) {
-        tabs[0].click();
-    }
-}
-
-// Initialize proficiency section
-function initProficiencySection() {
-    console.log('Initializing proficiency section');
-    // Load existing proficiency data if any
-    loadProficiencyData();
-    // Initialize proficiency level selection
-    initProficiencyLevelSelection();
-}
-
-// Initialize proficiency level selection functionality
-function initProficiencyLevelSelection() {
-    const proficiencyLevels = document.querySelectorAll('.proficiency-level');
-    
-    proficiencyLevels.forEach(level => {
-        level.addEventListener('click', () => {
-            const radio = level.querySelector('input[type="radio"]');
-            if (radio) {
-                radio.checked = true;
-                
-                // Remove selected class from siblings
-                const moduleCard = level.closest('.proficiency-module-card');
-                const siblingLevels = moduleCard.querySelectorAll('.proficiency-level');
-                siblingLevels.forEach(sibling => sibling.classList.remove('selected'));
-                
-                // Add selected class to clicked level
-                level.classList.add('selected');
-            }
-        });
-    });
-}
-
-// Initialize role toggle selection functionality
-function initRoleToggleSelection() {
-    const roleToggles = document.querySelectorAll('.role-toggle');
-    
-    roleToggles.forEach(toggle => {
-        toggle.addEventListener('click', () => {
-            const radio = toggle.querySelector('input[type="radio"]');
-            if (radio) {
-                radio.checked = true;
-                
-                // Remove selected class from siblings
-                const moduleCard = toggle.closest('.proficiency-module-card');
-                const siblingToggles = moduleCard.querySelectorAll('.role-toggle');
-                siblingToggles.forEach(sibling => sibling.classList.remove('selected'));
-                
-                // Add selected class to clicked toggle
-                toggle.classList.add('selected');
-            }
-        });
-    });
-}
-
-// Initialize skill set section
-function initSkillSetSection() {
-    console.log('Initializing skill set section');
-    // Load existing skill set data if any
-    loadSkillSetData();
-}
-
-// Initialize setup save button
-function initSetupSaveButton() {
-    console.log('=== Initializing Setup Save Button ===');
-    
-    // Use a timeout to ensure DOM is fully loaded
-    setTimeout(() => {
-        const saveButton = document.getElementById('save-all-setup');
-        console.log('Save button found:', saveButton);
-        if (saveButton) {
-            // Remove any existing event listeners first
-            saveButton.removeEventListener('click', saveAllSetupData);
-            // Add the event listener
-            saveButton.addEventListener('click', saveAllSetupData);
-            console.log('Event listener added to save button');
-            
-            // Test the button by adding a visual indicator
-            saveButton.style.border = '2px solid red';
-            console.log('Added red border to save button for testing');
-        } else {
-            console.error('Save button not found! Retrying in 1 second...');
-            // Retry after 1 second
-            setTimeout(() => {
-                const retryButton = document.getElementById('save-all-setup');
-                if (retryButton) {
-                    retryButton.addEventListener('click', saveAllSetupData);
-                    console.log('Event listener added on retry');
-                } else {
-                    console.error('Save button still not found after retry!');
-                }
-            }, 1000);
-        }
-    }, 100);
-}
-
-// Load proficiency data
-function loadProficiencyData() {
-    console.log('Loading proficiency data...');
-    console.log('currentUnit in loadProficiencyData:', currentUnit);
-    
-    if (!currentUnit) {
-        console.error('No currentUnit available for loading proficiency data');
-        return;
-    }
-    
-    const apiUrl = `/facilitator/get_unit_modules?unit_id=${currentUnit.id}`;
-    console.log('Making API call to:', apiUrl);
-    
-    // Load modules for the current unit
-    fetch(apiUrl)
-        .then(response => {
-            console.log('API response received:', response.status, response.statusText);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('API data received:', data);
-            if (data.success) {
-                renderProficiencyModules(data.modules);
-            } else {
-                console.error('Error loading modules:', data.message);
-                // Fallback to sample data for demo
-                renderProficiencyModules([
-                    { id: 1, name: 'Introduction to Programming', type: 'lab' },
-                    { id: 2, name: 'Data Structures and Algorithms', type: 'tutorial' },
-                    { id: 3, name: 'Software Engineering', type: 'workshop' },
-                    { id: 4, name: 'Computer Graphics', type: 'lab' }
-                ]);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading modules:', error);
-            // Fallback to sample data for demo
-            renderProficiencyModules([
-                { id: 1, name: 'Introduction to Programming', type: 'lab' },
-                { id: 2, name: 'Data Structures and Algorithms', type: 'tutorial' },
-                { id: 3, name: 'Software Engineering', type: 'workshop' },
-                { id: 4, name: 'Computer Graphics', type: 'lab' }
-            ]);
-        });
-}
-
-// Render proficiency modules
-function renderProficiencyModules(modules) {
-    const modulesList = document.querySelector('#proficiency-modules-list');
-    if (!modulesList) return;
-    
-    modulesList.innerHTML = '';
-    
-    modules.forEach(module => {
-        const moduleCard = document.createElement('div');
-        moduleCard.className = 'proficiency-module-card';
-        moduleCard.setAttribute('data-module-id', module.id);
-        moduleCard.innerHTML = `
-            <div class="proficiency-module-header">
-                <span class="proficiency-module-name">${module.name}</span>
-                <span class="proficiency-module-code">${module.type}</span>
-            </div>
-            <div class="proficiency-levels">
-                <label class="proficiency-level" data-level="not_interested">
-                    <input type="radio" name="proficiency-${module.id}" value="not_interested">
-                    <span>Not Interested</span>
-                </label>
-                <label class="proficiency-level" data-level="interested">
-                    <input type="radio" name="proficiency-${module.id}" value="interested">
-                    <span>Interested</span>
-                </label>
-                <label class="proficiency-level" data-level="have_run_before">
-                    <input type="radio" name="proficiency-${module.id}" value="have_run_before">
-                    <span>Have Run This Before</span>
-                </label>
-                <label class="proficiency-level" data-level="proficient">
-                    <input type="radio" name="proficiency-${module.id}" value="proficient">
-                    <span>Proficient</span>
-                </label>
-            </div>
-            <div class="role-toggle-section">
-                <label class="role-toggle-label">Preferred Role:</label>
-                <div class="role-toggle-buttons">
-                    <label class="role-toggle" data-role="leader">
-                        <input type="radio" name="role-${module.id}" value="leader">
-                        <span>Leader</span>
-                    </label>
-                    <label class="role-toggle" data-role="supporter">
-                        <input type="radio" name="role-${module.id}" value="supporter">
-                        <span>Supporter</span>
-                    </label>
-                </div>
-            </div>
-        `;
-        modulesList.appendChild(moduleCard);
-    });
-    
-    // Re-initialize proficiency level selection for new elements
-    initProficiencyLevelSelection();
-    // Initialize role toggle selection
-    initRoleToggleSelection();
-}
-
-// Load skill set data
-function loadSkillSetData() {
-    console.log('Loading skill set data...');
-    
-    // Load existing skill set data from backend
-    fetch('/facilitator/get_skill_set')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                populateSkillSetForm(data);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading skill set data:', error);
-        });
-}
-
-// Populate skill set form with existing data
-function populateSkillSetForm(data) {
-    if (!data) return;
-    
-    const technicalSkills = document.getElementById('skills-input');
-    const teachingExperience = document.getElementById('experience-input');
-    const teachingPreferences = document.getElementById('teaching-preferences');
-    const additionalNotes = document.getElementById('additional-notes');
-    
-    // Populate skill set data
-    if (data.skillSet) {
-        if (technicalSkills && data.skillSet.technicalSkills) {
-            technicalSkills.value = data.skillSet.technicalSkills;
-        }
-        if (teachingExperience && data.skillSet.teachingExperience) {
-            teachingExperience.value = data.skillSet.teachingExperience;
-        }
-    }
-    
-    // Populate preferences data
-    if (data.preferences) {
-        if (teachingPreferences && data.preferences.teachingPreferences) {
-            teachingPreferences.value = data.preferences.teachingPreferences;
-        }
-        if (additionalNotes && data.preferences.additionalNotes) {
-            additionalNotes.value = data.preferences.additionalNotes;
-        }
-    }
-}
-
-// Collect proficiency data from form
-function collectProficiencyData() {
-    const proficiencyData = {};
-    const moduleCards = document.querySelectorAll('.proficiency-module-card');
-    
-    moduleCards.forEach(card => {
-        const moduleId = card.getAttribute('data-module-id');
-        const selectedProficiencyRadio = card.querySelector('input[name^="proficiency-"]:checked');
-        const selectedRoleRadio = card.querySelector('input[name^="role-"]:checked');
-        
-        if (selectedProficiencyRadio) {
-            proficiencyData[moduleId] = {
-                proficiency: selectedProficiencyRadio.value,
-                role: selectedRoleRadio ? selectedRoleRadio.value : null
-            };
-        }
-    });
-    
-    return proficiencyData;
-}
-
-// Collect skill set data from form
-function collectSkillSetData() {
-    const technicalSkills = document.getElementById('skills-input');
-    const teachingExperience = document.getElementById('experience-input');
-    
-    return {
-        technicalSkills: technicalSkills ? technicalSkills.value : '',
-        teachingExperience: teachingExperience ? teachingExperience.value : ''
-    };
-}
-
-// Collect preferences data from form
-function collectPreferencesData() {
-    const teachingPreferences = document.getElementById('teaching-preferences');
-    const additionalNotes = document.getElementById('additional-notes');
-    
-    return {
-        teachingPreferences: teachingPreferences ? teachingPreferences.value : '',
-        additionalNotes: additionalNotes ? additionalNotes.value : ''
-    };
-}
-
-// Validate proficiency data
-function validateProficiencyData() {
-    const moduleCards = document.querySelectorAll('.proficiency-module-card');
-    const missingModules = [];
-    
-    moduleCards.forEach(card => {
-        const moduleId = card.getAttribute('data-module-id');
-        const moduleName = card.querySelector('.proficiency-module-name').textContent;
-        const selectedProficiencyRadio = card.querySelector('input[name^="proficiency-"]:checked');
-        
-        if (!selectedProficiencyRadio) {
-            missingModules.push(moduleName);
-        }
-    });
-    
-    if (missingModules.length > 0) {
-        alert(`Please select proficiency level for the following modules:\n${missingModules.join('\n')}`);
-        return false;
-    }
-    
-    return true;
-}
-
-// Save all setup data
-function saveAllSetupData() {
-    console.log('=== Save All Setup Data Function Called ===');
-    
-    // Validate proficiency data first
-    if (!validateProficiencyData()) {
-        return; // Stop if validation fails
-    }
-    
-    try {
-        // Collect data from all sections
-        console.log('Collecting proficiency data...');
-        const proficiencyData = collectProficiencyData();
-        console.log('Proficiency data:', proficiencyData);
-        
-        console.log('Collecting skill set data...');
-        const skillSetData = collectSkillSetData();
-        console.log('Skill set data:', skillSetData);
-        
-        console.log('Collecting preferences data...');
-        const preferencesData = collectPreferencesData();
-        console.log('Preferences data:', preferencesData);
-        
-        const setupData = {
-            unit_id: currentUnitId || 3, // Default to unit 3 for testing
-            unavailability: window.unavailabilityData || [],
-            proficiency: proficiencyData,
-            skill_set: skillSetData,
-            preferences: preferencesData
-        };
-        
-        console.log('Complete setup data to save:', setupData);
-        alert('Data collected: ' + JSON.stringify(setupData, null, 2));
-        
-        // Send to backend
-        console.log('Sending data to backend...');
-        fetch('/facilitator/save_setup', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': window.csrfToken
-            },
-            body: JSON.stringify(setupData)
-        })
-        .then(response => {
-            console.log('Response received:', response);
-            return response.json();
-        })
-        .then(data => {
-            console.log('Response data:', data);
-            if (data.success) {
-                alert('Setup saved successfully!');
-                showNotification('Setup saved successfully!', 'success');
-            } else {
-                alert('Error saving setup: ' + data.message);
-                showNotification('Error saving setup: ' + data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error saving setup: ' + error.message);
-            showNotification('Error saving setup', 'error');
-        });
-    } catch (error) {
-        console.error('Error in saveAllSetupData:', error);
-        alert('Error in saveAllSetupData: ' + error.message);
-    }
-}
-
-// Initialize proof upload functionality
-function initProofUpload() {
-    const uploadButton = document.getElementById('upload-proof');
-    const modal = document.getElementById('proof-upload-modal');
-    const closeButton = document.getElementById('proof-modal-close');
-    const cancelButton = document.getElementById('proof-cancel');
-    const fileInput = document.getElementById('proof-file-input');
-    const uploadArea = document.querySelector('.file-upload-area');
-    const submitButton = document.getElementById('proof-upload-submit');
-    
-    if (!uploadButton || !modal) return;
-    
-    // Open modal
-    uploadButton.addEventListener('click', () => {
-        modal.style.display = 'flex';
-    });
-    
-    // Close modal
-    const closeModal = () => {
-        modal.style.display = 'none';
-        clearFileList();
-    };
-    
-    closeButton.addEventListener('click', closeModal);
-    cancelButton.addEventListener('click', closeModal);
-    
-    // Click outside modal to close
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            closeModal();
-        }
-    });
-    
-    // File input change
-    fileInput.addEventListener('change', handleFileSelection);
-    
-    // Drag and drop functionality
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.classList.add('drag-over');
-    });
-    
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('drag-over');
-    });
-    
-    uploadArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadArea.classList.remove('drag-over');
-        const files = e.dataTransfer.files;
-        handleFiles(files);
-    });
-    
-    // Click to select files
-    uploadArea.addEventListener('click', () => {
-        fileInput.click();
-    });
-    
-    // Submit files
-    submitButton.addEventListener('click', uploadProofFiles);
-}
-
-// Handle file selection
-function handleFileSelection(e) {
-    const files = e.target.files;
-    handleFiles(files);
-}
-
-// Handle files (from input or drag-drop)
-function handleFiles(files) {
-    const filesList = document.getElementById('uploaded-files-list');
-    
-    Array.from(files).forEach(file => {
-        // Validate file size (10MB max)
-        if (file.size > 10 * 1024 * 1024) {
-            alert(`File "${file.name}" exceeds 10MB limit`);
-            return;
-        }
-        
-        // Validate file type
-        const allowedTypes = ['application/pdf', 'application/msword', 
-                             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                             'image/jpeg', 'image/jpg', 'image/png'];
-        if (!allowedTypes.includes(file.type)) {
-            alert(`File "${file.name}" format is not supported`);
-            return;
-        }
-        
-        // Create file item
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-item';
-        fileItem.innerHTML = `
-            <div class="file-info">
-                <span class="material-icons">description</span>
-                <div class="file-details">
-                    <span class="file-name">${file.name}</span>
-                    <span class="file-size">${formatFileSize(file.size)}</span>
-                </div>
-            </div>
-            <button class="remove-file" onclick="removeFile(this)">
-                <span class="material-icons">close</span>
-            </button>
-        `;
-        
-        // Store file reference
-        fileItem.fileData = file;
-        
-        filesList.appendChild(fileItem);
-    });
-}
-
-// Remove file from list
-function removeFile(button) {
-    button.closest('.file-item').remove();
-}
-
-// Clear file list
-function clearFileList() {
-    const filesList = document.getElementById('uploaded-files-list');
-    filesList.innerHTML = '';
-    const fileInput = document.getElementById('proof-file-input');
-    fileInput.value = '';
-}
-
-// Format file size
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-// Upload proof files
-function uploadProofFiles() {
-    const fileItems = document.querySelectorAll('.file-item');
-    
-    if (fileItems.length === 0) {
-        alert('Please select files to upload');
-        return;
-    }
-    
-    const formData = new FormData();
-    
-    fileItems.forEach((item, index) => {
-        if (item.fileData) {
-            formData.append('proof_files', item.fileData);
-        }
-    });
-    
-    // Add unit ID if available
-    if (currentUnitId) {
-        formData.append('unit_id', currentUnitId);
-    }
-    
-    // Show loading state
-    const submitButton = document.getElementById('proof-upload-submit');
-    const originalText = submitButton.innerHTML;
-    submitButton.innerHTML = '<span class="material-icons">hourglass_empty</span> Uploading...';
-    submitButton.disabled = true;
-    
-    // Upload files
-    fetch('/facilitator/upload_proof', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': window.csrfToken
-        },
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Files uploaded successfully!');
-            document.getElementById('proof-upload-modal').style.display = 'none';
-            clearFileList();
-        } else {
-            alert('Upload failed: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Upload error:', error);
-        alert('Upload failed: ' + error.message);
-    })
-    .finally(() => {
-        // Restore button state
-        submitButton.innerHTML = originalText;
-        submitButton.disabled = false;
-    });
 }

@@ -6,8 +6,8 @@ Scoring Function: (W_avail × availability_match) + (W_fair × fairness_factor) 
 Skill Levels: proficient=1.0, done_it_before=0.8, interested=0.5, not_interested=0.0
 """
 
-from datetime import datetime, time, timedelta
-from models import User, UserRole, FacilitatorSkill, Unavailability, SkillLevel
+from datetime import datetime, time
+from models import User, UserRole, FacilitatorSkill, SkillLevel
 
 # Tunable weights for scoring function
 W_AVAILABILITY = 0.4
@@ -17,7 +17,7 @@ W_SKILL = 0.3
 # Skill level to score mapping
 SKILL_SCORES = {
     SkillLevel.PROFICIENT: 1.0,
-    SkillLevel.LEADER: 0.8,
+    SkillLevel.LEADER: 0.8,  # "done it before"
     SkillLevel.INTERESTED: 0.5,
     SkillLevel.UNINTERESTED: 0.0
 }
@@ -39,7 +39,6 @@ def get_real_sessions():
         
         sessions_data.append({
             'id': session.id,
-            'module_id': session.module_id,
             'module_name': f"{session.module.unit.unit_code} - {session.module.module_name}",
             'day_of_week': session.day_of_week if session.day_of_week is not None else 0,
             'start_time': session.start_time.time(),
@@ -68,32 +67,8 @@ def prepare_facilitator_data(facilitators_from_db):
             for skill in facilitator.facilitator_skills:
                 skills[skill.module_id] = skill.skill_level
         
-        # Get availability (inverse of unavailability)
-        # For simplicity, assume facilitator is available all week except during unavailability periods
+        # Deprecated: slot-based weekly availability removed. Using unavailability model instead.
         availability = {}
-        # Initialize all days as available (8:00-18:00 by default)
-        for day in range(7):  # 0=Monday, 6=Sunday
-            availability[day] = [{
-                'start_time': time(8, 0),
-                'end_time': time(18, 0),
-                'is_available': True
-            }]
-        
-        # Remove unavailable periods
-        if hasattr(facilitator, 'unavailability'):
-            for unavail in facilitator.unavailability:
-                # For now, mark entire days as unavailable if there's any unavailability
-                # This is a simplified approach - could be enhanced to handle partial day unavailability
-                if unavail.start_date and unavail.end_date:
-                    current_date = unavail.start_date
-                    while current_date <= unavail.end_date:
-                        day_of_week = current_date.weekday()
-                        availability[day_of_week] = [{
-                            'start_time': time(0, 0),
-                            'end_time': time(0, 0),
-                            'is_available': False
-                        }]
-                        current_date += timedelta(days=1)
         
         facilitator_data.append({
             'id': facilitator.id,
@@ -116,8 +91,11 @@ def check_availability(facilitator, session):
     session_start = session['start_time']
     session_end = session['end_time']
     
+    # If no availability data provided, treat as available by default
+    if 'availability' not in facilitator or not facilitator['availability']:
+        return 1.0
     if day not in facilitator['availability']:
-        return 0.0
+        return 1.0
     
     for avail_slot in facilitator['availability'][day]:
         if (avail_slot['is_available'] and 
@@ -127,35 +105,27 @@ def check_availability(facilitator, session):
     
     return 0.0
 
-def is_facilitator_available(facilitator_data, session_day, session_start_time, session_end_time):
-    """Check if facilitator is available for a specific session time"""
-    availability = facilitator_data.get('availability', {})
-    
-    if session_day not in availability:
-        return False
-    
-    for time_slot in availability[session_day]:
-        if (time_slot['is_available'] and 
-            time_slot['start_time'] <= session_start_time and 
-            time_slot['end_time'] >= session_end_time):
-            return True
-    
-    return False
-
 def get_skill_score(facilitator, session):
     """
     Get skill score for facilitator-session match
     Uses the SKILL_SCORES mapping
     """
-    facilitator_skills = facilitator.get('skills', {})
-    session_module_id = session.get('module_id')
+    # For dummy sessions, we'll use a generic skill check
+    # In real implementation, this would check facilitator['skills'][session['module_id']]
     
-    if session_module_id in facilitator_skills:
-        skill_level = facilitator_skills[session_module_id]
-        return SKILL_SCORES.get(skill_level, 0.0)
+    # For now, simulate some skill levels for testing
+    facilitator_id = facilitator['id']
+    session_id = session['id']
     
-    # If no skill data available, return default interested level
-    return SKILL_SCORES[SkillLevel.INTERESTED]
+    # Simple simulation: alternate skill levels based on IDs
+    if (facilitator_id + session_id) % 4 == 0:
+        return SKILL_SCORES[SkillLevel.PROFICIENT]
+    elif (facilitator_id + session_id) % 4 == 1:
+        return SKILL_SCORES[SkillLevel.LEADER]
+    elif (facilitator_id + session_id) % 4 == 2:
+        return SKILL_SCORES[SkillLevel.INTERESTED]
+    else:
+        return SKILL_SCORES[SkillLevel.UNINTERESTED]
 
 def get_assigned_hours(facilitator, current_assignments):
     """
@@ -193,15 +163,13 @@ def calculate_facilitator_score(facilitator, session, current_assignments):
     
     return score
 
-def generate_optimal_assignments(facilitators, sessions=None):
+def generate_optimal_assignments(facilitators):
     """
     Main function to generate optimal facilitator-to-session assignments
     Takes facilitator data as parameter (from Flask route)
-    Optionally takes custom sessions data, otherwise uses get_real_sessions()
     Returns assignments and conflicts
     """
-    if sessions is None:
-        sessions = get_real_sessions()
+    sessions = get_real_sessions()
     
     if not facilitators:
         return [], ["No facilitators found in database"]
@@ -250,9 +218,10 @@ def get_skill_level_name(skill_level):
     Convert skill level enum to readable name
     """
     skill_names = {
-        SkillLevel.ADVANCED: 'Advanced',
-        SkillLevel.INTERMEDIATE: 'Intermediate',
-        SkillLevel.BEGINNER: 'Beginner'
+        SkillLevel.PROFICIENT: 'Proficient',
+        SkillLevel.LEADER: 'Leader',
+        SkillLevel.INTERESTED: 'Interested',
+        SkillLevel.UNINTERESTED: 'Uninterested'
     }
     return skill_names.get(skill_level, 'Unknown')
 
