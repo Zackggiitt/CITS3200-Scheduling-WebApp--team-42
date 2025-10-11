@@ -4768,13 +4768,13 @@ function selectFacilitator(facilitatorId, facilitatorName, facilitatorEmail) {
   // Update the session card to show "Pending" status
   updateSessionStatus(currentSessionData.id, 'pending', facilitatorName);
   
-  // Show success message
-  showSimpleNotification(`Facilitator ${facilitatorName} assigned to ${currentSessionData.name}`, 'success');
+  // Show assignment confirmation popup
+  showAssignmentConfirmation(facilitatorName, currentSessionData.name);
   
   // Close modal after a short delay to show the selection
   setTimeout(() => {
     closeFacilitatorModal();
-  }, 1500);
+  }, 1000);
   
   // TODO: Implement actual assignment logic here
   // This would involve making an API call to assign the facilitator to the session
@@ -4813,39 +4813,64 @@ function updateSessionStatus(sessionId, status, facilitatorName = null) {
   }
 }
 
-// Simple notification function
-function showSimpleNotification(message, type = 'info') {
-  // Create notification element
-  const notification = document.createElement('div');
-  notification.className = `simple-notification simple-notification-${type}`;
-  notification.textContent = message;
+// Assignment confirmation popup
+function showAssignmentConfirmation(facilitatorName, sessionName) {
+  // Create popup modal
+  const popup = document.createElement('div');
+  popup.className = 'assignment-confirmation-popup';
+  popup.innerHTML = `
+    <div class="assignment-popup-content">
+      <div class="assignment-popup-header">
+        <span class="material-icons assignment-success-icon">check_circle</span>
+        <h3>Assignment Confirmed</h3>
+      </div>
+      <div class="assignment-popup-body">
+        <p>This session has been assigned to:</p>
+        <div class="assigned-facilitator">
+          <div class="facilitator-avatar-large">
+            ${getFacilitatorInitials(facilitatorName)}
+          </div>
+          <div class="facilitator-details">
+            <div class="facilitator-name-large">${facilitatorName}</div>
+            <div class="session-name">${sessionName}</div>
+          </div>
+        </div>
+      </div>
+      <div class="assignment-popup-footer">
+        <button class="btn btn-primary" onclick="closeAssignmentConfirmation()">OK</button>
+      </div>
+    </div>
+  `;
   
-  // Style the notification
-  notification.style.cssText = `
+  // Style the popup
+  popup.style.cssText = `
     position: fixed;
-    top: 20px;
-    right: 20px;
-    background: ${type === 'success' ? '#10b981' : '#3b82f6'};
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
     z-index: 10000;
-    font-size: 14px;
-    font-weight: 500;
-    max-width: 300px;
-    word-wrap: break-word;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   `;
   
   // Add to page
-  document.body.appendChild(notification);
+  document.body.appendChild(popup);
   
-  // Remove after 3 seconds
+  // Auto-close after 5 seconds
   setTimeout(() => {
-    if (notification.parentNode) {
-      notification.parentNode.removeChild(notification);
-    }
-  }, 3000);
+    closeAssignmentConfirmation();
+  }, 5000);
+}
+
+// Close assignment confirmation popup
+function closeAssignmentConfirmation() {
+  const popup = document.querySelector('.assignment-confirmation-popup');
+  if (popup && popup.parentNode) {
+    popup.parentNode.removeChild(popup);
+  }
 }
 
 // Search facilitators
