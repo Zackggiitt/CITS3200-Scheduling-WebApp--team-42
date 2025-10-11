@@ -2500,30 +2500,27 @@ def publish_schedule(unit_id: int):
         return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
     
     try:
-        # Get all sessions for this unit
+        # Get all sessions for this unit that have facilitators assigned
         sessions = (
             db.session.query(Session)
             .join(Module, Session.module_id == Module.id)
             .filter(Module.unit_id == unit_id)
+            .filter(Session.status.in_(['pending', 'assigned']))
             .all()
         )
         
         if not sessions:
-            return jsonify({"ok": False, "error": "No sessions found for this unit"}), 400
+            return jsonify({"ok": False, "error": "No assigned sessions found to publish"}), 400
         
-        # Get all facilitators who will be notified (only if there are assignments)
+        # Get all facilitators who will be notified
         facilitator_ids = set()
-        sessions_with_assignments = []
-        
         for session in sessions:
-            if session.assignments:  # Check if session has any assignments
-                sessions_with_assignments.append(session)
-                # Get facilitators assigned to this session
-                assignments = Assignment.query.filter_by(session_id=session.id).all()
-                for assignment in assignments:
-                    facilitator_ids.add(assignment.facilitator_id)
+            # Get facilitators assigned to this session
+            assignments = SessionFacilitator.query.filter_by(session_id=session.id).all()
+            for assignment in assignments:
+                facilitator_ids.add(assignment.facilitator_id)
         
-        # Create notifications for facilitators (if any are assigned)
+        # Create notifications for facilitators
         notifications_created = 0
         for facilitator_id in facilitator_ids:
             notification = Notification(
@@ -2536,12 +2533,15 @@ def publish_schedule(unit_id: int):
             db.session.add(notification)
             notifications_created += 1
         
-        # Commit the notifications
+        # Update session statuses to 'published'
+        for session in sessions:
+            session.status = 'published'
+        
         db.session.commit()
         
         return jsonify({
             "ok": True,
-            "message": f"Schedule published successfully. {notifications_created} facilitators notified." if notifications_created > 0 else "Schedule published successfully. No facilitators assigned yet.",
+            "message": f"Schedule published successfully. {notifications_created} facilitators notified.",
             "sessions_published": len(sessions),
             "facilitators_notified": notifications_created
         })
