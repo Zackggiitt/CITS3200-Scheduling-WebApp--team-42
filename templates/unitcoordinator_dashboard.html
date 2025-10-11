@@ -185,6 +185,220 @@
     .logout-item:hover .material-icons {
       color: #b91c1c;
     }
+    
+    /* Skill tag tooltip styling */
+    .skill-tag {
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .skill-tag:hover {
+      background-color: #f3f4f6;
+      border-color: #6366f1;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .skill-tag:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Custom tooltip for skill tags */
+    .skill-tag::after {
+      content: attr(data-experience);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #1f2937;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.4;
+      white-space: normal;
+      width: 280px;
+      max-width: 300px;
+      word-wrap: break-word;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      z-index: 1000;
+      margin-bottom: 8px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      text-align: left;
+    }
+    
+    .skill-tag::before {
+      content: "";
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #1f2937;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      z-index: 1000;
+      margin-bottom: 2px;
+    }
+    
+    .skill-tag:hover::after,
+    .skill-tag:hover::before {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    /* Experience Modal Styling */
+    .experience-modal {
+      max-width: 500px;
+      width: 90%;
+    }
+    
+    .experience-info {
+      padding: 20px 0;
+    }
+    
+    .experience-header {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .skill-info {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    .skill-module {
+      background-color: #6366f1;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .skill-level {
+      background-color: #f3f4f6;
+      color: #374151;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .experience-content h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 12px;
+    }
+    
+    .experience-text {
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #374151;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    /* Modal overlay and hidden class */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .modal-overlay.hidden {
+      display: none;
+    }
+    
+    .modal-box {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+    
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #6b7280;
+      z-index: 10;
+    }
+    
+    .modal-close:hover {
+      color: #374151;
+    }
+    
+    .modal-top {
+      padding: 24px 24px 0 24px;
+    }
+    
+    .modal-title h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #111827;
+      margin: 0 0 8px 0;
+    }
+    
+    .modal-title p {
+      color: #6b7280;
+      margin: 0;
+      font-size: 14px;
+    }
+    
+    .modal-content {
+      padding: 0 24px;
+    }
+    
+    .modal-footer {
+      padding: 16px 24px 24px 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    
+    .btn-primary {
+      background-color: #6366f1;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    
+    .btn-primary:hover {
+      background-color: #5856eb;
+    }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -899,7 +1113,12 @@
                         {% if f.skills and f.skills|length %}
                           <div class="flex flex-wrap gap-2 mb-3">
                             {% for s in f.skills %}
-                              <span class="inline-flex items-center rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-700">
+                              <span class="inline-flex items-center rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-700 skill-tag" 
+                                    data-experience="{{ s.experience }}"
+                                    data-experience-full="{{ s.experience_full }}"
+                                    data-module="{{ s.module }}"
+                                    data-level="{{ s.level }}"
+                                    onclick="openExperienceModal(this)">
                                 {{ s.module }} — {{ s.level|replace('_',' ')|title }}
                               </span>
                             {% endfor %}
@@ -908,22 +1127,6 @@
                           <div class="text-sm text-gray-400 mb-3">—</div>
                         {% endif %}
 
-                        <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-2 text-sm">
-                          <div>
-                            <dt class="text-gray-500">Upcoming Sessions</dt>
-                            <dd class="font-medium">{{ f.upcoming_sessions or '—' }}</dd>
-                          </div>
-                          <div>
-                            <dt class="text-gray-500">Total Hours</dt>
-                            <dd class="font-medium">{{ f.total_hours or '—' }}</dd>
-                          </div>
-                          <div>
-                            <dt class="text-gray-500">Last Login</dt>
-                            <dd class="font-medium">
-                              {% if f.last_login %}{{ f.last_login.strftime("%-m/%-d/%Y") }}{% else %}—{% endif %}
-                            </dd>
-                          </div>
-                        </dl>
                       </div>
                     </div>
 
@@ -1949,6 +2152,57 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
       notification.style.display = show ? 'flex' : 'none';
     });
   }
+  
+  // Experience Modal Functions
+  function openExperienceModal(element) {
+    console.log('openExperienceModal called', element);
+    alert('Click detected! Opening modal...'); // Temporary test
+    
+    const modal = document.getElementById('experienceModal');
+    console.log('Modal element:', modal);
+    
+    if (!modal) {
+      console.error('Modal not found!');
+      return;
+    }
+    
+    const module = element.getAttribute('data-module');
+    const level = element.getAttribute('data-level');
+    const experienceFull = element.getAttribute('data-experience-full');
+    
+    console.log('Data:', { module, level, experienceFull });
+    
+    // Update modal content
+    document.getElementById('modal-skill-module').textContent = module;
+    document.getElementById('modal-skill-level').textContent = level.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    document.getElementById('modal-experience-text').textContent = experienceFull;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    console.log('Modal should be visible now');
+  }
+  
+  function closeExperienceModal() {
+    const modal = document.getElementById('experienceModal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+  
+  // Close modal when clicking outside
+  document.addEventListener('click', function(event) {
+    const modal = document.getElementById('experienceModal');
+    if (event.target === modal) {
+      closeExperienceModal();
+    }
+  });
+  
+  // Close modal with Escape key
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+      closeExperienceModal();
+    }
+  });
 </script>
 
 
@@ -1985,6 +2239,40 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
         <span class="material-icons">notifications_none</span>
         <p>No notifications yet</p>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Experience Modal -->
+<div id="experienceModal" class="modal-overlay hidden">
+  <div class="modal-box experience-modal" role="dialog" aria-modal="true" aria-labelledby="experience-modal-title">
+    <button class="modal-close" aria-label="Close" onclick="closeExperienceModal()">✕</button>
+
+    <div class="modal-top">
+      <div class="modal-title">
+        <h1 id="experience-modal-title">Facilitator Experience</h1>
+        <p id="experience-modal-subtitle">Experience details for this skill</p>
+      </div>
+    </div>
+
+    <div class="modal-content">
+      <div class="experience-info">
+        <div class="experience-header">
+          <div class="skill-info">
+            <span class="skill-module" id="modal-skill-module"></span>
+            <span class="skill-level" id="modal-skill-level"></span>
+          </div>
+        </div>
+        
+        <div class="experience-content">
+          <h3>Experience Description</h3>
+          <div class="experience-text" id="modal-experience-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-primary" onclick="closeExperienceModal()">Close</button>
     </div>
   </div>
 </div>

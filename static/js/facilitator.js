@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const unitSelector = document.getElementById('unit-selector');
     const calendarView = document.getElementById('calendar-view');
     const unavailabilityView = document.getElementById('unavailability-view');
+    const skillsView = document.getElementById('skills-view');
     const swapsView = document.getElementById('swaps-view');
     const navItems = document.querySelectorAll('.dashboard-nav-item');
     
@@ -48,10 +49,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
                 // Initialize unavailability functionality
                 initUnavailabilityView();
+            } else if (href === '#skills') {
+                // Show skills view
+                dashboardSections.forEach(section => section.style.display = 'none');
+                unavailabilityView.style.display = 'none';
+                calendarView.style.display = 'none';
+                swapsView.style.display = 'none';
+                skillsView.style.display = 'block';
+                // Remove calendar-view-active class to ensure unit selector is visible
+                document.body.classList.remove('calendar-view-active');
+                // Add skills-view-active class to hide All Units button
+                document.body.classList.add('skills-view-active');
+                document.body.classList.remove('unavailability-view-active');
+                document.body.classList.remove('swaps-view-active');
+                // Show unit selector in skills view
+                if (unitSelector) unitSelector.style.display = 'block';
+                // Hide unavailability alert in skills view
+                const unavailabilityAlert = document.getElementById('unavailability-alert');
+                if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
+                // Initialize skills functionality
+                initSkillsView();
             } else if (href === '#schedule') {
                 // Show calendar view
                 dashboardSections.forEach(section => section.style.display = 'none');
                 unavailabilityView.style.display = 'none';
+                skillsView.style.display = 'none';
                 swapsView.style.display = 'none';
                 calendarView.style.display = 'block';
                 // Hide unit selector in schedule view
@@ -68,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show swaps view
                 dashboardSections.forEach(section => section.style.display = 'none');
                 unavailabilityView.style.display = 'none';
+                skillsView.style.display = 'none';
                 calendarView.style.display = 'none';
                 swapsView.style.display = 'block';
                 // Remove calendar-view-active class to ensure unit selector is visible
@@ -86,11 +109,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show dashboard view
                 dashboardSections.forEach(section => section.style.display = 'block');
                 unavailabilityView.style.display = 'none';
+                skillsView.style.display = 'none';
                 swapsView.style.display = 'none';
                 // Remove calendar-view-active class to ensure unit selector is visible
                 document.body.classList.remove('calendar-view-active');
                 // Remove view-specific classes to show All Units button
                 document.body.classList.remove('unavailability-view-active');
+                document.body.classList.remove('skills-view-active');
                 document.body.classList.remove('swaps-view-active');
                 // Show unit selector in dashboard view
                 if (unitSelector) unitSelector.style.display = 'block';
@@ -3271,6 +3296,241 @@ function formatDateTime(startTimeString, endTimeString) {
     });
     
     return `${dateStr}, ${startTimeStr} - ${endTimeStr}`;
+}
+
+// Initialize skills view
+function initSkillsView() {
+    loadSkills();
+}
+
+// Load skills for the current unit
+async function loadSkills() {
+    try {
+        const currentUnitId = window.currentUnitId;
+        if (!currentUnitId) {
+            console.error('No unit selected');
+            return;
+        }
+
+        const response = await fetch(`/facilitator/skills?unit_id=${currentUnitId}`, {
+            headers: {
+                'X-CSRFToken': window.csrfToken
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load skills');
+        }
+
+        const data = await response.json();
+        displaySkills(data.skills || []);
+
+    } catch (error) {
+        console.error('Error loading skills:', error);
+        displaySkillsError();
+    }
+}
+
+// Display skills in the grid
+function displaySkills(skills) {
+    const skillsGrid = document.getElementById('skills-grid');
+    const skillsActions = document.getElementById('skills-actions');
+    if (!skillsGrid) return;
+
+    if (skills.length === 0) {
+        skillsGrid.innerHTML = `
+            <div class="no-skills-message">
+                <span class="material-icons">psychology</span>
+                <p>No modules found for this unit.</p>
+            </div>
+        `;
+        if (skillsActions) skillsActions.style.display = 'none';
+        return;
+    }
+
+    skillsGrid.innerHTML = skills.map(skill => `
+        <div class="skill-card">
+            <div class="skill-header">
+                <h3>${skill.module_name}</h3>
+            </div>
+            <div class="skill-options">
+                <div class="skill-option">
+                    <input type="radio" id="skill_${skill.module_id}_proficient" name="skill_${skill.module_id}" value="proficient" ${skill.skill_level === 'proficient' ? 'checked' : ''}>
+                    <label for="skill_${skill.module_id}_proficient">Proficient</label>
+                </div>
+                <div class="skill-option">
+                    <input type="radio" id="skill_${skill.module_id}_have_run_before" name="skill_${skill.module_id}" value="have_run_before" ${skill.skill_level === 'have_run_before' ? 'checked' : ''}>
+                    <label for="skill_${skill.module_id}_have_run_before">Have run before</label>
+                </div>
+                <div class="skill-option">
+                    <input type="radio" id="skill_${skill.module_id}_have_some_skill" name="skill_${skill.module_id}" value="have_some_skill" ${skill.skill_level === 'have_some_skill' ? 'checked' : ''}>
+                    <label for="skill_${skill.module_id}_have_some_skill">Have some skill and would like to facilitate</label>
+                </div>
+                <div class="skill-option">
+                    <input type="radio" id="skill_${skill.module_id}_no_interest" name="skill_${skill.module_id}" value="no_interest" ${skill.skill_level === 'no_interest' ? 'checked' : ''}>
+                    <label for="skill_${skill.module_id}_no_interest">No interest</label>
+                </div>
+                <div class="skill-option">
+                    <input type="radio" id="skill_${skill.module_id}_unassigned" name="skill_${skill.module_id}" value="unassigned" ${skill.skill_level === 'unassigned' ? 'checked' : ''}>
+                    <label for="skill_${skill.module_id}_unassigned">Not set</label>
+                </div>
+            </div>
+            <div class="experience-section" id="experience_${skill.module_id}" style="display: none;">
+                <label for="experience_text_${skill.module_id}" class="experience-label">Experience & Additional Skills (Required):</label>
+                <textarea 
+                    id="experience_text_${skill.module_id}" 
+                    name="experience_${skill.module_id}"
+                    class="experience-textarea"
+                    placeholder="Please describe your experience and additional skills for this session..."
+                    rows="3"
+                    required
+                >${skill.experience_description || ''}</textarea>
+            </div>
+        </div>
+    `).join('');
+
+    // Show save button
+    if (skillsActions) skillsActions.style.display = 'block';
+    
+    // Add event listeners for radio buttons
+    skills.forEach(skill => {
+        const radioButtons = document.querySelectorAll(`input[name="skill_${skill.module_id}"]`);
+        radioButtons.forEach(radio => {
+            radio.addEventListener('change', function() {
+                toggleExperienceSection(skill.module_id, this.value);
+            });
+        });
+        
+        // Initialize experience section based on current selection
+        const checkedRadio = document.querySelector(`input[name="skill_${skill.module_id}"]:checked`);
+        if (checkedRadio) {
+            toggleExperienceSection(skill.module_id, checkedRadio.value);
+        }
+    });
+    
+    // Add event listener for save button
+    const saveBtn = document.getElementById('save-skills-btn');
+    if (saveBtn) {
+        saveBtn.onclick = saveSkills;
+    }
+}
+
+// Helper function to get module name by ID
+function getModuleName(moduleId) {
+    const moduleHeader = document.querySelector(`input[name="skill_${moduleId}"]`)?.closest('.skill-card')?.querySelector('h3');
+    return moduleHeader ? moduleHeader.textContent : `Module ${moduleId}`;
+}
+
+// Toggle experience section based on radio button selection
+function toggleExperienceSection(moduleId, skillLevel) {
+    const experienceSection = document.getElementById(`experience_${moduleId}`);
+    const experienceTextarea = document.getElementById(`experience_text_${moduleId}`);
+    
+    if (!experienceSection || !experienceTextarea) return;
+    
+    // Show experience section for skill levels that require it
+    const requiresExperience = ['proficient', 'have_run_before', 'have_some_skill'];
+    
+    if (requiresExperience.includes(skillLevel)) {
+        experienceSection.style.display = 'block';
+        experienceTextarea.required = true;
+    } else {
+        experienceSection.style.display = 'none';
+        experienceTextarea.required = false;
+        experienceTextarea.value = ''; // Clear text when hiding
+    }
+}
+
+// Save skills
+async function saveSkills() {
+    const currentUnitId = window.currentUnitId;
+    if (!currentUnitId) {
+        console.error('No unit selected');
+        return;
+    }
+
+    // Collect all skill selections and experience descriptions
+    const skillSelections = {};
+    const experienceDescriptions = {};
+    const radioButtons = document.querySelectorAll('input[name^="skill_"]:checked');
+    
+    radioButtons.forEach(radio => {
+        const moduleId = radio.name.replace('skill_', '');
+        const skillLevel = radio.value;
+        if (skillLevel !== 'unassigned') {
+            skillSelections[moduleId] = skillLevel;
+            
+            // Collect experience description if it exists
+            const experienceTextarea = document.getElementById(`experience_text_${moduleId}`);
+            if (experienceTextarea && experienceTextarea.value.trim()) {
+                experienceDescriptions[moduleId] = experienceTextarea.value.trim();
+            }
+        }
+    });
+    
+    // Validate that required experience descriptions are provided
+    const requiresExperience = ['proficient', 'have_run_before', 'have_some_skill'];
+    for (const [moduleId, skillLevel] of Object.entries(skillSelections)) {
+        if (requiresExperience.includes(skillLevel) && !experienceDescriptions[moduleId]) {
+            showNotification(`Please provide your experience for ${getModuleName(moduleId)}`, 'error');
+            return;
+        }
+    }
+
+    try {
+        const saveBtn = document.getElementById('save-skills-btn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Saving...';
+        }
+
+        const response = await fetch('/facilitator/skills', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify({
+                unit_id: currentUnitId,
+                skills: skillSelections,
+                experience_descriptions: experienceDescriptions
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to save skills');
+        }
+
+        const data = await response.json();
+        showNotification(data.message || 'Skills saved successfully!', 'success');
+        
+        // Reload skills to reflect changes
+        loadSkills();
+
+    } catch (error) {
+        console.error('Error saving skills:', error);
+        showNotification(error.message || 'Error saving skills', 'error');
+    } finally {
+        const saveBtn = document.getElementById('save-skills-btn');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<span class="material-icons">save</span> Save Skills';
+        }
+    }
+}
+
+// Display error message for skills loading
+function displaySkillsError() {
+    const skillsGrid = document.getElementById('skills-grid');
+    if (!skillsGrid) return;
+
+    skillsGrid.innerHTML = `
+        <div class="error-message">
+            <span class="material-icons">error</span>
+            <p>Failed to load skills. Please try again.</p>
+        </div>
+    `;
 }
 
 // Show notification (reuse existing notification system)
