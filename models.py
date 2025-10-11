@@ -319,6 +319,7 @@ class FacilitatorSkill(db.Model):
     facilitator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     module_id = db.Column(db.Integer, db.ForeignKey('module.id'), nullable=False)
     skill_level = db.Column(db.Enum(SkillLevel), nullable=False, default=SkillLevel.HAVE_SOME_SKILL)
+    experience_description = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

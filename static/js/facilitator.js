@@ -3352,7 +3352,6 @@ function displaySkills(skills) {
         <div class="skill-card">
             <div class="skill-header">
                 <h3>${skill.module_name}</h3>
-                <span class="skill-type">${skill.module_type || 'Module'}</span>
             </div>
             <div class="skill-options">
                 <div class="skill-option">
@@ -3376,16 +3375,69 @@ function displaySkills(skills) {
                     <label for="skill_${skill.module_id}_unassigned">Not set</label>
                 </div>
             </div>
+            <div class="experience-section" id="experience_${skill.module_id}" style="display: none;">
+                <label for="experience_text_${skill.module_id}" class="experience-label">Experience & Additional Skills (Required):</label>
+                <textarea 
+                    id="experience_text_${skill.module_id}" 
+                    name="experience_${skill.module_id}"
+                    class="experience-textarea"
+                    placeholder="Please describe your experience and additional skills for this session..."
+                    rows="3"
+                    required
+                >${skill.experience_description || ''}</textarea>
+            </div>
         </div>
     `).join('');
 
     // Show save button
     if (skillsActions) skillsActions.style.display = 'block';
     
+    // Add event listeners for radio buttons
+    skills.forEach(skill => {
+        const radioButtons = document.querySelectorAll(`input[name="skill_${skill.module_id}"]`);
+        radioButtons.forEach(radio => {
+            radio.addEventListener('change', function() {
+                toggleExperienceSection(skill.module_id, this.value);
+            });
+        });
+        
+        // Initialize experience section based on current selection
+        const checkedRadio = document.querySelector(`input[name="skill_${skill.module_id}"]:checked`);
+        if (checkedRadio) {
+            toggleExperienceSection(skill.module_id, checkedRadio.value);
+        }
+    });
+    
     // Add event listener for save button
     const saveBtn = document.getElementById('save-skills-btn');
     if (saveBtn) {
         saveBtn.onclick = saveSkills;
+    }
+}
+
+// Helper function to get module name by ID
+function getModuleName(moduleId) {
+    const moduleHeader = document.querySelector(`input[name="skill_${moduleId}"]`)?.closest('.skill-card')?.querySelector('h3');
+    return moduleHeader ? moduleHeader.textContent : `Module ${moduleId}`;
+}
+
+// Toggle experience section based on radio button selection
+function toggleExperienceSection(moduleId, skillLevel) {
+    const experienceSection = document.getElementById(`experience_${moduleId}`);
+    const experienceTextarea = document.getElementById(`experience_text_${moduleId}`);
+    
+    if (!experienceSection || !experienceTextarea) return;
+    
+    // Show experience section for skill levels that require it
+    const requiresExperience = ['proficient', 'have_run_before', 'have_some_skill'];
+    
+    if (requiresExperience.includes(skillLevel)) {
+        experienceSection.style.display = 'block';
+        experienceTextarea.required = true;
+    } else {
+        experienceSection.style.display = 'none';
+        experienceTextarea.required = false;
+        experienceTextarea.value = ''; // Clear text when hiding
     }
 }
 
@@ -3397,8 +3449,9 @@ async function saveSkills() {
         return;
     }
 
-    // Collect all skill selections
+    // Collect all skill selections and experience descriptions
     const skillSelections = {};
+    const experienceDescriptions = {};
     const radioButtons = document.querySelectorAll('input[name^="skill_"]:checked');
     
     radioButtons.forEach(radio => {
@@ -3406,8 +3459,23 @@ async function saveSkills() {
         const skillLevel = radio.value;
         if (skillLevel !== 'unassigned') {
             skillSelections[moduleId] = skillLevel;
+            
+            // Collect experience description if it exists
+            const experienceTextarea = document.getElementById(`experience_text_${moduleId}`);
+            if (experienceTextarea && experienceTextarea.value.trim()) {
+                experienceDescriptions[moduleId] = experienceTextarea.value.trim();
+            }
         }
     });
+    
+    // Validate that required experience descriptions are provided
+    const requiresExperience = ['proficient', 'have_run_before', 'have_some_skill'];
+    for (const [moduleId, skillLevel] of Object.entries(skillSelections)) {
+        if (requiresExperience.includes(skillLevel) && !experienceDescriptions[moduleId]) {
+            showNotification(`Please provide your experience for ${getModuleName(moduleId)}`, 'error');
+            return;
+        }
+    }
 
     try {
         const saveBtn = document.getElementById('save-skills-btn');
@@ -3424,7 +3492,8 @@ async function saveSkills() {
             },
             body: JSON.stringify({
                 unit_id: currentUnitId,
-                skills: skillSelections
+                skills: skillSelections,
+                experience_descriptions: experienceDescriptions
             })
         });
 

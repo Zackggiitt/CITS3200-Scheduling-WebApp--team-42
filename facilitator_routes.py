@@ -990,8 +990,8 @@ def manage_skills():
     if request.method == 'GET' and request.args.get('unit_id'):
         unit_id = request.args.get('unit_id')
         
-        # Get ALL modules for the unit
-        all_modules = Module.query.filter_by(unit_id=unit_id).all()
+        # Get ALL modules for the unit, excluding "General" module
+        all_modules = Module.query.filter_by(unit_id=unit_id).filter(Module.module_name != 'General').all()
         
         # Get facilitator's skills for this unit
         facilitator_skills = db.session.query(FacilitatorSkill, Module).join(
@@ -1008,11 +1008,20 @@ def manage_skills():
         skills_data = []
         for module in all_modules:
             skill_level = skill_lookup.get(module.id, 'unassigned')
+            experience_description = ''
+            
+            # Get experience description if skill exists
+            for skill, skill_module in facilitator_skills:
+                if skill_module.id == module.id:
+                    experience_description = skill.experience_description or ''
+                    break
+            
             skills_data.append({
                 'module_name': module.module_name,
                 'module_type': module.module_type,
                 'skill_level': skill_level,
-                'module_id': module.id
+                'module_id': module.id,
+                'experience_description': experience_description
             })
         
         return jsonify({
@@ -1030,6 +1039,7 @@ def manage_skills():
             data = request.get_json()
             unit_id = data.get('unit_id')
             skills = data.get('skills', {})
+            experience_descriptions = data.get('experience_descriptions', {})
             
             if not unit_id:
                 return jsonify({"error": "Unit ID is required"}), 400
@@ -1048,10 +1058,12 @@ def manage_skills():
             # Add new skills
             for module_id, skill_level in skills.items():
                 try:
+                    experience_description = experience_descriptions.get(module_id, '')
                     facilitator_skill = FacilitatorSkill(
                         facilitator_id=user.id,
                         module_id=int(module_id),
-                        skill_level=SkillLevel(skill_level)
+                        skill_level=SkillLevel(skill_level),
+                        experience_description=experience_description
                     )
                     db.session.add(facilitator_skill)
                 except ValueError:
