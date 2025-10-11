@@ -4042,6 +4042,9 @@ function renderDaySessions(sessions) {
       <div class="empty-day">
         <span class="material-icons">add</span>
         <div class="empty-day-text">No sessions scheduled.<br>Sessions will appear when CSV is uploaded.</div>
+        <button class="create-session-btn" onclick="openCreateSessionModal()">
+          Create Session
+        </button>
       </div>
     `;
   }
@@ -4592,10 +4595,121 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAttendanceData();
   }, 1000);
 
-// Facilitator Selection Modal Functions
-let currentSessionData = null;
-let allFacilitators = [];
-let filteredFacilitators = [];
+// Create Session Modal Functions
+function openCreateSessionModal() {
+  // Set today's date as default
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('session-date').value = today;
+  
+  // Show modal
+  document.getElementById('create-session-modal').style.display = 'flex';
+}
+
+function closeCreateSessionModal() {
+  document.getElementById('create-session-modal').style.display = 'none';
+  
+  // Clear form
+  document.getElementById('session-name').value = '';
+  document.getElementById('session-date').value = '';
+  document.getElementById('session-module').value = '';
+  document.getElementById('session-start-time').value = '';
+  document.getElementById('session-end-time').value = '';
+  document.getElementById('session-location').value = '';
+  document.getElementById('session-description').value = '';
+}
+
+function validateSessionForm() {
+  const requiredFields = [
+    'session-name',
+    'session-date', 
+    'session-module',
+    'session-start-time',
+    'session-end-time',
+    'session-location'
+  ];
+  
+  let isValid = true;
+  
+  requiredFields.forEach(fieldId => {
+    const field = document.getElementById(fieldId);
+    if (!field.value.trim()) {
+      field.style.borderColor = '#ef4444';
+      isValid = false;
+    } else {
+      field.style.borderColor = '#d1d5db';
+    }
+  });
+  
+  // Validate time range
+  const startTime = document.getElementById('session-start-time').value;
+  const endTime = document.getElementById('session-end-time').value;
+  
+  if (startTime && endTime && startTime >= endTime) {
+    document.getElementById('session-end-time').style.borderColor = '#ef4444';
+    showSimpleNotification('End time must be after start time', 'error');
+    isValid = false;
+  }
+  
+  return isValid;
+}
+
+async function createSession() {
+  if (!validateSessionForm()) {
+    return;
+  }
+  
+  const sessionData = {
+    name: document.getElementById('session-name').value.trim(),
+    date: document.getElementById('session-date').value,
+    module_type: document.getElementById('session-module').value,
+    start_time: document.getElementById('session-start-time').value,
+    end_time: document.getElementById('session-end-time').value,
+    location: document.getElementById('session-location').value.trim(),
+    description: document.getElementById('session-description').value.trim()
+  };
+  
+  try {
+    // Get current unit ID
+    const tabsNav = document.querySelector('.uc-tabs[data-unit-id]');
+    const currentUnitId = tabsNav ? tabsNav.getAttribute('data-unit-id') : null;
+    
+    if (!currentUnitId) {
+      showSimpleNotification('No unit selected', 'error');
+      return;
+    }
+    
+    const response = await fetch(`/unitcoordinator/units/${currentUnitId}/sessions/manual`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': window.csrfToken
+      },
+      body: JSON.stringify(sessionData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      showSimpleNotification('Session created successfully!', 'success');
+      closeCreateSessionModal();
+      
+      // Refresh the schedule
+      setTimeout(() => {
+        loadScheduleSessions();
+      }, 1000);
+    } else {
+      throw new Error(result.error || 'Failed to create session');
+    }
+    
+  } catch (error) {
+    console.error('Error creating session:', error);
+    showSimpleNotification(`Error creating session: ${error.message}`, 'error');
+  }
+}
 
 // Open facilitator selection modal
 function openFacilitatorModal(element) {
@@ -4606,6 +4720,9 @@ function openFacilitatorModal(element) {
     time: sessionCard.dataset.sessionTime,
     location: sessionCard.dataset.sessionLocation
   };
+  
+  // Reset selection
+  selectedFacilitators = [];
   
   // Update modal content
   document.getElementById('modal-session-name').textContent = currentSessionData.name;
@@ -4625,6 +4742,7 @@ function closeFacilitatorModal() {
   currentSessionData = null;
   allFacilitators = [];
   filteredFacilitators = [];
+  selectedFacilitators = [];
 }
 
 // Load facilitators from API
@@ -4721,6 +4839,7 @@ function renderFacilitatorList() {
   
   facilitatorList.innerHTML = filteredFacilitators.map((facilitator, index) => `
     <div class="facilitator-item" data-facilitator-id="${facilitator.id}" data-facilitator-name="${facilitator.name}" data-facilitator-email="${facilitator.email}">
+      <input type="checkbox" class="facilitator-checkbox" id="facilitator-${facilitator.id}" onchange="toggleFacilitatorSelection('${facilitator.id}', '${facilitator.name}', '${facilitator.email}')">
       <div class="facilitator-avatar">
         ${getFacilitatorInitials(facilitator.name)}
       </div>
@@ -4731,15 +4850,8 @@ function renderFacilitatorList() {
     </div>
   `).join('');
   
-  // Add click event listeners to facilitator items
-  facilitatorList.querySelectorAll('.facilitator-item').forEach(item => {
-    item.addEventListener('click', function() {
-      const facilitatorId = this.dataset.facilitatorId;
-      const facilitatorName = this.dataset.facilitatorName;
-      const facilitatorEmail = this.dataset.facilitatorEmail;
-      selectFacilitator(facilitatorId, facilitatorName, facilitatorEmail);
-    });
-  });
+  // Update select button state
+  updateSelectButton();
 }
 
 // Get facilitator initials
@@ -4747,42 +4859,57 @@ function getFacilitatorInitials(name) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
-// Select facilitator
-function selectFacilitator(facilitatorId, facilitatorName, facilitatorEmail) {
-  console.log('Selected facilitator:', {
-    id: facilitatorId,
-    name: facilitatorName,
-    email: facilitatorEmail,
-    session: currentSessionData
-  });
+// Toggle facilitator selection
+function toggleFacilitatorSelection(facilitatorId, facilitatorName, facilitatorEmail) {
+  const checkbox = document.getElementById(`facilitator-${facilitatorId}`);
+  const facilitatorItem = checkbox.closest('.facilitator-item');
   
-  // Show visual feedback by highlighting the selected facilitator
-  const facilitatorItems = document.querySelectorAll('.facilitator-item');
-  facilitatorItems.forEach(item => {
-    item.classList.remove('selected');
-    if (item.dataset.facilitatorId === facilitatorId) {
-      item.classList.add('selected');
+  if (checkbox.checked) {
+    // Add to selection if not already selected
+    if (!selectedFacilitators.find(f => f.id === facilitatorId)) {
+      selectedFacilitators.push({
+        id: facilitatorId,
+        name: facilitatorName,
+        email: facilitatorEmail
+      });
+      facilitatorItem.classList.add('selected');
     }
-  });
+  } else {
+    // Remove from selection
+    selectedFacilitators = selectedFacilitators.filter(f => f.id !== facilitatorId);
+    facilitatorItem.classList.remove('selected');
+  }
   
-  // Update the session card to show "Pending" status
-  updateSessionStatus(currentSessionData.id, 'pending', facilitatorName);
-  
-  // Show assignment confirmation popup
-  showAssignmentConfirmation(facilitatorName, currentSessionData.name);
-  
-  // Close modal after a short delay to show the selection
-  setTimeout(() => {
-    closeFacilitatorModal();
-  }, 1000);
-  
-  // TODO: Implement actual assignment logic here
-  // This would involve making an API call to assign the facilitator to the session
+  updateSelectButton();
 }
 
-// Update session status in the UI
-function updateSessionStatus(sessionId, status, facilitatorName = null) {
-  // Find the session card by ID
+// Update select button state
+function updateSelectButton() {
+  const selectButton = document.getElementById('facilitator-modal-select');
+  const count = selectedFacilitators.length;
+  
+  selectButton.textContent = `Select (${count})`;
+  selectButton.disabled = count === 0;
+}
+
+// Select multiple facilitators
+function selectMultipleFacilitators() {
+  if (selectedFacilitators.length === 0) return;
+  
+  console.log('Selected facilitators:', selectedFacilitators);
+  
+  // Update the session card to show "Pending" status with multiple facilitators
+  updateSessionStatusMultiple(currentSessionData.id, 'pending', selectedFacilitators);
+  
+  // Show assignment confirmation popup for multiple facilitators
+  showMultipleAssignmentConfirmation(selectedFacilitators, currentSessionData.name);
+  
+  // Close modal
+  closeFacilitatorModal();
+}
+
+// Update session status for multiple facilitators
+function updateSessionStatusMultiple(sessionId, status, facilitators) {
   const sessionCard = document.querySelector(`[data-session-id="${sessionId}"]`);
   if (!sessionCard) return;
   
@@ -4797,20 +4924,75 @@ function updateSessionStatus(sessionId, status, facilitatorName = null) {
     case 'pending':
       facilitatorElement.classList.add('pending');
       facilitatorElement.textContent = 'Pending';
-      facilitatorElement.title = `Assigned to: ${facilitatorName}`;
+      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f.name).join(', ')}`;
       break;
     case 'assigned':
       facilitatorElement.classList.add('assigned');
-      facilitatorElement.textContent = facilitatorName ? getInitials(facilitatorName) : 'Assigned';
-      facilitatorElement.title = `Assigned to: ${facilitatorName}`;
+      facilitatorElement.textContent = facilitators.length > 1 ? `${facilitators.length} Facilitators` : getInitials(facilitators[0].name);
+      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f.name).join(', ')}`;
       break;
     case 'unassigned':
     default:
       facilitatorElement.classList.add('unassigned');
       facilitatorElement.textContent = 'Unassigned';
-      facilitatorElement.title = 'Click to assign a facilitator';
+      facilitatorElement.title = 'Click to assign facilitators';
       break;
   }
+}
+
+// Show assignment confirmation for multiple facilitators
+function showMultipleAssignmentConfirmation(facilitators, sessionName) {
+  const popup = document.createElement('div');
+  popup.className = 'assignment-confirmation-popup';
+  popup.innerHTML = `
+    <div class="assignment-popup-content">
+      <div class="assignment-popup-header">
+        <span class="material-icons assignment-success-icon">check_circle</span>
+        <h3>Assignment Confirmed</h3>
+      </div>
+      <div class="assignment-popup-body">
+        <p>This session has been assigned to:</p>
+        <div class="assigned-facilitators">
+          ${facilitators.map(facilitator => `
+            <div class="assigned-facilitator">
+              <div class="facilitator-avatar-large">
+                ${getFacilitatorInitials(facilitator.name)}
+              </div>
+              <div class="facilitator-details">
+                <div class="facilitator-name-large">${facilitator.name}</div>
+                <div class="session-name">${sessionName}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="assignment-popup-footer">
+        <button class="btn btn-primary" onclick="closeAssignmentConfirmation()">OK</button>
+      </div>
+    </div>
+  `;
+  
+  // Style the popup
+  popup.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `;
+  
+  // Add to page
+  document.body.appendChild(popup);
+  
+  // Auto-close after 5 seconds
+  setTimeout(() => {
+    closeAssignmentConfirmation();
+  }, 5000);
 }
 
 // Assignment confirmation popup
@@ -4889,18 +5071,29 @@ function searchFacilitators() {
   renderFacilitatorList();
 }
 
-// Initialize facilitator modal event listeners
+// Initialize modal event listeners
 document.addEventListener('DOMContentLoaded', function() {
-  // Close modal when clicking outside
+  // Create Session Modal
+  document.getElementById('create-session-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeCreateSessionModal();
+    }
+  });
+  
+  document.getElementById('create-session-modal-close').addEventListener('click', closeCreateSessionModal);
+  document.getElementById('create-session-cancel').addEventListener('click', closeCreateSessionModal);
+  document.getElementById('create-session-submit').addEventListener('click', createSession);
+  
+  // Facilitator Modal
   document.getElementById('facilitator-modal').addEventListener('click', function(e) {
     if (e.target === this) {
       closeFacilitatorModal();
     }
   });
   
-  // Close modal buttons
   document.getElementById('facilitator-modal-close').addEventListener('click', closeFacilitatorModal);
   document.getElementById('facilitator-modal-cancel').addEventListener('click', closeFacilitatorModal);
+  document.getElementById('facilitator-modal-select').addEventListener('click', selectMultipleFacilitators);
   
   // Search functionality
   document.getElementById('facilitator-search').addEventListener('input', searchFacilitators);

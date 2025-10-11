@@ -2489,6 +2489,81 @@ def list_venues(unit_id: int):
     })
 
 
+@unitcoordinator_bp.post("/units/<int:unit_id>/sessions/manual")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def create_manual_session(unit_id: int):
+    """Create a new session manually for a unit."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'date', 'module_type', 'start_time', 'end_time', 'location']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({"ok": False, "error": f"Missing required field: {field}"}), 400
+        
+        # Parse datetime
+        from datetime import datetime
+        session_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        start_time = datetime.strptime(f"{data['date']} {data['start_time']}", '%Y-%m-%d %H:%M')
+        end_time = datetime.strptime(f"{data['date']} {data['end_time']}", '%Y-%m-%d %H:%M')
+        
+        # Validate time range
+        if start_time >= end_time:
+            return jsonify({"ok": False, "error": "End time must be after start time"}), 400
+        
+        # Create a default module if none exists
+        module = Module.query.filter_by(unit_id=unit_id, module_name=f"Default {data['module_type'].title()}").first()
+        if not module:
+            module = Module(
+                unit_id=unit_id,
+                module_name=f"Default {data['module_type'].title()}",
+                module_type=data['module_type'],
+                description=f"Default module for {data['module_type']} sessions"
+            )
+            db.session.add(module)
+            db.session.flush()  # Get the ID
+        
+        # Create session
+        session = Session(
+            module_id=module.id,
+            session_name=data['name'],
+            start_time=start_time,
+            end_time=end_time,
+            location=data['location'],
+            description=data.get('description', ''),
+            max_facilitators=1,  # Default to 1, can be updated later
+            status='pending'
+        )
+        
+        db.session.add(session)
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "session": {
+                "id": session.id,
+                "name": session.session_name,
+                "start_time": session.start_time.isoformat(),
+                "end_time": session.end_time.isoformat(),
+                "location": session.location,
+                "module_type": module.module_type
+            }
+        })
+        
+    except ValueError as e:
+        return jsonify({"ok": False, "error": f"Invalid date/time format: {str(e)}"}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to create session: {str(e)}"}), 500
+
+
 @unitcoordinator_bp.get("/units/<int:unit_id>/facilitators")
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])

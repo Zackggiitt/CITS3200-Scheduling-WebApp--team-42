@@ -1989,11 +1989,84 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
   </div>
 </div>
 
+<!-- Create Session Modal -->
+<div id="create-session-modal" class="create-session-modal" style="display: none;">
+  <div class="create-session-modal-content">
+    <div class="create-session-modal-header">
+      <h2>Create New Session</h2>
+      <p class="create-session-subtitle">Add a new session to your schedule manually</p>
+      <button id="create-session-modal-close" class="create-session-modal-close" aria-label="Close">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    
+    <div class="create-session-modal-body">
+      <div class="session-form-section">
+        <h3>Session Information</h3>
+        <p class="section-description">Enter the details for your new session</p>
+        
+        <div class="form-grid">
+          <div class="form-column">
+            <div class="form-field">
+              <label for="session-name">Session Name *</label>
+              <input type="text" id="session-name" placeholder="e.g. Workshop-01" class="form-input">
+            </div>
+            
+            <div class="form-field">
+              <label for="session-date">Date *</label>
+              <input type="date" id="session-date" class="form-input">
+            </div>
+            
+            <div class="form-field">
+              <label for="session-module">Module Type *</label>
+              <select id="session-module" class="form-select">
+                <option value="">Select module type</option>
+                <option value="lecture">Lecture</option>
+                <option value="tutorial">Tutorial</option>
+                <option value="workshop">Workshop</option>
+                <option value="lab">Lab</option>
+                <option value="seminar">Seminar</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-column">
+            <div class="form-field">
+              <label for="session-start-time">Start Time *</label>
+              <input type="time" id="session-start-time" class="form-input">
+            </div>
+            
+            <div class="form-field">
+              <label for="session-end-time">End Time *</label>
+              <input type="time" id="session-end-time" class="form-input">
+            </div>
+            
+            <div class="form-field">
+              <label for="session-location">Location *</label>
+              <input type="text" id="session-location" placeholder="e.g. CSSE: [201] Computer Lab" class="form-input">
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-field full-width">
+          <label for="session-description">Description (optional)</label>
+          <textarea id="session-description" placeholder="Brief description of the session..." class="form-textarea"></textarea>
+        </div>
+      </div>
+    </div>
+    
+    <div class="create-session-modal-footer">
+      <button id="create-session-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="create-session-submit" class="btn btn-primary">Create Session</button>
+    </div>
+  </div>
+</div>
+
 <!-- Facilitator Selection Modal -->
 <div id="facilitator-modal" class="facilitator-modal" style="display: none;">
   <div class="facilitator-modal-content">
     <div class="facilitator-modal-header">
-      <h3>Select Facilitator</h3>
+      <h3>Select Facilitators</h3>
       <button id="facilitator-modal-close" class="facilitator-modal-close" aria-label="Close">
         <span class="material-icons">close</span>
       </button>
@@ -2004,6 +2077,7 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
         <h4 id="modal-session-name">Session Name</h4>
         <p id="modal-session-time">Time: Loading...</p>
         <p id="modal-session-location">Location: Loading...</p>
+        <p class="selection-hint">Select multiple facilitators for this session</p>
       </div>
       
       <div class="facilitator-search">
@@ -2021,6 +2095,7 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     
     <div class="facilitator-modal-footer">
       <button id="facilitator-modal-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="facilitator-modal-select" class="btn btn-primary" disabled>Select (0)</button>
     </div>
   </div>
 </div>
