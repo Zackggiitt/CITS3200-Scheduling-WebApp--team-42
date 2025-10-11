@@ -842,10 +842,16 @@ def dashboard():
             # Format skills for template
             skills_list = []
             for skill, module in facilitator_skills:
+                experience_text = skill.experience_description or "No additional details provided"
+                experience_full = experience_text
+                if len(experience_text) > 200:
+                    experience_text = experience_text[:200] + "..."
+                
                 skills_list.append({
                     "module": module.module_name,
                     "level": skill.skill_level.value,
-                    "experience": skill.experience_description or "No additional details provided"
+                    "experience": experience_text,
+                    "experience_full": experience_full
                 })
 
             facilitators.append(
@@ -1150,10 +1156,16 @@ def admin_dashboard():
             # Format skills for template
             skills_list = []
             for skill, module in facilitator_skills:
+                experience_text = skill.experience_description or "No additional details provided"
+                experience_full = experience_text
+                if len(experience_text) > 200:
+                    experience_text = experience_text[:200] + "..."
+                
                 skills_list.append({
                     "module": module.module_name,
                     "level": skill.skill_level.value,
-                    "experience": skill.experience_description or "No additional details provided"
+                    "experience": experience_text,
+                    "experience_full": experience_full
                 })
 
             facilitators.append(
