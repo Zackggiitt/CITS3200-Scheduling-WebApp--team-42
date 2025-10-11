@@ -3725,3 +3725,24 @@ main {
   color: #111827;
   transform: scale(0.98);
 }
+
+/* Pending status styling */
+.session-facilitator.pending {
+  background-color: #fed7aa;
+  color: #9a3412;
+  border: 1px solid #fb923c;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.session-facilitator.pending:hover {
+  background-color: #fdba74;
+  color: #7c2d12;
+  border-color: #f97316;
+}
+
+.session-facilitator.pending:active {
+  background-color: #fb923c;
+  color: #7c2d12;
+  transform: scale(0.98);
+}

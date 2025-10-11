@@ -4046,8 +4046,8 @@ function renderDaySessions(sessions) {
     `;
   }
 
-  return sessions.map(session => `
-    <div class="session-card" data-session-id="${session.id || 'new'}" data-session-name="${session.session_name || session.title || 'New Session'}" data-session-time="${formatTime(session.start)} - ${formatTime(session.end)}" data-session-location="${session.location || 'TBA'}">
+  return sessions.map((session, index) => `
+    <div class="session-card" data-session-id="${session.id || `temp-${index}`}" data-session-name="${session.session_name || session.title || 'New Session'}" data-session-time="${formatTime(session.start)} - ${formatTime(session.end)}" data-session-location="${session.location || 'TBA'}">
       <div class="session-header">
         <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="openFacilitatorModal(this)"' : ''}>
           ${session.facilitator ? getInitials(session.facilitator) : 'Unassigned'}
@@ -4765,8 +4765,11 @@ function selectFacilitator(facilitatorId, facilitatorName, facilitatorEmail) {
     }
   });
   
+  // Update the session card to show "Pending" status
+  updateSessionStatus(currentSessionData.id, 'pending', facilitatorName);
+  
   // Show success message
-  showSimpleNotification(`Facilitator ${facilitatorName} selected for ${currentSessionData.name}`, 'success');
+  showSimpleNotification(`Facilitator ${facilitatorName} assigned to ${currentSessionData.name}`, 'success');
   
   // Close modal after a short delay to show the selection
   setTimeout(() => {
@@ -4775,6 +4778,39 @@ function selectFacilitator(facilitatorId, facilitatorName, facilitatorEmail) {
   
   // TODO: Implement actual assignment logic here
   // This would involve making an API call to assign the facilitator to the session
+}
+
+// Update session status in the UI
+function updateSessionStatus(sessionId, status, facilitatorName = null) {
+  // Find the session card by ID
+  const sessionCard = document.querySelector(`[data-session-id="${sessionId}"]`);
+  if (!sessionCard) return;
+  
+  const facilitatorElement = sessionCard.querySelector('.session-facilitator');
+  if (!facilitatorElement) return;
+  
+  // Remove existing status classes
+  facilitatorElement.classList.remove('unassigned', 'pending', 'assigned');
+  
+  // Add new status class and update content
+  switch (status) {
+    case 'pending':
+      facilitatorElement.classList.add('pending');
+      facilitatorElement.textContent = 'Pending';
+      facilitatorElement.title = `Assigned to: ${facilitatorName}`;
+      break;
+    case 'assigned':
+      facilitatorElement.classList.add('assigned');
+      facilitatorElement.textContent = facilitatorName ? getInitials(facilitatorName) : 'Assigned';
+      facilitatorElement.title = `Assigned to: ${facilitatorName}`;
+      break;
+    case 'unassigned':
+    default:
+      facilitatorElement.classList.add('unassigned');
+      facilitatorElement.textContent = 'Unassigned';
+      facilitatorElement.title = 'Click to assign a facilitator';
+      break;
+  }
 }
 
 // Simple notification function
