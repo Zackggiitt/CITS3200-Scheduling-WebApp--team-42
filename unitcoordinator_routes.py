@@ -2222,7 +2222,9 @@ def auto_assign_facilitators(unit_id: int):
         csv_report = generate_schedule_report_csv(
             assignments, 
             unit_display_name,
-            total_facilitators_in_pool=len(facilitators_from_db)
+            total_facilitators_in_pool=len(facilitators_from_db),
+            unit_id=unit_id,
+            all_facilitators=facilitators_from_db
         )
         
         # Store CSV in session (or you could store in a temporary file)

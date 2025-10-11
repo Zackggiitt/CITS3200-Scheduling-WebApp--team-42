@@ -356,20 +356,26 @@ def calculate_metrics(assignments):
         'fairness_metrics': fairness_metrics
     }
 
-def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitators_in_pool=None):
+def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitators_in_pool=None, unit_id=None, all_facilitators=None):
     """
     Generate a comprehensive CSV report of the auto-scheduling results
     
     Returns a CSV string with multiple sections:
     1. Overview Statistics
-    2. Per-Facilitator Hours Summary
-    3. Detailed Assignment List
-    4. Unavailability Information
+    2. Fairness Metrics
+    3. Skill Level Distribution
+    4. Per-Facilitator Hours Summary
+    5. Skill Levels Per Facilitator
+    6. Unavailability Information
+    7. Facilitator Skill Declarations (NEW)
+    8. Detailed Assignment List
     
     Args:
         assignments: List of assignment dictionaries
         unit_name: Name of the unit for the report header
         total_facilitators_in_pool: Total number of facilitators available (for utilization %)
+        unit_id: Unit ID for querying skill declarations (optional)
+        all_facilitators: List of all facilitator objects in the pool (optional)
     """
     output = io.StringIO()
     writer = csv.writer(output)
@@ -383,7 +389,7 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
     fairness = metrics['fairness_metrics']
     
     # Get unavailability data from database
-    from models import Unavailability, User
+    from models import Unavailability, User, Module, FacilitatorSkill
     
     # Get all facilitators who have assignments
     facilitator_ids = set(a['facilitator']['id'] for a in assignments)
@@ -618,7 +624,62 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
     
     writer.writerow([])
     
-    # === SECTION 7: Detailed Assignment List ===
+    # === SECTION 7: Facilitator Skill Declarations ===
+    if unit_id and all_facilitators:
+        writer.writerow(["FACILITATOR SKILL DECLARATIONS"])
+        writer.writerow([
+            "Facilitator Name",
+            "Email",
+            "Module",
+            "Skill Level"
+        ])
+        
+        # Get all modules for this unit
+        modules = Module.query.filter_by(unit_id=unit_id).all()
+        
+        # Create a comprehensive list of skill declarations
+        skill_declarations = []
+        
+        for facilitator in all_facilitators:
+            # Get all skills for this facilitator in this unit
+            facilitator_skills = FacilitatorSkill.query.filter(
+                FacilitatorSkill.facilitator_id == facilitator.id,
+                FacilitatorSkill.module_id.in_([m.id for m in modules])
+            ).all()
+            
+            # Create a lookup dict for quick access
+            skill_lookup = {skill.module_id: skill.skill_level for skill in facilitator_skills}
+            
+            # Add entries for all modules
+            for module in modules:
+                skill_level = skill_lookup.get(module.id)
+                if skill_level:
+                    skill_level_name = get_skill_level_name(skill_level)
+                else:
+                    skill_level_name = "Not Declared"
+                
+                skill_declarations.append({
+                    'facilitator_name': facilitator.full_name,
+                    'facilitator_email': facilitator.email,
+                    'module_name': f"{module.module_name} ({module.module_type})",
+                    'skill_level': skill_level_name
+                })
+        
+        # Sort by facilitator name, then by module name
+        skill_declarations.sort(key=lambda x: (x['facilitator_name'], x['module_name']))
+        
+        # Write to CSV
+        for declaration in skill_declarations:
+            writer.writerow([
+                declaration['facilitator_name'],
+                declaration['facilitator_email'],
+                declaration['module_name'],
+                declaration['skill_level']
+            ])
+        
+        writer.writerow([])
+    
+    # === SECTION 8: Detailed Assignment List ===
     writer.writerow(["DETAILED ASSIGNMENTS"])
     writer.writerow([
         "Facilitator Name",

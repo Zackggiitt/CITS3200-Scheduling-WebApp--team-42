@@ -12,7 +12,7 @@ After running the auto-scheduler, you can now download a comprehensive CSV repor
 
 ## Report Contents
 
-The CSV report includes **7 comprehensive sections**:
+The CSV report includes **8 comprehensive sections**:
 
 ### 1. Overview Statistics
 - Total number of assignments created
@@ -66,7 +66,7 @@ Shows how many assignments each facilitator received at each proficiency level:
 
 This helps you see if facilitators are being matched appropriately to their skill levels.
 
-### 6. Unavailability Information ⭐ NEW!
+### 6. Unavailability Information
 Shows the unavailability constraints for each facilitator:
 - **Facilitator name and email**
 - **Unavailability count** - Number of unavailable periods
@@ -80,7 +80,26 @@ This helps you understand:
 - Which facilitators have the most/least constraints
 - Whether the scheduler is working around unavailability correctly
 
-### 7. Detailed Assignment List
+### 7. Facilitator Skill Declarations ⭐ NEW!
+Shows ALL skill level declarations for ALL facilitators in the pool:
+- **Facilitator name and email**
+- **Module name** - Each module in the unit
+- **Skill level** - Their declared proficiency (Proficient, Have Run Before, Have Some Skill, No Interest, or Not Declared)
+
+This comprehensive matrix helps you:
+- **Identify who marked "No Interest"** in which modules
+- See gaps in facilitator coverage across modules
+- Identify modules that need more skilled facilitators
+- Plan training needs based on skill declarations
+- Understand why certain facilitators weren't assigned to specific sessions
+
+**Key Features:**
+- Shows ALL facilitators, not just those who got assignments
+- Shows ALL modules in the unit
+- Includes "Not Declared" for facilitators who haven't set skill levels
+- **Highlights "No Interest" entries** so you can see who can't be assigned where
+
+### 8. Detailed Assignment List
 Complete list of all assignments with:
 - Facilitator name and email
 - Module/session name
@@ -141,6 +160,19 @@ Bob Smith,bob@gmail.com,1,2025-10-18 10:00-12:00
 Carol Davis,carol@gmail.com,0,No unavailabilities
 ...
 
+FACILITATOR SKILL DECLARATIONS
+Facilitator Name,Email,Module,Skill Level
+Alice Johnson,alice@gmail.com,Workshop-01 (workshop),Proficient
+Alice Johnson,alice@gmail.com,Workshop-02 (workshop),Have Run Before
+Alice Johnson,alice@gmail.com,Lab-01 (lab),Have Some Skill
+Bob Smith,bob@gmail.com,Workshop-01 (workshop),Have Some Skill
+Bob Smith,bob@gmail.com,Workshop-02 (workshop),No Interest
+Bob Smith,bob@gmail.com,Lab-01 (lab),Proficient
+Carol Davis,carol@gmail.com,Workshop-01 (workshop),No Interest
+Carol Davis,carol@gmail.com,Workshop-02 (workshop),Not Declared
+Carol Davis,carol@gmail.com,Lab-01 (lab),Have Run Before
+...
+
 DETAILED ASSIGNMENTS
 Facilitator Name,Email,Module/Session,Day & Time,Duration (Hours),Facilitator Skill Level,Assignment Score
 Alice Johnson,alice@gmail.com,GENG2000 - Workshop-01,Monday 09:00-11:00,2.0,Proficient,0.950
@@ -160,6 +192,9 @@ END OF REPORT
 ✅ **Skill Matching**: Verify facilitators are assigned to appropriate skill levels
 ✅ **Proficiency Insights**: See each facilitator's skill level for every assignment
 ✅ **Unavailability Transparency**: See exactly when and why facilitators are unavailable
+✅ **"No Interest" Visibility**: See which facilitators marked which modules as "No Interest" ⭐ NEW!
+✅ **Coverage Analysis**: Identify modules with insufficient skilled facilitators ⭐ NEW!
+✅ **Training Planning**: Use skill declarations to plan facilitator training needs ⭐ NEW!
 ✅ **Audit Trail**: Keep records of scheduling runs for reference
 ✅ **Excel Compatible**: Easy to analyze further in spreadsheet software
 ✅ **Stakeholder Reports**: Share with management or facilitators
@@ -205,4 +240,8 @@ The auto-scheduler enforces these **hard constraints**:
 9. **Workload Redistribution**: Use proficiency data to balance assignments better next time
 10. **Constraint Analysis**: See which facilitators have the most unavailability constraints
 11. **Scheduling Validation**: Verify the auto-scheduler is working around unavailability correctly
+12. **"No Interest" Analysis**: ⭐ NEW! Review which facilitators marked modules as "No Interest" and understand why they weren't assigned
+13. **Coverage Planning**: ⭐ NEW! Identify modules where too many facilitators have "No Interest" or haven't declared skills
+14. **Recruitment Planning**: ⭐ NEW! Use skill declarations to identify what expertise is needed in future hiring
+15. **Facilitator Onboarding**: ⭐ NEW! See which new facilitators haven't declared skills yet and need to complete their profiles
 
