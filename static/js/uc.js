@@ -4719,8 +4719,8 @@ function renderFacilitatorList() {
     return;
   }
   
-  facilitatorList.innerHTML = filteredFacilitators.map(facilitator => `
-    <div class="facilitator-item" onclick="selectFacilitator(${facilitator.id}, '${facilitator.name}', '${facilitator.email}')">
+  facilitatorList.innerHTML = filteredFacilitators.map((facilitator, index) => `
+    <div class="facilitator-item" data-facilitator-id="${facilitator.id}" data-facilitator-name="${facilitator.name}" data-facilitator-email="${facilitator.email}">
       <div class="facilitator-avatar">
         ${getFacilitatorInitials(facilitator.name)}
       </div>
@@ -4730,6 +4730,16 @@ function renderFacilitatorList() {
       </div>
     </div>
   `).join('');
+  
+  // Add click event listeners to facilitator items
+  facilitatorList.querySelectorAll('.facilitator-item').forEach(item => {
+    item.addEventListener('click', function() {
+      const facilitatorId = this.dataset.facilitatorId;
+      const facilitatorName = this.dataset.facilitatorName;
+      const facilitatorEmail = this.dataset.facilitatorEmail;
+      selectFacilitator(facilitatorId, facilitatorName, facilitatorEmail);
+    });
+  });
 }
 
 // Get facilitator initials
@@ -4739,9 +4749,6 @@ function getFacilitatorInitials(name) {
 
 // Select facilitator
 function selectFacilitator(facilitatorId, facilitatorName, facilitatorEmail) {
-  // Here you would typically make an API call to assign the facilitator to the session
-  // For now, we'll just show a success message and close the modal
-  
   console.log('Selected facilitator:', {
     id: facilitatorId,
     name: facilitatorName,
@@ -4749,14 +4756,60 @@ function selectFacilitator(facilitatorId, facilitatorName, facilitatorEmail) {
     session: currentSessionData
   });
   
-  // Show success message
-  showNotification(`Facilitator ${facilitatorName} selected for ${currentSessionData.name}`, 'success');
+  // Show visual feedback by highlighting the selected facilitator
+  const facilitatorItems = document.querySelectorAll('.facilitator-item');
+  facilitatorItems.forEach(item => {
+    item.classList.remove('selected');
+    if (item.dataset.facilitatorId === facilitatorId) {
+      item.classList.add('selected');
+    }
+  });
   
-  // Close modal
-  closeFacilitatorModal();
+  // Show success message
+  showSimpleNotification(`Facilitator ${facilitatorName} selected for ${currentSessionData.name}`, 'success');
+  
+  // Close modal after a short delay to show the selection
+  setTimeout(() => {
+    closeFacilitatorModal();
+  }, 1500);
   
   // TODO: Implement actual assignment logic here
   // This would involve making an API call to assign the facilitator to the session
+}
+
+// Simple notification function
+function showSimpleNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `simple-notification simple-notification-${type}`;
+  notification.textContent = message;
+  
+  // Style the notification
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${type === 'success' ? '#10b981' : '#3b82f6'};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    font-size: 14px;
+    font-weight: 500;
+    max-width: 300px;
+    word-wrap: break-word;
+  `;
+  
+  // Add to page
+  document.body.appendChild(notification);
+  
+  // Remove after 3 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 3000);
 }
 
 // Search facilitators
