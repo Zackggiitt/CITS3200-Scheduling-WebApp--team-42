@@ -2534,6 +2534,9 @@ function saveUnavailability() {
         reason: reason
     };
     
+    // Determine which endpoint to use based on whether it's recurring
+    let endpoint = '/facilitator/unavailability';
+    
     if (isRecurring) {
         data.recurring_pattern = document.getElementById('repeat-every').value;
         data.recurring_end_date = document.getElementById('until-date').value;
@@ -2542,9 +2545,12 @@ function saveUnavailability() {
         if (customInterval && customInterval.value) {
             data.recurring_interval = parseInt(customInterval.value);
         }
+        
+        // Use the recurring endpoint for recurring unavailability
+        endpoint = '/facilitator/unavailability/generate-recurring';
     }
     
-    fetch('/facilitator/unavailability', {
+    fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

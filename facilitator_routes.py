@@ -788,15 +788,17 @@ def create_unavailability():
     if len(reason) > 500:
         return jsonify({"error": "Reason must be 500 characters or less"}), 400
     
-    # Check for existing unavailability on the same date
+    # Check for existing unavailability on the same date and time
     existing = Unavailability.query.filter_by(
         user_id=user.id,
         unit_id=unit_id,
-        date=unavailability_date
+        date=unavailability_date,
+        start_time=start_time,
+        end_time=end_time
     ).first()
     
     if existing:
-        return jsonify({"error": "Unavailability already exists for this date"}), 409
+        return jsonify({"error": "Unavailability already exists for this date and time"}), 409
     
     # Create unavailability record
     unavailability = Unavailability(
@@ -933,7 +935,8 @@ def generate_recurring_unavailability():
         
         if recurring_pattern == RecurringPattern.DAILY:
             current_date += timedelta(days=recurring_interval)
-        elif recurring_pattern == RecurringPattern.WEEKLY:
+        elif recurring_pattern == RecurringPattern.WEEKLY or recurring_pattern == RecurringPattern.CUSTOM:
+            # CUSTOM is treated as weekly with custom interval
             current_date += timedelta(weeks=recurring_interval)
         elif recurring_pattern == RecurringPattern.MONTHLY:
             # Simple monthly increment
@@ -950,11 +953,20 @@ def generate_recurring_unavailability():
     # Create unavailability records for each date
     created_count = 0
     for date in dates:
-        # Check if unavailability already exists for this date
+        # Parse time data for this iteration
+        start_time = None
+        end_time = None
+        if not data.get('is_full_day', False):
+            start_time = datetime.strptime(data.get('start_time'), '%H:%M').time() if data.get('start_time') else None
+            end_time = datetime.strptime(data.get('end_time'), '%H:%M').time() if data.get('end_time') else None
+        
+        # Check if unavailability already exists for this date and time combination
         existing = Unavailability.query.filter_by(
             user_id=user.id,
             unit_id=unit_id,
-            date=date
+            date=date,
+            start_time=start_time,
+            end_time=end_time
         ).first()
         
         if not existing:
@@ -962,8 +974,8 @@ def generate_recurring_unavailability():
                 user_id=user.id,
                 unit_id=unit_id,
                 date=date,
-                start_time=datetime.strptime(data.get('start_time'), '%H:%M').time() if data.get('start_time') else None,
-                end_time=datetime.strptime(data.get('end_time'), '%H:%M').time() if data.get('end_time') else None,
+                start_time=start_time,
+                end_time=end_time,
                 is_full_day=data.get('is_full_day', False),
                 recurring_pattern=recurring_pattern,
                 recurring_end_date=recurring_end_date,
