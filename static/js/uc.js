@@ -4998,9 +4998,9 @@ function openFacilitatorModalAfterDelay(element) {
   selectedFacilitators = [];
   
   // Update modal content
-  const nameEl = document.getElementById('modal-session-name');
-  const timeEl = document.getElementById('modal-session-time');
-  const locationEl = document.getElementById('modal-session-location');
+  const nameEl = document.getElementById('modal-session-name-info');
+  const timeEl = document.getElementById('modal-session-time-info');
+  const locationEl = document.getElementById('modal-session-location-info');
   
   if (nameEl) nameEl.textContent = currentSessionData.name;
   if (timeEl) timeEl.textContent = `Time: ${currentSessionData.time}`;
