@@ -4309,7 +4309,7 @@ async function loadListSessionData() {
         id: session.id,
         title: session.extendedProps?.session_name || session.title || 'New Session',
         status: getSessionStatus(session),
-        day: new Date(session.start).toLocaleDateString('en-US', { weekday: 'long' }),
+        day: new Date(session.start).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }),
         time: formatTimeRange(session.start, session.end),
         location: session.extendedProps?.location || session.extendedProps?.venue || 'TBA',
         facilitator: getSessionFacilitator(session),
