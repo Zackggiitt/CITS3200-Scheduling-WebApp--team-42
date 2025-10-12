@@ -2018,6 +2018,35 @@ main {
   font-weight: 500;
 }
 
+.publish-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background-color: #059669;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 16px;
+}
+
+.publish-btn:hover {
+  background-color: #047857;
+  transform: translateY(-1px);
+}
+
+.publish-btn:active {
+  transform: translateY(0);
+}
+
+.publish-btn .material-icons {
+  font-size: 16px;
+}
+
 /* Facilitator Selection Modal */
 .modal-overlay {
   position: fixed;
@@ -2224,6 +2253,208 @@ main {
 .btn-primary:disabled {
   background-color: #9ca3af;
   cursor: not-allowed;
+}
+
+/* Publish Confirmation Modal */
+.publish-modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.publish-modal-header {
+  padding: 24px 24px 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.publish-modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.publish-modal-close {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.publish-modal-close:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.publish-modal-close .material-icons {
+  font-size: 20px;
+}
+
+.publish-modal-body {
+  padding: 24px;
+}
+
+.publish-summary-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.publish-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background-color: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.publish-summary-card:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.publish-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background-color: #10b981;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.publish-card-icon .material-icons {
+  color: white;
+  font-size: 24px;
+}
+
+.publish-card-content {
+  flex: 1;
+}
+
+.publish-card-number {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.publish-card-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.publish-card-description {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.publish-warning-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 12px;
+}
+
+.publish-warning-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background-color: #f59e0b;
+  border-radius: 6px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.publish-warning-icon .material-icons {
+  color: white;
+  font-size: 16px;
+}
+
+.publish-warning-text {
+  font-size: 13px;
+  color: #92400e;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.publish-warning-text strong {
+  font-weight: 600;
+}
+
+.publish-modal-footer {
+  padding: 0 24px 24px 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.publish-btn-secondary {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.publish-btn-secondary:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.publish-btn-primary {
+  background-color: #6366f1;
+  border: 1px solid #6366f1;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.publish-btn-primary:hover {
+  background-color: #4f46e5;
+  border-color: #4f46e5;
+}
+
+.publish-btn-primary:active {
+  background-color: #4338ca;
+  border-color: #4338ca;
 }
 
 /* Schedule Grid Container */
@@ -4466,13 +4697,6 @@ main {
   color: #6b7280;
 }
 
-.publish-summary {
-  background-color: #f9fafb;
-  border-radius: 8px;
-  padding: 16px;
-  display: flex;
-  gap: 24px;
-}
 
 .summary-item {
   display: flex;

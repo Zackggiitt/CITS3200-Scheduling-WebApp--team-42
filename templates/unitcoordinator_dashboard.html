@@ -755,6 +755,10 @@
                 <div class="legend-dot proposed"></div>
                 <span>Proposed</span>
               </div>
+              <button class="publish-btn" onclick="openPublishConfirmation()">
+                <span class="material-icons">publish</span>
+                Publish
+              </button>
             </div>
 
             <!-- Calendar View -->
@@ -2309,6 +2313,58 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     <div class="modal-footer">
       <button class="btn-secondary" id="facilitator-modal-cancel" onclick="closeFacilitatorModal()">Cancel</button>
       <button class="btn-primary" onclick="selectMultipleFacilitators()" id="facilitator-modal-select" disabled>Assign Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Publish Confirmation Modal -->
+<div id="publish-confirmation-modal" class="modal-overlay" style="display: none;">
+  <div class="publish-modal-content">
+    <div class="publish-modal-header">
+      <h2 class="publish-modal-title">Publish Schedule</h2>
+      <button class="publish-modal-close" id="publish-confirmation-close" onclick="closePublishConfirmation()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    
+    <div class="publish-modal-body">
+      <div class="publish-summary-cards">
+        <div class="publish-summary-card">
+          <div class="publish-card-icon">
+            <span class="material-icons">event_note</span>
+          </div>
+          <div class="publish-card-content">
+            <div class="publish-card-number" id="publish-session-count">0</div>
+            <div class="publish-card-label">sessions</div>
+            <div class="publish-card-description">will be published</div>
+          </div>
+        </div>
+        
+        <div class="publish-summary-card">
+          <div class="publish-card-icon">
+            <span class="material-icons">group</span>
+          </div>
+          <div class="publish-card-content">
+            <div class="publish-card-number" id="publish-facilitator-count">0</div>
+            <div class="publish-card-label">facilitators</div>
+            <div class="publish-card-description">will be notified</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="publish-warning-banner">
+        <div class="publish-warning-icon">
+          <span class="material-icons">warning_amber</span>
+        </div>
+        <div class="publish-warning-text">
+          <strong>Important:</strong> Once published, facilitators will be notified and the schedule will be finalized. This action cannot be undone.
+        </div>
+      </div>
+    </div>
+    
+    <div class="publish-modal-footer">
+      <button class="publish-btn-secondary" id="publish-cancel" onclick="closePublishConfirmation()">Cancel</button>
+      <button class="publish-btn-primary" id="publish-confirm" onclick="confirmPublish()">Publish Schedule</button>
     </div>
   </div>
 </div>

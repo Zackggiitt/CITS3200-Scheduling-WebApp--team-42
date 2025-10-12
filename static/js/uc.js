@@ -4884,6 +4884,14 @@ function openFacilitatorModal(element) {
     modal.style.display = 'flex';
   }
   
+  // Set up search functionality
+  const searchInput = document.getElementById('facilitator-search');
+  if (searchInput) {
+    // Remove any existing listeners to avoid duplicates
+    searchInput.removeEventListener('input', searchFacilitators);
+    searchInput.addEventListener('input', searchFacilitators);
+  }
+  
   // Load facilitators
   loadFacilitators();
 }
@@ -4891,6 +4899,13 @@ function openFacilitatorModal(element) {
 // Close facilitator modal
 function closeFacilitatorModal() {
   document.getElementById('facilitator-modal').style.display = 'none';
+  
+  // Clear search input
+  const searchInput = document.getElementById('facilitator-search');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  
   currentSessionData = null;
   allFacilitators = [];
   filteredFacilitators = [];
@@ -5211,7 +5226,14 @@ function closeAssignmentConfirmation() {
 
 // Search facilitators
 function searchFacilitators() {
-  const searchTerm = document.getElementById('facilitator-search').value.toLowerCase();
+  const searchInput = document.getElementById('facilitator-search');
+  if (!searchInput) {
+    console.error('Search input not found');
+    return;
+  }
+  
+  const searchTerm = searchInput.value.toLowerCase();
+  console.log('Search term:', searchTerm);
   
   if (searchTerm === '') {
     filteredFacilitators = [...allFacilitators];
@@ -5222,6 +5244,7 @@ function searchFacilitators() {
     );
   }
   
+  console.log('Filtered facilitators:', filteredFacilitators.length);
   renderFacilitatorList();
 }
 
@@ -5339,7 +5362,4 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('facilitator-modal-close').addEventListener('click', closeFacilitatorModal);
   document.getElementById('facilitator-modal-cancel').addEventListener('click', closeFacilitatorModal);
   document.getElementById('facilitator-modal-select').addEventListener('click', selectMultipleFacilitators);
-  
-  // Search functionality
-  document.getElementById('facilitator-search').addEventListener('input', searchFacilitators);
 });
