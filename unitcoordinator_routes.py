@@ -87,7 +87,7 @@ def _parse_dt(s: str):
 
 
 
-def _cleanup_old_temp_files(temp_dir: str, prefix: str, max_age_hours: int = 24):
+def _cleanup_old_temp_files(temp_dir: str, prefix: str, max_age_hours: int = 168):  # 7 days
     """
     Clean up old temporary files to prevent disk space issues.
     
@@ -2510,6 +2510,51 @@ def auto_assign_facilitators(unit_id: int):
             "ok": False, 
             "error": f"Auto-assignment failed: {str(e)}"
         }), 500
+
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/check_csv_availability")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def check_csv_availability(unit_id: int):
+    """
+    Check if a CSV report is available for download
+    """
+    from flask import session as flask_session
+    
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    # Check if report exists in session
+    report_key = f'schedule_report_{unit_id}'
+    csv_available = report_key in flask_session
+    
+    if csv_available:
+        # Verify the file still exists
+        import tempfile
+        import os
+        
+        csv_filename = flask_session[report_key]
+        temp_dir = tempfile.gettempdir()
+        csv_filepath = os.path.join(temp_dir, csv_filename)
+        
+        # Check if file exists
+        if os.path.exists(csv_filepath):
+            return jsonify({
+                "ok": True,
+                "csv_available": True,
+                "csv_download_url": f"/unitcoordinator/units/{unit_id}/download_schedule_report"
+            })
+        else:
+            # File was cleaned up, remove from session
+            flask_session.pop(report_key, None)
+            flask_session.pop(f'schedule_report_timestamp_{unit_id}', None)
+    
+    return jsonify({
+        "ok": True,
+        "csv_available": False
+    })
 
 
 @unitcoordinator_bp.get("/units/<int:unit_id>/download_schedule_report")
