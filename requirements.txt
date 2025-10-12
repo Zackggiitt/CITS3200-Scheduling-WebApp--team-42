@@ -59,3 +59,4 @@ wrapt==1.17.2
 wsproto==1.2.0
 WTForms==3.2.1
 yarl==1.18.3
+boto3==1.35.75
