@@ -35,11 +35,12 @@ body::before {
   padding: 30px 40px; position: relative;
 
   /* Lock vertical space and prevent content overflow */
-  min-height: 640px;
-  max-height: 640px; /* Added to cap height */
+  min-height: 550px;
+  max-height: 550px; /* Adjusted for better spacing */
   display: flex;
   flex-direction: column;
   overflow: hidden; /* Prevent content from spilling out and affecting border */
+  padding-bottom: 40px; /* Added extra padding at bottom */
 }
 
 /* =========================

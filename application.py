@@ -490,5 +490,162 @@ def google_callback():
     flash('Google login failed')
     return redirect(url_for('login'))
 
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+@limiter.limit("10 per hour")
+def forgot_password():
+    """Handle forgot password requests"""
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        
+        if not email:
+            flash("Please enter your email address.", "error")
+            return render_template("forgot_password.html")
+        
+        # Check if user exists
+        user = User.query.filter_by(email=email).first()
+        
+        # Always show success message (don't reveal if email exists)
+        # This prevents email enumeration attacks
+        flash("If an account exists with that email, you will receive a password reset link shortly.", "success")
+        
+        if user:
+            # Generate password reset token
+            from email_service import generate_token, send_password_reset_email, EmailToken
+            from datetime import datetime, timedelta
+            
+            token = generate_token()
+            expires_at = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
+            
+            # Store token in database
+            email_token = EmailToken(
+                email=email,
+                token=token,
+                expires_at=expires_at,
+                token_type='password_reset'
+            )
+            
+            try:
+                db.session.add(email_token)
+                db.session.commit()
+                
+                # Send password reset email
+                base_url = os.environ.get('BASE_URL', 'http://localhost:5000')
+                reset_link = f"{base_url}/reset-password?token={token}"
+                
+                send_password_reset_email(email, reset_link)
+                print(f"Password reset email sent to {email}")
+                
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error sending password reset email: {e}")
+        
+        return redirect(url_for('login'))
+    
+    return render_template("forgot_password.html")
+
+
+@app.route("/reset-password", methods=["GET", "POST"])
+@limiter.limit("10 per hour")
+def reset_password():
+    """Handle password reset with token"""
+    if request.method == "GET":
+        token = request.args.get("token", "").strip()
+        
+        if not token:
+            flash("Invalid or missing reset token.", "error")
+            return redirect(url_for('login'))
+        
+        # Validate token
+        from email_service import EmailToken
+        from datetime import datetime
+        
+        email_token = EmailToken.query.filter_by(
+            token=token,
+            token_type='password_reset',
+            used=False
+        ).first()
+        
+        if not email_token:
+            flash("Invalid or expired reset link.", "error")
+            return redirect(url_for('login'))
+        
+        # Check if token is expired
+        if email_token.expires_at < datetime.utcnow():
+            flash("This reset link has expired. Please request a new one.", "error")
+            return redirect(url_for('forgot_password'))
+        
+        # Show reset password form
+        return render_template("reset_password.html", token=token)
+    
+    # POST request - update password
+    token = request.form.get("token", "").strip()
+    password = request.form.get("password", "").strip()
+    confirm_password = request.form.get("confirm_password", "").strip()
+    
+    if not token or not password or not confirm_password:
+        flash("All fields are required.", "error")
+        return redirect(url_for('reset_password') + f"?token={token}")
+    
+    if password != confirm_password:
+        flash("Passwords do not match.", "error")
+        return redirect(url_for('reset_password') + f"?token={token}")
+    
+    # Validate password strength
+    if len(password) < 8:
+        flash("Password must be at least 8 characters long.", "error")
+        return redirect(url_for('reset_password') + f"?token={token}")
+    
+    if not any(c.isupper() for c in password):
+        flash("Password must contain at least one uppercase letter.", "error")
+        return redirect(url_for('reset_password') + f"?token={token}")
+    
+    if not any(c.isdigit() for c in password):
+        flash("Password must contain at least one number.", "error")
+        return redirect(url_for('reset_password') + f"?token={token}")
+    
+    if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in password):
+        flash("Password must contain at least one special character.", "error")
+        return redirect(url_for('reset_password') + f"?token={token}")
+    
+    # Validate token again
+    from email_service import EmailToken
+    from datetime import datetime
+    
+    email_token = EmailToken.query.filter_by(
+        token=token,
+        token_type='password_reset',
+        used=False
+    ).first()
+    
+    if not email_token or email_token.expires_at < datetime.utcnow():
+        flash("Invalid or expired reset link.", "error")
+        return redirect(url_for('login'))
+    
+    # Find user and update password
+    user = User.query.filter_by(email=email_token.email).first()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    # Update password
+    user.set_password(password)
+    
+    # Mark token as used
+    email_token.used = True
+    
+    try:
+        db.session.commit()
+        flash("Your password has been reset successfully! You can now log in.", "success")
+        print(f"Password reset successful for {user.email}")
+        return redirect(url_for('login'))
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error resetting password: {e}")
+        flash("An error occurred. Please try again.", "error")
+        return redirect(url_for('reset_password') + f"?token={token}")
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000, host='0.0.0.0')

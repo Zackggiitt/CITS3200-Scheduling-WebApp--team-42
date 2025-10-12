@@ -5605,33 +5605,43 @@ function closeSessionDetailsModal() {
 }
 
 // Publish Schedule Functions
-function openPublishConfirmation() {
-  // Count sessions and facilitators
-  const sessionCards = document.querySelectorAll('.session-card');
-  const assignedSessions = Array.from(sessionCards).filter(card => {
-    const facilitatorElement = card.querySelector('.session-facilitator');
-    return facilitatorElement && !facilitatorElement.classList.contains('unassigned');
-  });
-  
-  // Count unique facilitators
-  const facilitatorNames = new Set();
-  assignedSessions.forEach(card => {
-    const facilitatorElement = card.querySelector('.session-facilitator');
-    if (facilitatorElement && facilitatorElement.title) {
-      const title = facilitatorElement.title;
-      if (title.includes('Assigned to:')) {
-        const facilitators = title.replace('Assigned to: ', '').split(', ');
-        facilitators.forEach(fac => facilitatorNames.add(fac.trim()));
-      }
-    }
-  });
-  
-  // Update summary
-  document.getElementById('publish-session-count').textContent = `${assignedSessions.length} sessions`;
-  document.getElementById('publish-facilitator-count').textContent = `${facilitatorNames.size} facilitators`;
-  
-  // Show modal
+async function openPublishConfirmation() {
+  // Show modal first with loading state
+  document.getElementById('publish-session-count').textContent = 'Loading...';
+  document.getElementById('publish-facilitator-count').textContent = 'Loading...';
   document.getElementById('publish-confirmation-modal').style.display = 'flex';
+  
+  // Get actual counts from backend (for ALL sessions, not just current week)
+  try {
+    const unitId = getUnitId();
+    if (!unitId) {
+      document.getElementById('publish-session-count').textContent = '0';
+      document.getElementById('publish-facilitator-count').textContent = '0';
+      return;
+    }
+    
+    const response = await fetch(`/unitcoordinator/units/${unitId}/publish_preview`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': window.CSRF_TOKEN
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      document.getElementById('publish-session-count').textContent = data.session_count || 0;
+      document.getElementById('publish-facilitator-count').textContent = data.facilitator_count || 0;
+    } else {
+      // Fallback to counting visible sessions
+      document.getElementById('publish-session-count').textContent = '0';
+      document.getElementById('publish-facilitator-count').textContent = '0';
+    }
+  } catch (error) {
+    console.error('Error getting publish preview:', error);
+    document.getElementById('publish-session-count').textContent = '0';
+    document.getElementById('publish-facilitator-count').textContent = '0';
+  }
 }
 
 function closePublishConfirmation() {
@@ -5664,13 +5674,14 @@ async function confirmPublish() {
     const result = await response.json();
     
     if (result.ok) {
-      showSimpleNotification('Schedule published successfully! Facilitators have been notified.', 'success');
+      showSimpleNotification(`Schedule published! ${result.facilitators_notified} facilitators notified via email.`, 'success');
       closePublishConfirmation();
       
-      // Update publish button state
+      // Change button text to "Re-publish"
       const publishBtn = document.getElementById('publish-schedule-btn');
-      publishBtn.disabled = true;
-      publishBtn.innerHTML = '<span class="material-icons">check</span>Published';
+      if (publishBtn) {
+        publishBtn.innerHTML = '<span class="material-icons">publish</span>Re-publish Schedule';
+      }
     } else {
       throw new Error(result.error || 'Failed to publish schedule');
     }
