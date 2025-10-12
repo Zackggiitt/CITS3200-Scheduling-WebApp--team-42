@@ -204,18 +204,18 @@
 /* Footer (pinned) */
 .modal-footer{
   flex-shrink: 0; position: relative; z-index: 30; background: var(--c-bg); border-top: 1px solid var(--c-line);
-  padding: 12px 20px; display: flex; justify-content: flex-end; gap: 10px;
+  padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 60px;
 }
 .modal-footer::before{
   content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px; box-shadow: 0 -6px 12px rgba(0,0,0,.06) inset; pointer-events: none;
 }
 .btn-cancel{
-  padding: 8px 14px; border: 1px solid var(--c-line); background: var(--c-bg); color: #374151; border-radius: 8px; font-size: 14px;
+  padding: 12px 24px; border: 1px solid var(--c-line); background: var(--c-bg); color: #374151; border-radius: 8px; font-size: 16px; font-weight: 500; min-width: 120px; height: 44px; display: flex; align-items: center; justify-content: center;
 }
 .btn-cancel:hover { background: #f9fafb; }
 .btn-primary{
-  padding: 8px 18px; background: var(--c-btn); color: #fff; border: none; border-radius: 8px;
-  font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;
+  padding: 12px 24px; background: var(--c-btn); color: #fff; border: none; border-radius: 8px;
+  font-size: 22px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 120px; height: 44px;
 }
 .btn-primary:hover { background: var(--c-btn-hover); }
 
@@ -2458,7 +2458,7 @@ main {
   background-color: #3b82f6;
   color: white;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
