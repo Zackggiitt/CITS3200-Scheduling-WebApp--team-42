@@ -1584,6 +1584,48 @@ def admin_delete_unavailability(item_id):
         return jsonify({'ok': False, 'error': f'Failed to delete: {e}'}), 500
 
 
+@admin_bp.route('/toggle-user-status/<int:user_id>', methods=['POST'])
+@admin_required
+def toggle_user_status(user_id):
+    """Toggle user status between active and disabled"""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        import json
+        
+        # Get current preferences or create empty dict
+        if user.preferences:
+            try:
+                prefs = json.loads(user.preferences)
+            except:
+                prefs = {}
+        else:
+            prefs = {}
+        
+        # Toggle between active and disabled
+        current_status = prefs.get('status', 'active')
+        if current_status == 'active':
+            prefs['status'] = 'disabled'
+            action = 'disabled'
+        else:
+            prefs['status'] = 'active'
+            action = 'enabled'
+        
+        user.preferences = json.dumps(prefs)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Account {action} successfully',
+            'new_status': prefs['status']
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
 @admin_bp.route('/export-users-csv')
 @admin_required
 def export_users_csv():

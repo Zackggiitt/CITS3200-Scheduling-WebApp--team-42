@@ -461,6 +461,7 @@
       align-items: center;
       gap: 8px;
       margin-bottom: 12px;
+      font-family: 'Roboto', sans-serif;
       font-size: 14px;
       font-weight: 600;
       color: #374151;
@@ -488,12 +489,15 @@
     }
 
     .unit-code {
-      font-weight: 500;
+      font-family: 'Roboto', sans-serif;
+      font-weight: 600;
       color: #374151;
       font-size: 14px;
     }
 
     .unit-name {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 400;
       font-size: 13px;
       color: #4b5563;
       line-height: 1.4;
@@ -506,6 +510,7 @@
     }
 
     .role-badge {
+      font-family: 'Roboto', sans-serif;
       font-size: 11px;
       font-weight: 500;
       padding: 3px 8px;
@@ -1205,6 +1210,32 @@
 
   <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
   <script>
+    // Disable Account Function
+    function disableAccount(userId, userName) {
+      if (confirm(`Are you sure you want to disable ${userName}'s account?`)) {
+        fetch(`/admin/toggle-user-status/${userId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert(data.message);
+            location.reload(); // Refresh to show updated status
+          } else {
+            alert('Error: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('An error occurred while updating the account status.');
+        });
+      }
+    }
+
     // User Dropdown Functionality
     document.addEventListener('DOMContentLoaded', function() {
       const dropdownBtn = document.getElementById('userDropdownBtn');
