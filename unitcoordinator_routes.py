@@ -1829,9 +1829,7 @@ def confirm_facilitators():
     created_users = 0
     linked_facilitators = 0
     errors = []
-    
-    # Default password for new accounts
-    default_password = "fac123"  # Simple default password for lab facilitators
+    new_user_emails = []  # Track new users to send setup emails
     
     for email in facilitator_emails:
         email = email.strip().lower()
@@ -1841,11 +1839,12 @@ def confirm_facilitators():
         # Ensure facilitator user exists
         user_obj = User.query.filter_by(email=email).first()
         if not user_obj:
+            # Create user with only email and role - no password yet
             user_obj = User(email=email, role=UserRole.FACILITATOR)
-            user_obj.set_password(default_password)
             db.session.add(user_obj)
             db.session.flush()  # <-- ensure user_obj.id is available
             created_users += 1
+            new_user_emails.append(email)  # Track for email sending
         elif user_obj.role != UserRole.FACILITATOR:
             # If user exists but is not a facilitator, update their role
             user_obj.role = UserRole.FACILITATOR
@@ -1860,6 +1859,15 @@ def confirm_facilitators():
     
     try:
         db.session.commit()
+        
+        # Send setup emails to newly created users
+        from email_service import send_welcome_email
+        for email in new_user_emails:
+            try:
+                send_welcome_email(email, user_role=UserRole.FACILITATOR)
+            except Exception as e:
+                print(f"Failed to send setup email to {email}: {e}")
+        
         return jsonify({
             "ok": True,
             "created_users": created_users,

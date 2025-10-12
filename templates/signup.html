@@ -16,7 +16,7 @@
     <div class="wrapper">
         <form action="{{ url_for('signup') }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <h1>Register</h1>
+            <h1>{% if role_name %}Set Up {{ role_name }} Account{% else %}Register{% endif %}</h1>
 
             <!-- Flash messages -->
             {% with messages = get_flashed_messages() %}
@@ -31,32 +31,51 @@
 
             <div class="input-box">
                 <i class='bx bx-user'></i>
-                <input type="text" name="first_name" placeholder="First Name" required>
+                <input type="text" name="first_name" placeholder="First Name" value="{{ first_name or '' }}" required>
             </div>
 
             <div class="input-box">
                 <i class='bx bx-user'></i>
-                <input type="text" name="last_name" placeholder="Last Name" required>
+                <input type="text" name="last_name" placeholder="Last Name" value="{{ last_name or '' }}" required>
             </div>
 
             <div class="input-box">
                 <i class='bx bx-phone'></i>
-                <input type="tel" name="phone" placeholder="Phone Number" required>
+                <input type="tel" name="phone" placeholder="Phone Number (04...)" value="{{ phone or '' }}" required>
             </div>
 
             <div class="input-box">
                 <i class='bx bx-id-card'></i>
-                <input type="text" name="staff_number" placeholder="Staff Number (Optional)">
+                <input type="text" name="staff_number" placeholder="Staff Number (Optional)" value="{{ staff_number or '' }}">
             </div>
 
             <div class="input-box">
                 <i class='bx bx-envelope'></i>
-                <input type="email" name="email" placeholder="Email" required>
+                <input type="email" name="email" placeholder="Email" value="{{ email or '' }}" {% if email %}readonly{% endif %} required>
+            </div>
+            
+            <!-- Hidden token field for account setup -->
+            {% if token %}
+            <input type="hidden" name="token" value="{{ token }}">
+            {% endif %}
+
+            <div class="input-box" style="position: relative;">
+                <input type="password" id="password" name="password" placeholder="Password" style="padding-right: 45px;" required>
+                <i class='bx bx-hide' id="togglePassword" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; color: #666;"></i>
             </div>
 
-            <div class="input-box">
-                <i class='bx bxs-lock-alt'></i>
-                <input type="password" name="password" placeholder="Password" required>
+            <div class="input-box" style="position: relative;">
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm Password" style="padding-right: 45px;" required>
+                <i class='bx bx-hide' id="toggleConfirmPassword" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; color: #666;"></i>
+            </div>
+
+            <div style="font-size: 12px; color: #666; margin: -10px 0 15px 0; padding: 0 10px;">
+                <strong>Password must contain:</strong><br>
+                • At least 8 characters<br>
+                • One uppercase letter (A-Z)<br>
+                • One lowercase letter (a-z)<br>
+                • One number (0-9)<br>
+                • One special character (!@#$%^&*...)
             </div>
 
             <button type="submit" class="btn">Sign Up</button>
@@ -66,6 +85,34 @@
             </div>
         </form>
     </div>
+
+    <script>
+        // Toggle password visibility
+        const togglePassword = document.getElementById('togglePassword');
+        const password = document.getElementById('password');
+        
+        togglePassword.addEventListener('click', function () {
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+            
+            // Toggle eye icon
+            this.classList.toggle('bx-hide');
+            this.classList.toggle('bx-show');
+        });
+
+        // Toggle confirm password visibility
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        const confirmPassword = document.getElementById('confirm_password');
+        
+        toggleConfirmPassword.addEventListener('click', function () {
+            const type = confirmPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+            confirmPassword.setAttribute('type', type);
+            
+            // Toggle eye icon
+            this.classList.toggle('bx-hide');
+            this.classList.toggle('bx-show');
+        });
+    </script>
 </body>
 
 </html>

@@ -1,6 +1,7 @@
 # application.py
 
 import os
+import re
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10,6 +11,8 @@ try:
     print("models imported successfully")
     from auth import login_required, is_safe_url, get_current_user
     print("auth utils imported successfully")
+    from email_service import EmailToken
+    print("email_service imported successfully")
 except Exception as e:
     print(f"Error importing models/auth: {e}")
     raise
@@ -64,6 +67,41 @@ app.config['WTF_CSRF_SSL_STRICT'] = False
 
 
 
+@app.route("/setup-account", methods=["GET"])
+def setup_account():
+    """Handle account setup link from email"""
+    token = request.args.get('token')
+    
+    if not token:
+        flash("Invalid or missing setup link. Please check your email.")
+        return redirect(url_for("login"))
+    
+    # Verify token and get email
+    from email_service import verify_email_token
+    email = verify_email_token(token)
+    
+    if not email:
+        flash("This setup link is invalid or has expired. Please contact your administrator.")
+        return redirect(url_for("login"))
+    
+    # Check if user exists
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash("User account not found. Please contact your administrator.")
+        return redirect(url_for("login"))
+    
+    # Check if user has already completed setup
+    if user.first_name and user.last_name and user.password_hash:
+        flash("This account has already been set up. Please log in.")
+        return redirect(url_for("login"))
+    
+    # Get role name for display
+    role_name = "Unit Coordinator" if user.role == UserRole.UNIT_COORDINATOR else "Facilitator"
+    
+    # Render signup page with email, token, and role pre-filled
+    return render_template("signup.html", email=email, token=token, role_name=role_name)
+
+
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
@@ -73,39 +111,89 @@ def signup():
         staff_number = request.form.get("staff_number", "").strip() or None
         email = request.form["email"].strip().lower()
         password = request.form["password"]
+        confirm_password = request.form["confirm_password"]
+        token = request.form.get("token")  # Get token if provided
+
+        # If token is provided, verify it
+        if token:
+            from email_service import verify_email_token
+            token_email = verify_email_token(token)
+            
+            if not token_email:
+                flash("This setup link is invalid or has expired. Please contact your administrator.")
+                return redirect(url_for("login"))
+            
+            # Ensure the email from the form matches the token
+            if token_email.lower() != email:
+                flash("Invalid setup link. Please use the link from your email.")
+                return redirect(url_for("login"))
 
         # Validation
-        if not all([first, last, phone, email, password]):
+        if not all([first, last, phone, email, password, confirm_password]):
             flash("All fields except staff number are required!")
-            return render_template("signup.html")
+            return render_template("signup.html", email=email, token=token, 
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
+        
+        # Check if passwords match
+        if password != confirm_password:
+            flash("Passwords do not match!")
+            return render_template("signup.html", email=email, token=token,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
 
-        # Check if email was pre-registered by unit coordinator
+        # Check if email was pre-registered by admin
         existing_user = User.query.filter_by(email=email).first()
-        if not existing_user or existing_user.role != UserRole.FACILITATOR:
-            flash("This email is not authorized to sign up. Please contact your unit coordinator to be added as a facilitator.")
-            return render_template("signup.html")
+        if not existing_user or existing_user.role not in [UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR]:
+            flash("This email is not authorized to sign up. Please contact your administrator.")
+            return render_template("signup.html", email=email, token=token,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         # Check if user has already completed signup (has name set)
         if existing_user.first_name and existing_user.last_name:
             flash("This account has already been set up. Please log in instead.")
-            return render_template("signup.html")
+            return render_template("signup.html", email=email, token=token,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         # Check if staff number already exists (only if provided)
         if staff_number:
             existing_staff = User.query.filter_by(staff_number=staff_number).first()
             if existing_staff and existing_staff.id != existing_user.id:
                 flash("Staff number already exists!")
-                return render_template("signup.html")
+                return render_template("signup.html", email=email, token=token,
+                                     first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
-        # Optional: Add phone validation
-        if len(phone) < 10:
-            flash("Please enter a valid phone number!")
-            return render_template("signup.html")
+        # Phone validation - Australian mobile format (04XX XXX XXX)
+        # Remove spaces and check format
+        phone_clean = phone.replace(" ", "").replace("-", "")
+        if not re.match(r'^04\d{8}$', phone_clean):
+            flash("Phone number must be in format 04XXXXXXXX (10 digits starting with 04)!")
+            return render_template("signup.html", email=email, token=token,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         # Password validation
-        if len(password) < 6:
-            flash("Password must be at least 6 characters!")
-            return render_template("signup.html")
+        if len(password) < 8:
+            flash("Password must be at least 8 characters!")
+            return render_template("signup.html", email=email, token=token,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
+        
+        if not re.search(r'[A-Z]', password):
+            flash("Password must contain at least one uppercase letter!")
+            return render_template("signup.html", email=email, token=token,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
+        
+        if not re.search(r'[a-z]', password):
+            flash("Password must contain at least one lowercase letter!")
+            return render_template("signup.html", email=email, token=token,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
+        
+        if not re.search(r'[0-9]', password):
+            flash("Password must contain at least one number!")
+            return render_template("signup.html", email=email, token=token,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
+        
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            flash("Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)!")
+            return render_template("signup.html", email=email, token=token,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
 
         try:
             # Update the existing user record with complete profile information
@@ -117,13 +205,20 @@ def signup():
             
             db.session.commit()
             
-            flash("Facilitator account created successfully! Please log in.")
+            # Mark token as used if it was provided
+            if token:
+                from email_service import mark_token_as_used
+                mark_token_as_used(token)
+            
+            # Dynamic success message based on role
+            role_name = "Unit Coordinator" if existing_user.role == UserRole.UNIT_COORDINATOR else "Facilitator"
+            flash(f"{role_name} account created successfully! Please log in.")
             return redirect(url_for("login"))
             
         except Exception as e:
             db.session.rollback()
             flash("Registration failed. Please try again.")
-            return render_template("signup.html")
+            return render_template("signup.html", email=email, token=token)
     
     return render_template("signup.html")
 
@@ -164,6 +259,14 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(facilitator_bp)
 app.register_blueprint(unitcoordinator_bp)
 app.register_blueprint(auth_bp)
+
+# Register email blueprint
+try:
+    from email_routes import email_bp
+    app.register_blueprint(email_bp)
+    print("email routes registered successfully")
+except Exception as e:
+    print(f"Error registering email routes: {e}")
 
 # OAuth configuration
 oauth = OAuth(app)
