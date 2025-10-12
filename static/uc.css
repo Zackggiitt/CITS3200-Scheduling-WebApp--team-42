@@ -2320,8 +2320,8 @@ main {
 /* Session Details Modal Footer - Override any conflicting styles */
 #session-details-modal .modal-footer {
   background-color: white !important;
-  border-top: 1px solid #e5e7eb !important;
-  padding: 20px 32px !important;
+  border-top: none !important;
+  padding: 16px 32px 40px 32px !important;
   display: flex !important;
   justify-content: flex-end !important;
   align-items: center !important;
