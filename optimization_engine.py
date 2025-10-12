@@ -485,12 +485,27 @@ def generate_optimal_assignments(facilitators, unit_id=None):
 def format_session_time(session):
     """
     Format session timing for display
+    Includes full date to avoid confusion when multiple sessions occur on the same day of week
     """
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    day_name = days[session['day_of_week']]
-    start_str = session['start_time'].strftime('%H:%M')
-    end_str = session['end_time'].strftime('%H:%M')
-    return f"{day_name} {start_str}-{end_str}"
+    # If we have start_datetime, use it for accurate date display
+    if 'start_datetime' in session and session['start_datetime']:
+        start_dt = session['start_datetime']
+        end_dt = session.get('end_datetime', start_dt)
+        
+        # Format: "Monday 2025-07-01 09:00-12:30"
+        day_name = start_dt.strftime('%A')
+        date_str = start_dt.strftime('%Y-%m-%d')
+        start_time_str = start_dt.strftime('%H:%M')
+        end_time_str = end_dt.strftime('%H:%M')
+        
+        return f"{day_name} {date_str} {start_time_str}-{end_time_str}"
+    else:
+        # Fallback to old format if datetime not available
+        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        day_name = days[session['day_of_week']]
+        start_str = session['start_time'].strftime('%H:%M')
+        end_str = session['end_time'].strftime('%H:%M')
+        return f"{day_name} {start_str}-{end_str}"
 
 def get_skill_level_name(skill_level):
     """
