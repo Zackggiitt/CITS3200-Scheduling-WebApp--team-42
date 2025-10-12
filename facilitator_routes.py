@@ -940,6 +940,44 @@ def delete_unavailability(unavailability_id):
     
     return jsonify({"message": "Unavailability deleted successfully"})
 
+@facilitator_bp.route('/unavailability/clear-all', methods=['POST'])
+@facilitator_required
+def clear_all_unavailability():
+    """Clear all unavailability for a specific unit"""
+    user = get_current_user()
+    data = request.get_json()
+    
+    unit_id = data.get('unit_id')
+    if not unit_id:
+        return jsonify({"error": "unit_id is required"}), 400
+    
+    # Verify user has access to this unit
+    access = (
+        db.session.query(Unit)
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(Unit.id == unit_id, UnitFacilitator.user_id == user.id)
+        .first()
+    )
+    if not access:
+        return jsonify({"error": "forbidden"}), 403
+    
+    try:
+        # Delete all unavailability records for this user and unit
+        deleted_count = Unavailability.query.filter_by(
+            user_id=user.id,
+            unit_id=unit_id
+        ).delete()
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": f"Cleared {deleted_count} unavailability entries",
+            "deleted_count": deleted_count
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to clear unavailability"}), 500
+
 @facilitator_bp.route('/unavailability/generate-recurring', methods=['POST'])
 @facilitator_required
 def generate_recurring_unavailability():

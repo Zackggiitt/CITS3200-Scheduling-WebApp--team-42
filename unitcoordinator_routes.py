@@ -87,6 +87,46 @@ def _parse_dt(s: str):
 
 
 
+def _cleanup_old_temp_files(temp_dir: str, prefix: str, max_age_hours: int = 168):  # 7 days
+    """
+    Clean up old temporary files to prevent disk space issues.
+    
+    Args:
+        temp_dir: Directory containing temporary files
+        prefix: File prefix to match (e.g., "schedule_report_1_")
+        max_age_hours: Maximum age of files in hours before deletion
+    """
+    import os
+    import glob
+    from datetime import datetime, timedelta
+    
+    try:
+        # Find all files matching the prefix
+        pattern = os.path.join(temp_dir, f"{prefix}*.csv")
+        files = glob.glob(pattern)
+        
+        # Calculate cutoff time
+        cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
+        
+        # Delete old files
+        deleted_count = 0
+        for file_path in files:
+            try:
+                file_mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
+                if file_mtime < cutoff_time:
+                    os.remove(file_path)
+                    deleted_count += 1
+            except (OSError, IOError):
+                # Ignore errors when deleting individual files
+                pass
+        
+        if deleted_count > 0:
+            print(f"Cleaned up {deleted_count} old temporary files with prefix '{prefix}'")
+            
+    except Exception as e:
+        # Don't let cleanup errors break the main functionality
+        print(f"Warning: Error during temporary file cleanup: {e}")
+
 def _get_or_create_default_module(unit: Unit) -> Module:
     """Get or create a default 'General' module for the unit."""
     m = Module.query.filter_by(unit_id=unit.id, module_name="General").first()
@@ -838,13 +878,12 @@ def dashboard():
                 or getattr(f, "avatar_url", None)
             )
 
-            has_avail = (
-                db.session.query(Unavailability.id)
-                .filter(Unavailability.user_id == f.id)
-                .limit(1)
-                .first()
-                is not None
-            )
+            # Check if facilitator has availability configured
+            # A facilitator is considered to have "availability set" if they either:
+            # 1. Have unavailability entries (meaning they've configured their availability), OR
+            # 2. Have no unavailability entries (meaning they're available all the time via "Available All Days")
+            # This ensures facilitators who use "Available All Days" are properly recognized as having availability configured
+            has_avail = True  # All facilitators are considered to have availability configured
 
             has_skills = (
                 db.session.query(FacilitatorSkill.id)
@@ -1165,13 +1204,12 @@ def admin_dashboard():
                 or getattr(f, "avatar_url", None)
             )
 
-            has_avail = (
-                db.session.query(Unavailability.id)
-                .filter(Unavailability.user_id == f.id)
-                .limit(1)
-                .first()
-                is not None
-            )
+            # Check if facilitator has availability configured
+            # A facilitator is considered to have "availability set" if they either:
+            # 1. Have unavailability entries (meaning they've configured their availability), OR
+            # 2. Have no unavailability entries (meaning they're available all the time via "Available All Days")
+            # This ensures facilitators who use "Available All Days" are properly recognized as having availability configured
+            has_avail = True  # All facilitators are considered to have availability configured
 
             has_skills = (
                 db.session.query(FacilitatorSkill.id)
@@ -2457,8 +2495,24 @@ def auto_assign_facilitators(unit_id: int):
             all_facilitators=facilitators_from_db
         )
         
-        # Store CSV in session (or you could store in a temporary file)
-        flask_session[f'schedule_report_{unit_id}'] = csv_report
+        # Store CSV in a temporary file instead of session to avoid cookie size issues
+        import tempfile
+        import os
+        
+        # Create a temporary file for the CSV report
+        temp_dir = tempfile.gettempdir()
+        csv_filename = f"schedule_report_{unit_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        csv_filepath = os.path.join(temp_dir, csv_filename)
+        
+        # Write CSV to temporary file
+        with open(csv_filepath, 'w', encoding='utf-8') as f:
+            f.write(csv_report)
+        
+        # Clean up old temporary files to prevent disk space issues
+        _cleanup_old_temp_files(temp_dir, f"schedule_report_{unit_id}_")
+        
+        # Store only the filename in session (much smaller than the full CSV)
+        flask_session[f'schedule_report_{unit_id}'] = csv_filename
         flask_session[f'schedule_report_timestamp_{unit_id}'] = datetime.now().isoformat()
         
         return jsonify({
@@ -2480,6 +2534,51 @@ def auto_assign_facilitators(unit_id: int):
         }), 500
 
 
+@unitcoordinator_bp.get("/units/<int:unit_id>/check_csv_availability")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def check_csv_availability(unit_id: int):
+    """
+    Check if a CSV report is available for download
+    """
+    from flask import session as flask_session
+    
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    # Check if report exists in session
+    report_key = f'schedule_report_{unit_id}'
+    csv_available = report_key in flask_session
+    
+    if csv_available:
+        # Verify the file still exists
+        import tempfile
+        import os
+        
+        csv_filename = flask_session[report_key]
+        temp_dir = tempfile.gettempdir()
+        csv_filepath = os.path.join(temp_dir, csv_filename)
+        
+        # Check if file exists
+        if os.path.exists(csv_filepath):
+            return jsonify({
+                "ok": True,
+                "csv_available": True,
+                "csv_download_url": f"/unitcoordinator/units/{unit_id}/download_schedule_report"
+            })
+        else:
+            # File was cleaned up, remove from session
+            flask_session.pop(report_key, None)
+            flask_session.pop(f'schedule_report_timestamp_{unit_id}', None)
+    
+    return jsonify({
+        "ok": True,
+        "csv_available": False
+    })
+
+
 @unitcoordinator_bp.get("/units/<int:unit_id>/download_schedule_report")
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
@@ -2495,7 +2594,7 @@ def download_schedule_report(unit_id: int):
     if not unit:
         return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
     
-    # Check if report exists in session
+    # Check if report exists in session (now contains filename, not content)
     report_key = f'schedule_report_{unit_id}'
     if report_key not in flask_session:
         return jsonify({
@@ -2503,8 +2602,25 @@ def download_schedule_report(unit_id: int):
             "error": "No report available. Please run auto-assignment first."
         }), 404
     
-    csv_content = flask_session[report_key]
+    # Get the filename from session and read the CSV content from temporary file
+    csv_filename = flask_session[report_key]
     timestamp = flask_session.get(f'schedule_report_timestamp_{unit_id}', datetime.now().isoformat())
+    
+    # Read CSV content from temporary file
+    import tempfile
+    import os
+    
+    temp_dir = tempfile.gettempdir()
+    csv_filepath = os.path.join(temp_dir, csv_filename)
+    
+    try:
+        with open(csv_filepath, 'r', encoding='utf-8') as f:
+            csv_content = f.read()
+    except FileNotFoundError:
+        return jsonify({
+            "ok": False, 
+            "error": "Report file not found. Please run auto-assignment again."
+        }), 404
     
     # Generate filename with timestamp
     timestamp_str = datetime.fromisoformat(timestamp).strftime('%Y%m%d_%H%M%S')

@@ -107,24 +107,60 @@ def check_availability(facilitator, session):
     """
     Check if facilitator is available for the session time
     Returns 1.0 if available, 0.0 if not (hard constraint)
+    Now properly checks database unavailability data
     """
-    day = session['day_of_week']
-    session_start = session['start_time']
-    session_end = session['end_time']
+    from models import Unavailability, Module
+    from datetime import datetime
     
-    # If no availability data provided, treat as available by default
-    if 'availability' not in facilitator or not facilitator['availability']:
+    # Get session date and time information
+    session_date = session.get('date')
+    session_start_time = session.get('start_time')
+    session_end_time = session.get('end_time')
+    
+    if not session_date or not session_start_time or not session_end_time:
+        # If we don't have proper date/time info, assume available
         return 1.0
-    if day not in facilitator['availability']:
+    
+    # Get the module ID from the session
+    module_id = session.get('module_id')
+    if not module_id:
         return 1.0
     
-    for avail_slot in facilitator['availability'][day]:
-        if (avail_slot['is_available'] and 
-            avail_slot['start_time'] <= session_start and 
-            avail_slot['end_time'] >= session_end):
-            return 1.0
+    # Get the unit ID from the module
+    module = Module.query.get(module_id)
+    if not module:
+        return 1.0
     
-    return 0.0
+    unit_id = module.unit_id
+    
+    # Check if facilitator has any unavailability for this specific date and time
+    unavailability = Unavailability.query.filter_by(
+        user_id=facilitator['id'],
+        unit_id=unit_id,
+        date=session_date
+    ).first()
+    
+    if not unavailability:
+        # No unavailability entry means facilitator is available
+        return 1.0
+    
+    # Check if it's a full day unavailability
+    if unavailability.is_full_day:
+        return 0.0  # Not available for full day
+    
+    # Check if the session time conflicts with the unavailability time block
+    if unavailability.start_time and unavailability.end_time:
+        session_start = session_start_time
+        session_end = session_end_time
+        unavail_start = unavailability.start_time
+        unavail_end = unavailability.end_time
+        
+        # Check if sessions overlap
+        if (session_start < unavail_end and session_end > unavail_start):
+            return 0.0  # Conflict detected
+    
+    # If we get here, no conflict was found
+    return 1.0
 
 def check_time_conflict(facilitator, session, current_assignments):
     """
@@ -449,12 +485,27 @@ def generate_optimal_assignments(facilitators, unit_id=None):
 def format_session_time(session):
     """
     Format session timing for display
+    Includes full date to avoid confusion when multiple sessions occur on the same day of week
     """
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    day_name = days[session['day_of_week']]
-    start_str = session['start_time'].strftime('%H:%M')
-    end_str = session['end_time'].strftime('%H:%M')
-    return f"{day_name} {start_str}-{end_str}"
+    # If we have start_datetime, use it for accurate date display
+    if 'start_datetime' in session and session['start_datetime']:
+        start_dt = session['start_datetime']
+        end_dt = session.get('end_datetime', start_dt)
+        
+        # Format: "Monday 2025-07-01 09:00-12:30"
+        day_name = start_dt.strftime('%A')
+        date_str = start_dt.strftime('%Y-%m-%d')
+        start_time_str = start_dt.strftime('%H:%M')
+        end_time_str = end_dt.strftime('%H:%M')
+        
+        return f"{day_name} {date_str} {start_time_str}-{end_time_str}"
+    else:
+        # Fallback to old format if datetime not available
+        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        day_name = days[session['day_of_week']]
+        start_str = session['start_time'].strftime('%H:%M')
+        end_str = session['end_time'].strftime('%H:%M')
+        return f"{day_name} {start_str}-{end_str}"
 
 def get_skill_level_name(skill_level):
     """

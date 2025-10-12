@@ -4198,6 +4198,7 @@ function setupScheduleEventListeners() {
       currentWeekStart.setDate(currentWeekStart.getDate() - 7);
       loadScheduleSessions();
       loadListSessionData(); // Also refresh list view data
+      checkAndShowCsvDownloadButton(); // Check CSV availability after navigation
     });
   }
   
@@ -4206,6 +4207,7 @@ function setupScheduleEventListeners() {
       currentWeekStart.setDate(currentWeekStart.getDate() + 7);
       loadScheduleSessions();
       loadListSessionData(); // Also refresh list view data
+      checkAndShowCsvDownloadButton(); // Check CSV availability after navigation
     });
   }
 
@@ -4471,6 +4473,32 @@ function showCsvDownloadButton(downloadUrl) {
     downloadBtn.style.transition = 'opacity 0.3s';
     downloadBtn.style.opacity = '1';
   }, 100);
+}
+
+function hideCsvDownloadButton() {
+  const downloadBtn = document.getElementById('csv-download-btn');
+  if (downloadBtn) {
+    downloadBtn.style.display = 'none';
+  }
+}
+
+async function checkAndShowCsvDownloadButton() {
+  const unitId = getUnitId();
+  if (!unitId) return;
+  
+  try {
+    const response = await fetch(`/unitcoordinator/units/${unitId}/check_csv_availability`);
+    const data = await response.json();
+    
+    if (data.ok && data.csv_available && data.csv_download_url) {
+      showCsvDownloadButton(data.csv_download_url);
+    } else {
+      hideCsvDownloadButton();
+    }
+  } catch (error) {
+    console.error('Error checking CSV availability:', error);
+    hideCsvDownloadButton();
+  }
 }
 
 // ===== List View Functions =====
@@ -4836,6 +4864,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('schedule-grid')) {
     initSchedulePanel();
     initListView();
+    
+    // Check if CSV download is available and show button if needed
+    checkAndShowCsvDownloadButton();
   }
 });
 
