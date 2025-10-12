@@ -5028,8 +5028,8 @@ main {
 }
 
 .fc-event.event-unassigned {
-  background-color: #f3f4f6; /* gray-100 */
-  border-color: #6b7280; /* gray-500 */
+  background-color: #4b7ee4; /* gray-100 */
+  border-color: #4b7ee4; /* gray-500 */
 }
 
 .fc-event.event-proposed {
