@@ -2037,20 +2037,12 @@ main {
   border-radius: 50%;
 }
 
-.legend-dot.approved {
+.legend-dot.assigned {
   background: #10b981;
-}
-
-.legend-dot.pending {
-  background: #f59e0b;
 }
 
 .legend-dot.unassigned {
   background: #6b7280;
-}
-
-.legend-dot.proposed {
-  background: #3b82f6;
 }
 
 .legend-item span {
@@ -2731,7 +2723,7 @@ main {
   font-weight: 500;
 }
 
-.day-status.pending {
+.day-status.unassigned {
   color: #f59e0b;
 }
 
@@ -2941,12 +2933,8 @@ main {
   margin-bottom: 4px;
 }
 
-.stat-number.approved {
+.stat-number.assigned {
   color: #10b981;
-}
-
-.stat-number.pending {
-  color: #f59e0b;
 }
 
 .stat-number.unassigned {
@@ -3209,24 +3197,14 @@ main {
   margin-left: 12px;
 }
 
-.session-status.approved {
+.session-status.assigned {
   background: #dcfce7;
   color: #15803d;
-}
-
-.session-status.pending {
-  background: #fef3c7;
-  color: #b45309;
 }
 
 .session-status.unassigned {
   background: #f3f4f6;
   color: #6b7280;
-}
-
-.session-status.proposed {
-  background: #dbeafe;
-  color: #1d4ed8;
 }
 
 .session-details {
@@ -5017,24 +4995,14 @@ main {
 }
 
 /* Event background colors based on status */
-.fc-event.event-approved {
+.fc-event.event-assigned {
   background-color: #d1fae5; /* green-100 */
   border-color: #10b981; /* green-500 */
-}
-
-.fc-event.event-pending {
-  background-color: #fef3c7; /* amber-100 */
-  border-color: #f59e0b; /* amber-500 */
 }
 
 .fc-event.event-unassigned {
   background-color: #f3f4f6; /* gray-100 */
   border-color: #6b7280; /* gray-500 */
-}
-
-.fc-event.event-proposed {
-  background-color: #dbeafe; /* blue-100 */
-  border-color: #3b82f6; /* blue-500 */
 }
 
 /* Ensure events have adequate height to contain content */
