@@ -822,3 +822,72 @@ input[readonly]:focus {
 .password-toggle .material-icons {
     font-size: 20px;
 }
+
+/* Password section header styling */
+.password-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    margin-bottom: var(--gap-sm);
+}
+
+/* Tooltip styling */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-icon {
+    font-size: 18px;
+    color: #666;
+    cursor: help;
+    transition: color 0.2s ease;
+}
+
+.tooltip-icon:hover {
+    color: #333;
+}
+
+.tooltip-content {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    z-index: 1000;
+    background-color: #333;
+    color: white;
+    text-align: left;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    width: 280px;
+    top: 50%;
+    left: 100%;
+    margin-left: 10px;
+    transform: translateY(-50%);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    white-space: normal;
+}
+
+.tooltip-content::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -10px;
+    transform: translateY(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent #333 transparent transparent;
+}
+
+.tooltip:hover .tooltip-content {
+    visibility: visible;
+    opacity: 1;
+}
+
+.tooltip-content strong {
+    color: #fff;
+    display: block;
+    margin-bottom: 4px;
+}
