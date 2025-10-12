@@ -10,6 +10,374 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <style>
+    /* User Dropdown Styles */
+    .admin-topbar__user-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .admin-topbar__user {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: none;
+      border: none;
+      color: #374151;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: background-color 0.2s ease;
+    }
+
+    .admin-topbar__user:hover {
+      background-color: #f3f4f6;
+    }
+
+    .dropdown-arrow {
+      font-size: 18px !important;
+      transition: transform 0.2s ease;
+    }
+
+    .admin-topbar__user[aria-expanded="true"] .dropdown-arrow {
+      transform: rotate(180deg);
+    }
+
+    .user-dropdown-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      min-width: 280px;
+      z-index: 1000;
+      border: 1px solid #e5e7eb;
+      overflow: hidden;
+    }
+
+    .dropdown-header {
+      padding: 16px;
+      background-color: #f9fafb;
+    }
+
+    .dropdown-user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      background-color: #e5e7eb;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+      font-size: 20px;
+    }
+
+    .user-details {
+      flex: 1;
+    }
+
+    .user-name {
+      font-weight: 600;
+      color: #111827;
+      font-size: 14px;
+    }
+
+    .user-email {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .dropdown-divider {
+      height: 1px;
+      background-color: #e5e7eb;
+      margin: 8px 0;
+    }
+
+    .dropdown-items {
+      padding: 8px 0;
+    }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      color: #374151;
+      text-decoration: none;
+      font-size: 14px;
+      transition: background-color 0.2s ease;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .dropdown-item:hover {
+      background-color: #f3f4f6;
+    }
+
+    .dropdown-item .material-icons {
+      font-size: 18px;
+      color: #6b7280;
+    }
+
+    .dropdown-item.logout-item {
+      color: #dc2626;
+    }
+
+    .dropdown-item.logout-item .material-icons {
+      color: #dc2626;
+    }
+
+    .dropdown-item.logout-item:hover {
+      background-color: #fef2f2;
+    }
+
+    .logout-dropdown-form {
+      width: 100%;
+    }
+
+    /* Profile View Styles */
+    .profile-view-container {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
+    .profile-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      color: white;
+    }
+
+    .profile-avatar {
+      width: 80px;
+      height: 80px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+    }
+
+    .profile-info {
+      flex: 1;
+    }
+
+    .profile-name {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+    }
+
+    .profile-email {
+      font-size: 16px;
+      margin: 0 0 8px 0;
+      opacity: 0.9;
+    }
+
+    .profile-role {
+      background-color: rgba(255, 255, 255, 0.2);
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .profile-content {
+      margin-bottom: 32px;
+    }
+
+    .profile-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .profile-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-header .material-icons {
+      color: #667eea;
+      font-size: 20px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+      flex: 1;
+    }
+
+    .view-all-link {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #667eea;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .view-all-link:hover {
+      text-decoration: underline;
+    }
+
+    .card-content {
+      padding: 24px;
+    }
+
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .info-item:last-of-type {
+      border-bottom: none;
+      margin-bottom: 20px;
+    }
+
+    .info-label {
+      font-weight: 500;
+      color: #6b7280;
+    }
+
+    .info-value {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .profile-edit-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s ease;
+    }
+
+    .profile-edit-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      color: #d1d5db;
+      margin-bottom: 16px;
+    }
+
+    .empty-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #374151;
+      margin: 0 0 8px 0;
+    }
+
+    .empty-description {
+      color: #6b7280;
+      margin: 0 0 24px 0;
+      line-height: 1.5;
+    }
+
+    .create-unit-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s ease;
+    }
+
+    .create-unit-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .profile-back-section {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .back-to-dashboard-btn {
+      background: white;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .back-to-dashboard-btn:hover {
+      background-color: #f9fafb;
+      border-color: #9ca3af;
+    }
+
+    @media (max-width: 768px) {
+      .profile-cards {
+        grid-template-columns: 1fr;
+      }
+      
+      .profile-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- Topbar -->
@@ -36,9 +404,63 @@
             <span class="notification-badge" aria-label="1 unread notification">1</span>
           {% endif %}
         </div>
-        <div class="admin-topbar__user" aria-label="Current user">
-          <span class="material-icons" aria-hidden="true">person</span>
-          <span class="admin-topbar__name">{{ user.full_name if user else 'Admin User' }}</span>
+        <div class="admin-topbar__user-dropdown" aria-label="Current user">
+          <button class="admin-topbar__user" id="userDropdownBtn" type="button" aria-expanded="false">
+            <span class="material-icons" aria-hidden="true">person</span>
+            <span class="admin-topbar__name">{{ user.full_name if user else 'Admin User' }}</span>
+            <span class="material-icons dropdown-arrow" aria-hidden="true">keyboard_arrow_down</span>
+          </button>
+          <div class="user-dropdown-menu" id="userDropdownMenu" style="display: none;">
+            <div class="dropdown-header">
+              <div class="dropdown-user-info">
+                <span class="material-icons user-avatar">person</span>
+                <div class="user-details">
+                  <div class="user-name">{{ user.full_name if user else 'Admin User' }}</div>
+                  <div class="user-email">{{ user.email if user else 'admin_demo@example.com' }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-items">
+              <a href="#" class="dropdown-item" onclick="showProfileView()">
+                <span class="material-icons">person</span>
+                <span>View Profile</span>
+              </a>
+              <a href="#" class="dropdown-item">
+                <span class="material-icons">settings</span>
+                <span>Account Settings</span>
+              </a>
+              <a href="#" class="dropdown-item">
+                <span class="material-icons">tune</span>
+                <span>Preferences</span>
+              </a>
+              <a href="#" class="dropdown-item">
+                <span class="material-icons">notifications</span>
+                <span>Notifications</span>
+              </a>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-items">
+              <a href="#" class="dropdown-item">
+                <span class="material-icons">help_outline</span>
+                <span>Help & Support</span>
+              </a>
+              <a href="#" class="dropdown-item">
+                <span class="material-icons">info_outline</span>
+                <span>About</span>
+              </a>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-items">
+              <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-dropdown-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="dropdown-item logout-item">
+                  <span class="material-icons">logout</span>
+                  <span>Sign Out</span>
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
         <span class="role-chip role-chip--admin">System Admin</span>
         <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form" style="display: inline;">
@@ -62,18 +484,14 @@
         <span class="material-icons">bar_chart</span>
         <span>Dashboard</span>
       </button>
-      <button class="admin-tab {% if tab == 'schedule' %}active{% endif %}" data-tab="schedule">
-        <span class="material-icons">event</span>
-        <span>Schedule</span>
-      </button>
       <button class="admin-tab {% if tab == 'employees' %}active{% endif %}" data-tab="employees">
         <span class="material-icons">group</span>
-        <span>Employees</span>
+        <span>Users</span>
       </button>
     </nav>
 
     <!-- Welcome Banner -->
-    <div class="admin-welcome-banner" {% if tab == 'employees' or tab == 'schedule' %}style="display: none;"{% endif %}>
+    <div class="admin-welcome-banner" {% if tab == 'employees' %}style="display: none;"{% endif %}>
       <div class="admin-welcome-content">
         <h1 class="admin-welcome-greeting">Good afternoon, {{ user.first_name if user else 'Admin' }}! 👋</h1>
         <p class="admin-welcome-role">System Administrator • Schedule Manager</p>
@@ -88,7 +506,7 @@
 
 
     <!-- Unit Status Distribution -->
-    <div class="unit-status-card" {% if tab == 'employees' or tab == 'schedule' %}style="display: none;"{% endif %}>
+    <div class="unit-status-card" {% if tab == 'employees' %}style="display: none;"{% endif %}>
       <h3 class="unit-status-title">Unit Status Distribution</h3>
       
       <!-- Top Row - Unit Status -->
@@ -125,8 +543,8 @@
       <!-- Header -->
       <div class="facilitator-header">
         <div class="facilitator-header-content">
-          <h2 class="facilitator-title">Facilitator Management</h2>
-          <p class="facilitator-subtitle">Comprehensive facilitator oversight, performance tracking, and workforce management.</p>
+          <h2 class="facilitator-title">User Management</h2>
+          <p class="facilitator-subtitle">Comprehensive user oversight, performance tracking, and workforce management.</p>
         </div>
         <div class="facilitator-header-actions">
           <button class="facilitator-action-btn secondary">
@@ -139,7 +557,7 @@
           </button>
           <button class="facilitator-action-btn primary">
             <span class="material-icons">person_add</span>
-            <span>Add Employee</span>
+            <span>Add User</span>
           </button>
         </div>
       </div>
@@ -151,7 +569,7 @@
         <div class="facilitator-search-section">
           <div class="search-bar">
             <span class="material-icons search-icon">search</span>
-            <input type="text" id="facilitatorSearch" placeholder="Search employees by name or email..." class="search-input">
+            <input type="text" id="facilitatorSearch" placeholder="Search users by name or email..." class="search-input">
           </div>
           <div class="filter-controls">
             <select id="positionFilter" class="filter-select">
@@ -171,7 +589,7 @@
 
         <!-- Results Summary -->
         <div class="results-summary">
-          <span id="resultsCount">Showing {{ facilitators|length or 0 }} of {{ facilitators|length or 0 }} facilitators</span>
+          <span id="resultsCount">Showing {{ facilitators|length or 0 }} of {{ facilitators|length or 0 }} users</span>
         </div>
 
         <!-- Facilitator List -->
@@ -271,91 +689,103 @@
           {% if not facilitators %}
           <div class="empty-state">
             <span class="material-icons">group</span>
-            <h3>No facilitators found</h3>
-            <p>Add your first facilitator using the "Add Employee" button above.</p>
+            <h3>No users found</h3>
+            <p>Add your first user using the "Add User" button above.</p>
           </div>
           {% endif %}
         </div>
       </div>
     </div>
 
-    <!-- Schedule Management Section (Hidden by default) -->
-    <div class="schedule-management" id="scheduleManagement" {% if tab == 'schedule' %}style="display: block;"{% else %}style="display: none;"{% endif %}>
-      <!-- Header -->
-      <div class="schedule-header">
-        <div class="schedule-header-content">
-          <h2 class="schedule-title">Schedule Management</h2>
-          <p class="schedule-subtitle">Manage unit schedules, publish/unpublish schedules, and track version history.</p>
-        </div>
-        <div class="schedule-header-actions">
-          <button class="schedule-action-btn secondary">
-            <span class="material-icons">refresh</span>
-            Refresh Data
-          </button>
-          <button class="schedule-action-btn secondary">
-            <span class="material-icons">download</span>
-            Export Reports
-          </button>
-        </div>
-      </div>
+  </main>
 
-      <!-- Schedule Statistics -->
-      <div class="schedule-stats">
-        <div class="schedule-stat-card">
-          <div class="schedule-stat-value">{{ published_units_count or 0 }}</div>
-          <div class="schedule-stat-label">Published Schedules</div>
-        </div>
-        <div class="schedule-stat-card">
-          <div class="schedule-stat-value">{{ draft_units_count or 0 }}</div>
-          <div class="schedule-stat-label">Draft Schedules</div>
-        </div>
-        <div class="schedule-stat-card">
-          <div class="schedule-stat-value">{{ unpublished_units_count or 0 }}</div>
-          <div class="schedule-stat-label">Recently Unpublished</div>
-        </div>
+  <!-- Profile View Section -->
+  <div class="profile-view-container" id="profileView" style="display: none;">
+    <!-- Profile Header -->
+    <div class="profile-header">
+      <div class="profile-avatar">
+        <span class="material-icons">person</span>
       </div>
-
-      <!-- Search and Filter Section -->
-      <div class="schedule-search-section">
-        <div class="search-bar">
-          <span class="material-icons search-icon">search</span>
-          <input type="text" id="scheduleSearch" placeholder="Search units by code or name..." class="search-input">
-        </div>
-        <div class="filter-controls">
-          <select id="statusFilter" class="filter-select">
-            <option value="">All Status</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
-            <option value="unpublished">Unpublished</option>
-          </select>
-          <select id="semesterFilter" class="filter-select">
-            <option value="">All Semesters</option>
-            <option value="S1">Semester 1</option>
-            <option value="S2">Semester 2</option>
-            <option value="Summer">Summer</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Results Summary -->
-      <div class="results-summary">
-        <span id="scheduleResultsCount">Showing {{ units|length or 0 }} of {{ units|length or 0 }} units</span>
-      </div>
-
-      <!-- Unit Schedule List -->
-      <div class="unit-schedule-list" id="unitScheduleList">
-        <!-- Units will be populated by JavaScript -->
+      <div class="profile-info">
+        <h1 class="profile-name">{{ user.full_name if user else 'Admin User' }}</h1>
+        <p class="profile-email">{{ user.email if user else 'admin_demo@example.com' }}</p>
+        <span class="profile-role">System Administrator</span>
       </div>
     </div>
 
-  </main>
+    <!-- Profile Content -->
+    <div class="profile-content">
+      <div class="profile-cards">
+        <!-- Profile Information Card -->
+        <div class="profile-card">
+          <div class="card-header">
+            <span class="material-icons">person</span>
+            <h2 class="card-title">Profile Information</h2>
+          </div>
+          <div class="card-content">
+            <div class="info-item">
+              <label class="info-label">Full Name</label>
+              <span class="info-value">{{ user.full_name if user else 'Admin User' }}</span>
+            </div>
+            <div class="info-item">
+              <label class="info-label">Email Address</label>
+              <span class="info-value">{{ user.email if user else 'admin_demo@example.com' }}</span>
+            </div>
+              <div class="info-item">
+                <label class="info-label">Role</label>
+                <span class="info-value">System Administrator</span>
+              </div>
+            <div class="info-item">
+              <label class="info-label">Member Since</label>
+              <span class="info-value">N/A</span>
+            </div>
+            <button class="profile-edit-btn" onclick="showEditProfile()">
+              <span class="material-icons">edit</span>
+              <span>Edit Profile</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- My Units Card -->
+        <div class="profile-card">
+          <div class="card-header">
+            <span class="material-icons">school</span>
+            <h2 class="card-title">My Units</h2>
+            <a href="#" class="view-all-link">
+              <span>View All</span>
+              <span class="material-icons">arrow_forward</span>
+            </a>
+          </div>
+          <div class="card-content">
+            <div class="empty-state">
+              <span class="material-icons empty-icon">school</span>
+              <h3 class="empty-title">No Units Yet</h3>
+              <p class="empty-description">Create your first unit to get started with session management.</p>
+              <button class="create-unit-btn" onclick="createUnit()">
+                <span class="material-icons">add</span>
+                <span>Create Unit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Back Button -->
+    <div class="profile-back-section">
+      <button class="back-to-dashboard-btn" onclick="showDashboardView()">
+        <span class="material-icons">arrow_back</span>
+        <span>Back to Dashboard</span>
+      </button>
+    </div>
+  </div>
 
   <!-- Add Employee Modal -->
   <div class="modal-overlay" id="addEmployeeModal" style="display: none;">
     <div class="modal-container">
       <div class="modal-header">
-        <h2 class="modal-title">Add New Employee</h2>
-        <p class="modal-description">Add a new employee with their contact information and role details.</p>
+        <h2 class="modal-title">Add New User</h2>
+        <p class="modal-description">Add a new user with their contact information and role details.</p>
         <button class="modal-close" id="closeModal">
           <span class="material-icons">close</span>
         </button>
@@ -415,7 +845,7 @@
         
         <div class="modal-actions">
           <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
-          <button type="submit" class="btn-primary">Add Employee</button>
+          <button type="submit" class="btn-primary">Add User</button>
         </div>
       </form>
     </div>
@@ -425,8 +855,8 @@
   <div class="modal-overlay" id="editEmployeeModal" style="display: none;">
     <div class="modal-container">
       <div class="modal-header">
-        <h2 class="modal-title">Edit Employee Details</h2>
-        <p class="modal-description">Update employee information and manage account settings.</p>
+        <h2 class="modal-title">Edit User Details</h2>
+        <p class="modal-description">Update user information and manage account settings.</p>
         <button class="modal-close" id="closeEditModal">
           <span class="material-icons">close</span>
         </button>
@@ -490,7 +920,7 @@
           <div class="password-reset-options">
             <button type="button" class="btn-secondary" onclick="sendResetLink()">
               <span class="material-icons">email</span>
-              Send Reset Link to Employee
+              Send Reset Link to User
             </button>
             <button type="button" class="btn-secondary" onclick="adminResetPassword()">
               <span class="material-icons">lock_reset</span>
@@ -501,113 +931,114 @@
         
         <div class="modal-actions">
           <button type="button" class="btn-cancel" id="cancelEditBtn">Cancel</button>
-          <button type="submit" class="btn-primary">Update Employee</button>
+          <button type="submit" class="btn-primary">Update User</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Unpublish Schedule Modal -->
-  <div class="modal-overlay" id="unpublishModal" style="display: none;">
-    <div class="modal-container">
-      <div class="modal-header">
-        <h2 class="modal-title">Unpublish Schedule</h2>
-        <p class="modal-description">Revert this unit's schedule from Published to Draft state. This will unlock the schedule for edits and re-enable scheduling functionality.</p>
-        <button class="modal-close" id="closeUnpublishModal">
-          <span class="material-icons">close</span>
-        </button>
-      </div>
-      
-      <form class="modal-form" id="unpublishForm">
-        <input type="hidden" id="unpublishUnitId" name="unitId">
-        
-        <!-- Unit Information -->
-        <div class="unpublish-unit-info">
-          <h3>Unit Information</h3>
-          <div class="unit-info-display">
-            <div class="unit-info-item">
-              <span class="label">Unit Code:</span>
-              <span class="value" id="unpublishUnitCode">-</span>
-            </div>
-            <div class="unit-info-item">
-              <span class="label">Unit Coordinator:</span>
-              <span class="value" id="unpublishUnitCoordinator">-</span>
-            </div>
-            <div class="unit-info-item">
-              <span class="label">Current Status:</span>
-              <span class="value status-published">Published</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Reason for Unpublishing -->
-        <div class="form-group">
-          <label for="unpublishReason" class="form-label">Reason for Unpublishing *</label>
-          <textarea id="unpublishReason" name="reason" class="form-textarea" placeholder="Please provide a reason for unpublishing this schedule (e.g., timetable changes, session modifications, algorithm re-run required)..." required rows="4"></textarea>
-        </div>
-        
-        <!-- Notification Options -->
-        <div class="form-group">
-          <label class="form-label">Notification Options</label>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="notifyCoordinator" name="notifyCoordinator" checked>
-              <span class="checkbox-custom"></span>
-              <span class="checkbox-text">Notify Unit Coordinator via email</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="notifyFacilitators" name="notifyFacilitators">
-              <span class="checkbox-custom"></span>
-              <span class="checkbox-text">Notify assigned facilitators</span>
-            </label>
-          </div>
-        </div>
-        
-        <!-- Warning Message -->
-        <div class="unpublish-warning">
-          <span class="material-icons">warning</span>
-          <div class="warning-content">
-            <strong>Important:</strong> Unpublishing will revert the schedule to draft state, allowing the Unit Coordinator to make changes. The previously published version will be preserved in the version history for audit purposes.
-          </div>
-        </div>
-        
-        <div class="modal-actions">
-          <button type="button" class="btn-cancel" id="cancelUnpublishBtn">Cancel</button>
-          <button type="submit" class="btn-warning">Unpublish Schedule</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
-  <!-- Version History Modal -->
-  <div class="modal-overlay" id="versionHistoryModal" style="display: none;">
-    <div class="modal-container">
-      <div class="modal-header">
-        <h2 class="modal-title">Version History</h2>
-        <p class="modal-description">View the complete version history for this unit's schedule.</p>
-        <button class="modal-close" id="closeVersionHistoryModal">
-          <span class="material-icons">close</span>
-        </button>
-      </div>
-      
-      <div class="version-history-content">
-        <div class="version-history-list" id="versionHistoryList">
-          <!-- Version history items will be populated here -->
-        </div>
-      </div>
-      
-      <div class="modal-actions">
-        <button type="button" class="btn-cancel" id="closeVersionHistoryBtn">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Pass units data to JavaScript -->
-  <script>
-    window.unitsData = {{ units|tojson }};
-  </script>
-  
   <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
+  <script>
+    // User Dropdown Functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const dropdownBtn = document.getElementById('userDropdownBtn');
+      const dropdownMenu = document.getElementById('userDropdownMenu');
+      const arrow = dropdownBtn.querySelector('.dropdown-arrow');
+
+      // Toggle dropdown
+      dropdownBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const isOpen = dropdownMenu.style.display === 'block';
+        
+        if (isOpen) {
+          dropdownMenu.style.display = 'none';
+          dropdownBtn.setAttribute('aria-expanded', 'false');
+        } else {
+          dropdownMenu.style.display = 'block';
+          dropdownBtn.setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+          dropdownMenu.style.display = 'none';
+          dropdownBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // Close dropdown when pressing Escape
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          dropdownMenu.style.display = 'none';
+          dropdownBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // Handle dropdown item clicks
+      const dropdownItems = dropdownMenu.querySelectorAll('.dropdown-item');
+      dropdownItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+          // Close dropdown after clicking an item (except logout)
+          if (!this.classList.contains('logout-item')) {
+            e.preventDefault();
+            dropdownMenu.style.display = 'none';
+            dropdownBtn.setAttribute('aria-expanded', 'false');
+            
+            // You can add specific functionality for each item here
+            const text = this.querySelector('span:last-child').textContent;
+            console.log('Clicked:', text);
+          }
+        });
+      });
+    });
+
+    // Profile View Functions
+    function showProfileView() {
+      // Hide main dashboard content
+      const mainContent = document.querySelector('.container');
+      if (mainContent) {
+        mainContent.style.display = 'none';
+      }
+      
+      // Show profile view
+      const profileView = document.getElementById('profileView');
+      if (profileView) {
+        profileView.style.display = 'block';
+      }
+      
+      // Scroll to top
+      window.scrollTo(0, 0);
+    }
+
+    function showDashboardView() {
+      // Show main dashboard content
+      const mainContent = document.querySelector('.container');
+      if (mainContent) {
+        mainContent.style.display = 'block';
+      }
+      
+      // Hide profile view
+      const profileView = document.getElementById('profileView');
+      if (profileView) {
+        profileView.style.display = 'none';
+      }
+      
+      // Scroll to top
+      window.scrollTo(0, 0);
+    }
+
+    function showEditProfile() {
+      // You can implement edit profile functionality here
+      alert('Edit Profile functionality would be implemented here');
+    }
+
+    function createUnit() {
+      // You can implement create unit functionality here
+      alert('Create Unit functionality would be implemented here');
+    }
+  </script>
 </body>
 </html>
 

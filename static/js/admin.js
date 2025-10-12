@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Tab switching functionality
   const tabs = document.querySelectorAll('.admin-tab');
   const facilitatorManagement = document.querySelector('.facilitator-management');
-  const scheduleManagement = document.querySelector('.schedule-management');
   const unitStatusCard = document.querySelector('.unit-status-card');
   const welcomeBanner = document.querySelector('.admin-welcome-banner');
 
@@ -30,25 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (welcomeBanner) welcomeBanner.style.display = 'none';
       if (unitStatusCard) unitStatusCard.style.display = 'none';
       if (facilitatorManagement) facilitatorManagement.style.display = 'block';
-      if (scheduleManagement) scheduleManagement.style.display = 'none';
-      console.log('Employees tab activated');
-    } else if (tabName === 'schedule') {
-      const scheduleTab = document.querySelector('.admin-tab[data-tab="schedule"]');
-      if (scheduleTab) scheduleTab.classList.add('active');
-      if (welcomeBanner) welcomeBanner.style.display = 'none';
-      if (unitStatusCard) unitStatusCard.style.display = 'none';
-      if (facilitatorManagement) facilitatorManagement.style.display = 'none';
-      if (scheduleManagement) scheduleManagement.style.display = 'block';
-      console.log('Schedule tab activated');
-      // Initialize schedule management when switching to schedule tab
-      setTimeout(initializeScheduleManagement, 100);
+      console.log('Users tab activated');
     } else {
       const dashboardTab = document.querySelector('.admin-tab[data-tab="dashboard"]');
       if (dashboardTab) dashboardTab.classList.add('active');
       if (welcomeBanner) welcomeBanner.style.display = 'block';
       if (unitStatusCard) unitStatusCard.style.display = 'block';
       if (facilitatorManagement) facilitatorManagement.style.display = 'none';
-      if (scheduleManagement) scheduleManagement.style.display = 'none';
       console.log('Dashboard tab activated');
     }
   }
@@ -60,10 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeTab = urlParams.get('tab');
     if (activeTab === 'employees') {
       showTab('employees');
-    } else if (activeTab === 'schedule') {
-      showTab('schedule');
-      // Initialize schedule management when schedule tab is active
-      setTimeout(initializeScheduleManagement, 100);
     } else {
       showTab('dashboard');
     }
@@ -100,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', (e) => {
     if (e.target.closest('.facilitator-action-btn.primary')) {
       e.preventDefault();
-      console.log('Add Employee button clicked!');
+      console.log('Add User button clicked!');
       if (modal) {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -149,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         status: formData.get('status')
       };
 
-      console.log('Submitting employee data:', employeeData);
+      console.log('Submitting user data:', employeeData);
 
       const submitBtn = addEmployeeForm.querySelector('.btn-primary');
       const originalText = submitBtn.textContent;
@@ -169,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await response.json();
 
         if (result.success) {
-          alert('Employee added successfully! They will receive login credentials via email.');
+          alert('User added successfully! They will receive login credentials via email.');
           modal.style.display = 'none';
           document.body.style.overflow = 'auto';
           addEmployeeForm.reset();
@@ -180,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } catch (error) {
         console.error('Error submitting form:', error);
-        alert('An error occurred while adding the employee. Please try again.');
+        alert('An error occurred while adding the user. Please try again.');
       } finally {
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
@@ -241,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         status: formData.get('status')
       };
 
-      console.log('Updating employee data:', employeeData);
+      console.log('Updating user data:', employeeData);
 
       const submitBtn = editEmployeeForm.querySelector('.btn-primary');
       const originalText = submitBtn.textContent;
@@ -261,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await response.json();
 
         if (result.success) {
-          alert('Employee details updated successfully!');
+          alert('User details updated successfully!');
           editModal.style.display = 'none';
           document.body.style.overflow = 'auto';
           updateEmployeeCardInPlace(employeeData);
@@ -269,8 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
           alert(`Error: ${result.error}`);
         }
       } catch (error) {
-        console.error('Error updating employee:', error);
-        alert('An error occurred while updating the employee. Please try again.');
+        console.error('Error updating user:', error);
+        alert('An error occurred while updating the user. Please try again.');
       } finally {
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
@@ -396,281 +379,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Schedule Management Functionality
-  const scheduleSearchInput = document.getElementById('scheduleSearch');
-  const scheduleStatusFilter = document.getElementById('statusFilter');
-  const scheduleSemesterFilter = document.getElementById('semesterFilter');
-  const unitScheduleList = document.getElementById('unitScheduleList');
-  const scheduleResultsCount = document.getElementById('scheduleResultsCount');
-
-  // Global variable to store all units
-  let allUnits = [];
-  let filteredUnits = [];
-
-  // Initialize schedule management when page loads
-  function initializeScheduleManagement() {
-    if (window.unitsData) {
-      allUnits = window.unitsData;
-      filteredUnits = [...allUnits];
-      renderUnits();
-      updateScheduleResultsCount();
-    }
-  }
-
-  // Render units to the DOM
-  function renderUnits() {
-    if (!unitScheduleList) return;
-
-    if (filteredUnits.length === 0) {
-      unitScheduleList.innerHTML = `
-        <div class="empty-state">
-          <span class="material-icons">event</span>
-          <h3>No units found</h3>
-          <p>No units match your current search and filter criteria.</p>
-        </div>
-      `;
-      return;
-    }
-
-    unitScheduleList.innerHTML = filteredUnits.map(unit => {
-      const scheduleStatus = unit.schedule_status || 'draft';
-      const statusClass = scheduleStatus === 'published' ? 'published' : scheduleStatus === 'unpublished' ? 'unpublished' : 'draft';
-      const coordinatorName = unit.creator ? unit.creator.full_name : 'Unknown Coordinator';
-      const startDate = unit.start_date ? new Date(unit.start_date).toLocaleDateString('en-GB') : 'Not set';
-      const endDate = unit.end_date ? new Date(unit.end_date).toLocaleDateString('en-GB') : 'Not set';
-      const publishedDate = unit.published_at ? new Date(unit.published_at).toLocaleString('en-GB') : null;
-      const unpublishedDate = unit.unpublished_at ? new Date(unit.unpublished_at).toLocaleString('en-GB') : null;
-
-      return `
-        <div class="unit-schedule-card" data-unit-id="${unit.id}">
-          <div class="unit-schedule-info">
-            <div class="unit-schedule-header">
-              <h3 class="unit-schedule-name">${unit.unit_code} - ${unit.unit_name}</h3>
-              <div class="unit-schedule-badges">
-                <span class="badge badge-semester">${unit.semester} ${unit.year}</span>
-                <span class="badge badge-status badge-${statusClass}">
-                  ${scheduleStatus.charAt(0).toUpperCase() + scheduleStatus.slice(1)}
-                </span>
-              </div>
-            </div>
-            <div class="unit-schedule-details">
-              <div class="unit-schedule-meta">
-                <span class="unit-schedule-coordinator">
-                  <span class="material-icons">person</span>
-                  ${coordinatorName}
-                </span>
-                <span class="unit-schedule-dates">
-                  <span class="material-icons">calendar_today</span>
-                  ${startDate} - ${endDate}
-                </span>
-              </div>
-              <div class="unit-schedule-stats">
-                <span class="unit-schedule-stat">
-                  <span class="material-icons">event</span>
-                  ${unit.modules ? unit.modules.length : 0} modules
-                </span>
-                ${publishedDate ? `
-                <span class="unit-schedule-stat">
-                  <span class="material-icons">publish</span>
-                  Published ${publishedDate}
-                </span>
-                ` : ''}
-                ${unpublishedDate ? `
-                <span class="unit-schedule-stat">
-                  <span class="material-icons">unpublish</span>
-                  Unpublished ${unpublishedDate}
-                </span>
-                ` : ''}
-              </div>
-            </div>
-          </div>
-          <div class="unit-schedule-actions">
-            ${scheduleStatus === 'published' ? `
-            <button class="action-btn unpublish" title="Unpublish Schedule" onclick="openUnpublishModal(${unit.id}, '${unit.unit_code}', '${coordinatorName}')">
-              <span class="material-icons">unpublish</span>
-              <span>Unpublish</span>
-            </button>
-            ` : ''}
-            <button class="action-btn view" title="View Schedule" onclick="viewUnitSchedule(${unit.id})">
-              <span class="material-icons">visibility</span>
-              <span>View</span>
-            </button>
-            <button class="action-btn history" title="Version History" onclick="viewVersionHistory(${unit.id})">
-              <span class="material-icons">history</span>
-              <span>History</span>
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function filterScheduleUnits() {
-    if (!scheduleSearchInput || !scheduleStatusFilter || !scheduleSemesterFilter) return;
-
-    const searchTerm = scheduleSearchInput.value.toLowerCase();
-    const statusValue = scheduleStatusFilter.value;
-    const semesterValue = scheduleSemesterFilter.value;
-
-    filteredUnits = allUnits.filter(unit => {
-      // Search filter
-      const matchesSearch = searchTerm === '' || 
-        unit.unit_code.toLowerCase().includes(searchTerm) ||
-        unit.unit_name.toLowerCase().includes(searchTerm);
-
-      // Status filter
-      let matchesStatus = true;
-      if (statusValue !== '') {
-        const unitStatus = unit.schedule_status || 'draft';
-        matchesStatus = unitStatus === statusValue;
-      }
-
-      // Semester filter
-      let matchesSemester = true;
-      if (semesterValue !== '') {
-        matchesSemester = unit.semester.toLowerCase().includes(semesterValue.toLowerCase());
-      }
-
-      return matchesSearch && matchesStatus && matchesSemester;
-    });
-
-    renderUnits();
-    updateScheduleResultsCount();
-  }
-
-  // Add event listeners for schedule search and filters
-  if (scheduleSearchInput) scheduleSearchInput.addEventListener('input', filterScheduleUnits);
-  if (scheduleStatusFilter) scheduleStatusFilter.addEventListener('change', filterScheduleUnits);
-  if (scheduleSemesterFilter) scheduleSemesterFilter.addEventListener('change', filterScheduleUnits);
-
-  // Initialize schedule management when dashboard loads
-  initializeScheduleManagement();
-
-  // Unpublish Modal functionality
-  const unpublishModal = document.getElementById('unpublishModal');
-  const closeUnpublishModalBtn = document.getElementById('closeUnpublishModal');
-  const cancelUnpublishBtn = document.getElementById('cancelUnpublishBtn');
-  const unpublishForm = document.getElementById('unpublishForm');
-
-  if (closeUnpublishModalBtn && unpublishModal) {
-    closeUnpublishModalBtn.addEventListener('click', () => {
-      unpublishModal.style.display = 'none';
-      document.body.style.overflow = 'auto';
-    });
-  }
-
-  if (cancelUnpublishBtn && unpublishModal) {
-    cancelUnpublishBtn.addEventListener('click', () => {
-      unpublishModal.style.display = 'none';
-      document.body.style.overflow = 'auto';
-    });
-  }
-
-  if (unpublishModal) {
-    unpublishModal.addEventListener('click', (e) => {
-      if (e.target === unpublishModal) {
-        unpublishModal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-      }
-    });
-  }
-
-  // Handle unpublish form
-  if (unpublishForm) {
-    unpublishForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const formData = new FormData(unpublishForm);
-      const unpublishData = {
-        unitId: formData.get('unitId'),
-        reason: formData.get('reason'),
-        notifyCoordinator: formData.get('notifyCoordinator') === 'on',
-        notifyFacilitators: formData.get('notifyFacilitators') === 'on'
-      };
-
-      console.log('Submitting unpublish data:', unpublishData);
-
-      const submitBtn = unpublishForm.querySelector('.btn-warning');
-      const originalText = submitBtn.textContent;
-      submitBtn.textContent = 'Unpublishing...';
-      submitBtn.disabled = true;
-
-      try {
-        const response = await fetch('/admin/unpublish-schedule', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-          },
-          body: JSON.stringify(unpublishData)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          alert(result.message);
-          unpublishModal.style.display = 'none';
-          document.body.style.overflow = 'auto';
-          unpublishForm.reset();
-          // Refresh the page to show updated status
-          window.location.reload();
-        } else {
-          alert(`Error: ${result.error}`);
-        }
-      } catch (error) {
-        console.error('Error unpublishing schedule:', error);
-        alert('An error occurred while unpublishing the schedule. Please try again.');
-      } finally {
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-      }
-    });
-  }
-
-  // Close Unpublish modal with Escape
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && unpublishModal && unpublishModal.style.display === 'flex') {
-      unpublishModal.style.display = 'none';
-      document.body.style.overflow = 'auto';
-    }
-  });
-
-  // Version History Modal functionality
-  const versionHistoryModal = document.getElementById('versionHistoryModal');
-  const closeVersionHistoryModalBtn = document.getElementById('closeVersionHistoryModal');
-  const closeVersionHistoryBtn = document.getElementById('closeVersionHistoryBtn');
-
-  if (closeVersionHistoryModalBtn && versionHistoryModal) {
-    closeVersionHistoryModalBtn.addEventListener('click', () => {
-      versionHistoryModal.style.display = 'none';
-      document.body.style.overflow = 'auto';
-    });
-  }
-
-  if (closeVersionHistoryBtn && versionHistoryModal) {
-    closeVersionHistoryBtn.addEventListener('click', () => {
-      versionHistoryModal.style.display = 'none';
-      document.body.style.overflow = 'auto';
-    });
-  }
-
-  if (versionHistoryModal) {
-    versionHistoryModal.addEventListener('click', (e) => {
-      if (e.target === versionHistoryModal) {
-        versionHistoryModal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-      }
-    });
-  }
-
-  // Close Version History modal with Escape
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && versionHistoryModal && versionHistoryModal.style.display === 'flex') {
-      versionHistoryModal.style.display = 'none';
-      document.body.style.overflow = 'auto';
-    }
-  });
-
 });
 
 // Dropdown functionality (global)
@@ -730,7 +438,7 @@ async function deleteAccount(facilitatorId, facilitatorName) {
         }
 
         updateResultsCount();
-        alert(`${facilitatorName}'s employee account has been deleted successfully.`);
+        alert(`${facilitatorName}'s user account has been deleted successfully.`);
       } else {
         alert(`Error: ${result.message || 'Failed to delete account'}`);
       }
@@ -749,12 +457,12 @@ function updateResultsCount() {
   if (!resultsCountEl) return;
   const allCards = Array.from(document.querySelectorAll('.facilitator-card'));
   const visibleCards = allCards.filter(c => c.style.display !== 'none');
-  resultsCountEl.textContent = `Showing ${visibleCards.length} of ${allCards.length} employees`;
+  resultsCountEl.textContent = `Showing ${visibleCards.length} of ${allCards.length} users`;
 }
 
 // Open edit modal function
 function openEditModal(facilitatorId, facilitatorName, facilitatorEmail) {
-  console.log(`Opening edit modal for employee ID: ${facilitatorId}, Name: ${facilitatorName}`);
+  console.log(`Opening edit modal for user ID: ${facilitatorId}, Name: ${facilitatorName}`);
 
   document.getElementById('editEmployeeId').value = facilitatorId;
   document.getElementById('editEmail').value = facilitatorEmail;
@@ -826,7 +534,7 @@ async function sendResetLink() {
   const employeeEmail = document.getElementById('editEmail').value;
 
   if (!employeeId || !employeeEmail) {
-    alert('Employee information not found. Please try again.');
+    alert('User information not found. Please try again.');
     return;
   }
 
@@ -903,7 +611,7 @@ function updateEmployeeCardInPlace(employeeData) {
     const phoneElement = employeeCard.querySelector('.facilitator-phone');
     if (phoneElement) phoneElement.textContent = employeeData.phone;
 
-    console.log('Employee card updated in place successfully');
+    console.log('User card updated in place successfully');
   }
 }
 
@@ -913,7 +621,7 @@ async function adminResetPassword() {
   const employeeName = document.getElementById('editFullName').value;
 
   if (!employeeId || !employeeName) {
-    alert('Employee information not found. Please try again.');
+    alert('User information not found. Please try again.');
     return;
   }
 
@@ -949,116 +657,4 @@ async function adminResetPassword() {
       alert('An error occurred while resetting the password. Please try again.');
     }
   }
-}
-
-// Schedule Management Global Functions
-
-// Open unpublish modal function
-function openUnpublishModal(unitId, unitCode, coordinatorName) {
-  console.log(`Opening unpublish modal for unit ID: ${unitId}, Code: ${unitCode}`);
-  
-  document.getElementById('unpublishUnitId').value = unitId;
-  document.getElementById('unpublishUnitCode').textContent = unitCode;
-  document.getElementById('unpublishUnitCoordinator').textContent = coordinatorName;
-  
-  const unpublishModal = document.getElementById('unpublishModal');
-  if (unpublishModal) {
-    unpublishModal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-  }
-}
-
-// View unit schedule function
-function viewUnitSchedule(unitId) {
-  console.log(`Viewing schedule for unit ID: ${unitId}`);
-  // TODO: Implement view schedule functionality
-  alert(`View schedule functionality for unit ${unitId} will be implemented.`);
-}
-
-// View version history function
-async function viewVersionHistory(unitId) {
-  console.log(`Viewing version history for unit ID: ${unitId}`);
-  
-  try {
-    const response = await fetch(`/admin/version-history/${unitId}`, {
-      method: 'GET',
-      headers: {
-        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-      }
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-      displayVersionHistory(result.version_history, result.unit_code);
-    } else {
-      alert(`Error: ${result.error}`);
-    }
-  } catch (error) {
-    console.error('Error fetching version history:', error);
-    alert('An error occurred while fetching version history. Please try again.');
-  }
-}
-
-// Display version history in modal
-function displayVersionHistory(versionHistory, unitCode) {
-  const versionHistoryList = document.getElementById('versionHistoryList');
-  
-  if (!versionHistory || versionHistory.length === 0) {
-    versionHistoryList.innerHTML = `
-      <div class="empty-version-history">
-        <span class="material-icons">history</span>
-        <h3>No Version History</h3>
-        <p>No version history available for ${unitCode}.</p>
-      </div>
-    `;
-  } else {
-    versionHistoryList.innerHTML = versionHistory.map(version => `
-      <div class="version-history-item">
-        <div class="version-header">
-          <span class="version-number">Version ${version.version}</span>
-          <span class="version-status status-${version.status}">${version.status.charAt(0).toUpperCase() + version.status.slice(1)}</span>
-        </div>
-        <div class="version-details">
-          <div class="version-date">
-            <span class="material-icons">schedule</span>
-            <span>${new Date(version.created_at).toLocaleString()}</span>
-          </div>
-          ${version.published_at ? `
-            <div class="version-published">
-              <span class="material-icons">publish</span>
-              <span>Published: ${new Date(version.published_at).toLocaleString()}</span>
-            </div>
-          ` : ''}
-          ${version.unpublished_at ? `
-            <div class="version-unpublished">
-              <span class="material-icons">unpublish</span>
-              <span>Unpublished: ${new Date(version.unpublished_at).toLocaleString()}</span>
-            </div>
-            <div class="version-reason">
-              <span class="material-icons">info</span>
-              <span><strong>Reason:</strong> ${version.unpublish_reason}</span>
-            </div>
-            <div class="version-admin">
-              <span class="material-icons">person</span>
-              <span><strong>Unpublished by:</strong> ${version.unpublished_by}</span>
-            </div>
-          ` : ''}
-        </div>
-      </div>
-    `).join('');
-  }
-  
-  const versionHistoryModal = document.getElementById('versionHistoryModal');
-  if (versionHistoryModal) {
-    versionHistoryModal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-  }
-}
-
-// Update schedule results count
-function updateScheduleResultsCount() {
-  const resultsCountEl = document.getElementById('scheduleResultsCount');
-  if (!resultsCountEl) return;
-  resultsCountEl.textContent = `Showing ${filteredUnits.length} of ${allUnits.length} units`;
 }
