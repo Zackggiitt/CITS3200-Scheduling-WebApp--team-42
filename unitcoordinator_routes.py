@@ -1474,6 +1474,18 @@ def create_unit():
         unit.start_date = start_date
         unit.end_date = end_date
         db.session.commit()
+        
+        # Send setup emails to newly created facilitators (if any were added during edit)
+        from flask import session as flask_session
+        from email_service import send_welcome_email
+        pending_emails = flask_session.pop('pending_facilitator_emails', [])
+        if pending_emails:
+            for email in pending_emails:
+                try:
+                    send_welcome_email(email, user_role=UserRole.FACILITATOR)
+                    print(f"Setup email sent to {email}")
+                except Exception as e:
+                    print(f"Failed to send setup email to {email}: {e}")
 
         flash("Unit updated successfully!", "success")
         if user.role == UserRole.ADMIN:

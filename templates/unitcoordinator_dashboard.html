@@ -601,28 +601,6 @@
               <span class="material-icons text-base">edit</span>
               Edit Unit
             </button>
-
-            {% if units|length > 1 %}
-            <!-- Switch Unit -->
-            <div class="relative card-actions">
-              <details class="group">
-                <summary class="list-none inline-flex items-center gap-2">
-                  Switch Unit
-                  <span class="material-icons text-base">expand_more</span>
-                </summary>
-                <ul class="menu">
-                  {% for other in units if other.id != unit.id %}
-                    <li>
-                      <a href="{{ url_for('unitcoordinator.admin_dashboard' if is_admin_view else 'unitcoordinator.dashboard', unit=other.id) }}"
-                        class="block px-3 py-2 text-sm hover:bg-gray-50">
-                        {{ other.unit_code }} — {{ other.unit_name }}
-                      </a>
-                    </li>
-                  {% endfor %}
-                </ul>
-              </details>
-            </div>
-            {% endif %}
           </div>
         </article>
 
