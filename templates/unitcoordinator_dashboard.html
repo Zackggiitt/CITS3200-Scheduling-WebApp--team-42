@@ -741,20 +741,12 @@
             <div class="status-legend">
               <div class="legend-items">
                 <div class="legend-item">
-                  <div class="legend-dot approved"></div>
-                  <span>Approved</span>
-                </div>
-                <div class="legend-item">
-                  <div class="legend-dot pending"></div>
-                  <span>Pending</span>
+                  <div class="legend-dot assigned"></div>
+                  <span>Assigned</span>
                 </div>
                 <div class="legend-item">
                   <div class="legend-dot unassigned"></div>
                   <span>Unassigned</span>
-                </div>
-                <div class="legend-item">
-                  <div class="legend-dot proposed"></div>
-                  <span>Proposed</span>
                 </div>
               </div>
               <button class="publish-btn" onclick="openPublishConfirmation()">
@@ -781,12 +773,8 @@
                   <div class="stat-label">Total Sessions</div>
                 </div>
                 <div class="stat-card">
-                  <div class="stat-number approved" id="approved-sessions">0</div>
-                  <div class="stat-label">Approved</div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-number pending" id="pending-sessions">0</div>
-                  <div class="stat-label">Pending</div>
+                  <div class="stat-number assigned" id="assigned-sessions">0</div>
+                  <div class="stat-label">Assigned</div>
                 </div>
                 <div class="stat-card">
                   <div class="stat-number unassigned" id="unassigned-sessions">0</div>
@@ -810,10 +798,8 @@
                   <div class="filter-dropdowns">
                     <select id="status-filter" class="filter-select">
                       <option value="">All Status</option>
-                      <option value="approved">Approved</option>
-                      <option value="pending">Pending</option>
+                      <option value="assigned">Assigned</option>
                       <option value="unassigned">Unassigned</option>
-                      <option value="proposed">Proposed</option>
                     </select>
                     
                     <select id="day-filter" class="filter-select">
@@ -1877,8 +1863,14 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
 
       </form>
       <div class="modal-footer">
-        <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
-        <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
+        <button type="button" class="btn-cancel" onclick="prevStep()">
+          <span class="material-icons" style="font-size: 16px;">arrow_back</span>
+          Back
+        </button>
+        <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">
+          Next
+          <span class="material-icons" style="font-size: 16px;">arrow_forward</span>
+        </button>
 
         <!-- submit still links to the form via id -->
         <button type="submit" class="btn-primary hidden" id="submit-btn" form="create-unit-form">
@@ -2296,9 +2288,9 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     
     <div class="modal-body">
       <div class="session-info">
-        <h4 id="modal-session-name">Session Name</h4>
-        <p id="modal-session-time">Time: TBA</p>
-        <p id="modal-session-location">Location: TBA</p>
+        <h4 id="modal-session-name-info">Session Name</h4>
+        <p id="modal-session-time-info">Time: TBA</p>
+        <p id="modal-session-location-info">Location: TBA</p>
       </div>
       
       <div class="facilitator-search">
@@ -2315,6 +2307,45 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     <div class="modal-footer">
       <button class="btn-secondary" id="facilitator-modal-cancel" onclick="closeFacilitatorModal()">Cancel</button>
       <button class="btn-primary" onclick="selectMultipleFacilitators()" id="facilitator-modal-select" disabled>Assign Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Session Details Modal -->
+<div id="session-details-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Session Details</h3>
+      <button class="modal-close" onclick="closeSessionDetailsModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="session-details-content">
+        <div class="detail-row">
+          <span class="detail-label">Session Name:</span>
+          <span class="detail-value" id="modal-session-name">Unknown Session</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Date & Time:</span>
+          <span class="detail-value" id="modal-session-datetime">TBA</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Location:</span>
+          <span class="detail-value" id="modal-session-location">TBA</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Facilitator:</span>
+          <span class="detail-value" id="modal-session-facilitator">Unassigned</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Status:</span>
+          <span class="detail-value" id="modal-session-status">Scheduled</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeSessionDetailsModal()">Close</button>
     </div>
   </div>
 </div>

@@ -334,7 +334,8 @@ def dashboard():
                 'date': format_session_date(s.start_time),
                 'time': f"{s.start_time.strftime('%I:%M %p')} - {s.end_time.strftime('%I:%M %p')}",
                 'topic': m.module_name or 'Unknown Module',
-                'status': 'confirmed' if a.is_confirmed else 'pending'
+                'status': 'confirmed' if a.is_confirmed else 'pending',
+                'role': getattr(a, 'role', 'lead')  # Include role information
             }
             for a, s, m in assignments
             if s.start_time >= now
