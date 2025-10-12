@@ -683,10 +683,15 @@
               <p>Manage {{ unit.session_count or 0 }} sessions from university timetable with facilitator assignments.</p>
               
               <!-- Auto Assign Button -->
-              <button type="button" class="auto-assign-btn">
-                <span class="material-icons">auto_awesome</span>
-                Auto-Assign Facilitators
-              </button>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" class="auto-assign-btn">
+                  <span class="material-icons">auto_awesome</span>
+                  Auto-Assign Facilitators
+                </button>
+                <button type="button" class="auto-assign-info-btn" title="Click to see why auto-assign is disabled" style="display: none;">
+                  <span class="material-icons">help_outline</span>
+                </button>
+              </div>
             </div>
 
             <!-- Week Navigation -->

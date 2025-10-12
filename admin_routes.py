@@ -240,6 +240,57 @@ def delete_employee(employee_id):
             print("User not found")
             return jsonify({'success': False, 'message': 'User not found'}), 404
         
+        # Get position name for messages
+        position_mapping = {
+            UserRole.FACILITATOR: 'Facilitator',
+            UserRole.UNIT_COORDINATOR: 'Unit Coordinator', 
+            UserRole.ADMIN: 'Admin'
+        }
+        position_name = position_mapping.get(employee.role, 'User')
+        
+        # Check if user has relationships that need to be cleaned up
+        from models import UnitFacilitator, Assignment, Unit, Session, Module
+        
+        warning_message = None
+        
+        # Clean up facilitator relationships
+        if employee.role == UserRole.FACILITATOR:
+            # Check if they have assignments
+            assignments = Assignment.query.filter_by(facilitator_id=employee.id).all()
+            if assignments:
+                # Get details of assigned sessions for warning message
+                assigned_units = set()
+                for assignment in assignments:
+                    session = Session.query.get(assignment.session_id)
+                    if session:
+                        module = Module.query.get(session.module_id)
+                        if module:
+                            unit = Unit.query.get(module.unit_id)
+                            if unit:
+                                assigned_units.add(f"{unit.unit_code}")
+                
+                if assigned_units:
+                    units_list = ", ".join(list(assigned_units)[:3])
+                    if len(assigned_units) > 3:
+                        units_list += f" and {len(assigned_units) - 3} more"
+                    warning_message = f"Removed {len(assignments)} session assignment(s) from units: {units_list}"
+            
+            # Remove all facilitator relationships
+            UnitFacilitator.query.filter_by(user_id=employee.id).delete()
+            Assignment.query.filter_by(facilitator_id=employee.id).delete()
+        
+        # Clean up UC relationships
+        if employee.role == UserRole.UNIT_COORDINATOR:
+            units = Unit.query.filter_by(created_by=employee.id).all()
+            if units:
+                unit_names = ", ".join([f"{u.unit_code}" for u in units[:3]])
+                if len(units) > 3:
+                    unit_names += f" and {len(units) - 3} more"
+                warning_message = f"Deleted {len(units)} unit(s): {unit_names}"
+                
+                # Delete all units created by this UC (cascades to sessions, modules, etc.)
+                for unit in units:
+                    db.session.delete(unit)
         
         # Delete the user from database
         employee_name = employee.full_name if employee else 'Unknown'
@@ -249,20 +300,19 @@ def delete_employee(employee_id):
         db.session.commit()
         print("User deleted successfully")
         
-        # Get position name for success message
-        position_mapping = {
-            UserRole.FACILITATOR: 'Facilitator',
-            UserRole.UNIT_COORDINATOR: 'Unit Coordinator', 
-            UserRole.ADMIN: 'Admin'
-        }
-        position_name = position_mapping.get(employee.role, 'User')
+        # Build success message with warning if applicable
+        success_msg = f'{position_name} account deleted successfully'
+        if warning_message:
+            success_msg += f'. {warning_message}'
         
-        return jsonify({'success': True, 'message': f'{position_name} account deleted successfully'})
+        return jsonify({'success': True, 'message': success_msg})
         
     except Exception as e:
         db.session.rollback()
+        import traceback
         print(f"Error deleting user: {e}")
-        return jsonify({'success': False, 'message': 'An error occurred while deleting the user'}), 500
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'message': f'An error occurred while deleting the user: {str(e)}'}), 500
 
 @admin_bp.route('/delete-facilitator/<int:facilitator_id>', methods=['DELETE'])
 @admin_required
