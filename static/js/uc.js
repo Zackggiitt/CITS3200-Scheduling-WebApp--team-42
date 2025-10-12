@@ -4086,7 +4086,7 @@ function renderDaySessions(sessions, dayDate) {
        status: session.status || session.extendedProps?.status || 'scheduled'
      }).replace(/"/g, '&quot;')})">
       <div class="session-header">
-        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="openFacilitatorModal(this)"' : ''}>
+        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="event.stopPropagation(); openFacilitatorModal(this)"' : ''}>
           ${session.facilitators?.length > 0 
             ? (session.facilitators.length > 1 
                 ? `${session.facilitators.length} Facilitators`
@@ -4965,6 +4965,21 @@ async function createSession() {
 
 // Open facilitator selection modal
 function openFacilitatorModal(element) {
+  // Close session details modal first if it's open
+  const sessionDetailsModal = document.getElementById('session-details-modal');
+  if (sessionDetailsModal && sessionDetailsModal.style.display !== 'none') {
+    closeSessionDetailsModal();
+    // Add a small delay to ensure the session details modal closes before opening facilitator modal
+    setTimeout(() => {
+      openFacilitatorModalAfterDelay(element);
+    }, 100);
+    return;
+  }
+  
+  openFacilitatorModalAfterDelay(element);
+}
+
+function openFacilitatorModalAfterDelay(element) {
   const sessionCard = element.closest('.session-card');
   
   if (!sessionCard) {
@@ -4983,9 +4998,9 @@ function openFacilitatorModal(element) {
   selectedFacilitators = [];
   
   // Update modal content
-  const nameEl = document.getElementById('modal-session-name');
-  const timeEl = document.getElementById('modal-session-time');
-  const locationEl = document.getElementById('modal-session-location');
+  const nameEl = document.getElementById('modal-session-name-info');
+  const timeEl = document.getElementById('modal-session-time-info');
+  const locationEl = document.getElementById('modal-session-location-info');
   
   if (nameEl) nameEl.textContent = currentSessionData.name;
   if (timeEl) timeEl.textContent = `Time: ${currentSessionData.time}`;
@@ -5181,7 +5196,7 @@ function selectMultipleFacilitators() {
   console.log('Selected facilitators:', selectedFacilitators);
   
   // Update the session card to show "Pending" status with multiple facilitators
-  updateSessionStatusMultiple(currentSessionData.id, 'pending', selectedFacilitators);
+  updateSessionStatusMultiple(currentSessionData.id, 'assigned', selectedFacilitators);
   
   // Show assignment confirmation popup for multiple facilitators
   showMultipleAssignmentConfirmation(selectedFacilitators, currentSessionData.name);
