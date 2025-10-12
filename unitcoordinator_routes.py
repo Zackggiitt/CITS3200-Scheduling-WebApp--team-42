@@ -1975,7 +1975,7 @@ def confirm_facilitators():
             "linked_facilitators": linked_facilitators,
             "emails_sent": emails_sent,
             "errors": errors[:20],  # show up to 20 issues
-        }), 200
+        }), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({"ok": False, "error": f"Failed to create facilitators: {e}"}), 500
@@ -1992,7 +1992,7 @@ def remove_unit_facilitators(unit_id: int):
     user = get_current_user()
     unit = _get_user_unit_or_404(user, unit_id)
     if not unit:
-        return jsonify({"ok": False, "error": "Unit not found"}), 404
+        return jsonify({"ok": False, "error": "Unit not found"}), 403
 
     try:
         # Count facilitators before removal
