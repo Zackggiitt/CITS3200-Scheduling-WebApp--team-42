@@ -741,20 +741,12 @@
             <div class="status-legend">
               <div class="legend-items">
                 <div class="legend-item">
-                  <div class="legend-dot approved"></div>
-                  <span>Approved</span>
-                </div>
-                <div class="legend-item">
-                  <div class="legend-dot pending"></div>
-                  <span>Pending</span>
+                  <div class="legend-dot assigned"></div>
+                  <span>Assigned</span>
                 </div>
                 <div class="legend-item">
                   <div class="legend-dot unassigned"></div>
                   <span>Unassigned</span>
-                </div>
-                <div class="legend-item">
-                  <div class="legend-dot proposed"></div>
-                  <span>Proposed</span>
                 </div>
               </div>
               <button class="publish-btn" onclick="openPublishConfirmation()">
@@ -781,12 +773,8 @@
                   <div class="stat-label">Total Sessions</div>
                 </div>
                 <div class="stat-card">
-                  <div class="stat-number approved" id="approved-sessions">0</div>
-                  <div class="stat-label">Approved</div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-number pending" id="pending-sessions">0</div>
-                  <div class="stat-label">Pending</div>
+                  <div class="stat-number assigned" id="assigned-sessions">0</div>
+                  <div class="stat-label">Assigned</div>
                 </div>
                 <div class="stat-card">
                   <div class="stat-number unassigned" id="unassigned-sessions">0</div>
@@ -810,10 +798,8 @@
                   <div class="filter-dropdowns">
                     <select id="status-filter" class="filter-select">
                       <option value="">All Status</option>
-                      <option value="approved">Approved</option>
-                      <option value="pending">Pending</option>
+                      <option value="assigned">Assigned</option>
                       <option value="unassigned">Unassigned</option>
-                      <option value="proposed">Proposed</option>
                     </select>
                     
                     <select id="day-filter" class="filter-select">

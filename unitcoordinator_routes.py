@@ -126,11 +126,7 @@ def _serialize_session(s: Session, venues_by_name=None):
     # Determine session status
     status = "unassigned"
     if facilitators:
-        # If any facilitator is confirmed, show as approved
-        if any(f["is_confirmed"] for f in facilitators):
-            status = "approved"
-        else:
-            status = "pending"  # Assigned but not confirmed
+        status = "assigned"  # Any facilitator assigned, regardless of confirmation status
     
     return {
         "id": str(s.id),  # turn this into a string
@@ -680,10 +676,23 @@ def dashboard():
             .all()
         )
 
+        # Get sessions that need a lead facilitator specifically
+        sessions_with_lead = (
+            db.session.query(Session.id)
+            .join(Module, Module.id == Session.module_id)
+            .join(Assignment, Assignment.session_id == Session.id)
+            .filter(Module.unit_id == current_unit.id)
+            .filter(Assignment.role == 'lead')
+            .distinct()
+            .all()
+        )
+        
+        sessions_with_lead_ids = {s.id for s in sessions_with_lead}
+
         total_sessions = len(session_rows)
         fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
         unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
-        needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
+        needs_lead     = sum(1 for r in session_rows if r.sid not in sessions_with_lead_ids)
 
         stats = {
             "total": total_sessions,
@@ -994,10 +1003,23 @@ def admin_dashboard():
             .all()
         )
 
+        # Get sessions that need a lead facilitator specifically
+        sessions_with_lead = (
+            db.session.query(Session.id)
+            .join(Module, Module.id == Session.module_id)
+            .join(Assignment, Assignment.session_id == Session.id)
+            .filter(Module.unit_id == current_unit.id)
+            .filter(Assignment.role == 'lead')
+            .distinct()
+            .all()
+        )
+        
+        sessions_with_lead_ids = {s.id for s in sessions_with_lead}
+
         total_sessions = len(session_rows)
         fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
         unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
-        needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
+        needs_lead     = sum(1 for r in session_rows if r.sid not in sessions_with_lead_ids)
 
         stats = {
             "total": total_sessions,
@@ -2687,7 +2709,7 @@ def publish_schedule(unit_id: int):
             db.session.query(Session)
             .join(Module, Session.module_id == Module.id)
             .filter(Module.unit_id == unit_id)
-            .filter(Session.status.in_(['pending', 'assigned']))
+            .filter(Session.status.in_(['assigned']))
             .all()
         )
         
@@ -2698,7 +2720,7 @@ def publish_schedule(unit_id: int):
         facilitator_ids = set()
         for session in sessions:
             # Get facilitators assigned to this session
-            assignments = SessionFacilitator.query.filter_by(session_id=session.id).all()
+            assignments = Assignment.query.filter_by(session_id=session.id).all()
             for assignment in assignments:
                 facilitator_ids.add(assignment.facilitator_id)
         
@@ -3294,10 +3316,7 @@ def get_dashboard_sessions(unit_id: int):
         # Determine session status
         status = "unassigned"
         if facilitators:
-            if any(f["is_confirmed"] for f in facilitators):
-                status = "approved"
-            else:
-                status = "pending"
+            status = "assigned"  # Any facilitator assigned, regardless of confirmation status
         
         today_data.append({
             "id": session.id,
@@ -3326,10 +3345,7 @@ def get_dashboard_sessions(unit_id: int):
         # Determine session status
         status = "unassigned"
         if facilitators:
-            if any(f["is_confirmed"] for f in facilitators):
-                status = "approved"
-            else:
-                status = "pending"
+            status = "assigned"  # Any facilitator assigned, regardless of confirmation status
         
         # Determine relative date
         session_date = session.start_time.date()

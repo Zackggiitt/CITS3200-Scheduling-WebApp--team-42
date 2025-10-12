@@ -44,16 +44,20 @@ def generate_random_unavailability(facilitator_id, unit):
         print(f"  Warning: Unit {unit.unit_code if unit else 'None'} missing dates, skipping unavailability")
         return unavailabilities
     
+    # Define the fixed date range for unavailability (June 30 - July 8, 2025)
+    fixed_start_date = date(2025, 6, 30)
+    fixed_end_date = date(2025, 7, 8)
+    
     # Randomly decide how many unavailability periods (0-5)
     num_unavailabilities = random.randint(0, 5)
     
-    # Calculate unit duration in days
-    duration = (unit.end_date - unit.start_date).days
+    # Calculate duration within the fixed date range
+    duration = (fixed_end_date - fixed_start_date).days
     
     for _ in range(num_unavailabilities):
-        # Random date within unit period
+        # Random date within the fixed period (June 30 - July 8, 2025)
         random_days = random.randint(0, max(0, duration))
-        unavail_date = unit.start_date + timedelta(days=random_days)
+        unavail_date = fixed_start_date + timedelta(days=random_days)
         
         # Decide if full day or time block
         is_full_day = random.choice([True, False])
@@ -87,9 +91,10 @@ def generate_random_unavailability(facilitator_id, unit):
                 RecurringPattern.WEEKLY,
                 RecurringPattern.DAILY
             ])
+            # Ensure recurring end date stays within the fixed date range
             unavail.recurring_end_date = min(
-                unavail_date + timedelta(days=random.randint(14, 56)),
-                unit.end_date
+                unavail_date + timedelta(days=random.randint(1, 8)),
+                fixed_end_date
             )
         
         unavailabilities.append(unavail)

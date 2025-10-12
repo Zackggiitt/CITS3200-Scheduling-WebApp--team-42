@@ -1051,11 +1051,8 @@ function initCalendar() {
       // Add status class to the event element
       let statusClass = '';
       switch(status) {
-        case 'approved':
-          statusClass = 'event-approved';
-          break;
-        case 'pending':
-          statusClass = 'event-pending';
+        case 'assigned':
+          statusClass = 'event-assigned';
           break;
         case 'unassigned':
           statusClass = 'event-unassigned';
@@ -4013,7 +4010,7 @@ function renderScheduleGrid() {
     
     const isToday = dayDate.toDateString() === today.toDateString();
     const daySessions = getSessionsForDay(dayDate);
-    const pendingCount = daySessions.filter(s => s.status === 'pending').length;
+    const unassignedCount = daySessions.filter(s => s.status === 'unassigned').length;
     const totalCount = daySessions.length;
     
     gridHTML += `
@@ -4024,9 +4021,9 @@ function renderScheduleGrid() {
             <div class="day-date">${dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
             ${isToday ? '<div class="today-label">Today</div>' : ''}
           </div>
-          <div class="day-status ${pendingCount > 0 ? 'pending' : 'info'}">
-            <span class="material-icons">${pendingCount > 0 ? 'warning' : 'info'}</span>
-            ${pendingCount}/${totalCount}
+          <div class="day-status ${unassignedCount > 0 ? 'unassigned' : 'info'}">
+            <span class="material-icons">${unassignedCount > 0 ? 'warning' : 'info'}</span>
+            ${unassignedCount}/${totalCount}
           </div>
         </div>
         <div class="day-sessions">
@@ -4664,19 +4661,16 @@ function filterSessions() {
 // Update session statistics
 function updateSessionStats(sessions) {
   const total = sessions.length;
-  const approved = sessions.filter(s => s.status === 'approved').length;
-  const pending = sessions.filter(s => s.status === 'pending').length;
+  const assigned = sessions.filter(s => s.status === 'assigned').length;
   const unassigned = sessions.filter(s => s.status === 'unassigned').length;
   
   // Update stat cards
   const totalEl = document.getElementById('total-sessions');
-  const approvedEl = document.getElementById('approved-sessions');
-  const pendingEl = document.getElementById('pending-sessions');
+  const assignedEl = document.getElementById('assigned-sessions');
   const unassignedEl = document.getElementById('unassigned-sessions');
   
   if (totalEl) totalEl.textContent = total;
-  if (approvedEl) approvedEl.textContent = approved;
-  if (pendingEl) pendingEl.textContent = pending;
+  if (assignedEl) assignedEl.textContent = assigned;
   if (unassignedEl) unassignedEl.textContent = unassigned;
 }
 

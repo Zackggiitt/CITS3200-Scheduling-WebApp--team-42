@@ -17,7 +17,7 @@ SOFT CONSTRAINTS (optimized for):
 import csv
 import io
 from datetime import datetime, time
-from models import User, UserRole, FacilitatorSkill, SkillLevel
+from models import User, UserRole, FacilitatorSkill, SkillLevel, db
 
 # Tunable weights for scoring function
 W_AVAILABILITY = 0.4
@@ -524,13 +524,14 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
     
     Returns a CSV string with multiple sections:
     1. Overview Statistics
-    2. Fairness Metrics
-    3. Skill Level Distribution
-    4. Per-Facilitator Hours Summary
-    5. Skill Levels Per Facilitator
-    6. Unavailability Information
-    7. Facilitator Skill Declarations (NEW)
-    8. Detailed Assignment List
+    2. Session Staffing Statistics (NEW)
+    3. Fairness Metrics
+    4. Skill Level Distribution
+    5. Per-Facilitator Hours Summary
+    6. Skill Levels Per Facilitator
+    7. Unavailability Information
+    8. Facilitator Skill Declarations
+    9. Detailed Assignment List
     
     Args:
         assignments: List of assignment dictionaries
@@ -644,7 +645,53 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
     writer.writerow(["Average Assignment Score", f"{metrics['avg_score']:.3f}"])
     writer.writerow([])
     
-    # === SECTION 2: Fairness Metrics ===
+    # === SECTION 2: Session Staffing Statistics ===
+    if unit_id:
+        # Calculate session staffing statistics using the same logic as the dashboard
+        from models import Session, Module, Assignment
+        from sqlalchemy import func
+        
+        session_rows = (
+            db.session.query(
+                Session.id.label("sid"),
+                func.coalesce(Session.max_facilitators, 1).label("maxf"),
+                func.count(Assignment.id).label("assigned"),
+            )
+            .join(Module, Module.id == Session.module_id)
+            .outerjoin(Assignment, Assignment.session_id == Session.id)
+            .filter(Module.unit_id == unit_id)
+            .group_by(Session.id, Session.max_facilitators)
+            .all()
+        )
+
+        # Get sessions that need a lead facilitator specifically
+        sessions_with_lead = (
+            db.session.query(Session.id)
+            .join(Module, Module.id == Session.module_id)
+            .join(Assignment, Assignment.session_id == Session.id)
+            .filter(Module.unit_id == unit_id)
+            .filter(Assignment.role == 'lead')
+            .distinct()
+            .all()
+        )
+        
+        sessions_with_lead_ids = {s.id for s in sessions_with_lead}
+
+        total_sessions = len(session_rows)
+        fully_staffed = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
+        unstaffed = sum(1 for r in session_rows if r.assigned == 0)
+        needs_lead = sum(1 for r in session_rows if r.sid not in sessions_with_lead_ids)
+        
+        writer.writerow(["SESSION STAFFING STATISTICS"])
+        writer.writerow(["Metric", "Count"])
+        writer.writerow(["Total Sessions", total_sessions])
+        writer.writerow(["Fully Staffed", fully_staffed])
+        writer.writerow(["Needs Lead", needs_lead])
+        writer.writerow(["Unstaffed", unstaffed])
+        writer.writerow(["Partially Staffed", total_sessions - fully_staffed - unstaffed])
+        writer.writerow([])
+    
+    # === SECTION 3: Fairness Metrics ===
     writer.writerow(["FAIRNESS METRICS"])
     writer.writerow(["Metric", "Value"])
     writer.writerow(["Minimum Hours Assigned", f"{fairness['min_hours']:.1f}"])
