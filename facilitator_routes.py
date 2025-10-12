@@ -986,10 +986,96 @@ def generate_recurring_unavailability():
 def manage_skills():
     user = get_current_user()
     
+    # Handle JSON API requests (for dashboard)
+    if request.method == 'GET' and request.args.get('unit_id'):
+        unit_id = request.args.get('unit_id')
+        
+        # Get ALL modules for the unit, excluding "General" module
+        all_modules = Module.query.filter_by(unit_id=unit_id).filter(Module.module_name != 'General').all()
+        
+        # Get facilitator's skills for this unit
+        facilitator_skills = db.session.query(FacilitatorSkill, Module).join(
+            Module, FacilitatorSkill.module_id == Module.id
+        ).filter(
+            FacilitatorSkill.facilitator_id == user.id,
+            Module.unit_id == unit_id
+        ).all()
+        
+        # Create a dictionary of module_id -> skill_level for quick lookup
+        skill_lookup = {module.id: skill.skill_level.value for skill, module in facilitator_skills}
+        
+        # Build skills data with all modules, showing skill level if assigned
+        skills_data = []
+        for module in all_modules:
+            skill_level = skill_lookup.get(module.id, 'unassigned')
+            experience_description = ''
+            
+            # Get experience description if skill exists
+            for skill, skill_module in facilitator_skills:
+                if skill_module.id == module.id:
+                    experience_description = skill.experience_description or ''
+                    break
+            
+            skills_data.append({
+                'module_name': module.module_name,
+                'module_type': module.module_type,
+                'skill_level': skill_level,
+                'module_id': module.id,
+                'experience_description': experience_description
+            })
+        
+        return jsonify({
+            'success': True,
+            'skills': skills_data
+        })
+    
+    # Handle form-based requests (existing functionality)
     # Get all modules
     modules = Module.query.all()
     
     if request.method == 'POST':
+        # Handle JSON API requests (for dashboard)
+        if request.is_json:
+            data = request.get_json()
+            unit_id = data.get('unit_id')
+            skills = data.get('skills', {})
+            experience_descriptions = data.get('experience_descriptions', {})
+            
+            if not unit_id:
+                return jsonify({"error": "Unit ID is required"}), 400
+            
+            # Clear existing skills for this unit
+            existing_skills = db.session.query(FacilitatorSkill).join(
+                Module, FacilitatorSkill.module_id == Module.id
+            ).filter(
+                FacilitatorSkill.facilitator_id == user.id,
+                Module.unit_id == unit_id
+            ).all()
+            
+            for skill in existing_skills:
+                db.session.delete(skill)
+            
+            # Add new skills
+            for module_id, skill_level in skills.items():
+                try:
+                    experience_description = experience_descriptions.get(module_id, '')
+                    facilitator_skill = FacilitatorSkill(
+                        facilitator_id=user.id,
+                        module_id=int(module_id),
+                        skill_level=SkillLevel(skill_level),
+                        experience_description=experience_description
+                    )
+                    db.session.add(facilitator_skill)
+                except ValueError:
+                    return jsonify({"error": f"Invalid skill level: {skill_level}"}), 400
+            
+            db.session.commit()
+            return jsonify({
+                "success": True,
+                "message": "Skills updated successfully!"
+            })
+        
+        # Handle form-based requests (legacy functionality)
         preferences = request.form.get('preferences', '')
         
         # Update preferences

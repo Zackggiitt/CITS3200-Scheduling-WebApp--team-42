@@ -133,6 +133,8 @@ def _serialize_session(s: Session, venues_by_name=None):
             "venue_id": vid,
             "session_name": title,
             "location": s.location,
+            "facilitator_name": facilitator,
+            "facilitator_id": s.assignments[0].facilitator_id if s.assignments else None,
             "lead_staff_required": s.lead_staff_required or 1,
             "support_staff_required": s.support_staff_required or 0,
         }
@@ -842,9 +844,16 @@ def dashboard():
             # Format skills for template
             skills_list = []
             for skill, module in facilitator_skills:
+                experience_text = skill.experience_description or "No additional details provided"
+                experience_full = experience_text
+                if len(experience_text) > 200:
+                    experience_text = experience_text[:200] + "..."
+                
                 skills_list.append({
                     "module": module.module_name,
-                    "level": skill.skill_level.value
+                    "level": skill.skill_level.value,
+                    "experience": experience_text,
+                    "experience_full": experience_full
                 })
 
             facilitators.append(
@@ -855,9 +864,6 @@ def dashboard():
                     "phone": getattr(f, "phone_number", None),
                     "staff_number": getattr(f, "staff_number", None),
                     "experience_years": None,         # TODO wire real data later
-                    "upcoming_sessions": None,
-                    "total_hours": None,
-                    "last_login": getattr(f, "last_login", None),
                     "has_profile": has_profile,
                     "has_availability": has_avail,
                     "has_skills": has_skills,
@@ -1152,9 +1158,16 @@ def admin_dashboard():
             # Format skills for template
             skills_list = []
             for skill, module in facilitator_skills:
+                experience_text = skill.experience_description or "No additional details provided"
+                experience_full = experience_text
+                if len(experience_text) > 200:
+                    experience_text = experience_text[:200] + "..."
+                
                 skills_list.append({
                     "module": module.module_name,
-                    "level": skill.skill_level.value
+                    "level": skill.skill_level.value,
+                    "experience": experience_text,
+                    "experience_full": experience_full
                 })
 
             facilitators.append(
@@ -1165,9 +1178,6 @@ def admin_dashboard():
                     "phone": getattr(f, "phone", None),
                     "staff_number": getattr(f, "staff_number", None),
                     "experience_years": None,         # TODO wire real data later
-                    "upcoming_sessions": None,
-                    "total_hours": None,
-                    "last_login": getattr(f, "last_login", None),
                     "has_profile": has_profile,
                     "has_availability": has_avail,
                     "has_skills": has_skills,
@@ -2126,6 +2136,156 @@ def create_session(unit_id: int):
         "session": _serialize_session(first, venues_by_name),
     }), 201
 
+
+
+@unitcoordinator_bp.post("/units/<int:unit_id>/auto_assign")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def auto_assign_facilitators(unit_id: int):
+    """
+    Auto-assign facilitators to sessions using the optimization algorithm
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        # Import the optimization engine
+        from optimization_engine import (
+            generate_optimal_assignments, 
+            calculate_metrics, 
+            format_session_time, 
+            prepare_facilitator_data,
+            generate_schedule_report_csv
+        )
+        from flask import session as flask_session
+        
+        # Get facilitators assigned to this unit
+        facilitators_from_db = (
+            db.session.query(User)
+            .join(UnitFacilitator, User.id == UnitFacilitator.user_id)
+            .filter(UnitFacilitator.unit_id == unit_id)
+            .filter(User.role == UserRole.FACILITATOR)
+            .all()
+        )
+        
+        if not facilitators_from_db:
+            return jsonify({
+                "ok": False, 
+                "error": "No facilitators assigned to this unit"
+            }), 400
+        
+        # Prepare facilitator data for optimization
+        facilitators = prepare_facilitator_data(facilitators_from_db)
+        
+        # Generate assignments using the optimization algorithm
+        assignments, conflicts = generate_optimal_assignments(facilitators)
+        
+        if not assignments:
+            return jsonify({
+                "ok": False,
+                "error": "No assignments could be generated. Check facilitator availability and skills.",
+                "conflicts": conflicts
+            }), 400
+        
+        # Create actual Assignment records in the database
+        created_assignments = []
+        for assignment in assignments:
+            # Check if assignment already exists
+            existing = Assignment.query.filter_by(
+                session_id=assignment['session']['id'],
+                facilitator_id=assignment['facilitator']['id']
+            ).first()
+            
+            if not existing:
+                new_assignment = Assignment(
+                    session_id=assignment['session']['id'],
+                    facilitator_id=assignment['facilitator']['id'],
+                    is_confirmed=False  # Require confirmation
+                )
+                db.session.add(new_assignment)
+                created_assignments.append({
+                    'facilitator_name': assignment['facilitator']['name'],
+                    'session_name': assignment['session']['module_name'],
+                    'time': format_session_time(assignment['session']),
+                    'score': round(assignment['score'], 2)
+                })
+        
+        db.session.commit()
+        
+        # Calculate metrics
+        metrics = calculate_metrics(assignments)
+        
+        # Generate CSV report and cache it in the session
+        unit_display_name = f"{unit.unit_code} - {unit.unit_name}" if unit else "Unit"
+        csv_report = generate_schedule_report_csv(
+            assignments, 
+            unit_display_name,
+            total_facilitators_in_pool=len(facilitators_from_db)
+        )
+        
+        # Store CSV in session (or you could store in a temporary file)
+        flask_session[f'schedule_report_{unit_id}'] = csv_report
+        flask_session[f'schedule_report_timestamp_{unit_id}'] = datetime.now().isoformat()
+        
+        return jsonify({
+            "ok": True,
+            "message": f"Successfully created {len(created_assignments)} assignments",
+            "assignments": created_assignments,
+            "conflicts": conflicts,
+            "metrics": metrics,
+            "csv_available": True,
+            "csv_download_url": f"/unitcoordinator/units/{unit_id}/download_schedule_report"
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Auto-assign error: {str(e)}")
+        return jsonify({
+            "ok": False, 
+            "error": f"Auto-assignment failed: {str(e)}"
+        }), 500
+
+
+@unitcoordinator_bp.get("/units/<int:unit_id>/download_schedule_report")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def download_schedule_report(unit_id: int):
+    """
+    Download the CSV report from the last auto-assignment run
+    """
+    from flask import session as flask_session, Response
+    from datetime import datetime
+    
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    # Check if report exists in session
+    report_key = f'schedule_report_{unit_id}'
+    if report_key not in flask_session:
+        return jsonify({
+            "ok": False, 
+            "error": "No report available. Please run auto-assignment first."
+        }), 404
+    
+    csv_content = flask_session[report_key]
+    timestamp = flask_session.get(f'schedule_report_timestamp_{unit_id}', datetime.now().isoformat())
+    
+    # Generate filename with timestamp
+    timestamp_str = datetime.fromisoformat(timestamp).strftime('%Y%m%d_%H%M%S')
+    filename = f"schedule_report_{unit.unit_code}_{timestamp_str}.csv"
+    
+    # Return as downloadable file
+    return Response(
+        csv_content,
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename}"'
+        }
+    )
 
 
 @unitcoordinator_bp.post("/units/<int:unit_id>/upload_sessions_csv")
