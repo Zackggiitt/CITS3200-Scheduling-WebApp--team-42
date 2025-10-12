@@ -4035,8 +4035,26 @@ function renderDaySessions(sessions, dayDate) {
     `;
   }
 
-  return sessions.map((session, index) => `
-    <div class="session-card" data-session-id="${session.id || `temp-${index}`}" data-session-name="${session.session_name || session.title || 'New Session'}" data-session-time="${formatTime(session.start)} - ${formatTime(session.end)}" data-session-location="${session.location || 'TBA'}">
+    return sessions.map((session, index) => {
+      // Debug: Log session structure
+      console.log('Session object:', session);
+      console.log('Session extendedProps:', session.extendedProps);
+      console.log('Session title:', session.title);
+      console.log('Session location:', session.location);
+      console.log('Session session_name:', session.session_name);
+      console.log('Session module_type:', session.module_type);
+      
+      return `
+     <div class="session-card clickable-session" data-session-id="${session.id || `temp-${index}`}" data-session-name="${session.session_name || session.extendedProps?.session_name || session.title || 'New Session'}" data-session-time="${formatTime(session.start)} - ${formatTime(session.end)}" data-session-location="${session.location || session.extendedProps?.location || 'TBA'}" onclick="openSessionDetailsModal(${JSON.stringify({
+       id: session.id || `temp-${index}`,
+       title: session.session_name || session.extendedProps?.session_name || session.title || 'New Session',
+       day: new Date(session.start).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }),
+       time: formatTime(session.start) + ' - ' + formatTime(session.end),
+       location: session.location || session.extendedProps?.location || 'TBA',
+       facilitator: session.facilitator || session.extendedProps?.facilitator_name || 'Unassigned',
+       moduleType: session.module_type || session.extendedProps?.module_type || 'Workshop',
+       status: session.status || session.extendedProps?.status || 'scheduled'
+     }).replace(/"/g, '&quot;')})">
       <div class="session-header">
         <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="openFacilitatorModal(this)"' : ''}>
           ${session.facilitator ? getInitials(session.facilitator) : 'Unassigned'}
@@ -4045,15 +4063,15 @@ function renderDaySessions(sessions, dayDate) {
           ${formatTime(session.start)} - ${formatTime(session.end)}
         </div>
       </div>
-      <div class="session-title">${session.session_name || session.title || 'New Session'}</div>
+      <div class="session-title">${session.session_name || session.extendedProps?.session_name || session.title || 'New Session'}</div>
       <div class="session-details">
         <div class="session-detail">
           <span class="material-icons">place</span>
-          <span>${session.location || 'TBA'}</span>
+          <span>${session.location || session.extendedProps?.location || 'TBA'}</span>
         </div>
         <div class="session-detail">
           <span class="material-icons">book</span>
-          <span>${session.module_type || 'Workshop'}</span>
+          <span>${session.module_type || session.extendedProps?.module_type || 'Workshop'}</span>
         </div>
         ${session.attendees ? `
           <div class="session-detail">
@@ -4063,7 +4081,8 @@ function renderDaySessions(sessions, dayDate) {
         ` : ''}
       </div>
     </div>
-  `).join('');
+  `;
+    }).join('');
 }
 
 // Helper functions
@@ -4452,19 +4471,37 @@ function renderListView() {
       </div>
     `;
   } else {
-    container.innerHTML = filteredSessions.map(session => `
-      <div class="session-item" data-session-id="${session.id}">
+      container.innerHTML = filteredSessions.map(session => `
+       <div class="session-item clickable-session" data-session-id="${session.id}" onclick="openSessionDetailsModal(${JSON.stringify({
+         id: session.id,
+         title: session.session_name || session.title,
+         day: session.day,
+         time: session.time,
+         location: session.location,
+         facilitator: session.facilitator || 'Unassigned',
+         moduleType: session.module_type || session.moduleType,
+         status: session.status
+       }).replace(/"/g, '&quot;')})">
         <div class="session-item-header">
           <div class="session-title">
             <span class="material-icons">menu_book</span>
-            ${session.title}
+            ${session.session_name || session.title}
             <span class="session-status ${session.status}">
               <span class="material-icons">${getStatusIcon(session.status)}</span>
               ${session.status.charAt(0).toUpperCase() + session.status.slice(1)}
             </span>
           </div>
           <div class="session-actions">
-            <button class="action-btn" title="View Details">
+            <button class="action-btn" title="View Details" onclick="event.stopPropagation(); openSessionDetailsModal(${JSON.stringify({
+              id: session.id,
+              title: session.session_name || session.title,
+              day: session.day,
+              time: session.time,
+              location: session.location,
+              facilitator: session.facilitator || 'Unassigned',
+              moduleType: session.module_type || session.moduleType,
+              status: session.status
+            }).replace(/"/g, '&quot;')})">
               <span class="material-icons">visibility</span>
             </button>
             <button class="action-btn" title="More Options">
@@ -5277,6 +5314,67 @@ function searchFacilitators() {
   
   console.log('Filtered facilitators:', filteredFacilitators.length);
   renderFacilitatorList();
+}
+
+// Session Details Modal Functions
+function openSessionDetailsModal(sessionData) {
+  const modal = document.getElementById('session-details-modal');
+  if (!modal) return;
+  
+  // Debug: Log the session data being passed
+  console.log('=== MODAL DEBUG START ===');
+  console.log('Session data passed to modal:', sessionData);
+  console.log('Session title:', sessionData.title);
+  console.log('Session name:', sessionData.name);
+  console.log('Session session_name:', sessionData.session_name);
+  console.log('Session location:', sessionData.location);
+  console.log('Session facilitator:', sessionData.facilitator);
+  console.log('Session moduleType:', sessionData.moduleType);
+  console.log('Session status:', sessionData.status);
+  
+  // Populate modal with session data
+  // Fix: Use the title field which is correctly passed from session cards
+  const sessionName = sessionData.title || sessionData.name || sessionData.session_name || 'Unknown Session';
+  console.log('Using session name:', sessionName);
+  
+  // Fix: Use the location field which should contain the actual venue
+  const location = sessionData.location || 'TBA';
+  console.log('Using location:', location);
+  
+  // Update modal elements
+  const nameEl = document.getElementById('modal-session-name');
+  const datetimeEl = document.getElementById('modal-session-datetime');
+  const locationEl = document.getElementById('modal-session-location');
+  const facilitatorEl = document.getElementById('modal-session-facilitator');
+  const typeEl = document.getElementById('modal-session-type');
+  const statusEl = document.getElementById('modal-session-status');
+  
+  console.log('Modal elements found:', {
+    nameEl: !!nameEl,
+    datetimeEl: !!datetimeEl,
+    locationEl: !!locationEl,
+    facilitatorEl: !!facilitatorEl,
+    typeEl: !!typeEl,
+    statusEl: !!statusEl
+  });
+  
+  if (nameEl) nameEl.textContent = sessionName;
+  if (datetimeEl) datetimeEl.textContent = sessionData.day + ' ' + sessionData.time;
+  if (locationEl) locationEl.textContent = location;
+  if (facilitatorEl) facilitatorEl.textContent = sessionData.facilitator || 'Unassigned';
+  if (typeEl) typeEl.textContent = sessionData.moduleType || 'Workshop';
+  if (statusEl) statusEl.textContent = sessionData.status ? sessionData.status.charAt(0).toUpperCase() + sessionData.status.slice(1) : 'Scheduled';
+  
+  console.log('=== MODAL DEBUG END ===');
+  
+  modal.style.display = 'flex';
+}
+
+function closeSessionDetailsModal() {
+  const modal = document.getElementById('session-details-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
 }
 
 // Publish Schedule Functions

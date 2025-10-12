@@ -2296,9 +2296,9 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     
     <div class="modal-body">
       <div class="session-info">
-        <h4 id="modal-session-name">Session Name</h4>
-        <p id="modal-session-time">Time: TBA</p>
-        <p id="modal-session-location">Location: TBA</p>
+        <h4 id="modal-session-name-info">Session Name</h4>
+        <p id="modal-session-time-info">Time: TBA</p>
+        <p id="modal-session-location-info">Location: TBA</p>
       </div>
       
       <div class="facilitator-search">
@@ -2315,6 +2315,49 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     <div class="modal-footer">
       <button class="btn-secondary" id="facilitator-modal-cancel" onclick="closeFacilitatorModal()">Cancel</button>
       <button class="btn-primary" onclick="selectMultipleFacilitators()" id="facilitator-modal-select" disabled>Assign Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Session Details Modal -->
+<div id="session-details-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Session Details</h3>
+      <button class="modal-close" onclick="closeSessionDetailsModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="session-details-content">
+        <div class="detail-row">
+          <span class="detail-label">Session Name:</span>
+          <span class="detail-value" id="modal-session-name">Unknown Session</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Date & Time:</span>
+          <span class="detail-value" id="modal-session-datetime">TBA</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Location:</span>
+          <span class="detail-value" id="modal-session-location">TBA</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Facilitator:</span>
+          <span class="detail-value" id="modal-session-facilitator">Unassigned</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Type:</span>
+          <span class="detail-value" id="modal-session-type">Workshop</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Status:</span>
+          <span class="detail-value" id="modal-session-status">Scheduled</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeSessionDetailsModal()">Close</button>
     </div>
   </div>
 </div>
