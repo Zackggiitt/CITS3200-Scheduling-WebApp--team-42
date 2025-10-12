@@ -1877,8 +1877,14 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
 
       </form>
       <div class="modal-footer">
-        <button type="button" class="btn-cancel" onclick="prevStep()">← Back</button>
-        <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">Next</button>
+        <button type="button" class="btn-cancel" onclick="prevStep()">
+          <span class="material-icons" style="font-size: 16px;">arrow_back</span>
+          Back
+        </button>
+        <button type="button" class="btn-primary" id="next-btn" onclick="nextStep()">
+          Next
+          <span class="material-icons" style="font-size: 16px;">arrow_forward</span>
+        </button>
 
         <!-- submit still links to the form via id -->
         <button type="submit" class="btn-primary hidden" id="submit-btn" form="create-unit-form">

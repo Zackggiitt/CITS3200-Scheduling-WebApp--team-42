@@ -1033,6 +1033,7 @@ function initCalendar() {
     contentHeight: 'auto',
     expandRows: true,
     handleWindowResize: true,
+    slotMinHeight: 60,
 
     editable: true,
     eventStartEditable: true,
@@ -1041,6 +1042,30 @@ function initCalendar() {
     selectable: true,
     selectMirror: true,
     selectOverlap: true,
+
+    // Add status-based styling to events
+    eventDidMount: function(info) {
+      const event = info.event;
+      const status = event.extendedProps?.status || 'unassigned';
+      
+      // Add status class to the event element
+      let statusClass = '';
+      switch(status) {
+        case 'approved':
+          statusClass = 'event-approved';
+          break;
+        case 'pending':
+          statusClass = 'event-pending';
+          break;
+        case 'unassigned':
+          statusClass = 'event-unassigned';
+          break;
+        default:
+          statusClass = 'event-proposed';
+      }
+      
+      info.el.classList.add(statusClass);
+    },
 
     events: async (fetchInfo, successCallback, failureCallback) => {
       try {
