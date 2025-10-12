@@ -288,21 +288,9 @@ def inject_user():
 def before_request():
     g.user = get_current_user()
 
-# Create DB tables and ensure default admin
+# Create DB tables
 with app.app_context():
     db.create_all()
-    admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
-    if not User.query.filter_by(email=admin_email).first():
-        admin_user = User(
-            email=admin_email,
-            first_name='Admin',
-            last_name='User',
-            role=UserRole.ADMIN,
-            password_hash=generate_password_hash(os.getenv('ADMIN_PASSWORD', 'admin123'))
-        )
-        db.session.add(admin_user)
-        db.session.commit()
-        print(f"Default admin user created: {admin_email}")
 
 @app.get("/healthz")
 def healthz():

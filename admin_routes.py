@@ -1,10 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, make_response
 from models import db, User, UserRole, Unit, Module, FacilitatorSkill, SkillLevel, SwapRequest, SwapStatus, Session, Assignment, UnitFacilitator, Unavailability, RecurringPattern
 from werkzeug.security import generate_password_hash
 from datetime import datetime, time
 from auth import admin_required, get_current_user
 from flask_wtf.csrf import validate_csrf
 import json
+import csv
+import io
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -33,8 +35,61 @@ def dashboard():
     pending_swaps = SwapRequest.query.filter_by(status=SwapStatus.PENDING).count()
     unassigned_sessions = Session.query.outerjoin(Assignment).filter(Assignment.id == None).count()
     
-    # Get all employees data for the directory
-    facilitators = User.query.filter(User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR, UserRole.ADMIN])).all()
+    # Get employees data for the directory with pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    facilitators_query = User.query.filter(User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR, UserRole.ADMIN]))
+    facilitators_pagination = facilitators_query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    facilitators = facilitators_pagination.items
+    
+    # Create unit associations data without modifying user objects
+    unit_associations = {}
+    for facilitator in facilitators:
+        # Get units they created (as coordinators)
+        created_units = Unit.query.filter_by(created_by=facilitator.id).all()
+        
+        # Get units they facilitate
+        facilitated_units = (
+            db.session.query(Unit)
+            .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+            .filter(UnitFacilitator.user_id == facilitator.id)
+            .all()
+        )
+        
+        # Combine and deduplicate unit associations
+        unit_dict = {}
+        
+        # Add created units with role
+        for unit in created_units:
+            if unit.id not in unit_dict:
+                unit_dict[unit.id] = {
+                    'unit_code': unit.unit_code,
+                    'unit_name': unit.unit_name,
+                    'roles': ['Coordinator']
+                }
+            else:
+                unit_dict[unit.id]['roles'].append('Coordinator')
+        
+        # Add facilitated units with role
+        for unit in facilitated_units:
+            if unit.id not in unit_dict:
+                unit_dict[unit.id] = {
+                    'unit_code': unit.unit_code,
+                    'unit_name': unit.unit_name,
+                    'roles': ['Facilitator']
+                }
+            else:
+                unit_dict[unit.id]['roles'].append('Facilitator')
+        
+        # Convert to list and sort by unit code
+        user_units = [unit_dict[unit_id] for unit_id in sorted(unit_dict.keys())]
+        unit_associations[facilitator.id] = {
+            'units': user_units,
+            'total_units': len(user_units)
+        }
     
     # Count admins to check if we can delete the last one
     admin_count = User.query.filter_by(role=UserRole.ADMIN).count()
@@ -42,6 +97,70 @@ def dashboard():
     
     # Calculate additional statistics
     active_facilitators = User.query.filter_by(role=UserRole.FACILITATOR).count()  # Keep facilitator count for compatibility
+    
+    # Calculate unit status distribution based on session dates
+    from datetime import datetime, date
+    from sqlalchemy import func
+    
+    today = date.today()
+    
+    # Get all units with their session date ranges
+    units_with_dates = (
+        db.session.query(
+            Unit.id,
+            func.min(Session.start_time).label('first_session'),
+            func.max(Session.start_time).label('last_session'),
+            func.count(Session.id).label('session_count')
+        )
+        .outerjoin(Module, Module.unit_id == Unit.id)
+        .outerjoin(Session, Session.module_id == Module.id)
+        .group_by(Unit.id)
+        .all()
+    )
+    
+    # Initialize counters
+    active_units_count = 0
+    upcoming_units_count = 0
+    completed_units_count = 0
+    
+    for unit_data in units_with_dates:
+        if unit_data.session_count == 0:
+            # Units with no sessions are considered upcoming
+            upcoming_units_count += 1
+        else:
+            first_session_date = unit_data.first_session.date() if unit_data.first_session else None
+            last_session_date = unit_data.last_session.date() if unit_data.last_session else None
+            
+            if first_session_date and last_session_date:
+                if last_session_date < today:
+                    # All sessions are in the past - completed
+                    completed_units_count += 1
+                elif first_session_date > today:
+                    # All sessions are in the future - upcoming
+                    upcoming_units_count += 1
+                else:
+                    # Some sessions in past, some in future - active
+                    active_units_count += 1
+            else:
+                # Units with incomplete date information are considered upcoming
+                upcoming_units_count += 1
+    
+    # Calculate average sessions per unit and total sessions completed
+    avg_sessions_per_unit = db.session.query(func.avg(
+        db.session.query(func.count(Session.id))
+        .join(Module, Module.id == Session.module_id)
+        .join(Unit, Unit.id == Module.unit_id)
+        .group_by(Unit.id)
+        .subquery().c.count
+    )).scalar() or 0
+    
+    total_sessions_completed = (
+        db.session.query(func.count(Session.id))
+        .join(Module, Module.id == Session.module_id)
+        .join(Unit, Unit.id == Module.unit_id)
+        .filter(func.date(Session.start_time) < today)
+        .scalar() or 0
+    )
     
     # Calculate experience level distribution
     expert_facilitators = 0
@@ -87,8 +206,10 @@ def dashboard():
                          total_sessions=total_sessions,
                          pending_swaps=pending_swaps,
                          unassigned_sessions=unassigned_sessions,
-                         facilitators=facilitators,  # This variable now contains all employees
+                         facilitators=facilitators,  # This variable now contains paginated employees
                          all_employees=facilitators,  # Explicit alias for clarity
+                         facilitators_pagination=facilitators_pagination,  # Pagination object
+                         unit_associations=unit_associations,  # Unit associations data
                          total_facilitators_count=total_facilitators,
                          active_facilitators_count=active_facilitators,
                          total_hours_worked=total_hours_worked,
@@ -96,7 +217,13 @@ def dashboard():
                          expert_facilitators=expert_facilitators,
                          senior_facilitators=senior_facilitators,
                          junior_facilitators=junior_facilitators,
-                         admin_count=admin_count)
+                         admin_count=admin_count,
+                         # Unit status metrics based on session dates
+                         active_units_count=active_units_count,
+                         upcoming_units_count=upcoming_units_count,
+                         completed_units_count=completed_units_count,
+                         avg_sessions_per_unit=round(avg_sessions_per_unit, 1) if avg_sessions_per_unit else 0,
+                         total_sessions_completed=total_sessions_completed)
 
 @admin_bp.route('/delete-employee/<int:employee_id>', methods=['DELETE'])
 @admin_required
@@ -1460,4 +1587,117 @@ def admin_delete_unavailability(item_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': f'Failed to delete: {e}'}), 500
+
+
+@admin_bp.route('/toggle-user-status/<int:user_id>', methods=['POST'])
+@admin_required
+def toggle_user_status(user_id):
+    """Toggle user status between active and disabled"""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        import json
+        
+        # Get current preferences or create empty dict
+        if user.preferences:
+            try:
+                prefs = json.loads(user.preferences)
+            except:
+                prefs = {}
+        else:
+            prefs = {}
+        
+        # Toggle between active and disabled
+        current_status = prefs.get('status', 'active')
+        if current_status == 'active':
+            prefs['status'] = 'disabled'
+            action = 'disabled'
+        else:
+            prefs['status'] = 'active'
+            action = 'enabled'
+        
+        user.preferences = json.dumps(prefs)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Account {action} successfully',
+            'new_status': prefs['status']
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
+@admin_bp.route('/export-users-csv')
+@admin_required
+def export_users_csv():
+    """Export all users to CSV format"""
+    # Get all users (facilitators, unit coordinators, admins)
+    users = User.query.filter(User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR, UserRole.ADMIN])).all()
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header row
+    writer.writerow([
+        'ID',
+        'Full Name', 
+        'Email',
+        'Role',
+        'Position',
+        'Status',
+        'Phone',
+        'Experience Level',
+        'Hourly Rate',
+        'Staff Number',
+        'Min Hours',
+        'Max Hours'
+    ])
+    
+    # Write user data
+    for user in users:
+        # Parse preferences to get additional data
+        position = 'facilitator'
+        status = 'active'
+        phone = 'No phone set'
+        experience_level = 'junior'
+        hourly_rate = 25
+        
+        if user.preferences:
+            try:
+                prefs = json.loads(user.preferences)
+                position = prefs.get('position', 'facilitator')
+                status = prefs.get('status', 'active')
+                phone = prefs.get('phone', 'No phone set')
+                experience_level = prefs.get('experience_level', 'junior')
+                hourly_rate = prefs.get('hourly_rate', 25)
+            except:
+                pass
+        
+        writer.writerow([
+            user.id,
+            user.full_name,
+            user.email,
+            user.role.value.replace('_', ' ').title(),
+            position.replace('_', ' ').title(),
+            status.replace('_', ' ').title(),
+            phone,
+            experience_level.replace('_', ' ').title(),
+            hourly_rate,
+            user.staff_number or 'N/A',
+            user.min_hours,
+            user.max_hours
+        ])
+    
+    # Prepare response
+    output.seek(0)
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = 'text/csv'
+    response.headers['Content-Disposition'] = f'attachment; filename=users_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+    
+    return response
 
