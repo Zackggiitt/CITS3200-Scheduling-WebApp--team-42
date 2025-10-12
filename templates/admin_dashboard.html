@@ -512,15 +512,15 @@
       <!-- Top Row - Unit Status -->
       <div class="unit-status-row">
         <div class="unit-status-metric">
-          <div class="unit-status-value active">{{ active_units_count or 28 }}</div>
+          <div class="unit-status-value active">{{ active_units_count }}</div>
           <div class="unit-status-label">Active Units</div>
         </div>
         <div class="unit-status-metric">
-          <div class="unit-status-value upcoming">{{ upcoming_units_count or 12 }}</div>
+          <div class="unit-status-value upcoming">{{ upcoming_units_count }}</div>
           <div class="unit-status-label">Upcoming Units</div>
         </div>
         <div class="unit-status-metric">
-          <div class="unit-status-value completed">{{ completed_units_count or 7 }}</div>
+          <div class="unit-status-value completed">{{ completed_units_count }}</div>
           <div class="unit-status-label">Completed Units</div>
         </div>
       </div>
@@ -528,11 +528,11 @@
       <!-- Bottom Row - Session Statistics -->
       <div class="session-stats-row">
         <div class="session-stat-metric">
-          <div class="session-stat-value">{{ avg_sessions_per_unit or 8.3 }}</div>
+          <div class="session-stat-value">{{ avg_sessions_per_unit }}</div>
           <div class="session-stat-label">Average Sessions per Unit</div>
         </div>
         <div class="session-stat-metric">
-          <div class="session-stat-value">{{ total_sessions_completed or 1847 }}</div>
+          <div class="session-stat-value">{{ total_sessions_completed }}</div>
           <div class="session-stat-label">Total Sessions Completed</div>
         </div>
       </div>
@@ -654,10 +654,10 @@
               </div>
             </div>
             <div class="facilitator-actions">
-              <button class="action-btn edit" title="Edit Profile" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name }}', '{{ facilitator.email }}')">
+              <button class="action-btn edit" title="Edit Profile" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name|replace("'", "\\'") }}', '{{ facilitator.email|replace("'", "\\'") }}')">
                 <span class="material-icons">person</span>
               </button>
-              <button class="action-btn key" title="Edit Details" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name }}', '{{ facilitator.email }}')">
+              <button class="action-btn key" title="Edit Details" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name|replace("'", "\\'") }}', '{{ facilitator.email|replace("'", "\\'") }}')">
                 <span class="material-icons">edit</span>
               </button>
               <div class="dropdown-container">
@@ -665,7 +665,7 @@
                   <span class="material-icons">more_vert</span>
                 </button>
                 <div class="dropdown-menu" id="dropdown-{{ facilitator.id }}" style="display: none;">
-                  <button class="dropdown-item" onclick="disableAccount({{ facilitator.id }}, '{{ facilitator.full_name }}')">
+                  <button class="dropdown-item" onclick="disableAccount({{ facilitator.id }}, '{{ facilitator.full_name|replace("'", "\\'") }}')">
                     <span class="material-icons">person_off</span>
                     Disable Account
                   </button>
@@ -675,7 +675,7 @@
                       Delete Employee Account
                     </button>
                   {% else %}
-                    <button class="dropdown-item delete" onclick="deleteAccount({{ facilitator.id }}, '{{ facilitator.full_name }}')">
+                    <button class="dropdown-item delete" onclick="deleteAccount({{ facilitator.id }}, '{{ facilitator.full_name|replace("'", "\\'") }}')">
                       <span class="material-icons">delete</span>
                       Delete Employee Account
                     </button>

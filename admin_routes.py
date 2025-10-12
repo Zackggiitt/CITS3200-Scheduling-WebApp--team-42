@@ -43,6 +43,70 @@ def dashboard():
     # Calculate additional statistics
     active_facilitators = User.query.filter_by(role=UserRole.FACILITATOR).count()  # Keep facilitator count for compatibility
     
+    # Calculate unit status distribution based on session dates
+    from datetime import datetime, date
+    from sqlalchemy import func
+    
+    today = date.today()
+    
+    # Get all units with their session date ranges
+    units_with_dates = (
+        db.session.query(
+            Unit.id,
+            func.min(Session.start_time).label('first_session'),
+            func.max(Session.start_time).label('last_session'),
+            func.count(Session.id).label('session_count')
+        )
+        .outerjoin(Module, Module.unit_id == Unit.id)
+        .outerjoin(Session, Session.module_id == Module.id)
+        .group_by(Unit.id)
+        .all()
+    )
+    
+    # Initialize counters
+    active_units_count = 0
+    upcoming_units_count = 0
+    completed_units_count = 0
+    
+    for unit_data in units_with_dates:
+        if unit_data.session_count == 0:
+            # Units with no sessions are considered upcoming
+            upcoming_units_count += 1
+        else:
+            first_session_date = unit_data.first_session.date() if unit_data.first_session else None
+            last_session_date = unit_data.last_session.date() if unit_data.last_session else None
+            
+            if first_session_date and last_session_date:
+                if last_session_date < today:
+                    # All sessions are in the past - completed
+                    completed_units_count += 1
+                elif first_session_date > today:
+                    # All sessions are in the future - upcoming
+                    upcoming_units_count += 1
+                else:
+                    # Some sessions in past, some in future - active
+                    active_units_count += 1
+            else:
+                # Units with incomplete date information are considered upcoming
+                upcoming_units_count += 1
+    
+    # Calculate average sessions per unit and total sessions completed
+    avg_sessions_per_unit = db.session.query(func.avg(
+        db.session.query(func.count(Session.id))
+        .join(Module, Module.id == Session.module_id)
+        .join(Unit, Unit.id == Module.unit_id)
+        .group_by(Unit.id)
+        .subquery().c.count
+    )).scalar() or 0
+    
+    total_sessions_completed = (
+        db.session.query(func.count(Session.id))
+        .join(Module, Module.id == Session.module_id)
+        .join(Unit, Unit.id == Module.unit_id)
+        .filter(func.date(Session.start_time) < today)
+        .scalar() or 0
+    )
+    
     # Calculate experience level distribution
     expert_facilitators = 0
     senior_facilitators = 0
@@ -96,7 +160,13 @@ def dashboard():
                          expert_facilitators=expert_facilitators,
                          senior_facilitators=senior_facilitators,
                          junior_facilitators=junior_facilitators,
-                         admin_count=admin_count)
+                         admin_count=admin_count,
+                         # Unit status metrics based on session dates
+                         active_units_count=active_units_count,
+                         upcoming_units_count=upcoming_units_count,
+                         completed_units_count=completed_units_count,
+                         avg_sessions_per_unit=round(avg_sessions_per_unit, 1) if avg_sessions_per_unit else 0,
+                         total_sessions_completed=total_sessions_completed)
 
 @admin_bp.route('/delete-employee/<int:employee_id>', methods=['DELETE'])
 @admin_required
