@@ -1,10 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, make_response
 from models import db, User, UserRole, Unit, Module, FacilitatorSkill, SkillLevel, SwapRequest, SwapStatus, Session, Assignment, UnitFacilitator, Unavailability, RecurringPattern
 from werkzeug.security import generate_password_hash
 from datetime import datetime, time
 from auth import admin_required, get_current_user
 from flask_wtf.csrf import validate_csrf
 import json
+import csv
+import io
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -33,8 +35,15 @@ def dashboard():
     pending_swaps = SwapRequest.query.filter_by(status=SwapStatus.PENDING).count()
     unassigned_sessions = Session.query.outerjoin(Assignment).filter(Assignment.id == None).count()
     
-    # Get all employees data for the directory
-    facilitators = User.query.filter(User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR, UserRole.ADMIN])).all()
+    # Get employees data for the directory with pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    facilitators_query = User.query.filter(User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR, UserRole.ADMIN]))
+    facilitators_pagination = facilitators_query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    facilitators = facilitators_pagination.items
     
     # Count admins to check if we can delete the last one
     admin_count = User.query.filter_by(role=UserRole.ADMIN).count()
@@ -151,8 +160,9 @@ def dashboard():
                          total_sessions=total_sessions,
                          pending_swaps=pending_swaps,
                          unassigned_sessions=unassigned_sessions,
-                         facilitators=facilitators,  # This variable now contains all employees
+                         facilitators=facilitators,  # This variable now contains paginated employees
                          all_employees=facilitators,  # Explicit alias for clarity
+                         facilitators_pagination=facilitators_pagination,  # Pagination object
                          total_facilitators_count=total_facilitators,
                          active_facilitators_count=active_facilitators,
                          total_hours_worked=total_hours_worked,
@@ -1525,4 +1535,75 @@ def admin_delete_unavailability(item_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': f'Failed to delete: {e}'}), 500
+
+
+@admin_bp.route('/export-users-csv')
+@admin_required
+def export_users_csv():
+    """Export all users to CSV format"""
+    # Get all users (facilitators, unit coordinators, admins)
+    users = User.query.filter(User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR, UserRole.ADMIN])).all()
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header row
+    writer.writerow([
+        'ID',
+        'Full Name', 
+        'Email',
+        'Role',
+        'Position',
+        'Status',
+        'Phone',
+        'Experience Level',
+        'Hourly Rate',
+        'Staff Number',
+        'Min Hours',
+        'Max Hours'
+    ])
+    
+    # Write user data
+    for user in users:
+        # Parse preferences to get additional data
+        position = 'facilitator'
+        status = 'active'
+        phone = 'No phone set'
+        experience_level = 'junior'
+        hourly_rate = 25
+        
+        if user.preferences:
+            try:
+                prefs = json.loads(user.preferences)
+                position = prefs.get('position', 'facilitator')
+                status = prefs.get('status', 'active')
+                phone = prefs.get('phone', 'No phone set')
+                experience_level = prefs.get('experience_level', 'junior')
+                hourly_rate = prefs.get('hourly_rate', 25)
+            except:
+                pass
+        
+        writer.writerow([
+            user.id,
+            user.full_name,
+            user.email,
+            user.role.value.replace('_', ' ').title(),
+            position.replace('_', ' ').title(),
+            status.replace('_', ' ').title(),
+            phone,
+            experience_level.replace('_', ' ').title(),
+            hourly_rate,
+            user.staff_number or 'N/A',
+            user.min_hours,
+            user.max_hours
+        ])
+    
+    # Prepare response
+    output.seek(0)
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = 'text/csv'
+    response.headers['Content-Disposition'] = f'attachment; filename=users_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+    
+    return response
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Schedule Manager</title>
+  <title>Administrator Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
@@ -366,6 +366,89 @@
       border-color: #9ca3af;
     }
 
+    /* Pagination Styles */
+    .pagination-container {
+      margin-top: 32px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 8px;
+    }
+
+    .pagination-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      color: #374151;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .pagination-btn:hover:not(.disabled) {
+      background-color: #f3f4f6;
+      border-color: #d1d5db;
+    }
+
+    .pagination-btn.disabled {
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .pagination-pages {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin: 0 8px;
+    }
+
+    .pagination-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      text-decoration: none;
+      color: #374151;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .pagination-page:hover:not(.current) {
+      background-color: #f3f4f6;
+    }
+
+    .pagination-page.current {
+      background-color: #667eea;
+      color: white;
+      font-weight: 600;
+    }
+
+    .pagination-ellipsis {
+      color: #9ca3af;
+      font-size: 14px;
+      padding: 0 4px;
+    }
+
+    .pagination-btn .material-icons {
+      font-size: 18px;
+    }
+
     @media (max-width: 768px) {
       .profile-cards {
         grid-template-columns: 1fr;
@@ -376,6 +459,15 @@
         text-align: center;
         gap: 16px;
       }
+
+      .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .pagination-pages {
+        margin: 4px 0;
+      }
     }
   </style>
 </head>
@@ -385,7 +477,7 @@
     <div class="admin-topbar__container">
       <div class="admin-topbar__left">
         <span class="material-icons admin-topbar__logo" aria-hidden="true">event</span>
-        <span class="admin-topbar__title">Schedule Manager</span>
+        <span class="admin-topbar__title">Administrator Portal</span>
       </div>
       <div class="admin-topbar__right">
         <a href="{{ url_for('unitcoordinator.admin_dashboard') }}" class="admin-topbar-portal-btn" title="Unit Coordinator Portal">
@@ -547,13 +639,9 @@
           <p class="facilitator-subtitle">Comprehensive user oversight, performance tracking, and workforce management.</p>
         </div>
         <div class="facilitator-header-actions">
-          <button class="facilitator-action-btn secondary">
+          <button class="facilitator-action-btn secondary" onclick="exportUsersCSV()">
             <span class="material-icons">download</span>
             Export Data
-          </button>
-          <button class="facilitator-action-btn secondary">
-            <span class="material-icons">upload</span>
-            Import
           </button>
           <button class="facilitator-action-btn primary">
             <span class="material-icons">person_add</span>
@@ -589,7 +677,12 @@
 
         <!-- Results Summary -->
         <div class="results-summary">
-          <span id="resultsCount">Showing {{ facilitators|length or 0 }} of {{ facilitators|length or 0 }} users</span>
+          <span id="resultsCount">
+            Showing {{ facilitators|length }} of {{ facilitators_pagination.total }} users
+            {% if facilitators_pagination.pages > 1 %}
+              (Page {{ facilitators_pagination.page }} of {{ facilitators_pagination.pages }})
+            {% endif %}
+          </span>
         </div>
 
         <!-- Facilitator List -->
@@ -654,10 +747,10 @@
               </div>
             </div>
             <div class="facilitator-actions">
-              <button class="action-btn edit" title="Edit Profile" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name|replace("'", "\\'") }}', '{{ facilitator.email|replace("'", "\\'") }}')">
+              <button class="action-btn edit" title="Edit Profile" onclick="openEditModal({{ facilitator.id }}, &quot;{{ facilitator.full_name|replace('"', '\\"') }}&quot;, &quot;{{ facilitator.email|replace('"', '\\"') }}&quot;)">
                 <span class="material-icons">person</span>
               </button>
-              <button class="action-btn key" title="Edit Details" onclick="openEditModal({{ facilitator.id }}, '{{ facilitator.full_name|replace("'", "\\'") }}', '{{ facilitator.email|replace("'", "\\'") }}')">
+              <button class="action-btn key" title="Edit Details" onclick="openEditModal({{ facilitator.id }}, &quot;{{ facilitator.full_name|replace('"', '\\"') }}&quot;, &quot;{{ facilitator.email|replace('"', '\\"') }}&quot;)">
                 <span class="material-icons">edit</span>
               </button>
               <div class="dropdown-container">
@@ -665,7 +758,7 @@
                   <span class="material-icons">more_vert</span>
                 </button>
                 <div class="dropdown-menu" id="dropdown-{{ facilitator.id }}" style="display: none;">
-                  <button class="dropdown-item" onclick="disableAccount({{ facilitator.id }}, '{{ facilitator.full_name|replace("'", "\\'") }}')">
+                  <button class="dropdown-item" onclick="disableAccount({{ facilitator.id }}, &quot;{{ facilitator.full_name|replace('"', '\\"') }}&quot;)">
                     <span class="material-icons">person_off</span>
                     Disable Account
                   </button>
@@ -675,7 +768,7 @@
                       Delete Employee Account
                     </button>
                   {% else %}
-                    <button class="dropdown-item delete" onclick="deleteAccount({{ facilitator.id }}, '{{ facilitator.full_name|replace("'", "\\'") }}')">
+                    <button class="dropdown-item delete" onclick="deleteAccount({{ facilitator.id }}, &quot;{{ facilitator.full_name|replace('"', '\\"') }}&quot;)">
                       <span class="material-icons">delete</span>
                       Delete Employee Account
                     </button>
@@ -694,6 +787,54 @@
           </div>
           {% endif %}
         </div>
+
+        <!-- Pagination Controls -->
+        {% if facilitators_pagination.pages > 1 %}
+        <div class="pagination-container">
+          <div class="pagination">
+            {% if facilitators_pagination.has_prev %}
+              <a href="{{ url_for('admin.dashboard', tab='employees', page=facilitators_pagination.prev_num) }}" 
+                 class="pagination-btn prev">
+                <span class="material-icons">chevron_left</span>
+                Previous
+              </a>
+            {% else %}
+              <span class="pagination-btn prev disabled">
+                <span class="material-icons">chevron_left</span>
+                Previous
+              </span>
+            {% endif %}
+
+            <div class="pagination-pages">
+              {% for page_num in facilitators_pagination.iter_pages() %}
+                {% if page_num %}
+                  {% if page_num != facilitators_pagination.page %}
+                    <a href="{{ url_for('admin.dashboard', tab='employees', page=page_num) }}" 
+                       class="pagination-page">{{ page_num }}</a>
+                  {% else %}
+                    <span class="pagination-page current">{{ page_num }}</span>
+                  {% endif %}
+                {% else %}
+                  <span class="pagination-ellipsis">…</span>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+            {% if facilitators_pagination.has_next %}
+              <a href="{{ url_for('admin.dashboard', tab='employees', page=facilitators_pagination.next_num) }}" 
+                 class="pagination-btn next">
+                Next
+                <span class="material-icons">chevron_right</span>
+              </a>
+            {% else %}
+              <span class="pagination-btn next disabled">
+                Next
+                <span class="material-icons">chevron_right</span>
+              </span>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
       </div>
     </div>
 
@@ -1037,6 +1178,11 @@
     function createUnit() {
       // You can implement create unit functionality here
       alert('Create Unit functionality would be implemented here');
+    }
+
+    function exportUsersCSV() {
+      // Redirect to the CSV export endpoint
+      window.location.href = "{{ url_for('admin.export_users_csv') }}";
     }
   </script>
 </body>
