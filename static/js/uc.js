@@ -4199,10 +4199,50 @@ function setupScheduleEventListeners() {
     autoAssignBtn.addEventListener('click', async () => {
       await autoAssignFacilitators();
     });
+    
+    // Check validation status on page load
+    checkAutoAssignValidation();
   }
 }
 
 // ===== Auto-Assign Facilitators =====
+
+async function checkAutoAssignValidation() {
+  const unitId = getUnitId();
+  if (!unitId) return;
+
+  const autoAssignBtn = document.querySelector('.auto-assign-btn');
+  if (!autoAssignBtn) return;
+
+  try {
+    const validationUrl = withUnitId(window.FLASK_ROUTES.AUTO_ASSIGN_TEMPLATE.replace('auto_assign', 'auto_assign/validation'), unitId);
+    const validationResponse = await fetch(validationUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': window.CSRF_TOKEN
+      }
+    });
+
+    const validationData = await validationResponse.json();
+
+    if (validationData.ok && validationData.can_run) {
+      // Button is ready to use
+      autoAssignBtn.disabled = false;
+      autoAssignBtn.title = validationData.message || 'Ready to auto-assign facilitators';
+      autoAssignBtn.style.opacity = '1';
+    } else {
+      // Button should be disabled
+      autoAssignBtn.disabled = true;
+      autoAssignBtn.title = validationData.message || 'Prerequisites not met';
+      autoAssignBtn.style.opacity = '0.6';
+    }
+  } catch (error) {
+    console.error('Validation check error:', error);
+    // On error, keep button enabled but with warning
+    autoAssignBtn.title = 'Could not verify prerequisites';
+  }
+}
 
 async function autoAssignFacilitators() {
   const unitId = getUnitId();
@@ -4213,6 +4253,40 @@ async function autoAssignFacilitators() {
 
   const autoAssignBtn = document.querySelector('.auto-assign-btn');
   if (!autoAssignBtn) return;
+
+  // Check validation status first
+  try {
+    const validationUrl = withUnitId(window.FLASK_ROUTES.AUTO_ASSIGN_TEMPLATE.replace('auto_assign', 'auto_assign/validation'), unitId);
+    const validationResponse = await fetch(validationUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': window.CSRF_TOKEN
+      }
+    });
+
+    const validationData = await validationResponse.json();
+
+    if (!validationData.ok || !validationData.can_run) {
+      let errorMessage = validationData.error || 'Cannot run auto-assignment: Prerequisites not met';
+      
+      if (validationData.facilitators_missing_skills && validationData.facilitators_missing_skills.length > 0) {
+        errorMessage += '\n\nFacilitators who need to declare their skills:';
+        validationData.facilitators_missing_skills.forEach(facilitator => {
+          errorMessage += `\n• ${facilitator.name} (${facilitator.email})`;
+          errorMessage += `\n  Missing skills for: ${facilitator.missing_modules.join(', ')}`;
+        });
+        errorMessage += '\n\nPlease ask these facilitators to declare their skills for all modules before running auto-assignment.';
+      }
+      
+      alert(errorMessage);
+      return;
+    }
+  } catch (error) {
+    console.error('Validation check error:', error);
+    alert('Could not verify prerequisites. Please try again.');
+    return;
+  }
 
   // Show loading state
   const originalText = autoAssignBtn.innerHTML;

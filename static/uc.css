@@ -1957,6 +1957,17 @@ main {
   transform: translateY(-1px);
 }
 
+.auto-assign-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.auto-assign-btn:disabled:hover {
+  background: #9ca3af;
+  transform: none;
+}
+
 .auto-assign-btn .material-icons {
   font-size: 18px;
 }
