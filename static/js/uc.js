@@ -2328,14 +2328,14 @@ async function populateReview() {
           <div class="flex items-center gap-3">
             <span class="w-2.5 h-2.5 rounded-full bg-blue-300 inline-block"></span>
             <div>
-              <div class="font-medium">${f}</div>
+              <div class="font-medium">${f.email}</div>
               <div class="text-sm text-gray-600">Facilitator</div>
             </div>
           </div>
           <button 
             class="remove-facilitator-btn text-red-600 hover:text-red-800 transition-colors p-1 rounded"
             title="Remove facilitator"
-            data-email="${f}"
+            data-email="${f.email}"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
