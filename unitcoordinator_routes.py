@@ -2202,14 +2202,16 @@ def auto_assign_facilitators(unit_id: int):
                 new_assignment = Assignment(
                     session_id=assignment['session']['id'],
                     facilitator_id=assignment['facilitator']['id'],
-                    is_confirmed=False  # Require confirmation
+                    is_confirmed=False,  # Require confirmation
+                    role=assignment.get('role', 'lead')  # Track lead vs support role
                 )
                 db.session.add(new_assignment)
                 created_assignments.append({
                     'facilitator_name': assignment['facilitator']['name'],
                     'session_name': assignment['session']['module_name'],
                     'time': format_session_time(assignment['session']),
-                    'score': round(assignment['score'], 2)
+                    'score': round(assignment['score'], 2),
+                    'role': assignment.get('role', 'lead')
                 })
         
         db.session.commit()

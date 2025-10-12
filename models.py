@@ -280,9 +280,10 @@ class Assignment(db.Model):
     facilitator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_confirmed = db.Column(db.Boolean, default=False)
+    role = db.Column(db.String(20), default='lead')  # 'lead' or 'support'
     
     def __repr__(self):
-        return f'<Assignment {self.facilitator.email} -> {self.session.module.module_name}>'
+        return f'<Assignment {self.facilitator.email} -> {self.session.module.module_name} ({self.role})>'
 
 class SwapRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)

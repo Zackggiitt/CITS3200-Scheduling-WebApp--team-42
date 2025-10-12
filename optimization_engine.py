@@ -59,7 +59,9 @@ def get_real_sessions():
             'end_datetime': session.end_time,  # Full datetime for conflict checking
             'duration_hours': duration,
             'required_skill_level': SkillLevel.HAVE_SOME_SKILL,  # Default skill level
-            'location': session.location or 'TBA'
+            'location': session.location or 'TBA',
+            'lead_staff_required': session.lead_staff_required or 1,  # Bulk staffing: number of leads
+            'support_staff_required': session.support_staff_required or 0  # Bulk staffing: number of supports
         })
     
     # If no real sessions exist, return empty list instead of dummy data
@@ -281,6 +283,7 @@ def generate_optimal_assignments(facilitators):
     """
     Main function to generate optimal facilitator-to-session assignments
     Uses enhanced fairness algorithm to ensure equal distribution of hours
+    Now supports multiple facilitators per session (lead and support staff)
     """
     sessions = get_real_sessions()
     
@@ -294,43 +297,115 @@ def generate_optimal_assignments(facilitators):
     sorted_sessions = sorted(sessions, key=lambda s: (-s['duration_hours'], -SKILL_SCORES.get(s['required_skill_level'], 0)))
     
     for session in sorted_sessions:
-        best_facilitator = None
-        best_score = 0.0
+        # Get staffing requirements from session
+        lead_staff_needed = session.get('lead_staff_required', 1)
+        support_staff_needed = session.get('support_staff_required', 0)
+        total_staff_needed = lead_staff_needed + support_staff_needed
         
         # Calculate current hours per facilitator for fairness calculation
         total_hours_per_facilitator = {}
         for facilitator in facilitators:
             total_hours_per_facilitator[facilitator['id']] = get_assigned_hours(facilitator, assignments)
         
-        # Find the best facilitator for this session
-        for facilitator in facilitators:
-            # Check for time conflicts first (hard constraint)
-            if check_time_conflict(facilitator, session, assignments):
-                continue  # Skip this facilitator - they're already booked at this time
-            
-            # Check for location conflicts (hard constraint)
-            if check_location_conflict(facilitator, session, assignments):
-                continue  # Skip this facilitator - they're assigned to a different location at this time
-            
-            score = calculate_facilitator_score(
-                facilitator, 
-                session, 
-                assignments, 
-                total_hours_per_facilitator
-            )
-            if score > best_score:
-                best_score = score
-                best_facilitator = facilitator
+        # Track assigned facilitators for this session
+        session_assignments = []
         
-        # Assign if we found a suitable facilitator
-        if best_facilitator and best_score > 0:
-            assignments.append({
-                'facilitator': best_facilitator,
-                'session': session,
-                'score': best_score
-            })
-        else:
-            # Generate detailed conflict message
+        # First, assign lead staff (prefer higher skill levels)
+        for lead_slot in range(lead_staff_needed):
+            best_facilitator = None
+            best_score = 0.0
+            
+            # Find the best available facilitator for this lead role
+            for facilitator in facilitators:
+                # Skip if already assigned to this session
+                if any(a['facilitator']['id'] == facilitator['id'] for a in session_assignments):
+                    continue
+                
+                # Check for time conflicts (hard constraint)
+                if check_time_conflict(facilitator, session, assignments):
+                    continue
+                
+                # Check for location conflicts (hard constraint)
+                if check_location_conflict(facilitator, session, assignments):
+                    continue
+                
+                score = calculate_facilitator_score(
+                    facilitator, 
+                    session, 
+                    assignments, 
+                    total_hours_per_facilitator
+                )
+                
+                # Bonus for lead roles: prefer higher skill levels
+                skill_score = get_skill_score(facilitator, session)
+                score = score + (skill_score * 0.1)  # Add 10% bonus based on skill
+                
+                if score > best_score:
+                    best_score = score
+                    best_facilitator = facilitator
+            
+            # Assign lead if found
+            if best_facilitator and best_score > 0:
+                assignment = {
+                    'facilitator': best_facilitator,
+                    'session': session,
+                    'score': best_score,
+                    'role': 'lead'
+                }
+                session_assignments.append(assignment)
+                assignments.append(assignment)
+            else:
+                # Could not fill this lead position
+                conflict_msg = f"Could not assign lead staff {lead_slot + 1}/{lead_staff_needed} for {session['module_name']} ({format_session_time(session)})"
+                conflicts.append(conflict_msg)
+        
+        # Second, assign support staff
+        for support_slot in range(support_staff_needed):
+            best_facilitator = None
+            best_score = 0.0
+            
+            # Find the best available facilitator for this support role
+            for facilitator in facilitators:
+                # Skip if already assigned to this session
+                if any(a['facilitator']['id'] == facilitator['id'] for a in session_assignments):
+                    continue
+                
+                # Check for time conflicts (hard constraint)
+                if check_time_conflict(facilitator, session, assignments):
+                    continue
+                
+                # Check for location conflicts (hard constraint)
+                if check_location_conflict(facilitator, session, assignments):
+                    continue
+                
+                score = calculate_facilitator_score(
+                    facilitator, 
+                    session, 
+                    assignments, 
+                    total_hours_per_facilitator
+                )
+                
+                if score > best_score:
+                    best_score = score
+                    best_facilitator = facilitator
+            
+            # Assign support if found
+            if best_facilitator and best_score > 0:
+                assignment = {
+                    'facilitator': best_facilitator,
+                    'session': session,
+                    'score': best_score,
+                    'role': 'support'
+                }
+                session_assignments.append(assignment)
+                assignments.append(assignment)
+            else:
+                # Could not fill this support position
+                conflict_msg = f"Could not assign support staff {support_slot + 1}/{support_staff_needed} for {session['module_name']} ({format_session_time(session)})"
+                conflicts.append(conflict_msg)
+        
+        # If no facilitators were assigned at all, provide detailed reasons
+        if not session_assignments and total_staff_needed > 0:
             conflict_reasons = []
             
             # Check why no facilitator was suitable
@@ -354,9 +429,9 @@ def generate_optimal_assignments(facilitators):
                     conflict_reasons.append(f"{facilitator['name']} is unavailable at this time")
             
             if conflict_reasons:
-                conflict_msg = f"No suitable facilitator found for {session['module_name']} ({format_session_time(session)}) - Reasons: {'; '.join(conflict_reasons[:3])}"
+                conflict_msg = f"No facilitators found for {session['module_name']} ({format_session_time(session)}) - Reasons: {'; '.join(conflict_reasons[:3])}"
             else:
-                conflict_msg = f"No suitable facilitator found for {session['module_name']} ({format_session_time(session)})"
+                conflict_msg = f"No facilitators found for {session['module_name']} ({format_session_time(session)})"
             
             conflicts.append(conflict_msg)
     
@@ -500,6 +575,8 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
                 'email': fac_email,
                 'total_hours': 0,
                 'session_count': 0,
+                'lead_count': 0,
+                'support_count': 0,
                 'min_hours_target': assignment['facilitator'].get('min_hours', 0),
                 'max_hours_target': assignment['facilitator'].get('max_hours', 20),
                 'avg_score': 0,
@@ -515,6 +592,13 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
                 skill_level_name = get_skill_level_name(skill_level)
                 break
         
+        # Track role counts
+        role = assignment.get('role', 'lead')
+        if role == 'lead':
+            facilitator_stats[fac_id]['lead_count'] += 1
+        else:
+            facilitator_stats[fac_id]['support_count'] += 1
+        
         facilitator_stats[fac_id]['total_hours'] += assignment['session']['duration_hours']
         facilitator_stats[fac_id]['session_count'] += 1
         facilitator_stats[fac_id]['avg_score'] += assignment['score']
@@ -523,7 +607,8 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
             'time': format_session_time(assignment['session']),
             'hours': assignment['session']['duration_hours'],
             'score': assignment['score'],
-            'skill_level': skill_level_name
+            'skill_level': skill_level_name,
+            'role': role
         })
     
     # Calculate average scores
@@ -585,6 +670,8 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
         "Facilitator Name", 
         "Email",
         "Sessions Assigned",
+        "Lead Roles",
+        "Support Roles",
         "Total Hours", 
         "Min Hours Target",
         "Max Hours Target",
@@ -614,6 +701,8 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
             stats['name'],
             stats['email'],
             stats['session_count'],
+            stats['lead_count'],
+            stats['support_count'],
             f"{total_hours:.1f}",
             min_target,
             max_target,
@@ -774,6 +863,7 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
         "Module/Session",
         "Day & Time",
         "Duration (Hours)",
+        "Role",
         "Facilitator Skill Level",
         "Assignment Score"
     ])
@@ -788,6 +878,7 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
                 'module': session['module'],
                 'time': session['time'],
                 'hours': session['hours'],
+                'role': session.get('role', 'lead'),
                 'skill_level': session['skill_level'],
                 'score': session['score']
             })
@@ -802,6 +893,7 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
             assignment['module'],
             assignment['time'],
             f"{assignment['hours']:.1f}",
+            assignment['role'].capitalize(),
             assignment['skill_level'],
             f"{assignment['score']:.3f}"
         ])
