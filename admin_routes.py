@@ -438,19 +438,16 @@ def create_employee():
         first_name = name_parts[0] if name_parts else ''
         last_name = name_parts[1] if len(name_parts) > 1 else ''
         
-        # Create new user
+        # Create new user - only email and role, no password yet
         new_user = User(
             email=data['email'],
-            first_name=first_name,
-            last_name=last_name,
-            role=user_role,
-            # Generate a temporary password (user will need to reset)
-            password_hash=generate_password_hash('temp_password_123')
+            role=user_role
+            # User will set their own name, phone, and password via setup email
         )
         
         # Store additional data in preferences field as JSON
         additional_data = {
-            'phone': data['phone'],
+            'phone': data.get('phone', ''),
             'position': data['position'],
             'status': data.get('status', 'active')
         }
@@ -474,13 +471,21 @@ def create_employee():
         db.session.add(new_user)
         db.session.commit()
         
-        # TODO: Send welcome email with temporary password
-        position_name = data['position'].replace('_', ' ').title()
-        print(f"Created new {position_name}: {new_user.email} with role: {user_role}")
+        # Send account setup email
+        from email_service import send_welcome_email
+        try:
+            send_welcome_email(data['email'], user_role=user_role)
+            position_name = data['position'].replace('_', ' ').title()
+            print(f"Created new {position_name}: {new_user.email} with role: {user_role}")
+            email_status = "They will receive a setup email to complete their account."
+        except Exception as e:
+            print(f"Failed to send setup email to {data['email']}: {e}")
+            email_status = "Account created but setup email failed to send."
         
+        position_name = data['position'].replace('_', ' ').title()
         return jsonify({
             'success': True, 
-            'message': f'{position_name} created successfully! They will receive login credentials via email.',
+            'message': f'{position_name} created successfully! {email_status}',
             'employee_id': new_user.id,
             'email': new_user.email,
             'position': position_name
