@@ -2698,7 +2698,7 @@ def publish_schedule(unit_id: int):
         facilitator_ids = set()
         for session in sessions:
             # Get facilitators assigned to this session
-            assignments = SessionFacilitator.query.filter_by(session_id=session.id).all()
+            assignments = Assignment.query.filter_by(session_id=session.id).all()
             for assignment in assignments:
                 facilitator_ids.add(assignment.facilitator_id)
         
