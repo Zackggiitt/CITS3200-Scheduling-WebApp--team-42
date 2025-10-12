@@ -134,18 +134,56 @@
                     '<span class="material-icons">close</span>Hide Password Section';
             });
 
-            // Validate password match
+            // Validate password requirements
+            function validatePasswordRequirements(password) {
+                const errors = [];
+                
+                if (password.length < 8) {
+                    errors.push('minimum 8 characters');
+                }
+                
+                if (!/[A-Z]/.test(password)) {
+                    errors.push('at least 1 capital letter');
+                }
+                
+                if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+                    errors.push('at least 1 special character');
+                }
+                
+                if (!/[0-9]/.test(password)) {
+                    errors.push('at least 1 number');
+                }
+                
+                return errors;
+            }
+
+            // Validate password match and requirements
             function validatePasswordMatch() {
                 const newPassword = newPasswordField.value;
                 const confirmPassword = confirmPasswordField.value;
                 
+                // Clear previous validation messages
+                newPasswordField.setCustomValidity('');
+                confirmPasswordField.setCustomValidity('');
+                
+                let isValid = true;
+                
+                // Validate password requirements if password is provided
+                if (newPassword) {
+                    const errors = validatePasswordRequirements(newPassword);
+                    if (errors.length > 0) {
+                        newPasswordField.setCustomValidity('Password must have: ' + errors.join(', '));
+                        isValid = false;
+                    }
+                }
+                
+                // Validate password match
                 if (newPassword && confirmPassword && newPassword !== confirmPassword) {
                     confirmPasswordField.setCustomValidity('Passwords do not match');
-                    return false;
-                } else {
-                    confirmPasswordField.setCustomValidity('');
-                    return true;
+                    isValid = false;
                 }
+                
+                return isValid;
             }
 
             // Real-time password validation
@@ -156,7 +194,19 @@
             document.querySelector('.edit-form').addEventListener('submit', function(e) {
                 if (!validatePasswordMatch()) {
                     e.preventDefault();
-                    alert('Passwords do not match. Please check your password confirmation.');
+                    
+                    // Show specific error message
+                    const newPassword = newPasswordField.value;
+                    const confirmPassword = confirmPasswordField.value;
+                    
+                    if (newPassword) {
+                        const errors = validatePasswordRequirements(newPassword);
+                        if (errors.length > 0) {
+                            alert('Password does not meet requirements:\n• ' + errors.join('\n• '));
+                        } else if (newPassword !== confirmPassword) {
+                            alert('Passwords do not match. Please check your password confirmation.');
+                        }
+                    }
                 }
             });
         });

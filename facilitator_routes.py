@@ -9,6 +9,26 @@ import json
 facilitator_bp = Blueprint('facilitator', __name__, url_prefix='/facilitator')
 
 
+def validate_password_requirements(password):
+    """Validate password meets requirements and return list of errors"""
+    errors = []
+    
+    if len(password) < 8:
+        errors.append("minimum 8 characters")
+    
+    if not any(c.isupper() for c in password):
+        errors.append("at least 1 capital letter")
+    
+    special_chars = "!@#$%^&*()_+-=[]{}|;':\",./<>?"
+    if not any(c in special_chars for c in password):
+        errors.append("at least 1 special character")
+    
+    if not any(c.isdigit() for c in password):
+        errors.append("at least 1 number")
+    
+    return errors
+
+
 def format_session_date(dt):
     """Format session date with custom day abbreviations"""
     day_mapping = {
@@ -595,6 +615,12 @@ def edit_profile():
                 # Validate new passwords match
                 if new_password != confirm_password:
                     flash("New passwords do not match.", "error")
+                    return render_template("edit_facilitator_profile.html", user=user)
+                
+                # Validate password requirements
+                password_errors = validate_password_requirements(new_password)
+                if password_errors:
+                    flash("Password does not meet requirements: " + ", ".join(password_errors), "error")
                     return render_template("edit_facilitator_profile.html", user=user)
                 
                 # Set new password
