@@ -3029,9 +3029,17 @@ function updateTodaysSessions(sessions) {
           </div>
 
           <div class="session-card-facilitator">
-            <span class="session-card-fac-label">Facilitator:</span>
+            <span class="session-card-fac-label">Facilitators:</span>
             <div class="session-card-fac-value">
-              ${session.facilitators?.map(f => f.name || f.initials || 'Unknown').join(', ') || 'None'}
+              ${session.facilitators?.length > 0 
+                ? session.facilitators.map(f => {
+                    const roleBadge = f.role === 'lead' 
+                      ? '<span class="role-badge lead">Lead</span>' 
+                      : '<span class="role-badge support">Support</span>';
+                    return `${f.name || 'Unknown'} ${roleBadge}`;
+                  }).join(', ')
+                : 'None assigned'
+              }
             </div>
           </div>
         </div>
@@ -4057,7 +4065,12 @@ function renderDaySessions(sessions, dayDate) {
      }).replace(/"/g, '&quot;')})">
       <div class="session-header">
         <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="openFacilitatorModal(this)"' : ''}>
-          ${session.facilitator ? getInitials(session.facilitator) : 'Unassigned'}
+          ${session.facilitators?.length > 0 
+            ? (session.facilitators.length > 1 
+                ? `${session.facilitators.length} Facilitators`
+                : getInitials(session.facilitators[0].name))
+            : (session.facilitator ? getInitials(session.facilitator) : 'Unassigned')
+          }
         </div>
         <div class="session-time">
           ${formatTime(session.start)} - ${formatTime(session.end)}
@@ -4073,6 +4086,19 @@ function renderDaySessions(sessions, dayDate) {
           <span class="material-icons">book</span>
           <span>${session.module_type || session.extendedProps?.module_type || 'Workshop'}</span>
         </div>
+        ${session.facilitators?.length > 0 ? `
+          <div class="session-detail">
+            <span class="material-icons">person</span>
+            <span class="facilitator-list">
+              ${session.facilitators.map(f => {
+                const roleBadge = f.role === 'lead' 
+                  ? '<span class="role-badge lead">Lead</span>' 
+                  : '<span class="role-badge support">Support</span>';
+                return `${f.name} ${roleBadge}`;
+              }).join(', ')}
+            </span>
+          </div>
+        ` : ''}
         ${session.attendees ? `
           <div class="session-detail">
             <span class="material-icons">people</span>
