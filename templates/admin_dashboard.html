@@ -355,67 +355,32 @@
     <div class="modal-container">
       <div class="modal-header">
         <h2 class="modal-title">Add New Employee</h2>
-        <p class="modal-description">Add a new employee with their contact information and role details.</p>
+        <p class="modal-description">Enter the employee's email and position. They will receive a setup email to complete their account.</p>
         <button class="modal-close" id="closeModal">
           <span class="material-icons">close</span>
         </button>
       </div>
       
       <form class="modal-form" id="addEmployeeForm">
-        <div class="form-row">
-          <div class="form-column">
-            <div class="form-group">
-              <label for="fullName" class="form-label">Full Name</label>
-              <input type="text" id="fullName" name="fullName" class="form-input" placeholder="Enter full name" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="phone" class="form-label">Phone</label>
-              <input type="tel" id="phone" name="phone" class="form-input" placeholder="Enter phone number" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="position" class="form-label">Position</label>
-              <select id="position" name="position" class="form-select">
-                <option value="">Select position</option>
-                <option value="facilitator">Facilitator</option>
-                <option value="unit_coordinator">Unit Coordinator</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-
-            <div class="form-group role-group" id="roleGroup" style="display: none;">
-              <label for="role" class="form-label">Role</label>
-              <select id="role" name="role" class="form-select">
-                <option value="lab_facilitator">Lab Facilitator</option>
-                <option value="senior_facilitator">Senior Facilitator</option>
-                <option value="lead_facilitator">Lead Facilitator</option>
-              </select>
-            </div>
-            
-          </div>
-          
-          <div class="form-column">
-            <div class="form-group">
-              <label for="email" class="form-label">Email</label>
-              <input type="email" id="email" name="email" class="form-input" placeholder="Enter email address" required>
-            </div>
-            
-            
-            <div class="form-group">
-              <label for="status" class="form-label">Status</label>
-              <select id="status" name="status" class="form-select">
-                <option value="active" selected>Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="on_leave">On Leave</option>
-              </select>
-            </div>
-          </div>
+        <div class="form-group">
+          <label for="email" class="form-label">Email Address</label>
+          <input type="email" id="email" name="email" class="form-input" placeholder="employee@example.com" required>
+          <small style="color: #666; font-size: 12px;">A setup link will be sent to this email</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="position" class="form-label">Position</label>
+          <select id="position" name="position" class="form-select" required>
+            <option value="">Select position</option>
+            <option value="facilitator">Facilitator</option>
+            <option value="unit_coordinator">Unit Coordinator</option>
+            <option value="admin">Admin</option>
+          </select>
         </div>
         
         <div class="modal-actions">
           <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
-          <button type="submit" class="btn-primary">Add Employee</button>
+          <button type="submit" class="btn-primary">Send Setup Email</button>
         </div>
       </form>
     </div>

@@ -418,16 +418,9 @@ def create_employee():
     try:
         data = request.get_json()
         
-        # Validate required fields
-        required_fields = ['fullName', 'email', 'phone', 'position']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
-        
-        # If position is facilitator, validate role
-        if data.get('position') == 'facilitator':
-            if not data.get('role'):
-                return jsonify({'success': False, 'error': 'Role is required when position is facilitator'}), 400
+        # Validate required fields (only email and position now)
+        if not data.get('email') or not data.get('position'):
+            return jsonify({'success': False, 'error': 'Email and position are required'}), 400
         
         # Check if email already exists
         existing_user = User.query.filter_by(email=data['email']).first()
@@ -443,12 +436,6 @@ def create_employee():
         
         user_role = role_mapping.get(data['position'], UserRole.FACILITATOR)
         
-        # Parse full name into first and last name
-        full_name = data['fullName'].strip()
-        name_parts = full_name.split(' ', 1)
-        first_name = name_parts[0] if name_parts else ''
-        last_name = name_parts[1] if len(name_parts) > 1 else ''
-        
         # Create new user - only email and role, no password yet
         new_user = User(
             email=data['email'],
@@ -456,17 +443,17 @@ def create_employee():
             # User will set their own name, phone, and password via setup email
         )
         
-        # Store additional data in preferences field as JSON
+        # Store minimal data in preferences field as JSON
         additional_data = {
-            'phone': data.get('phone', ''),
             'position': data['position'],
-            'status': data.get('status', 'active')
+            'status': 'active'
         }
         
-        # Add role-specific data based on position
+        # Add role-specific data based on position (optional defaults)
         if data['position'] == 'facilitator':
-            if data.get('role'):
-                additional_data['role'] = data['role']
+            additional_data['experience_level'] = 'junior'
+            additional_data['hourly_rate'] = 25
+            additional_data['department'] = 'general'
             additional_data['experience_level'] = data.get('experienceLevel', 'junior')
             additional_data['hourly_rate'] = data.get('hourlyRate', 25)
             additional_data['department'] = data.get('department', 'general')
@@ -496,7 +483,7 @@ def create_employee():
         position_name = data['position'].replace('_', ' ').title()
         return jsonify({
             'success': True, 
-            'message': f'{position_name} created successfully! {email_status}',
+            'message': f'Setup email sent to {new_user.email}! They will receive instructions to complete their {position_name} account.',
             'employee_id': new_user.id,
             'email': new_user.email,
             'position': position_name
