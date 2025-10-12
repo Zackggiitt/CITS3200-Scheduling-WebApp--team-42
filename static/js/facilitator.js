@@ -2596,13 +2596,19 @@ function initUnavailabilityControls() {
     const nextBtn = document.getElementById('next-month-unavailability');
     
     if (prevBtn) {
-        prevBtn.addEventListener('click', function() {
+        // Remove existing event listeners to prevent duplicates
+        prevBtn.replaceWith(prevBtn.cloneNode(true));
+        const newPrevBtn = document.getElementById('prev-month-unavailability');
+        newPrevBtn.addEventListener('click', function() {
             navigateCalendar(-1);
         });
     }
     
     if (nextBtn) {
-        nextBtn.addEventListener('click', function() {
+        // Remove existing event listeners to prevent duplicates
+        nextBtn.replaceWith(nextBtn.cloneNode(true));
+        const newNextBtn = document.getElementById('next-month-unavailability');
+        newNextBtn.addEventListener('click', function() {
             navigateCalendar(1);
         });
     }
@@ -2622,10 +2628,9 @@ function updateRecentUnavailabilityList() {
         return;
     }
     
-    // Sort by date (most recent first) and take first 5
+    // Sort by date (nearest to latest) and show all entries
     const recentUnavailability = unavailabilityData
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 5);
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
     
     listContainer.innerHTML = recentUnavailability.map(unav => {
         const date = new Date(unav.date);
@@ -2671,6 +2676,12 @@ function updateRecentUnavailabilityList() {
 }
 
 function navigateCalendar(direction) {
+    // Prevent rapid successive calls
+    if (window.calendarNavigating) {
+        return;
+    }
+    window.calendarNavigating = true;
+    
     // Initialize calendar current date if not set
     if (!window.calendarCurrentDate) {
         window.calendarCurrentDate = new Date();
@@ -2685,6 +2696,11 @@ function navigateCalendar(direction) {
     
     // Regenerate calendar
     generateCalendar();
+    
+    // Allow navigation again after a short delay
+    setTimeout(() => {
+        window.calendarNavigating = false;
+    }, 100);
 }
 
 function editUnavailability(unavailabilityId) {
@@ -3315,8 +3331,8 @@ async function loadSkills() {
         const currentUnitId = window.currentUnitId;
         if (!currentUnitId) {
             console.error('No unit selected');
-            return;
-        }
+        return;
+    }
 
         const response = await fetch(`/facilitator/skills?unit_id=${currentUnitId}`, {
             headers: {
@@ -3363,7 +3379,7 @@ function displaySkills(skills) {
                 <div class="skill-option">
                     <input type="radio" id="skill_${skill.module_id}_proficient" name="skill_${skill.module_id}" value="proficient" ${skill.skill_level === 'proficient' ? 'checked' : ''}>
                     <label for="skill_${skill.module_id}_proficient">Proficient</label>
-                </div>
+            </div>
                 <div class="skill-option">
                     <input type="radio" id="skill_${skill.module_id}_have_run_before" name="skill_${skill.module_id}" value="have_run_before" ${skill.skill_level === 'have_run_before' ? 'checked' : ''}>
                     <label for="skill_${skill.module_id}_have_run_before">Have run before</label>
@@ -3371,7 +3387,7 @@ function displaySkills(skills) {
                 <div class="skill-option">
                     <input type="radio" id="skill_${skill.module_id}_have_some_skill" name="skill_${skill.module_id}" value="have_some_skill" ${skill.skill_level === 'have_some_skill' ? 'checked' : ''}>
                     <label for="skill_${skill.module_id}_have_some_skill">Have some skill and would like to facilitate</label>
-                </div>
+            </div>
                 <div class="skill-option">
                     <input type="radio" id="skill_${skill.module_id}_no_interest" name="skill_${skill.module_id}" value="no_interest" ${skill.skill_level === 'no_interest' ? 'checked' : ''}>
                     <label for="skill_${skill.module_id}_no_interest">No interest</label>
@@ -3535,7 +3551,7 @@ function displaySkillsError() {
         <div class="error-message">
             <span class="material-icons">error</span>
             <p>Failed to load skills. Please try again.</p>
-        </div>
+                </div>
     `;
 }
 
