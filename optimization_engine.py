@@ -54,6 +54,9 @@ def get_real_sessions():
             'day_of_week': session.day_of_week if session.day_of_week is not None else 0,
             'start_time': session.start_time.time(),
             'end_time': session.end_time.time(),
+            'date': session.start_time.date(),  # Add full date for conflict checking
+            'start_datetime': session.start_time,  # Full datetime for conflict checking
+            'end_datetime': session.end_time,  # Full datetime for conflict checking
             'duration_hours': duration,
             'required_skill_level': SkillLevel.HAVE_SOME_SKILL,  # Default skill level
             'location': session.location or 'TBA'
@@ -115,6 +118,35 @@ def check_availability(facilitator, session):
             return 1.0
     
     return 0.0
+
+def check_time_conflict(facilitator, session, current_assignments):
+    """
+    Check if facilitator is already assigned to another session at the same time
+    Returns True if there's a conflict (facilitator is double-booked)
+    Returns False if no conflict (facilitator can be assigned)
+    """
+    # Get the session's datetime information
+    session_start_dt = session.get('start_datetime')
+    session_end_dt = session.get('end_datetime')
+    
+    if not session_start_dt or not session_end_dt:
+        return False  # Can't check conflicts without datetime info
+    
+    # Check against all current assignments for this facilitator
+    for assignment in current_assignments:
+        if assignment['facilitator']['id'] == facilitator['id']:
+            assigned_session = assignment['session']
+            
+            # Get assigned session datetime
+            assigned_start_dt = assigned_session.get('start_datetime')
+            assigned_end_dt = assigned_session.get('end_datetime')
+            
+            if assigned_start_dt and assigned_end_dt:
+                # Sessions overlap if one starts before the other ends
+                if (session_start_dt < assigned_end_dt and session_end_dt > assigned_start_dt):
+                    return True  # Conflict detected!
+    
+    return False  # No conflict
 
 def get_skill_score(facilitator, session):
     """
@@ -233,6 +265,10 @@ def generate_optimal_assignments(facilitators):
         
         # Find the best facilitator for this session
         for facilitator in facilitators:
+            # Check for time conflicts first (hard constraint)
+            if check_time_conflict(facilitator, session, assignments):
+                continue  # Skip this facilitator - they're already booked at this time
+            
             score = calculate_facilitator_score(
                 facilitator, 
                 session, 
@@ -256,14 +292,18 @@ def generate_optimal_assignments(facilitators):
             
             # Check why no facilitator was suitable
             for facilitator in facilitators:
+                # Check time conflicts
+                if check_time_conflict(facilitator, session, assignments):
+                    conflict_reasons.append(f"{facilitator['name']} is already assigned to another session at this time")
+                
                 # Check skill constraints
-                if not check_skill_constraint(facilitator, session):
+                elif not check_skill_constraint(facilitator, session):
                     module_id = session.get('module_id')
                     if 'skills' in facilitator and module_id in facilitator['skills']:
                         conflict_reasons.append(f"{facilitator['name']} has no interest in this module")
                 
                 # Check availability constraints
-                if check_availability(facilitator, session) == 0.0:
+                elif check_availability(facilitator, session) == 0.0:
                     conflict_reasons.append(f"{facilitator['name']} is unavailable at this time")
             
             if conflict_reasons:
