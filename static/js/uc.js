@@ -4965,6 +4965,12 @@ async function createSession() {
 
 // Open facilitator selection modal
 function openFacilitatorModal(element) {
+  // Close session details modal first if it's open
+  const sessionDetailsModal = document.getElementById('session-details-modal');
+  if (sessionDetailsModal && sessionDetailsModal.style.display !== 'none') {
+    closeSessionDetailsModal();
+  }
+  
   const sessionCard = element.closest('.session-card');
   
   if (!sessionCard) {
@@ -5181,7 +5187,7 @@ function selectMultipleFacilitators() {
   console.log('Selected facilitators:', selectedFacilitators);
   
   // Update the session card to show "Pending" status with multiple facilitators
-  updateSessionStatusMultiple(currentSessionData.id, 'pending', selectedFacilitators);
+  updateSessionStatusMultiple(currentSessionData.id, 'assigned', selectedFacilitators);
   
   // Show assignment confirmation popup for multiple facilitators
   showMultipleAssignmentConfirmation(selectedFacilitators, currentSessionData.name);

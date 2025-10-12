@@ -4424,6 +4424,28 @@ main {
   transform: scale(0.98);
 }
 
+/* Assigned status styling */
+.session-facilitator.assigned {
+  background-color: #10b981;
+  color: white;
+  border: 1px solid #059669;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+}
+
+.session-facilitator.assigned:hover {
+  background-color: #059669;
+  color: white;
+  border-color: #047857;
+}
+
+.session-facilitator.assigned:active {
+  background-color: #047857;
+  color: white;
+  transform: scale(0.98);
+}
+
 /* Assignment Confirmation Popup */
 .assignment-confirmation-popup {
   position: fixed;
