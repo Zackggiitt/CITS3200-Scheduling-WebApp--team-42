@@ -503,8 +503,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show week range
                 const startOfWeek = new Date(currentWeekStart);
                 const dayOfWeek = startOfWeek.getDay();
-                const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-                startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+                const daysToSunday = dayOfWeek === 0 ? 0 : -dayOfWeek; // Handle Sunday as start of week
+                startOfWeek.setDate(startOfWeek.getDate() + daysToSunday);
                 
                 const endOfWeek = new Date(startOfWeek);
                 endOfWeek.setDate(startOfWeek.getDate() + 6);
@@ -535,11 +535,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         calendarDays.innerHTML = '';
         
-        // Calculate the start of the current week (Monday)
+        // Calculate the start of the current week (Sunday)
         const startOfWeek = new Date(currentWeekStart);
         const dayOfWeek = startOfWeek.getDay();
-        const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Handle Sunday
-        startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+        const daysToSunday = dayOfWeek === 0 ? 0 : -dayOfWeek; // Handle Sunday as start of week
+        startOfWeek.setDate(startOfWeek.getDate() + daysToSunday);
         
         // Generate 7 days for the week
         for (let i = 0; i < 7; i++) {
