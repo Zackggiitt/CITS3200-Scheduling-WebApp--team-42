@@ -46,7 +46,6 @@
                     </form>
                 </div>
             </div>
-            <span class="user-role-tag">Lab Facilitator</span>
         </nav>
     </div>
 </header>
@@ -56,8 +55,7 @@
   <div class="welcome-banner">
     <div class="welcome-text">
       <h2>{{ greeting }}, {{ user.first_name }}! 👋</h2>
-      <p class="user-role">Lab Facilitator</p>
-      <p class="session-info">You have 3 upcoming sessions today.</p>
+      <p class="session-info">You have {{ today_sessions_count }} upcoming session{{ 's' if today_sessions_count != 1 else '' }} today.</p>
     </div>
     <div class="welcome-icon-wrapper">
       <span class="material-icons" style="color: white; font-size: 24px;" aria-hidden="true">wb_sunny</span>
@@ -685,10 +683,6 @@
     <div class="legend-item">
       <div class="legend-color confirmed"></div>
       <span>Confirmed Sessions</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-color pending"></div>
-      <span>Pending Sessions</span>
     </div>
     <div class="legend-item">
       <div class="legend-color past"></div>

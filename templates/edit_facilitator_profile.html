@@ -43,31 +43,53 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="first_name">First Name *</label>
-                        <input type="text" id="first_name" name="first_name" value="{{ facilitator_user.first_name or '' }}" required>
+                        <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="last_name">Last Name *</label>
-                        <input type="text" id="last_name" name="last_name" value="{{ facilitator_user.last_name or '' }}" required>
+                        <input type="text" id="last_name" name="last_name" value="{{ user.last_name or '' }}" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="email">Email *</label>
-                        <input type="email" id="email" name="email" value="{{ facilitator_user.email }}" required>
+                        <input type="email" id="email" name="email" value="{{ user.email }}" readonly>
                     </div>
                     
                     <div class="form-group">
                         <div class="password-change-section">
-                            <label for="change_password">Change Password</label>
+                            <div class="password-section-header">
+                                <label for="change_password">Change Password</label>
+                                <div class="tooltip">
+                                    <span class="material-icons tooltip-icon">info</span>
+                                    <div class="tooltip-content">
+                                        <strong>Password Requirements:</strong><br>
+                                        • Minimum 8 characters<br>
+                                        • At least 1 capital letter<br>
+                                        • At least 1 special character<br>
+                                        • At least 1 number
+                                    </div>
+                                </div>
+                            </div>
                             <button type="button" id="togglePasswordSection" class="password-toggle-btn">
                                 <span class="material-icons">key</span>
                                 Change Password
                             </button>
                             <div id="passwordFields" class="password-fields" style="display: none;">
-                                <input type="password" id="current_password" name="current_password" placeholder="Current Password">
-                                <input type="password" id="new_password" name="new_password" placeholder="New Password">
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="current_password" name="current_password" placeholder="Current Password">
+                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('current_password')">
+                                        <span class="material-icons">visibility_off</span>
+                                    </button>
+                                </div>
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="new_password" name="new_password" placeholder="New Password">
+                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('new_password')">
+                                        <span class="material-icons">visibility_off</span>
+                                    </button>
+                                </div>
                                 <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm New Password">
                                 <small class="password-hint">Leave blank to keep current password</small>
                             </div>
@@ -78,12 +100,12 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="phone_number">Phone Number</label>
-                        <input type="tel" id="phone_number" name="phone_number" value="{{ facilitator_user.phone_number or '' }}">
+                        <input type="tel" id="phone_number" name="phone_number" value="{{ user.phone_number or '' }}">
                     </div>
                     
                     <div class="form-group">
                         <label for="staff_number">Staff Number</label>
-                        <input type="text" id="staff_number" name="staff_number" value="{{ facilitator_user.staff_number or '' }}">
+                        <input type="text" id="staff_number" name="staff_number" value="{{ user.staff_number or '' }}">
                     </div>
                 </div>
 
@@ -112,18 +134,56 @@
                     '<span class="material-icons">close</span>Hide Password Section';
             });
 
-            // Validate password match
+            // Validate password requirements
+            function validatePasswordRequirements(password) {
+                const errors = [];
+                
+                if (password.length < 8) {
+                    errors.push('minimum 8 characters');
+                }
+                
+                if (!/[A-Z]/.test(password)) {
+                    errors.push('at least 1 capital letter');
+                }
+                
+                if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+                    errors.push('at least 1 special character');
+                }
+                
+                if (!/[0-9]/.test(password)) {
+                    errors.push('at least 1 number');
+                }
+                
+                return errors;
+            }
+
+            // Validate password match and requirements
             function validatePasswordMatch() {
                 const newPassword = newPasswordField.value;
                 const confirmPassword = confirmPasswordField.value;
                 
+                // Clear previous validation messages
+                newPasswordField.setCustomValidity('');
+                confirmPasswordField.setCustomValidity('');
+                
+                let isValid = true;
+                
+                // Validate password requirements if password is provided
+                if (newPassword) {
+                    const errors = validatePasswordRequirements(newPassword);
+                    if (errors.length > 0) {
+                        newPasswordField.setCustomValidity('Password must have: ' + errors.join(', '));
+                        isValid = false;
+                    }
+                }
+                
+                // Validate password match
                 if (newPassword && confirmPassword && newPassword !== confirmPassword) {
                     confirmPasswordField.setCustomValidity('Passwords do not match');
-                    return false;
-                } else {
-                    confirmPasswordField.setCustomValidity('');
-                    return true;
+                    isValid = false;
                 }
+                
+                return isValid;
             }
 
             // Real-time password validation
@@ -134,10 +194,37 @@
             document.querySelector('.edit-form').addEventListener('submit', function(e) {
                 if (!validatePasswordMatch()) {
                     e.preventDefault();
-                    alert('Passwords do not match. Please check your password confirmation.');
+                    
+                    // Show specific error message
+                    const newPassword = newPasswordField.value;
+                    const confirmPassword = confirmPasswordField.value;
+                    
+                    if (newPassword) {
+                        const errors = validatePasswordRequirements(newPassword);
+                        if (errors.length > 0) {
+                            alert('Password does not meet requirements:\n• ' + errors.join('\n• '));
+                        } else if (newPassword !== confirmPassword) {
+                            alert('Passwords do not match. Please check your password confirmation.');
+                        }
+                    }
                 }
             });
         });
+
+        // Toggle password visibility
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const toggleBtn = input.parentNode.querySelector('.password-toggle');
+            const icon = toggleBtn.querySelector('.material-icons');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.textContent = 'visibility';
+            } else {
+                input.type = 'password';
+                icon.textContent = 'visibility_off';
+            }
+        }
     </script>
 </body>
 </html>

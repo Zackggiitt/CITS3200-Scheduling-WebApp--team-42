@@ -254,7 +254,8 @@ class Unavailability(db.Model):
         while current_date < self.recurring_end_date:
             if self.recurring_pattern == RecurringPattern.DAILY:
                 current_date = current_date + timedelta(days=self.recurring_interval)
-            elif self.recurring_pattern == RecurringPattern.WEEKLY:
+            elif self.recurring_pattern == RecurringPattern.WEEKLY or self.recurring_pattern == RecurringPattern.CUSTOM:
+                # CUSTOM is treated as weekly with custom interval
                 current_date = current_date + timedelta(weeks=self.recurring_interval)
             elif self.recurring_pattern == RecurringPattern.MONTHLY:
                 # Simple monthly increment (doesn't handle month-end edge cases)
@@ -279,7 +280,7 @@ class Assignment(db.Model):
     session_id = db.Column(db.Integer, db.ForeignKey('session.id'), nullable=False)
     facilitator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_confirmed = db.Column(db.Boolean, default=False)
+    is_confirmed = db.Column(db.Boolean, default=True)
     role = db.Column(db.String(20), default='lead')  # 'lead' or 'support'
     
     def __repr__(self):

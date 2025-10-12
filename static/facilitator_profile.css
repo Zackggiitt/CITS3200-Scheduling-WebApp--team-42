@@ -770,3 +770,124 @@ input:invalid:focus {
         font-size: 0.9rem;
     }
 }
+
+/* Read-only input styling */
+input[readonly] {
+    background-color: #f5f5f5;
+    color: #666;
+    cursor: not-allowed;
+    border-color: #ddd;
+}
+
+input[readonly]:focus {
+    outline: none;
+    border-color: #ddd;
+    box-shadow: none;
+}
+
+/* Password input wrapper styling */
+.password-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-wrapper input {
+    flex: 1;
+    padding-right: 45px; /* Make room for the toggle button */
+}
+
+.password-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+    color: #333;
+    background-color: #f0f0f0;
+}
+
+.password-toggle .material-icons {
+    font-size: 20px;
+}
+
+/* Password section header styling */
+.password-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    margin-bottom: var(--gap-sm);
+}
+
+/* Tooltip styling */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-icon {
+    font-size: 18px;
+    color: #666;
+    cursor: help;
+    transition: color 0.2s ease;
+}
+
+.tooltip-icon:hover {
+    color: #333;
+}
+
+.tooltip-content {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    z-index: 1000;
+    background-color: #333;
+    color: white;
+    text-align: left;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    width: 280px;
+    top: 50%;
+    left: 100%;
+    margin-left: 10px;
+    transform: translateY(-50%);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    white-space: normal;
+}
+
+.tooltip-content::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -10px;
+    transform: translateY(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent #333 transparent transparent;
+}
+
+.tooltip:hover .tooltip-content {
+    visibility: visible;
+    opacity: 1;
+}
+
+.tooltip-content strong {
+    color: #fff;
+    display: block;
+    margin-bottom: 4px;
+}

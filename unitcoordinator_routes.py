@@ -2242,7 +2242,7 @@ def auto_assign_facilitators(unit_id: int):
                 new_assignment = Assignment(
                     session_id=assignment['session']['id'],
                     facilitator_id=assignment['facilitator']['id'],
-                    is_confirmed=False,  # Require confirmation
+                    is_confirmed=True  # Auto-confirm assignments
                     role=assignment.get('role', 'lead')  # Track lead vs support role
                 )
                 db.session.add(new_assignment)

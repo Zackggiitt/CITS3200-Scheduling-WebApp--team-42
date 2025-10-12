@@ -9,6 +9,26 @@ import json
 facilitator_bp = Blueprint('facilitator', __name__, url_prefix='/facilitator')
 
 
+def validate_password_requirements(password):
+    """Validate password meets requirements and return list of errors"""
+    errors = []
+    
+    if len(password) < 8:
+        errors.append("minimum 8 characters")
+    
+    if not any(c.isupper() for c in password):
+        errors.append("at least 1 capital letter")
+    
+    special_chars = "!@#$%^&*()_+-=[]{}|;':\",./<>?"
+    if not any(c in special_chars for c in password):
+        errors.append("at least 1 special character")
+    
+    if not any(c.isdigit() for c in password):
+        errors.append("at least 1 number")
+    
+    return errors
+
+
 def format_session_date(dt):
     """Format session date with custom day abbreviations"""
     day_mapping = {
@@ -376,6 +396,19 @@ def dashboard():
         }
         units_data.append(unit_data)
     
+    # Count today's sessions for the facilitator
+    today = date.today()
+    today_sessions_count = (
+        db.session.query(Assignment, Session, Module)
+        .join(Session, Assignment.session_id == Session.id)
+        .join(Module, Session.module_id == Module.id)
+        .filter(
+            Assignment.facilitator_id == user.id,
+            db.func.date(Session.start_time) == today
+        )
+        .count()
+    )
+    
     return render_template("facilitator_dashboard.html", 
                          user=user, 
                          greeting=greeting,
@@ -383,7 +416,8 @@ def dashboard():
                          current_unit=current_unit,
                          current_unit_dict=current_unit_dict,
                          units_data=units_data,
-                         has_no_units=has_no_units)
+                         has_no_units=has_no_units,
+                         today_sessions_count=today_sessions_count)
 
 
 @facilitator_bp.route("/")
@@ -569,7 +603,7 @@ def edit_profile():
             # Update user information
             user.first_name = request.form.get("first_name", user.first_name)
             user.last_name = request.form.get("last_name", user.last_name)
-            user.email = request.form.get("email", user.email)
+            # Email is read-only and cannot be changed
             user.phone_number = request.form.get("phone_number", user.phone_number)
             user.staff_number = request.form.get("staff_number", user.staff_number)
             
@@ -596,6 +630,12 @@ def edit_profile():
                 # Validate new passwords match
                 if new_password != confirm_password:
                     flash("New passwords do not match.", "error")
+                    return render_template("edit_facilitator_profile.html", user=user)
+                
+                # Validate password requirements
+                password_errors = validate_password_requirements(new_password)
+                if password_errors:
+                    flash("Password does not meet requirements: " + ", ".join(password_errors), "error")
                     return render_template("edit_facilitator_profile.html", user=user)
                 
                 # Set new password
@@ -789,15 +829,17 @@ def create_unavailability():
     if len(reason) > 500:
         return jsonify({"error": "Reason must be 500 characters or less"}), 400
     
-    # Check for existing unavailability on the same date
+    # Check for existing unavailability on the same date and time
     existing = Unavailability.query.filter_by(
         user_id=user.id,
         unit_id=unit_id,
-        date=unavailability_date
+        date=unavailability_date,
+        start_time=start_time,
+        end_time=end_time
     ).first()
     
     if existing:
-        return jsonify({"error": "Unavailability already exists for this date"}), 409
+        return jsonify({"error": "Unavailability already exists for this date and time"}), 409
     
     # Create unavailability record
     unavailability = Unavailability(
@@ -934,7 +976,8 @@ def generate_recurring_unavailability():
         
         if recurring_pattern == RecurringPattern.DAILY:
             current_date += timedelta(days=recurring_interval)
-        elif recurring_pattern == RecurringPattern.WEEKLY:
+        elif recurring_pattern == RecurringPattern.WEEKLY or recurring_pattern == RecurringPattern.CUSTOM:
+            # CUSTOM is treated as weekly with custom interval
             current_date += timedelta(weeks=recurring_interval)
         elif recurring_pattern == RecurringPattern.MONTHLY:
             # Simple monthly increment
@@ -951,11 +994,20 @@ def generate_recurring_unavailability():
     # Create unavailability records for each date
     created_count = 0
     for date in dates:
-        # Check if unavailability already exists for this date
+        # Parse time data for this iteration
+        start_time = None
+        end_time = None
+        if not data.get('is_full_day', False):
+            start_time = datetime.strptime(data.get('start_time'), '%H:%M').time() if data.get('start_time') else None
+            end_time = datetime.strptime(data.get('end_time'), '%H:%M').time() if data.get('end_time') else None
+        
+        # Check if unavailability already exists for this date and time combination
         existing = Unavailability.query.filter_by(
             user_id=user.id,
             unit_id=unit_id,
-            date=date
+            date=date,
+            start_time=start_time,
+            end_time=end_time
         ).first()
         
         if not existing:
@@ -963,8 +1015,8 @@ def generate_recurring_unavailability():
                 user_id=user.id,
                 unit_id=unit_id,
                 date=date,
-                start_time=datetime.strptime(data.get('start_time'), '%H:%M').time() if data.get('start_time') else None,
-                end_time=datetime.strptime(data.get('end_time'), '%H:%M').time() if data.get('end_time') else None,
+                start_time=start_time,
+                end_time=end_time,
                 is_full_day=data.get('is_full_day', False),
                 recurring_pattern=recurring_pattern,
                 recurring_end_date=recurring_end_date,

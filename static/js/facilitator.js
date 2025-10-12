@@ -373,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (unit.upcoming_sessions) {
                         unit.upcoming_sessions.forEach(session => {
                             if (extractDateFromSessionDate(session.date) === formattedDate) {
-                                const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
+                                const statusClass = 'confirmed'; // All sessions are now confirmed
                                 const eventText = `📚 ${unit.code}<br>
 👤 ${session.topic}<br>
 ⏰ ${session.time}<br>
@@ -503,8 +503,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show week range
                 const startOfWeek = new Date(currentWeekStart);
                 const dayOfWeek = startOfWeek.getDay();
-                const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-                startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+                const daysToSunday = dayOfWeek === 0 ? 0 : -dayOfWeek; // Handle Sunday as start of week
+                startOfWeek.setDate(startOfWeek.getDate() + daysToSunday);
                 
                 const endOfWeek = new Date(startOfWeek);
                 endOfWeek.setDate(startOfWeek.getDate() + 6);
@@ -535,11 +535,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         calendarDays.innerHTML = '';
         
-        // Calculate the start of the current week (Monday)
+        // Calculate the start of the current week (Sunday)
         const startOfWeek = new Date(currentWeekStart);
         const dayOfWeek = startOfWeek.getDay();
-        const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Handle Sunday
-        startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+        const daysToSunday = dayOfWeek === 0 ? 0 : -dayOfWeek; // Handle Sunday as start of week
+        startOfWeek.setDate(startOfWeek.getDate() + daysToSunday);
         
         // Generate 7 days for the week
         for (let i = 0; i < 7; i++) {
@@ -766,7 +766,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (unit.upcoming_sessions) {
                     unit.upcoming_sessions.forEach(session => {
                         if (extractDateFromSessionDate(session.date) === formattedDate) {
-                            const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
+                            const statusClass = 'confirmed'; // All sessions are now confirmed
                             // Truncate long session names
                             const truncatedTopic = session.topic.length > 15 ? session.topic.substring(0, 15) + '...' : session.topic;
                             const eventText = `📚 ${unit.code}<br>
@@ -858,36 +858,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // GLOBAL CLICK HANDLER - Only one for all click events
     document.addEventListener('click', function(e) {
-        // Handle session action buttons (more specific selector)
-        if (e.target.closest('.session-item .action-btn.accept')) {
-            const sessionItem = e.target.closest('.session-item');
-            const statusBadge = sessionItem.querySelector('.tag');
-            statusBadge.textContent = 'approved';
-            statusBadge.className = 'tag approved';
-            
-            // Remove action buttons
-            const actionsDiv = sessionItem.querySelector('.session-actions');
-            if (actionsDiv) {
-                actionsDiv.remove();
-            }
-            
-            alert('Session accepted successfully!');
-        } else if (e.target.closest('.session-item .action-btn.decline')) {
-            const sessionItem = e.target.closest('.session-item');
-            sessionItem.style.opacity = '0.5';
-            sessionItem.style.textDecoration = 'line-through';
-            
-            // Remove action buttons
-            const actionsDiv = sessionItem.querySelector('.session-actions');
-            if (actionsDiv) {
-                actionsDiv.remove();
-            }
-            
-            alert('Session declined.');
-        }
+        // Session action buttons removed - sessions are auto-confirmed
         
         // Handle notification accept/decline buttons (legacy support)
-        else if (e.target.closest('.notification-item .action-btn.accept')) {
+        if (e.target.closest('.notification-item .action-btn.accept')) {
             const notification = e.target.closest('.notification-item');
             notification.classList.remove('unread');
             updateNotificationBadge();
@@ -1158,6 +1132,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         currentView = 'unit';
         currentUnitId = unitId;
+        window.currentUnitId = unitId; // Ensure window.currentUnitId is also set
         
         // Show navigation tabs and unavailability alert for individual unit views
         showElementsForUnitView();
@@ -1197,6 +1172,19 @@ document.addEventListener('DOMContentLoaded', function() {
             window.currentUnitId = unitId;
             // Reload Session Swaps data
             initializeSessionSwaps();
+        }
+
+        // Update Skills view if it's currently visible
+        if (document.getElementById('skills-view').style.display !== 'none') {
+            console.log('Skills view is visible, reloading skills for unit:', unitId);
+            // Reload Skills data for the new unit
+            loadSkills();
+        }
+
+        // Hide unavailability alert when switching units
+        const unavailabilityAlert = document.getElementById('unavailability-alert');
+        if (unavailabilityAlert) {
+            unavailabilityAlert.style.display = 'none';
         }
 
         // Refresh calendar if it's currently visible
@@ -1261,6 +1249,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide navigation tabs
         const dashboardNav = document.getElementById('dashboard-nav');
         const unavailabilityNav = document.getElementById('unavailability-nav');
+        const skillsNav = document.getElementById('skills-nav');
         const scheduleNav = document.getElementById('schedule-nav');
         const swapsNav = document.getElementById('swaps-nav');
         
@@ -1269,6 +1258,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (dashboardNav) dashboardNav.style.display = 'none';
         if (unavailabilityNav) unavailabilityNav.style.display = 'none';
+        if (skillsNav) skillsNav.style.display = 'none';
         if (scheduleNav) scheduleNav.style.display = 'none';
         if (swapsNav) swapsNav.style.display = 'none';
         if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
@@ -1278,6 +1268,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show navigation tabs
         const dashboardNav = document.getElementById('dashboard-nav');
         const unavailabilityNav = document.getElementById('unavailability-nav');
+        const skillsNav = document.getElementById('skills-nav');
         const scheduleNav = document.getElementById('schedule-nav');
         const swapsNav = document.getElementById('swaps-nav');
         
@@ -1288,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (dashboardNav) dashboardNav.style.display = 'flex';
         if (unavailabilityNav) unavailabilityNav.style.display = 'flex';
+        if (skillsNav) skillsNav.style.display = 'flex';
         if (scheduleNav) scheduleNav.style.display = 'flex';
         if (swapsNav) swapsNav.style.display = 'flex';
         
@@ -1427,9 +1419,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const remainingCount = sortedUpcomingSessions.length - 5;
                 
                 top5Sessions.forEach(session => {
-                    const hasActions = session.status === 'pending';
-                    const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
-                    const statusText = session.status === 'confirmed' ? 'Confirmed' : 'Pending';
+                    const hasActions = false; // No actions needed since sessions are auto-confirmed
+                    const statusClass = 'confirmed'; // All sessions are now confirmed
+                    const statusText = 'Confirmed';
                     
                     sessionsHTML += `
                         <div class="session-item">
@@ -1579,7 +1571,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 
                 top2Sessions.forEach(session => {
-                    const hasActions = session.status === 'pending';
+                    const hasActions = false; // No actions needed since sessions are auto-confirmed
                     sessionsHTML += `
                         <div class="session-item">
                             <div class="session-info">
@@ -1729,7 +1721,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set modal subtitle
         const totalSessions = (unit.upcomingSessions ? unit.upcomingSessions.length : 0) + 
                              (unit.pastSessions ? unit.pastSessions.length : 0);
-        modalSubtitle.textContent = `View all your sessions for ${unit.code}. You can accept or decline pending session assignments. Showing ${totalSessions} sessions for ${unit.code}`;
+        modalSubtitle.textContent = `View all your sessions for ${unit.code}. Showing ${totalSessions} sessions for ${unit.code}`;
         
         // Generate sessions list
         let modalSessionsHTML = '';
@@ -1743,7 +1735,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             sortedUpcomingSessions.forEach(session => {
-                const hasActions = session.status === 'pending';
+                        const hasActions = false; // No actions needed since sessions are auto-confirmed
                 modalSessionsHTML += `
                     <div class="session-item">
                         <div class="session-info">
@@ -1834,7 +1826,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Set modal title and subtitle
         modalTitle.textContent = 'All Your Sessions';
-        modalSubtitle.textContent = 'View all your sessions across all units organized by status and unit. You can accept or decline pending session assignments.';
+        modalSubtitle.textContent = 'View all your sessions across all units organized by status and unit.';
 
         // Get all units data
         const activeUnits = Object.values(units).filter(unit => unit.status === 'active');
@@ -1870,7 +1862,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     
                     sortedSessions.forEach(session => {
-                        const hasActions = session.status === 'pending';
+                        const hasActions = false; // No actions needed since sessions are auto-confirmed
                         modalHTML += `
                             <div class="modal-session-item">
                                 <div class="modal-session-info">
@@ -2534,6 +2526,9 @@ function saveUnavailability() {
         reason: reason
     };
     
+    // Determine which endpoint to use based on whether it's recurring
+    let endpoint = '/facilitator/unavailability';
+    
     if (isRecurring) {
         data.recurring_pattern = document.getElementById('repeat-every').value;
         data.recurring_end_date = document.getElementById('until-date').value;
@@ -2542,9 +2537,12 @@ function saveUnavailability() {
         if (customInterval && customInterval.value) {
             data.recurring_interval = parseInt(customInterval.value);
         }
+        
+        // Use the recurring endpoint for recurring unavailability
+        endpoint = '/facilitator/unavailability/generate-recurring';
     }
     
-    fetch('/facilitator/unavailability', {
+    fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2590,13 +2588,19 @@ function initUnavailabilityControls() {
     const nextBtn = document.getElementById('next-month-unavailability');
     
     if (prevBtn) {
-        prevBtn.addEventListener('click', function() {
+        // Remove existing event listeners to prevent duplicates
+        prevBtn.replaceWith(prevBtn.cloneNode(true));
+        const newPrevBtn = document.getElementById('prev-month-unavailability');
+        newPrevBtn.addEventListener('click', function() {
             navigateCalendar(-1);
         });
     }
     
     if (nextBtn) {
-        nextBtn.addEventListener('click', function() {
+        // Remove existing event listeners to prevent duplicates
+        nextBtn.replaceWith(nextBtn.cloneNode(true));
+        const newNextBtn = document.getElementById('next-month-unavailability');
+        newNextBtn.addEventListener('click', function() {
             navigateCalendar(1);
         });
     }
@@ -2616,10 +2620,9 @@ function updateRecentUnavailabilityList() {
         return;
     }
     
-    // Sort by date (most recent first) and take first 5
+    // Sort by date (nearest to latest) and show all entries
     const recentUnavailability = unavailabilityData
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 5);
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
     
     listContainer.innerHTML = recentUnavailability.map(unav => {
         const date = new Date(unav.date);
@@ -2665,6 +2668,12 @@ function updateRecentUnavailabilityList() {
 }
 
 function navigateCalendar(direction) {
+    // Prevent rapid successive calls
+    if (window.calendarNavigating) {
+        return;
+    }
+    window.calendarNavigating = true;
+    
     // Initialize calendar current date if not set
     if (!window.calendarCurrentDate) {
         window.calendarCurrentDate = new Date();
@@ -2679,6 +2688,11 @@ function navigateCalendar(direction) {
     
     // Regenerate calendar
     generateCalendar();
+    
+    // Allow navigation again after a short delay
+    setTimeout(() => {
+        window.calendarNavigating = false;
+    }, 100);
 }
 
 function editUnavailability(unavailabilityId) {
@@ -3307,10 +3321,11 @@ function initSkillsView() {
 async function loadSkills() {
     try {
         const currentUnitId = window.currentUnitId;
+        console.log('Loading skills for unit ID:', currentUnitId);
         if (!currentUnitId) {
             console.error('No unit selected');
-            return;
-        }
+        return;
+    }
 
         const response = await fetch(`/facilitator/skills?unit_id=${currentUnitId}`, {
             headers: {
@@ -3357,7 +3372,7 @@ function displaySkills(skills) {
                 <div class="skill-option">
                     <input type="radio" id="skill_${skill.module_id}_proficient" name="skill_${skill.module_id}" value="proficient" ${skill.skill_level === 'proficient' ? 'checked' : ''}>
                     <label for="skill_${skill.module_id}_proficient">Proficient</label>
-                </div>
+            </div>
                 <div class="skill-option">
                     <input type="radio" id="skill_${skill.module_id}_have_run_before" name="skill_${skill.module_id}" value="have_run_before" ${skill.skill_level === 'have_run_before' ? 'checked' : ''}>
                     <label for="skill_${skill.module_id}_have_run_before">Have run before</label>
@@ -3365,7 +3380,7 @@ function displaySkills(skills) {
                 <div class="skill-option">
                     <input type="radio" id="skill_${skill.module_id}_have_some_skill" name="skill_${skill.module_id}" value="have_some_skill" ${skill.skill_level === 'have_some_skill' ? 'checked' : ''}>
                     <label for="skill_${skill.module_id}_have_some_skill">Have some skill and would like to facilitate</label>
-                </div>
+            </div>
                 <div class="skill-option">
                     <input type="radio" id="skill_${skill.module_id}_no_interest" name="skill_${skill.module_id}" value="no_interest" ${skill.skill_level === 'no_interest' ? 'checked' : ''}>
                     <label for="skill_${skill.module_id}_no_interest">No interest</label>
@@ -3529,7 +3544,7 @@ function displaySkillsError() {
         <div class="error-message">
             <span class="material-icons">error</span>
             <p>Failed to load skills. Please try again.</p>
-        </div>
+                </div>
     `;
 }
 
