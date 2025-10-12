@@ -100,7 +100,8 @@
                                                         <option value="{{ skill_level.value }}" 
                                                                 {% if current_skills.get(module.id) == skill_level %}selected{% endif %}>
                                                             {% if skill_level.value == 'proficient' %}🟢 Proficient (1.0)
-                                                            {% elif skill_level.value == 'leader' %}🔵 Leader/Done Before (0.8)
+                                                            {% elif skill_level.value == 'have_run_before' %}🟠 Have Run Before (0.9)
+                                                            {% elif skill_level.value == 'leader' %}🔵 Leader (0.8)
                                                             {% elif skill_level.value == 'interested' %}🟡 Interested (0.5)
                                                             {% elif skill_level.value == 'uninterested' %}⚪ Not Interested (0.0)
                                                             {% else %}{{ skill_level.value.title() }}

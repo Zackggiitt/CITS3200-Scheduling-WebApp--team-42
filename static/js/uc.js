@@ -591,7 +591,7 @@ if (uploadInput) {
           <div>
             <div class="font-semibold">Upload successful</div>
             <div class="text-sm mt-1">
-              Facilitators created: ${data.created_users} · Linked: ${data.linked_facilitators}
+              Found ${data.facilitators ? data.facilitators.length : 0} facilitators in CSV · Ready for review
             </div>
           </div>
           <button 

@@ -20,7 +20,7 @@ from auth import login_required, get_current_user
 from utils import role_required
 from models import db
 
-from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill, Notification
+from models import db, UserRole, Unit, User, Venue, UnitFacilitator, UnitVenue, Module, Session, Assignment, Unavailability, Facilitator, SwapRequest, SwapStatus, FacilitatorSkill, Notification, SkillLevel
 
 # ------------------------------------------------------------------------------
 # Setup
@@ -3584,6 +3584,93 @@ def apply_bulk_staffing(unit_id: int):
         db.session.rollback()
 
         return jsonify({"ok": False, "error": str(e)}), 500
+        
+
+@unitcoordinator_bp.post("/units/<int:unit_id>/auto-assign")
+@login_required
+@role_required(UserRole.UNIT_COORDINATOR)
+def auto_assign_facilitators(unit_id: int):
+    """Auto-assign facilitators to sessions using the optimization algorithm"""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"success": False, "error": "Unit not found or access denied"}), 404
+
+    try:
+        # Import optimization engine
+        from optimization_engine import generate_optimal_assignments, prepare_facilitator_data, get_real_sessions
+
+        # Get all facilitators for this unit
+        unit_facilitators = UnitFacilitator.query.filter_by(unit_id=unit.id).all()
+        facilitator_users = []
+
+        for uf in unit_facilitators:
+            facilitator_user = User.query.get(uf.user_id)
+            if facilitator_user:
+                facilitator_users.append(facilitator_user)
+
+        if not facilitator_users:
+            return jsonify({"success": False, "error": "No facilitators found for this unit"}), 400
+
+        # Prepare facilitator data for the algorithm
+        facilitator_data = prepare_facilitator_data(facilitator_users)
+
+        # Get sessions for this unit
+        sessions = Session.query.join(Module).filter(Module.unit_id == unit.id).all()
+
+        if not sessions:
+            return jsonify({"success": False, "error": "No sessions found for this unit"}), 400
+
+        # Convert sessions to the format expected by the algorithm
+        session_data = []
+        for session in sessions:
+            duration = (session.end_time - session.start_time).total_seconds() / 3600
+            session_data.append({
+                'id': session.id,
+                'module_id': session.module_id,
+                'module_name': f"{session.module.unit.unit_code} - {session.module.module_name}",
+                'day_of_week': session.day_of_week if session.day_of_week is not None else 0,
+                'start_time': session.start_time.time(),
+                'end_time': session.end_time.time(),
+                'duration_hours': duration,
+                'location': session.location or 'TBA',
+                'required_skill_level': SkillLevel.INTERESTED,  # Default skill level for sessions
+                'lead_staff_required': session.lead_staff_required or 1,
+                'support_staff_required': session.support_staff_required or 0
+            })
+
+        # Generate optimal assignments
+        assignments, conflicts = generate_optimal_assignments(facilitator_data)
+
+        if not assignments:
+            return jsonify({"success": False, "error": "No optimal assignments could be generated"}), 400
+        
+        # Initialize counter for created assignments
+        created_assignments = 0
+        
+        for assignment in assignments:
+            new_assignment = Assignment(
+                session_id=assignment['session']['id'],
+                facilitator_id=assignment['facilitator']['id'],
+                is_confirmed=False  # Require confirmation
+            )
+            db.session.add(new_assignment)
+            created_assignments += 1
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Successfully created {created_assignments} assignments",
+            "assignments_created": created_assignments,
+            "total_sessions": len(sessions),
+            "total_facilitators": len(facilitator_users)
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Auto-assignment error: {str(e)}")
+        return jsonify({"success": False, "error": f"Auto-assignment failed: {str(e)}"}), 500
 
 @unitcoordinator_bp.route('/facilitators/<int:facilitator_id>/proof-files')
 @login_required

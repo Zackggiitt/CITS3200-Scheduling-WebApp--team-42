@@ -23,6 +23,7 @@ class SwapStatus(Enum):
 class SkillLevel(Enum):
     PROFICIENT = "proficient"
     LEADER = "leader"
+    HAVE_RUN_BEFORE = "have_run_before"
     INTERESTED = "interested"
     UNINTERESTED = "uninterested"
 

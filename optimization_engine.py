@@ -17,6 +17,7 @@ W_SKILL = 0.3
 # Skill level to score mapping
 SKILL_SCORES = {
     SkillLevel.PROFICIENT: 1.0,
+    SkillLevel.HAVE_RUN_BEFORE: 0.9,
     SkillLevel.LEADER: 0.8,  
     SkillLevel.INTERESTED: 0.5,
     SkillLevel.UNINTERESTED: 0.0
@@ -213,25 +214,82 @@ def generate_optimal_assignments(facilitators, sessions=None):
     sorted_sessions = sorted(sessions, key=lambda s: (-s['duration_hours'], -SKILL_SCORES.get(s['required_skill_level'], 0)))
     
     for session in sorted_sessions:
-        best_facilitator = None
-        best_score = 0.0
+         # Get required staff counts from session
+        lead_staff_required = session.get('lead_staff_required', 1)
+        support_staff_required = session.get('support_staff_required', 0)
+        total_staff_required = lead_staff_required + support_staff_required
         
-        # Find the best facilitator for this session
+        # Calculate current hours per facilitator for fairness calculation
+        total_hours_per_facilitator = {}
         for facilitator in facilitators:
-            score = calculate_facilitator_score(facilitator, session, assignments)
-            if score > best_score:
-                best_score = score
-                best_facilitator = facilitator
+            total_hours_per_facilitator[facilitator['id']] = get_assigned_hours(facilitator, assignments)
         
-        # Assign if we found a suitable facilitator
-        if best_facilitator and best_score > 0:
-            assignments.append({
-                'facilitator': best_facilitator,
-                'session': session,
-                'score': best_score
-            })
-        else:
-            conflicts.append(f"No suitable facilitator found for {session['module_name']} ({format_session_time(session)})")
+        # Find multiple facilitators for this session
+        session_assignments = []
+        assigned_facilitator_ids = set()
+        
+        # Assign facilitators for this session (up to total_staff_required)
+        for staff_position in range(total_staff_required):
+            best_facilitator = None
+            best_score = 0.0
+            
+            # Find the best available facilitator for this position
+            for facilitator in facilitators:
+                # Skip if already assigned to this session
+                if facilitator['id'] in assigned_facilitator_ids:
+                    continue
+                
+                score = calculate_facilitator_score(
+                    facilitator, 
+                    session, 
+                    assignments + session_assignments  # Include current session assignments
+                )
+                if score > best_score:
+                    best_score = score
+                    best_facilitator = facilitator
+            
+            # Assign if we found a suitable facilitator
+            if best_facilitator and best_score > 0:
+                # Determine role based on position
+                role = 'leader' if staff_position < lead_staff_required else 'support'
+                
+                session_assignments.append({
+                    'facilitator': best_facilitator,
+                    'session': session,
+                    'score': best_score,
+                    'role': role
+                })
+                assigned_facilitator_ids.add(best_facilitator['id'])
+            else:
+                # Generate detailed conflict message for missing staff
+                conflict_reasons = []
+                
+                # Check why no facilitator was suitable
+                for facilitator in facilitators:
+                    if facilitator['id'] in assigned_facilitator_ids:
+                        continue
+                        
+                    # Check skill constraints
+                    if not check_skill_constraint(facilitator, session):
+                        module_id = session.get('module_id')
+                        if 'skills' in facilitator and module_id in facilitator['skills']:
+                            conflict_reasons.append(f"{facilitator['name']} has no interest in this module")
+                    
+                    # Check availability constraints
+                    if check_availability(facilitator, session) == 0.0:
+                        conflict_reasons.append(f"{facilitator['name']} is unavailable at this time")
+                
+                position_type = 'leader' if staff_position < lead_staff_required else 'support'
+                if conflict_reasons:
+                    conflict_msg = f"No suitable {position_type} facilitator found for {session['module_name']} ({format_session_time(session)}) - Reasons: {'; '.join(conflict_reasons[:3])}"
+                else:
+                    conflict_msg = f"No suitable {position_type} facilitator found for {session['module_name']} ({format_session_time(session)})"
+                
+                conflicts.append(conflict_msg)
+                break  # Stop trying to assign more facilitators for this session
+        
+        # Add all successful assignments for this session
+        assignments.extend(session_assignments)
     
     return assignments, conflicts
 

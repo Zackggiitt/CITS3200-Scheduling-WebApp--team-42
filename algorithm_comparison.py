@@ -355,6 +355,7 @@ class AdvancedSchedulingEngine:
         
         skill_level_map = {
             SkillLevel.INTERESTED: 0.25,
+            SkillLevel.HAVE_RUN_BEFORE: 0.9,
             SkillLevel.PROFICIENT: 0.75,
             SkillLevel.LEADER: 1.0,
             SkillLevel.UNINTERESTED: 0.0
