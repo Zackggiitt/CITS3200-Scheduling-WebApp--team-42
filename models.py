@@ -74,7 +74,7 @@ class UnitVenue(db.Model):
     venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'), nullable=False)
 
     unit = db.relationship('Unit', backref=db.backref('unit_venues', cascade='all, delete-orphan', lazy=True))
-    venue = db.relationship('Venue', backref=db.backref('used_in_units', cascade='all, delete-orphan', lazy=True))
+    venue = db.relationship('Venue', backref=db.backref('used_in_units', lazy=True))
 
     __table_args__ = (db.UniqueConstraint('unit_id', 'venue_id', name='uq_venue_per_unit'),)
 
@@ -195,7 +195,7 @@ class UnitFacilitator(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     unit = db.relationship('Unit', backref=db.backref('unit_facilitators', cascade='all, delete-orphan', lazy=True))
-    user = db.relationship('User', backref=db.backref('facilitated_units', cascade='all, delete-orphan', lazy=True))
+    user = db.relationship('User', backref=db.backref('facilitated_units', lazy=True))
 
     __table_args__ = (
         db.UniqueConstraint('unit_id', 'user_id', name='uq_facilitator_per_unit'),
