@@ -126,11 +126,7 @@ def _serialize_session(s: Session, venues_by_name=None):
     # Determine session status
     status = "unassigned"
     if facilitators:
-        # If any facilitator is confirmed, show as approved
-        if any(f["is_confirmed"] for f in facilitators):
-            status = "approved"
-        else:
-            status = "pending"  # Assigned but not confirmed
+        status = "assigned"  # Any facilitator assigned, regardless of confirmation status
     
     return {
         "id": str(s.id),  # turn this into a string
@@ -2713,7 +2709,7 @@ def publish_schedule(unit_id: int):
             db.session.query(Session)
             .join(Module, Session.module_id == Module.id)
             .filter(Module.unit_id == unit_id)
-            .filter(Session.status.in_(['pending', 'assigned']))
+            .filter(Session.status.in_(['assigned']))
             .all()
         )
         
@@ -3320,10 +3316,7 @@ def get_dashboard_sessions(unit_id: int):
         # Determine session status
         status = "unassigned"
         if facilitators:
-            if any(f["is_confirmed"] for f in facilitators):
-                status = "approved"
-            else:
-                status = "pending"
+            status = "assigned"  # Any facilitator assigned, regardless of confirmation status
         
         today_data.append({
             "id": session.id,
@@ -3352,10 +3345,7 @@ def get_dashboard_sessions(unit_id: int):
         # Determine session status
         status = "unassigned"
         if facilitators:
-            if any(f["is_confirmed"] for f in facilitators):
-                status = "approved"
-            else:
-                status = "pending"
+            status = "assigned"  # Any facilitator assigned, regardless of confirmation status
         
         # Determine relative date
         session_date = session.start_time.date()

@@ -69,11 +69,7 @@ def _serialize_session_test(s: MockSession, venues_by_name=None):
     # Determine session status
     status = "unassigned"
     if facilitators:
-        # If any facilitator is confirmed, show as approved
-        if any(f["is_confirmed"] for f in facilitators):
-            status = "approved"
-        else:
-            status = "pending"  # Assigned but not confirmed
+        status = "assigned"  # Any facilitator assigned, regardless of confirmation status
     
     return {
         "id": str(s.id),
@@ -164,9 +160,9 @@ def test_multi_facilitator_display():
     
     # Verify all tests passed
     tests_passed = (
-        len(result1['facilitators']) == 1 and result1['status'] == 'approved' and
-        len(result2['facilitators']) == 2 and result2['status'] == 'approved' and
-        len(result3['facilitators']) == 3 and result3['status'] == 'approved' and
+        len(result1['facilitators']) == 1 and result1['status'] == 'assigned' and
+        len(result2['facilitators']) == 2 and result2['status'] == 'assigned' and
+        len(result3['facilitators']) == 3 and result3['status'] == 'assigned' and
         len(result4['facilitators']) == 0 and result4['status'] == 'unassigned' and
         result1['facilitator'] == 'Alice Expert' and
         result2['facilitator'] == 'Alice Expert' and
