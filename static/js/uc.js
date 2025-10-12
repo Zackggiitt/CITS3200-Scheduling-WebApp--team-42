@@ -15,6 +15,11 @@ const {
 
 const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
 
+// ===== Facilitator Modal Variables =====
+let allFacilitators = [];
+let filteredFacilitators = [];
+let selectedFacilitators = [];
+let currentSessionData = null;
 
 // ===== Helpers to inject ids into route templates =====
 function withUnitId(tpl, id)     { return tpl.replace(/\/0(\/|$)/, `/${id}$1`); }
@@ -4816,7 +4821,7 @@ async function createSession() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': window.csrfToken
+        'X-CSRFToken': CSRF_TOKEN
       },
       body: JSON.stringify(sessionData)
     });
@@ -4848,6 +4853,12 @@ async function createSession() {
 // Open facilitator selection modal
 function openFacilitatorModal(element) {
   const sessionCard = element.closest('.session-card');
+  
+  if (!sessionCard) {
+    console.error('Session card not found');
+    return;
+  }
+  
   currentSessionData = {
     id: sessionCard.dataset.sessionId,
     name: sessionCard.dataset.sessionName,
@@ -4859,12 +4870,19 @@ function openFacilitatorModal(element) {
   selectedFacilitators = [];
   
   // Update modal content
-  document.getElementById('modal-session-name').textContent = currentSessionData.name;
-  document.getElementById('modal-session-time').textContent = `Time: ${currentSessionData.time}`;
-  document.getElementById('modal-session-location').textContent = `Location: ${currentSessionData.location}`;
+  const nameEl = document.getElementById('modal-session-name');
+  const timeEl = document.getElementById('modal-session-time');
+  const locationEl = document.getElementById('modal-session-location');
+  
+  if (nameEl) nameEl.textContent = currentSessionData.name;
+  if (timeEl) timeEl.textContent = `Time: ${currentSessionData.time}`;
+  if (locationEl) locationEl.textContent = `Location: ${currentSessionData.location}`;
   
   // Show modal
-  document.getElementById('facilitator-modal').style.display = 'flex';
+  const modal = document.getElementById('facilitator-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
   
   // Load facilitators
   loadFacilitators();
@@ -4924,11 +4942,13 @@ async function loadFacilitators() {
       </div>
     `;
     
-    const response = await fetch(`/unitcoordinator/units/${currentUnitId}/facilitators`, {
+    const url = withUnitId(LIST_FACILITATORS_TEMPLATE, currentUnitId);
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': window.csrfToken
+        'X-CSRFToken': CSRF_TOKEN
       }
     });
     
@@ -5254,7 +5274,7 @@ async function confirmPublish() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': window.csrfToken
+        'X-CSRFToken': CSRF_TOKEN
       }
     });
     
