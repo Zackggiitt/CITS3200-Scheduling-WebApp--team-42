@@ -38,23 +38,23 @@ LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Mille
               'Lee', 'Walker', 'Hall', 'Allen', 'Young', 'King', 'Wright', 'Scott']
 
 def generate_random_unavailability(facilitator_id, unit):
-    """Generate random unavailability periods for a facilitator."""
+    """Generate random unavailability periods for a facilitator between June 30 and July 18."""
     unavailabilities = []
     
-    if not unit or not unit.start_date or not unit.end_date:
-        print(f"  Warning: Unit {unit.unit_code if unit else 'None'} missing dates, skipping unavailability")
-        return unavailabilities
+    # Fixed date range: June 30 to July 18
+    start_date = date(2024, 6, 30)
+    end_date = date(2024, 7, 18)
     
     # Randomly decide how many unavailability periods (0-5)
     num_unavailabilities = random.randint(0, 5)
     
-    # Calculate unit duration in days
-    duration = (unit.end_date - unit.start_date).days
+    # Calculate duration in days
+    duration = (end_date - start_date).days
     
     for _ in range(num_unavailabilities):
-        # Random date within unit period
+        # Random date within the specified period
         random_days = random.randint(0, max(0, duration))
-        unavail_date = unit.start_date + timedelta(days=random_days)
+        unavail_date = start_date + timedelta(days=random_days)
         
         # Decide if full day or time block
         is_full_day = random.choice([True, False])
@@ -82,16 +82,16 @@ def generate_random_unavailability(facilitator_id, unit):
                 reason="Generated unavailability"
             )
         
-        # Randomly add recurring pattern (20% chance)
-        if random.random() < 0.2:
-            unavail.recurring_pattern = random.choice([
-                RecurringPattern.WEEKLY,
-                RecurringPattern.DAILY
-            ])
-            unavail.recurring_end_date = min(
-                unavail_date + timedelta(days=random.randint(14, 56)),
-                unit.end_date
-            )
+            # Randomly add recurring pattern (20% chance)
+            if random.random() < 0.2:
+                unavail.recurring_pattern = random.choice([
+                    RecurringPattern.WEEKLY,
+                    RecurringPattern.DAILY
+                ])
+                unavail.recurring_end_date = min(
+                    unavail_date + timedelta(days=random.randint(14, 56)),
+                    end_date
+                )
         
         unavailabilities.append(unavail)
     
@@ -175,8 +175,8 @@ def create_facilitators_from_csv(csv_file_path, update_existing=False):
                     break
                 attempts += 1
             
-            # Extract username from email for password
-            username = email.split('@')[0]
+            # Use fixed password for all users
+            password = "Admin123!"
             
             # Random min/max hours
             min_hours = random.randint(4, 10)
@@ -201,7 +201,7 @@ def create_facilitators_from_csv(csv_file_path, update_existing=False):
                         facilitator.first_name = first_name
                         facilitator.last_name = last_name
                         if not facilitator.password_hash:
-                            facilitator.password_hash = generate_password_hash(username)
+                            facilitator.password_hash = generate_password_hash(password)
                         if not facilitator.phone_number:
                             facilitator.phone_number = f"+61{random.randint(400000000, 499999999)}"
                     
@@ -219,7 +219,7 @@ def create_facilitators_from_csv(csv_file_path, update_existing=False):
                     first_name=first_name,
                     last_name=last_name,
                     role=UserRole.FACILITATOR,
-                    password_hash=generate_password_hash(username),
+                    password_hash=generate_password_hash(password),
                     min_hours=min_hours,
                     max_hours=max_hours,
                     phone_number=f"+61{random.randint(400000000, 499999999)}"
@@ -229,7 +229,7 @@ def create_facilitators_from_csv(csv_file_path, update_existing=False):
                 db.session.flush()  # Get the ID
                 is_update = False
             
-            # Generate random unavailability for each unit
+            # Generate random unavailability for each unit (using fixed date range)
             unavail_count = 0
             for unit in units:
                 unavailabilities = generate_random_unavailability(facilitator.id, unit)
@@ -262,7 +262,7 @@ def create_facilitators_from_csv(csv_file_path, update_existing=False):
             
             print(f"✓ {action}: {facilitator.first_name} {facilitator.last_name} ({email})")
             if not is_update or is_incomplete:
-                print(f"  Password: {facilitator.email.split('@')[0]}")
+                print(f"  Password: Admin123!")
             print(f"  Hours: {facilitator.min_hours}-{facilitator.max_hours}/week")
             print(f"  Unavailability periods: {unavail_count}")
             print(f"  Skills: {skill_summary[SkillLevel.PROFICIENT]} proficient, "
@@ -293,7 +293,7 @@ if __name__ == '__main__':
     if args:
         csv_path = args[0]
     else:
-        csv_path = 'test/sample/facilitators_template (1).csv'
+        csv_path = 'test/sample/facilitators_template (6).csv'
     
     action = "Updating" if update_mode else "Creating"
     print(f"{action} facilitators from: {csv_path}\n")
