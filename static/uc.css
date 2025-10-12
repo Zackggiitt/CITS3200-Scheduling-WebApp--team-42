@@ -204,7 +204,7 @@
 /* Footer (pinned) */
 .modal-footer{
   flex-shrink: 0; position: relative; z-index: 30; background: var(--c-bg); border-top: 1px solid var(--c-line);
-  padding: 12px 20px; display: flex; justify-content: flex-end; gap: 10px;
+  padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 60px;
 }
 .modal-footer::before{
   content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px; box-shadow: 0 -6px 12px rgba(0,0,0,.06) inset; pointer-events: none;
@@ -2459,7 +2459,7 @@ main {
   background-color: #3b82f6;
   color: white;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -4603,17 +4603,6 @@ main {
   margin-bottom: 0;
 }
 
-/* Role badges for facilitators */
-.role-badge {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  margin-left: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
 
 .role-badge.lead {
   background-color: #dbeafe;
