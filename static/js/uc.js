@@ -4086,7 +4086,7 @@ function renderDaySessions(sessions, dayDate) {
        status: session.status || session.extendedProps?.status || 'scheduled'
      }).replace(/"/g, '&quot;')})">
       <div class="session-header">
-        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="openFacilitatorModal(this)"' : ''}>
+        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="event.stopPropagation(); openFacilitatorModal(this)"' : ''}>
           ${session.facilitators?.length > 0 
             ? (session.facilitators.length > 1 
                 ? `${session.facilitators.length} Facilitators`
@@ -4969,8 +4969,17 @@ function openFacilitatorModal(element) {
   const sessionDetailsModal = document.getElementById('session-details-modal');
   if (sessionDetailsModal && sessionDetailsModal.style.display !== 'none') {
     closeSessionDetailsModal();
+    // Add a small delay to ensure the session details modal closes before opening facilitator modal
+    setTimeout(() => {
+      openFacilitatorModalAfterDelay(element);
+    }, 100);
+    return;
   }
   
+  openFacilitatorModalAfterDelay(element);
+}
+
+function openFacilitatorModalAfterDelay(element) {
   const sessionCard = element.closest('.session-card');
   
   if (!sessionCard) {
