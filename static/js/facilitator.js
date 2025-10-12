@@ -1158,6 +1158,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         currentView = 'unit';
         currentUnitId = unitId;
+        window.currentUnitId = unitId; // Ensure window.currentUnitId is also set
         
         // Show navigation tabs and unavailability alert for individual unit views
         showElementsForUnitView();
@@ -1197,6 +1198,19 @@ document.addEventListener('DOMContentLoaded', function() {
             window.currentUnitId = unitId;
             // Reload Session Swaps data
             initializeSessionSwaps();
+        }
+
+        // Update Skills view if it's currently visible
+        if (document.getElementById('skills-view').style.display !== 'none') {
+            console.log('Skills view is visible, reloading skills for unit:', unitId);
+            // Reload Skills data for the new unit
+            loadSkills();
+        }
+
+        // Hide unavailability alert when switching units
+        const unavailabilityAlert = document.getElementById('unavailability-alert');
+        if (unavailabilityAlert) {
+            unavailabilityAlert.style.display = 'none';
         }
 
         // Refresh calendar if it's currently visible
@@ -3329,6 +3343,7 @@ function initSkillsView() {
 async function loadSkills() {
     try {
         const currentUnitId = window.currentUnitId;
+        console.log('Loading skills for unit ID:', currentUnitId);
         if (!currentUnitId) {
             console.error('No unit selected');
         return;
