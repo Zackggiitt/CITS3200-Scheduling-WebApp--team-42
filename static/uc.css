@@ -2151,7 +2151,9 @@ main {
   border-radius: 12px;
   width: 90%;
   max-width: 500px;
-  height: 600px;
+  height: auto;
+  min-height: 400px;
+  max-height: 90vh;
   overflow: hidden;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
@@ -2174,6 +2176,16 @@ main {
   color: #111827;
 }
 
+/* Session Details Modal - Lower title position and bigger font size */
+#session-details-modal .modal-header h3 {
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: #111827 !important;
+  text-transform: capitalize !important;
+  margin-top: 20px !important;
+  margin-bottom: 0 !important;
+}
+
 .modal-close {
   background: none;
   border: none;
@@ -2193,8 +2205,8 @@ main {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  height: calc(600px - 120px); /* Subtract header (60px) and footer (60px) heights */
-  overflow-y: auto;
+  flex: 1;
+  overflow: visible;
 }
 
 .session-info {
@@ -2315,7 +2327,14 @@ main {
 /* Session Details Modal Footer - Override any conflicting styles */
 #session-details-modal .modal-footer {
   background-color: white !important;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #e5e7eb !important;
+  padding: 20px 32px !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-height: 60px !important;
+  flex-shrink: 0 !important;
 }
 
 #session-details-modal .modal-footer::before {
@@ -2323,19 +2342,40 @@ main {
 }
 
 #session-details-modal .btn-secondary {
-  background-color: #f3f4f6 !important;
-  border: none !important;
-  color: #374151 !important;
-  border-radius: 6px !important;
-  padding: 10px 20px !important;
+  background-color: #000000 !important;
+  border: 1px solid #000000 !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  padding: 12px 24px !important;
   font-size: 14px !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   cursor: pointer !important;
-  transition: all 0.2s !important;
+  transition: all 0.2s ease !important;
+  min-width: 80px !important;
+  text-align: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
 }
 
 #session-details-modal .btn-secondary:hover {
-  background-color: #e5e7eb !important;
+  background-color: #333333 !important;
+  border-color: #333333 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+#session-details-modal .btn-secondary:active {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+  transform: translateY(0) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+#session-details-modal .btn-secondary:focus {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px !important;
 }
 
 /* Session Details Modal Close Button - Ensure proper styling */
@@ -2360,6 +2400,40 @@ main {
 
 #session-details-modal .modal-close .material-icons {
   font-size: 20px !important;
+}
+
+/* Session Details Modal - Fix text overflow and scrolling */
+#session-details-modal .modal-content {
+  width: 90% !important;
+  max-width: 600px !important;
+  height: auto !important;
+  min-height: 400px !important;
+  max-height: 90vh !important;
+  overflow: visible !important;
+}
+
+#session-details-modal .modal-body {
+  overflow: visible !important;
+  padding: 32px !important;
+}
+
+#session-details-modal .session-details-content {
+  overflow: visible !important;
+}
+
+#session-details-modal .detail-row {
+  padding: 16px 0 !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+  overflow: visible !important;
+}
+
+#session-details-modal .detail-value {
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  max-width: none !important;
+  width: auto !important;
 }
 
 .btn-secondary {
