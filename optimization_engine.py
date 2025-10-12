@@ -148,6 +148,45 @@ def check_time_conflict(facilitator, session, current_assignments):
     
     return False  # No conflict
 
+def check_location_conflict(facilitator, session, current_assignments):
+    """
+    Check if facilitator is already assigned to another session at the same time in a different location
+    Returns True if there's a location conflict (facilitator can't be in two places at once)
+    Returns False if no location conflict (same location or no time overlap)
+    """
+    # Get the session's datetime and location information
+    session_start_dt = session.get('start_datetime')
+    session_end_dt = session.get('end_datetime')
+    session_location = session.get('location', 'TBA')
+    
+    if not session_start_dt or not session_end_dt:
+        return False  # Can't check conflicts without datetime info
+    
+    # Check against all current assignments for this facilitator
+    for assignment in current_assignments:
+        if assignment['facilitator']['id'] == facilitator['id']:
+            assigned_session = assignment['session']
+            
+            # Get assigned session datetime and location
+            assigned_start_dt = assigned_session.get('start_datetime')
+            assigned_end_dt = assigned_session.get('end_datetime')
+            assigned_location = assigned_session.get('location', 'TBA')
+            
+            if assigned_start_dt and assigned_end_dt:
+                # Check if sessions overlap in time
+                time_overlap = (session_start_dt < assigned_end_dt and session_end_dt > assigned_start_dt)
+                
+                # Check if sessions are in different locations
+                different_location = (session_location != assigned_location and 
+                                    session_location != 'TBA' and 
+                                    assigned_location != 'TBA')
+                
+                # Location conflict occurs when there's both time overlap AND different locations
+                if time_overlap and different_location:
+                    return True  # Location conflict detected!
+    
+    return False  # No location conflict
+
 def get_skill_score(facilitator, session):
     """
     Get skill score for facilitator-session match based on real proficiency data
@@ -269,6 +308,10 @@ def generate_optimal_assignments(facilitators):
             if check_time_conflict(facilitator, session, assignments):
                 continue  # Skip this facilitator - they're already booked at this time
             
+            # Check for location conflicts (hard constraint)
+            if check_location_conflict(facilitator, session, assignments):
+                continue  # Skip this facilitator - they're assigned to a different location at this time
+            
             score = calculate_facilitator_score(
                 facilitator, 
                 session, 
@@ -295,6 +338,10 @@ def generate_optimal_assignments(facilitators):
                 # Check time conflicts
                 if check_time_conflict(facilitator, session, assignments):
                     conflict_reasons.append(f"{facilitator['name']} is already assigned to another session at this time")
+                
+                # Check location conflicts
+                elif check_location_conflict(facilitator, session, assignments):
+                    conflict_reasons.append(f"{facilitator['name']} is already assigned to a different location at this time")
                 
                 # Check skill constraints
                 elif not check_skill_constraint(facilitator, session):
