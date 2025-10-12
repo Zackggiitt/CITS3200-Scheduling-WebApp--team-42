@@ -3206,9 +3206,25 @@ def get_dashboard_sessions(unit_id: int):
         return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
 
     from datetime import datetime, timedelta, date
+    from flask import request
+    
+    # Get week parameters from request
+    week_start_str = request.args.get('week_start')
+    week_end_str = request.args.get('week_end')
+    
     today = date.today()
     tomorrow = today + timedelta(days=1)
     week_end = today + timedelta(days=7)
+    
+    # Parse week dates if provided
+    week_start_date = None
+    week_end_date = None
+    if week_start_str and week_end_str:
+        try:
+            week_start_date = datetime.strptime(week_start_str, '%Y-%m-%d').date()
+            week_end_date = datetime.strptime(week_end_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass  # Use default dates if parsing fails
 
     # Get today's sessions
     today_sessions = (
@@ -3306,11 +3322,84 @@ def get_dashboard_sessions(unit_id: int):
 
     facilitator_data = []
     for first_name, last_name, email, count in facilitator_counts:
-        name = f"{first_name or ''} {last_name or ''}".strip() or email
-        facilitator_data.append({
-            "name": name,
-            "session_count": count
-        })
+        # Use actual database names, don't fall back to email
+        name = f"{first_name or ''} {last_name or ''}".strip()
+        if not name:
+            name = "Unknown"  # Don't use email as name
+        
+        # Get detailed facilitator info
+        facilitator = User.query.filter_by(email=email).first()
+        if facilitator:
+            # Get all assignments for this facilitator in this unit
+            assignments = db.session.query(Assignment).join(Session).join(Module).filter(
+                Assignment.facilitator_id == facilitator.id,
+                Module.unit_id == unit.id
+            ).all()
+            
+            # Calculate total hours
+            total_hours = 0
+            for assignment in assignments:
+                session = assignment.session
+                duration = (session.end_time - session.start_time).total_seconds() / 3600
+                total_hours += duration
+            
+            # Get the most recent session date
+            latest_session = db.session.query(Session).join(Assignment).join(Module).filter(
+                Assignment.facilitator_id == facilitator.id,
+                Module.unit_id == unit.id
+            ).order_by(Session.start_time.desc()).first()
+            
+            latest_date = latest_session.start_time.date().isoformat() if latest_session else None
+            
+            # Calculate total hours (all assignments across all time)
+            total_assigned_hours = sum(
+                (a.session.end_time - a.session.start_time).total_seconds() / 3600 
+                for a in assignments
+            )
+            
+            # Calculate weekly hours (assignments within the specified week)
+            weekly_assigned_hours = 0
+            if week_start_date and week_end_date:
+                weekly_assignments = [
+                    a for a in assignments 
+                    if week_start_date <= a.session.start_time.date() <= week_end_date
+                ]
+                weekly_assigned_hours = sum(
+                    (a.session.end_time - a.session.start_time).total_seconds() / 3600 
+                    for a in weekly_assignments
+                )
+            else:
+                # If no week specified, use total hours as fallback
+                weekly_assigned_hours = total_assigned_hours
+            
+            facilitator_data.append({
+                "name": name,
+                "student_number": facilitator.email.split('@')[0] if '@' in facilitator.email else "N/A",
+                "session_count": count,
+                "assigned_hours": round(weekly_assigned_hours, 2),  # Weekly hours
+                "total_hours": round(total_assigned_hours, 2),      # Total hours
+                "date": latest_date,
+                "email": facilitator.email,
+                "phone": "N/A",
+                "status": "active" if count > 0 else "inactive"
+            })
+        else:
+            # Fallback for facilitators not found in User table
+            # Use actual database names, don't fall back to email
+            fallback_name = f"{first_name or ''} {last_name or ''}".strip()
+            if not fallback_name:
+                fallback_name = "Unknown"  # Don't use email as name
+            facilitator_data.append({
+                "name": fallback_name,
+                "student_number": email.split('@')[0] if '@' in email else "N/A",
+                "session_count": count,
+                "assigned_hours": 0,  # Weekly hours (0 for fallback)
+                "total_hours": 0,      # Total hours (0 for fallback)
+                "date": None,
+                "email": email,
+                "phone": "N/A",
+                "status": "active" if count > 0 else "inactive"
+            })
 
     # Get swap requests over time (last 30 days)
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
@@ -3745,11 +3834,10 @@ def get_attendance_summary(unit_id: int):
             
             latest_date = latest_session.start_time.date().isoformat() if latest_session else None
             
-            # Calculate assigned hours (confirmed assignments)
-            confirmed_assignments = [a for a in assignments if a.is_confirmed]
+            # Calculate assigned hours (all assignments, not just confirmed)
             assigned_hours = sum(
                 (a.session.end_time - a.session.start_time).total_seconds() / 3600 
-                for a in confirmed_assignments
+                for a in assignments
             )
             
             facilitator_data = {
