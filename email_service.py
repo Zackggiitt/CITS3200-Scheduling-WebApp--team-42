@@ -503,3 +503,176 @@ Your Scheduling Team
     except Exception as e:
         print(f"Unexpected error sending schedule email: {str(e)}")
         return False
+
+
+def send_password_reset_email(recipient_email, reset_link, base_url=None):
+    """
+    Send a password reset email with a link to reset the password.
+    
+    Args:
+        recipient_email: User's email address
+        reset_link: Full URL with token for password reset
+        base_url: Base URL for the app (optional)
+    """
+    # Check if we're in mock mode
+    use_mock = os.environ.get('USE_MOCK_EMAIL', 'false').lower() == 'true'
+    
+    if not use_mock:
+        sender_email = os.environ.get('SES_SENDER_EMAIL')
+        if not sender_email or not valid_email(sender_email):
+            print(f"Invalid or missing sender email")
+            return False
+    else:
+        sender_email = "noreply@example.com"
+    
+    if not valid_email(recipient_email):
+        print(f"Invalid recipient email: {recipient_email}")
+        return False
+    
+    subject = "Reset Your Password"
+    
+    # Plain text version
+    body_text = f"""Hello,
+
+We received a request to reset your password for the Scheduling System.
+
+To reset your password, please click the link below:
+{reset_link}
+
+This link will expire in 1 hour.
+
+If you did not request a password reset, please ignore this email and your password will remain unchanged.
+
+Best regards,
+Your Scheduling Team
+"""
+    
+    # HTML version
+    body_html = f"""
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f4f4f4;
+            }}
+            .container {{
+                width: 100%;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+            }}
+            .header {{
+                background-color: #007bff;
+                color: white;
+                padding: 20px;
+                text-align: center;
+                border-radius: 5px 5px 0 0;
+            }}
+            .content {{
+                background-color: white;
+                padding: 30px;
+                border-radius: 0 0 5px 5px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }}
+            .button {{
+                display: inline-block;
+                padding: 12px 24px;
+                margin: 20px 0;
+                background-color: #007bff;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+                font-weight: bold;
+            }}
+            .footer {{
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 1px solid #e5e7eb;
+                font-size: 12px;
+                color: #6b7280;
+            }}
+            .warning {{
+                background-color: #fff3cd;
+                border-left: 4px solid #ffc107;
+                padding: 12px;
+                margin: 20px 0;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🔒 Password Reset Request</h1>
+            </div>
+            <div class="content">
+                <h2>Hello,</h2>
+                <p>We received a request to reset your password for the Scheduling System.</p>
+                <p>To reset your password, please click the button below:</p>
+                
+                <p style="text-align: center;">
+                    <a href="{reset_link}" class="button">Reset My Password</a>
+                </p>
+                
+                <p style="font-size: 12px; color: #666;">
+                    Or copy and paste this link into your browser:<br>
+                    {reset_link}
+                </p>
+                
+                <div class="warning">
+                    <strong>⏰ This link will expire in 1 hour.</strong>
+                </div>
+                
+                <div class="footer">
+                    <p>If you did not request a password reset, please ignore this email and your password will remain unchanged.</p>
+                    <p>Best regards,<br>Your Scheduling Team</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # Check if we should mock emails
+    if use_mock:
+        print(f"Mock password reset email sent to {recipient_email}")
+        print(f"Subject: {subject}")
+        print(f"Reset link: {reset_link}")
+        return True
+    
+    # Send via AWS SES
+    try:
+        aws_key = os.environ.get('AWS_ACCESS_KEY_ID') or os.environ.get('AWS_ACCESS_KEY')
+        aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY')
+        
+        ses_client = boto3.client(
+            'ses',
+            region_name=os.environ.get('SES_REGION', 'ap-southeast-1'),
+            aws_access_key_id=aws_key,
+            aws_secret_access_key=aws_secret
+        )
+        
+        response = ses_client.send_email(
+            Source=sender_email,
+            Destination={'ToAddresses': [recipient_email]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Text': {'Data': body_text, 'Charset': 'UTF-8'},
+                    'Html': {'Data': body_html, 'Charset': 'UTF-8'}
+                }
+            }
+        )
+        
+        print(f"Password reset email sent to {recipient_email}")
+        print(f"Message ID: {response['MessageId']}")
+        return True
+        
+    except ClientError as e:
+        print(f"Error sending password reset email: {e.response['Error']['Message']}")
+        return False
+    except Exception as e:
+        print(f"Unexpected error sending password reset email: {str(e)}")
+        return False
