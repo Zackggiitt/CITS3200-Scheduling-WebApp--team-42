@@ -680,10 +680,23 @@ def dashboard():
             .all()
         )
 
+        # Get sessions that need a lead facilitator specifically
+        sessions_with_lead = (
+            db.session.query(Session.id)
+            .join(Module, Module.id == Session.module_id)
+            .join(Assignment, Assignment.session_id == Session.id)
+            .filter(Module.unit_id == current_unit.id)
+            .filter(Assignment.role == 'lead')
+            .distinct()
+            .all()
+        )
+        
+        sessions_with_lead_ids = {s.id for s in sessions_with_lead}
+
         total_sessions = len(session_rows)
         fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
         unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
-        needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
+        needs_lead     = sum(1 for r in session_rows if r.sid not in sessions_with_lead_ids)
 
         stats = {
             "total": total_sessions,
@@ -994,10 +1007,23 @@ def admin_dashboard():
             .all()
         )
 
+        # Get sessions that need a lead facilitator specifically
+        sessions_with_lead = (
+            db.session.query(Session.id)
+            .join(Module, Module.id == Session.module_id)
+            .join(Assignment, Assignment.session_id == Session.id)
+            .filter(Module.unit_id == current_unit.id)
+            .filter(Assignment.role == 'lead')
+            .distinct()
+            .all()
+        )
+        
+        sessions_with_lead_ids = {s.id for s in sessions_with_lead}
+
         total_sessions = len(session_rows)
         fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
         unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
-        needs_lead     = sum(1 for r in session_rows if r.assigned < r.maxf)
+        needs_lead     = sum(1 for r in session_rows if r.sid not in sessions_with_lead_ids)
 
         stats = {
             "total": total_sessions,
