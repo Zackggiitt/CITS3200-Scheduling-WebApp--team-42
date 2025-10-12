@@ -692,7 +692,7 @@ def dashboard():
         total_sessions = len(session_rows)
         fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
         unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
-        needs_lead     = sum(1 for r in session_rows if r.sid not in sessions_with_lead_ids)
+        needs_lead     = sum(1 for r in session_rows if r.assigned > 0 and r.sid not in sessions_with_lead_ids)
 
         stats = {
             "total": total_sessions,
@@ -1019,7 +1019,7 @@ def admin_dashboard():
         total_sessions = len(session_rows)
         fully_staffed  = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
         unstaffed      = sum(1 for r in session_rows if r.assigned == 0)
-        needs_lead     = sum(1 for r in session_rows if r.sid not in sessions_with_lead_ids)
+        needs_lead     = sum(1 for r in session_rows if r.assigned > 0 and r.sid not in sessions_with_lead_ids)
 
         stats = {
             "total": total_sessions,

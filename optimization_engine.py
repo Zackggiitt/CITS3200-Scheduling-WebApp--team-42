@@ -680,7 +680,7 @@ def generate_schedule_report_csv(assignments, unit_name="Unit", total_facilitato
         total_sessions = len(session_rows)
         fully_staffed = sum(1 for r in session_rows if r.assigned >= r.maxf and r.maxf > 0)
         unstaffed = sum(1 for r in session_rows if r.assigned == 0)
-        needs_lead = sum(1 for r in session_rows if r.sid not in sessions_with_lead_ids)
+        needs_lead = sum(1 for r in session_rows if r.assigned > 0 and r.sid not in sessions_with_lead_ids)
         
         writer.writerow(["SESSION STAFFING STATISTICS"])
         writer.writerow(["Metric", "Count"])
