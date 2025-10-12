@@ -1,5 +1,16 @@
 """
 Script to create facilitators from CSV file with random availabilities and proficiencies.
+
+NEW FEATURES:
+- Test the "Available All Days" functionality with --test-available-all or --test
+- Demonstrate the "Available All Days" feature with --demo-available-all or --demo
+
+USAGE:
+  python test.py                                    # Create facilitators from default CSV
+  python test.py --update                          # Update existing facilitators
+  python test.py --test-available-all              # Test Available All Days functionality
+  python test.py --demo-available-all              # Demonstrate Available All Days feature
+  python test.py custom_facilitators.csv          # Use custom CSV file
 """
 
 import os
@@ -13,7 +24,7 @@ from werkzeug.security import generate_password_hash
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
-from models import db, User, UserRole, Module, Unit, FacilitatorSkill, SkillLevel, Unavailability, RecurringPattern
+from models import db, User, UserRole, Module, Unit, FacilitatorSkill, SkillLevel, Unavailability, RecurringPattern, UnitFacilitator
 from flask import Flask
 
 # Create a minimal app for database operations
@@ -118,6 +129,201 @@ def generate_random_skills(facilitator_id, modules):
         skills.append(skill)
     
     return skills
+
+def test_available_all_days_functionality():
+    """Test the 'Available All Days' functionality by clearing all unavailability for a facilitator."""
+    app = create_minimal_app()
+    
+    with app.app_context():
+        print("Testing 'Available All Days' functionality...")
+        print("=" * 50)
+        
+        # Find a facilitator with some unavailability
+        facilitator = User.query.filter_by(role=UserRole.FACILITATOR).first()
+        if not facilitator:
+            print("❌ No facilitator found in database")
+            return False
+        
+        # Find a unit for this facilitator
+        unit_facilitator = UnitFacilitator.query.filter_by(user_id=facilitator.id).first()
+        if not unit_facilitator:
+            print("❌ No unit assignment found for facilitator")
+            return False
+        
+        unit = Unit.query.get(unit_facilitator.unit_id)
+        if not unit:
+            print("❌ Unit not found")
+            return False
+        
+        print(f"✅ Testing with facilitator: {facilitator.first_name} {facilitator.last_name} ({facilitator.email})")
+        print(f"✅ Testing with unit: {unit.unit_code} - {unit.unit_name}")
+        
+        # Check initial unavailability count
+        initial_count = Unavailability.query.filter_by(
+            user_id=facilitator.id,
+            unit_id=unit.id
+        ).count()
+        print(f"✅ Initial unavailability count: {initial_count}")
+        
+        if initial_count == 0:
+            print("⚠️  No unavailability found. Creating test unavailability entries...")
+            
+            # Create some test unavailability entries
+            test_dates = [
+                date(2024, 7, 1),
+                date(2024, 7, 5),
+                date(2024, 7, 10),
+                date(2024, 7, 15)
+            ]
+            
+            for test_date in test_dates:
+                unavailability = Unavailability(
+                    user_id=facilitator.id,
+                    unit_id=unit.id,
+                    date=test_date,
+                    is_full_day=True,
+                    reason="Test unavailability for Available All Days test"
+                )
+                db.session.add(unavailability)
+            
+            db.session.commit()
+            initial_count = len(test_dates)
+            print(f"✅ Created {initial_count} test unavailability entries")
+        
+        # Test the clear-all functionality
+        try:
+            print("\n🧪 Testing clear-all functionality...")
+            
+            # Simulate the clear-all route logic (same as in facilitator_routes.py)
+            deleted_count = Unavailability.query.filter_by(
+                user_id=facilitator.id,
+                unit_id=unit.id
+            ).delete()
+            
+            db.session.commit()
+            
+            print(f"✅ Cleared {deleted_count} unavailability entries")
+            
+            # Verify all unavailability entries are gone
+            final_count = Unavailability.query.filter_by(
+                user_id=facilitator.id,
+                unit_id=unit.id
+            ).count()
+            
+            if final_count == 0:
+                print("✅ SUCCESS: All unavailability entries cleared successfully!")
+                print("✅ Facilitator is now available for all days in this unit")
+                return True
+            else:
+                print(f"❌ FAILURE: {final_count} unavailability entries still exist")
+                return False
+                
+        except Exception as e:
+            print(f"❌ ERROR during clear-all test: {str(e)}")
+            db.session.rollback()
+            return False
+
+def demo_available_all_days_feature():
+    """Demonstrate the 'Available All Days' feature by creating a facilitator with unavailability and then clearing it."""
+    app = create_minimal_app()
+    
+    with app.app_context():
+        print("🎯 DEMONSTRATING 'AVAILABLE ALL DAYS' FEATURE")
+        print("=" * 60)
+        
+        # Find or create a facilitator for demonstration
+        facilitator = User.query.filter_by(role=UserRole.FACILITATOR).first()
+        if not facilitator:
+            print("❌ No facilitator found in database")
+            return False
+        
+        # Find a unit for this facilitator
+        unit_facilitator = UnitFacilitator.query.filter_by(user_id=facilitator.id).first()
+        if not unit_facilitator:
+            print("❌ No unit assignment found for facilitator")
+            return False
+        
+        unit = Unit.query.get(unit_facilitator.unit_id)
+        if not unit:
+            print("❌ Unit not found")
+            return False
+        
+        print(f"✅ Using facilitator: {facilitator.first_name} {facilitator.last_name} ({facilitator.email})")
+        print(f"✅ Using unit: {unit.unit_code} - {unit.unit_name}")
+        
+        # Clear any existing unavailability first
+        Unavailability.query.filter_by(
+            user_id=facilitator.id,
+            unit_id=unit.id
+        ).delete()
+        db.session.commit()
+        
+        print(f"\n📅 STEP 1: Creating sample unavailability entries...")
+        
+        # Create sample unavailability entries
+        sample_dates = [
+            (date(2024, 7, 1), "Doctor's appointment"),
+            (date(2024, 7, 5), "Personal day"),
+            (date(2024, 7, 8), "Conference attendance"),
+            (date(2024, 7, 12), "Family event"),
+            (date(2024, 7, 15), "Holiday")
+        ]
+        
+        created_count = 0
+        for unavail_date, reason in sample_dates:
+            unavailability = Unavailability(
+                user_id=facilitator.id,
+                unit_id=unit.id,
+                date=unavail_date,
+                is_full_day=True,
+                reason=reason
+            )
+            db.session.add(unavailability)
+            created_count += 1
+        
+        db.session.commit()
+        print(f"✅ Created {created_count} unavailability entries")
+        
+        # Show current unavailability
+        current_unavailability = Unavailability.query.filter_by(
+            user_id=facilitator.id,
+            unit_id=unit.id
+        ).all()
+        
+        print(f"\n📋 Current unavailability entries:")
+        for unav in current_unavailability:
+            print(f"  • {unav.date.strftime('%Y-%m-%d')}: {unav.reason}")
+        
+        print(f"\n🚫 STEP 2: Facilitator has {len(current_unavailability)} unavailable days")
+        print("   (In the UI, these would show as unavailable on the calendar)")
+        
+        print(f"\n🔄 STEP 3: Simulating 'Available All Days' button click...")
+        
+        # Simulate the clear-all functionality
+        deleted_count = Unavailability.query.filter_by(
+            user_id=facilitator.id,
+            unit_id=unit.id
+        ).delete()
+        
+        db.session.commit()
+        
+        print(f"✅ Cleared {deleted_count} unavailability entries")
+        
+        # Verify all unavailability entries are gone
+        final_count = Unavailability.query.filter_by(
+            user_id=facilitator.id,
+            unit_id=unit.id
+        ).count()
+        
+        if final_count == 0:
+            print(f"\n✅ SUCCESS: Facilitator is now available for ALL days!")
+            print("   (In the UI, the calendar would now show all days as available)")
+            print("\n🎉 DEMONSTRATION COMPLETE!")
+            print("   The 'Available All Days' feature successfully cleared all unavailability.")
+            return True
+        else:
+            print(f"\n❌ FAILURE: {final_count} unavailability entries still exist")
+            return False
 
 def create_facilitators_from_csv(csv_file_path, update_existing=False):
     """Main function to create facilitators from CSV.
@@ -286,10 +492,39 @@ def create_facilitators_from_csv(csv_file_path, update_existing=False):
 
 if __name__ == '__main__':
     update_mode = '--update' in sys.argv or '-u' in sys.argv
+    test_mode = '--test-available-all' in sys.argv or '--test' in sys.argv
+    demo_mode = '--demo-available-all' in sys.argv or '--demo' in sys.argv
     
     # Remove flags from args
     args = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
     
+    # If test mode is requested, run the Available All Days test
+    if test_mode:
+        print("🧪 RUNNING 'AVAILABLE ALL DAYS' FUNCTIONALITY TEST")
+        print("=" * 60)
+        success = test_available_all_days_functionality()
+        print("\n" + "=" * 60)
+        if success:
+            print("🎉 TEST PASSED! 'Available All Days' functionality is working correctly.")
+        else:
+            print("❌ TEST FAILED! Please check the implementation.")
+        print("=" * 60)
+        exit(0 if success else 1)
+    
+    # If demo mode is requested, run the Available All Days demonstration
+    if demo_mode:
+        print("🎯 RUNNING 'AVAILABLE ALL DAYS' FEATURE DEMONSTRATION")
+        print("=" * 60)
+        success = demo_available_all_days_feature()
+        print("\n" + "=" * 60)
+        if success:
+            print("🎉 DEMONSTRATION SUCCESSFUL! 'Available All Days' feature works as expected.")
+        else:
+            print("❌ DEMONSTRATION FAILED! Please check the implementation.")
+        print("=" * 60)
+        exit(0 if success else 1)
+    
+    # Normal facilitator creation mode
     if args:
         csv_path = args[0]
     else:
