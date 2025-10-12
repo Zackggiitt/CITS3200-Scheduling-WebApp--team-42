@@ -2740,14 +2740,13 @@ def create_manual_session(unit_id: int):
         if start_time >= end_time:
             return jsonify({"ok": False, "error": "End time must be after start time"}), 400
         
-        # Create a default module if none exists
-        module = Module.query.filter_by(unit_id=unit_id, module_name=f"Default {data['module_type'].title()}").first()
+        # Create a module with the session name
+        module = Module.query.filter_by(unit_id=unit_id, module_name=data['name']).first()
         if not module:
             module = Module(
                 unit_id=unit_id,
-                module_name=f"Default {data['module_type'].title()}",
-                module_type=data['module_type'],
-                description=f"Default module for {data['module_type']} sessions"
+                module_name=data['name'],
+                module_type=data['module_type']
             )
             db.session.add(module)
             db.session.flush()  # Get the ID
@@ -2755,13 +2754,13 @@ def create_manual_session(unit_id: int):
         # Create session
         session = Session(
             module_id=module.id,
-            session_name=data['name'],
+            session_type=data['module_type'],
             start_time=start_time,
             end_time=end_time,
             location=data['location'],
-            description=data.get('description', ''),
             max_facilitators=1,  # Default to 1, can be updated later
-            status='pending'
+            lead_staff_required=1,
+            support_staff_required=0
         )
         
         db.session.add(session)
@@ -2771,7 +2770,7 @@ def create_manual_session(unit_id: int):
             "ok": True,
             "session": {
                 "id": session.id,
-                "name": session.session_name,
+                "name": module.module_name,
                 "start_time": session.start_time.isoformat(),
                 "end_time": session.end_time.isoformat(),
                 "location": session.location,

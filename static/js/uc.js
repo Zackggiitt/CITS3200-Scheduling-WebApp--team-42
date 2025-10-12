@@ -15,6 +15,62 @@ const {
 
 const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
 
+// Simple notification function
+function showSimpleNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `simple-notification ${type}`;
+  notification.textContent = message;
+  
+  // Style the notification
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  `;
+  
+  // Set background color based on type
+  switch (type) {
+    case 'success':
+      notification.style.backgroundColor = '#10b981';
+      break;
+    case 'error':
+      notification.style.backgroundColor = '#ef4444';
+      break;
+    case 'warning':
+      notification.style.backgroundColor = '#f59e0b';
+      break;
+    default:
+      notification.style.backgroundColor = '#3b82f6';
+  }
+  
+  // Add to DOM
+  document.body.appendChild(notification);
+  
+  // Animate in
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 100);
+  
+  // Auto remove after 4 seconds
+  setTimeout(() => {
+    notification.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 4000);
+}
+
 // ===== Facilitator Modal Variables =====
 let allFacilitators = [];
 let filteredFacilitators = [];
@@ -3974,7 +4030,11 @@ async function loadScheduleSessions() {
   if (!unitId) return;
 
   try {
-    const weekStart = currentWeekStart.toISOString().split('T')[0];
+    // Format week start date using local timezone
+    const year = currentWeekStart.getFullYear();
+    const month = String(currentWeekStart.getMonth() + 1).padStart(2, '0');
+    const day = String(currentWeekStart.getDate()).padStart(2, '0');
+    const weekStart = `${year}-${month}-${day}`;
     const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
     
     const response = await fetch(url);
@@ -4022,7 +4082,7 @@ function renderScheduleGrid() {
           </div>
         </div>
         <div class="day-sessions">
-          ${renderDaySessions(daySessions)}
+          ${renderDaySessions(daySessions, dayDate)}
         </div>
       </div>
     `;
@@ -4041,13 +4101,19 @@ function getSessionsForDay(date) {
 }
 
 // Render sessions for a specific day
-function renderDaySessions(sessions) {
+function renderDaySessions(sessions, dayDate) {
   if (sessions.length === 0) {
+    // Format the date for the input field (YYYY-MM-DD) using local timezone
+    const year = dayDate.getFullYear();
+    const month = String(dayDate.getMonth() + 1).padStart(2, '0');
+    const day = String(dayDate.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    
     return `
       <div class="empty-day">
         <span class="material-icons">add</span>
         <div class="empty-day-text">No sessions scheduled.<br>Sessions will appear when CSV is uploaded.</div>
-        <button class="create-session-btn" onclick="openCreateSessionModal()">
+        <button class="create-session-btn" onclick="openCreateSessionModal('${formattedDate}')">
           Create Session
         </button>
       </div>
@@ -4310,7 +4376,11 @@ async function loadListSessionData() {
   if (!unitId) return;
 
   try {
-    const weekStart = currentWeekStart.toISOString().split('T')[0];
+    // Format week start date using local timezone
+    const year = currentWeekStart.getFullYear();
+    const month = String(currentWeekStart.getMonth() + 1).padStart(2, '0');
+    const day = String(currentWeekStart.getDate()).padStart(2, '0');
+    const weekStart = `${year}-${month}-${day}`;
     const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
     
     const response = await fetch(url, {
@@ -4735,10 +4805,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 1000);
 
 // Create Session Modal Functions
-function openCreateSessionModal() {
-  // Set today's date as default
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('session-date').value = today;
+function openCreateSessionModal(selectedDate = null) {
+  // Set the selected date or today's date as default
+  let dateToSet;
+  if (selectedDate) {
+    // If a specific date was passed, use it
+    dateToSet = selectedDate;
+  } else {
+    // Otherwise, use today's date with local timezone
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    dateToSet = `${year}-${month}-${day}`;
+  }
+  
+  document.getElementById('session-date').value = dateToSet;
   
   // Show modal
   document.getElementById('create-session-modal').style.display = 'flex';
