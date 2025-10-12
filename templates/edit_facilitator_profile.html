@@ -43,19 +43,19 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="first_name">First Name *</label>
-                        <input type="text" id="first_name" name="first_name" value="{{ facilitator_user.first_name or '' }}" required>
+                        <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="last_name">Last Name *</label>
-                        <input type="text" id="last_name" name="last_name" value="{{ facilitator_user.last_name or '' }}" required>
+                        <input type="text" id="last_name" name="last_name" value="{{ user.last_name or '' }}" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="email">Email *</label>
-                        <input type="email" id="email" name="email" value="{{ facilitator_user.email }}" required>
+                        <input type="email" id="email" name="email" value="{{ user.email }}" readonly>
                     </div>
                     
                     <div class="form-group">
@@ -66,8 +66,18 @@
                                 Change Password
                             </button>
                             <div id="passwordFields" class="password-fields" style="display: none;">
-                                <input type="password" id="current_password" name="current_password" placeholder="Current Password">
-                                <input type="password" id="new_password" name="new_password" placeholder="New Password">
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="current_password" name="current_password" placeholder="Current Password">
+                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('current_password')">
+                                        <span class="material-icons">visibility_off</span>
+                                    </button>
+                                </div>
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="new_password" name="new_password" placeholder="New Password">
+                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('new_password')">
+                                        <span class="material-icons">visibility_off</span>
+                                    </button>
+                                </div>
                                 <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm New Password">
                                 <small class="password-hint">Leave blank to keep current password</small>
                             </div>
@@ -78,12 +88,12 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="phone_number">Phone Number</label>
-                        <input type="tel" id="phone_number" name="phone_number" value="{{ facilitator_user.phone_number or '' }}">
+                        <input type="tel" id="phone_number" name="phone_number" value="{{ user.phone_number or '' }}">
                     </div>
                     
                     <div class="form-group">
                         <label for="staff_number">Staff Number</label>
-                        <input type="text" id="staff_number" name="staff_number" value="{{ facilitator_user.staff_number or '' }}">
+                        <input type="text" id="staff_number" name="staff_number" value="{{ user.staff_number or '' }}">
                     </div>
                 </div>
 
@@ -138,6 +148,21 @@
                 }
             });
         });
+
+        // Toggle password visibility
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const toggleBtn = input.parentNode.querySelector('.password-toggle');
+            const icon = toggleBtn.querySelector('.material-icons');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.textContent = 'visibility';
+            } else {
+                input.type = 'password';
+                icon.textContent = 'visibility_off';
+            }
+        }
     </script>
 </body>
 </html>

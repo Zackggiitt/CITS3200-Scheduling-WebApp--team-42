@@ -568,7 +568,7 @@ def edit_profile():
             # Update user information
             user.first_name = request.form.get("first_name", user.first_name)
             user.last_name = request.form.get("last_name", user.last_name)
-            user.email = request.form.get("email", user.email)
+            # Email is read-only and cannot be changed
             user.phone_number = request.form.get("phone_number", user.phone_number)
             user.staff_number = request.form.get("staff_number", user.staff_number)
             

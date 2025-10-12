@@ -770,3 +770,55 @@ input:invalid:focus {
         font-size: 0.9rem;
     }
 }
+
+/* Read-only input styling */
+input[readonly] {
+    background-color: #f5f5f5;
+    color: #666;
+    cursor: not-allowed;
+    border-color: #ddd;
+}
+
+input[readonly]:focus {
+    outline: none;
+    border-color: #ddd;
+    box-shadow: none;
+}
+
+/* Password input wrapper styling */
+.password-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-wrapper input {
+    flex: 1;
+    padding-right: 45px; /* Make room for the toggle button */
+}
+
+.password-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+    color: #333;
+    background-color: #f0f0f0;
+}
+
+.password-toggle .material-icons {
+    font-size: 20px;
+}

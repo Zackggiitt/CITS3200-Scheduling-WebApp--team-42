@@ -1275,6 +1275,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide navigation tabs
         const dashboardNav = document.getElementById('dashboard-nav');
         const unavailabilityNav = document.getElementById('unavailability-nav');
+        const skillsNav = document.getElementById('skills-nav');
         const scheduleNav = document.getElementById('schedule-nav');
         const swapsNav = document.getElementById('swaps-nav');
         
@@ -1283,6 +1284,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (dashboardNav) dashboardNav.style.display = 'none';
         if (unavailabilityNav) unavailabilityNav.style.display = 'none';
+        if (skillsNav) skillsNav.style.display = 'none';
         if (scheduleNav) scheduleNav.style.display = 'none';
         if (swapsNav) swapsNav.style.display = 'none';
         if (unavailabilityAlert) unavailabilityAlert.style.display = 'none';
@@ -1292,6 +1294,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show navigation tabs
         const dashboardNav = document.getElementById('dashboard-nav');
         const unavailabilityNav = document.getElementById('unavailability-nav');
+        const skillsNav = document.getElementById('skills-nav');
         const scheduleNav = document.getElementById('schedule-nav');
         const swapsNav = document.getElementById('swaps-nav');
         
@@ -1302,6 +1305,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (dashboardNav) dashboardNav.style.display = 'flex';
         if (unavailabilityNav) unavailabilityNav.style.display = 'flex';
+        if (skillsNav) skillsNav.style.display = 'flex';
         if (scheduleNav) scheduleNav.style.display = 'flex';
         if (swapsNav) swapsNav.style.display = 'flex';
         
