@@ -95,11 +95,14 @@ def setup_account():
         flash("This account has already been set up. Please log in.")
         return redirect(url_for("login"))
     
-    # Get role name for display
-    role_name = "Unit Coordinator" if user.role == UserRole.UNIT_COORDINATOR else "Facilitator"
-    
-    # Render signup page with email, token, and role pre-filled
-    return render_template("signup.html", email=email, token=token, role_name=role_name)
+    # Get role name for display and determine which signup page to use
+    if user.role == UserRole.ADMIN:
+        # Admins use simplified signup page (no phone/staff number)
+        return render_template("admin_signup.html", email=email, token=token)
+    else:
+        role_name = "Unit Coordinator" if user.role == UserRole.UNIT_COORDINATOR else "Facilitator"
+        # Facilitators and UCs use full signup page
+        return render_template("signup.html", email=email, token=token, role_name=role_name)
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -222,6 +225,94 @@ def signup():
     
     return render_template("signup.html")
 
+
+@app.route("/admin-signup", methods=["POST"])
+def admin_signup():
+    """Handle admin account setup (simplified - no phone/staff number)"""
+    first = request.form["first_name"].strip()
+    last = request.form["last_name"].strip()
+    email = request.form["email"].strip().lower()
+    password = request.form["password"]
+    confirm_password = request.form["confirm_password"]
+    token = request.form.get("token")
+
+    # Verify token
+    if not token:
+        flash("Invalid setup link. Please use the link from your email.")
+        return redirect(url_for("login"))
+    
+    from email_service import verify_email_token
+    token_email = verify_email_token(token)
+    
+    if not token_email or token_email.lower() != email:
+        flash("This setup link is invalid or has expired. Please contact your administrator.")
+        return redirect(url_for("login"))
+
+    # Validation
+    if not all([first, last, email, password, confirm_password]):
+        flash("All fields are required!")
+        return render_template("admin_signup.html", email=email, token=token, 
+                             first_name=first, last_name=last)
+    
+    # Check if passwords match
+    if password != confirm_password:
+        flash("Passwords do not match!")
+        return render_template("admin_signup.html", email=email, token=token,
+                             first_name=first, last_name=last)
+
+    # Check if email was pre-registered as admin
+    existing_user = User.query.filter_by(email=email).first()
+    if not existing_user or existing_user.role != UserRole.ADMIN:
+        flash("This email is not authorized for admin signup. Please contact your administrator.")
+        return render_template("admin_signup.html", email=email, token=token,
+                             first_name=first, last_name=last)
+    
+    # Check if user has already completed signup
+    if existing_user.first_name and existing_user.last_name and existing_user.password_hash:
+        flash("This account has already been set up. Please log in instead.")
+        return redirect(url_for("login"))
+    
+    # Password validation
+    if len(password) < 8:
+        flash("Password must be at least 8 characters!")
+        return render_template("admin_signup.html", email=email, token=token,
+                             first_name=first, last_name=last)
+    
+    if not re.search(r'[A-Z]', password):
+        flash("Password must contain at least one uppercase letter!")
+        return render_template("admin_signup.html", email=email, token=token,
+                             first_name=first, last_name=last)
+    
+    if not re.search(r'[a-z]', password):
+        flash("Password must contain at least one lowercase letter!")
+        return render_template("admin_signup.html", email=email, token=token,
+                             first_name=first, last_name=last)
+    
+    if not re.search(r'\d', password):
+        flash("Password must contain at least one number!")
+        return render_template("admin_signup.html", email=email, token=token,
+                             first_name=first, last_name=last)
+
+    try:
+        # Update the existing admin user record
+        existing_user.first_name = first
+        existing_user.last_name = last
+        existing_user.password_hash = generate_password_hash(password)
+        
+        db.session.commit()
+        
+        # Mark token as used
+        from email_service import mark_token_as_used
+        mark_token_as_used(token)
+        
+        flash("Admin account created successfully! Please log in.")
+        return redirect(url_for("login"))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash("Registration failed. Please try again.")
+        return render_template("admin_signup.html", email=email, token=token,
+                             first_name=first, last_name=last)
 
 
 

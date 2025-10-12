@@ -1516,14 +1516,23 @@ def create_unit():
         # Send setup emails to newly created facilitators (if any were added during edit)
         from flask import session as flask_session
         from email_service import send_welcome_email
+        
+        print(f"DEBUG (UPDATE): Checking for pending facilitator emails...")
+        print(f"DEBUG (UPDATE): Session keys: {list(flask_session.keys())}")
+        
         pending_emails = flask_session.pop('pending_facilitator_emails', [])
+        print(f"DEBUG (UPDATE): Found {len(pending_emails)} pending emails: {pending_emails}")
+        
         if pending_emails:
             for email in pending_emails:
                 try:
+                    print(f"DEBUG (UPDATE): Attempting to send email to {email}")
                     send_welcome_email(email, user_role=UserRole.FACILITATOR)
-                    print(f"Setup email sent to {email}")
+                    print(f"✅ Setup email sent to {email}")
                 except Exception as e:
-                    print(f"Failed to send setup email to {email}: {e}")
+                    print(f"❌ Failed to send setup email to {email}: {e}")
+        else:
+            print(f"DEBUG (UPDATE): No pending emails found in session")
 
         flash("Unit updated successfully!", "success")
         if user.role == UserRole.ADMIN:
@@ -1562,14 +1571,23 @@ def create_unit():
     # Send setup emails to newly created facilitators
     from flask import session as flask_session
     from email_service import send_welcome_email
+    
+    print(f"DEBUG: Checking for pending facilitator emails...")
+    print(f"DEBUG: Session keys: {list(flask_session.keys())}")
+    
     pending_emails = flask_session.pop('pending_facilitator_emails', [])
+    print(f"DEBUG: Found {len(pending_emails)} pending emails: {pending_emails}")
+    
     if pending_emails:
         for email in pending_emails:
             try:
+                print(f"DEBUG: Attempting to send email to {email}")
                 send_welcome_email(email, user_role=UserRole.FACILITATOR)
-                print(f"Setup email sent to {email}")
+                print(f"✅ Setup email sent to {email}")
             except Exception as e:
-                print(f"Failed to send setup email to {email}: {e}")
+                print(f"❌ Failed to send setup email to {email}: {e}")
+    else:
+        print(f"DEBUG: No pending emails found in session")
 
     flash("Unit created successfully!", "success")
     if user.role == UserRole.ADMIN:
@@ -1972,27 +1990,30 @@ def confirm_facilitators():
     try:
         db.session.commit()
         
-        # Store new user emails in session for later email sending when unit is created
-        # Limit to prevent session cookie size issues (max 100 emails)
-        from flask import session as flask_session
-        if 'pending_facilitator_emails' not in flask_session:
-            flask_session['pending_facilitator_emails'] = []
+        # Send setup emails to newly created facilitators immediately
+        from email_service import send_welcome_email
         
-        # Limit the number of emails stored in session to prevent cookie size issues
-        max_emails_in_session = 100
-        current_emails = flask_session['pending_facilitator_emails']
-        new_emails_to_add = new_user_emails[:max_emails_in_session - len(current_emails)]
+        print(f"DEBUG: Created {created_users} new users")
+        print(f"DEBUG: New user emails to send to: {new_user_emails}")
         
-        if new_emails_to_add:
-            flask_session['pending_facilitator_emails'].extend(new_emails_to_add)
-            flask_session.modified = True
+        emails_sent = 0
+        if new_user_emails:
+            for email in new_user_emails:
+                try:
+                    print(f"DEBUG: Attempting to send email to {email}")
+                    send_welcome_email(email, user_role=UserRole.FACILITATOR)
+                    print(f"✅ Setup email sent to {email}")
+                    emails_sent += 1
+                except Exception as e:
+                    print(f"❌ Failed to send setup email to {email}: {e}")
         
         return jsonify({
             "ok": True,
             "created_users": created_users,
             "linked_facilitators": linked_facilitators,
+            "emails_sent": emails_sent,
             "errors": errors[:20],  # show up to 20 issues
-        }), 200
+        }), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({"ok": False, "error": f"Failed to create facilitators: {e}"}), 500
@@ -2009,7 +2030,7 @@ def remove_unit_facilitators(unit_id: int):
     user = get_current_user()
     unit = _get_user_unit_or_404(user, unit_id)
     if not unit:
-        return jsonify({"ok": False, "error": "Unit not found"}), 404
+        return jsonify({"ok": False, "error": "Unit not found"}), 403
 
     try:
         # Count facilitators before removal
@@ -2284,8 +2305,8 @@ def check_auto_assign_validation(unit_id: int):
                 "error": "No facilitators assigned to this unit"
             }), 400
         
-        # Get all modules for this unit
-        unit_modules = Module.query.filter_by(unit_id=unit_id).all()
+        # Get all modules for this unit (excluding the default "General" module)
+        unit_modules = Module.query.filter_by(unit_id=unit_id).filter(Module.module_name != "General").all()
         if not unit_modules:
             return jsonify({
                 "ok": False,
@@ -2303,12 +2324,13 @@ def check_auto_assign_validation(unit_id: int):
             # Check if facilitator has declared skills for all modules in this unit
             missing_modules = unit_module_ids - declared_module_ids
             if missing_modules:
-                missing_module_names = [Module.query.get(module_id).module_name for module_id in missing_modules]
-                facilitators_missing_skills.append({
-                    'name': facilitator.full_name,
-                    'email': facilitator.email,
-                    'missing_modules': missing_module_names
-                })
+                missing_module_names = [Module.query.get(module_id).module_name for module_id in missing_modules if Module.query.get(module_id).module_name != "General"]
+                if missing_module_names:  # Only add if there are actual missing modules (not just General)
+                    facilitators_missing_skills.append({
+                        'name': facilitator.full_name,
+                        'email': facilitator.email,
+                        'missing_modules': missing_module_names
+                    })
         
         can_run = len(facilitators_missing_skills) == 0
         

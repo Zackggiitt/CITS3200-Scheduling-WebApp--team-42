@@ -1991,6 +1991,8 @@ async function createUnit() {
 }
 
 async function createUnitFinal() {
+  console.log('🚀 createUnitFinal() CALLED!');
+  
   const createBtn = document.getElementById('submit-btn');
   
   if (createBtn) {
@@ -2000,27 +2002,51 @@ async function createUnitFinal() {
 
   try {
     const unitId = document.getElementById('unit_id').value;
+    console.log('📝 Unit ID:', unitId);
     
     if (!unitId) {
       throw new Error('No unit ID found. Please go back and complete the previous steps.');
     }
 
-    console.log('Finalizing unit with ID:', unitId);
+    console.log('✅ Finalizing unit with ID:', unitId);
 
-    // Since the unit draft already exists and sessions are created,
-    // we just need to mark it as complete
-    document.getElementById('setup_complete').value = 'true';
+    // Get form data
+    const form = document.getElementById('create-unit-form');
+    console.log('📋 Form found:', !!form);
+    console.log('📋 Form action:', form ? form.action : 'N/A');
     
-    // Simulate a brief delay to show the "Creating..." state
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    console.log('Unit creation process completed');
-
-    // MAKE SURE THIS LINE IS HERE:
-    showUnitCreatedSuccessPopup();
+    if (!form) {
+      throw new Error('Could not find form');
+    }
+    
+    // Create FormData and ensure setup_complete is set
+    const formData = new FormData(form);
+    formData.set('setup_complete', 'true');
+    
+    console.log('📤 Submitting form to finalize unit and send emails...');
+    console.log('📤 URL:', form.action);
+    
+    // Submit via fetch to ensure we can handle the response
+    const response = await fetch(form.action, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN
+      }
+    });
+    
+    console.log('📥 Response status:', response.status);
+    
+    if (response.ok) {
+      console.log('✅ Unit finalized successfully!');
+      // Redirect to dashboard
+      window.location.href = response.url || '/unitcoordinator/admin-dashboard';
+    } else {
+      throw new Error('Failed to finalize unit');
+    }
 
   } catch (error) {
-    console.error('Error creating unit:', error);
+    console.error('❌ Error creating unit:', error);
     alert(`Failed to create unit: ${error.message}`);
     
     // Re-enable button on error
@@ -4214,6 +4240,7 @@ async function checkAutoAssignValidation() {
   if (!unitId) return;
 
   const autoAssignBtn = document.querySelector('.auto-assign-btn');
+  const infoBtn = document.querySelector('.auto-assign-info-btn');
   if (!autoAssignBtn) return;
 
   try {
@@ -4233,17 +4260,52 @@ async function checkAutoAssignValidation() {
       autoAssignBtn.disabled = false;
       autoAssignBtn.title = validationData.message || 'Ready to auto-assign facilitators';
       autoAssignBtn.style.opacity = '1';
+      if (infoBtn) infoBtn.style.display = 'none';
     } else {
-      // Button should be disabled
+      // Button should be disabled - show info button
       autoAssignBtn.disabled = true;
       autoAssignBtn.title = validationData.message || 'Prerequisites not met';
       autoAssignBtn.style.opacity = '0.6';
+      
+      // Show and setup info button
+      if (infoBtn) {
+        infoBtn.style.display = 'inline-flex';
+        infoBtn.onclick = () => showAutoAssignBlockedReason(validationData);
+      }
     }
   } catch (error) {
     console.error('Validation check error:', error);
     // On error, keep button enabled but with warning
     autoAssignBtn.title = 'Could not verify prerequisites';
   }
+}
+
+function showAutoAssignBlockedReason(validationData) {
+  // Build detailed message
+  let message = '⚠️ Auto-Assign is currently disabled:\n\n';
+  
+  if (validationData.facilitators_missing_skills && validationData.facilitators_missing_skills.length > 0) {
+    message += `📋 ${validationData.facilitators_missing_skills.length} facilitator(s) need to declare their skills:\n\n`;
+    
+    validationData.facilitators_missing_skills.forEach(fac => {
+      message += `• ${fac.name} (${fac.email})\n`;
+      if (fac.missing_modules && fac.missing_modules.length > 0) {
+        message += `  Missing skills for: ${fac.missing_modules.join(', ')}\n`;
+      }
+      message += '\n';
+    });
+    
+    message += '\n💡 These facilitators need to:\n';
+    message += '1. Log in to their account\n';
+    message += '2. Go to their profile/preferences\n';
+    message += '3. Declare their skill level for each module\n';
+  } else if (validationData.error) {
+    message += validationData.error;
+  } else {
+    message += validationData.message || 'Unknown reason';
+  }
+  
+  alert(message);
 }
 
 async function autoAssignFacilitators() {

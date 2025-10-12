@@ -1972,6 +1972,30 @@ main {
   font-size: 18px;
 }
 
+.auto-assign-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid #7c3aed;
+  background: white;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.auto-assign-info-btn:hover {
+  background: #f3e8ff;
+  transform: scale(1.1);
+}
+
+.auto-assign-info-btn .material-icons {
+  font-size: 20px;
+  color: #7c3aed;
+}
+
 /* Week Navigation */
 .week-navigation {
   display: flex;
