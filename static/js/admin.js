@@ -124,12 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const formData = new FormData(addEmployeeForm);
       const employeeData = {
-        role: formData.get('role'),
-        fullName: formData.get('fullName'),
-        phone: formData.get('phone'),
-        position: formData.get('position'),
         email: formData.get('email'),
-        status: formData.get('status')
+        position: formData.get('position')
       };
 
       console.log('Submitting user data:', employeeData);
@@ -152,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await response.json();
 
         if (result.success) {
-          alert('User added successfully! They will receive login credentials via email.');
+          alert(result.message || 'Setup email sent successfully!');
           modal.style.display = 'none';
           document.body.style.overflow = 'auto';
           addEmployeeForm.reset();
