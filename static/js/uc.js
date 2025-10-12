@@ -3141,113 +3141,32 @@ function initSessionsOverview() {
     console.warn('Dashboard panel not found');
     return;
   }
-  loadRealSessionsData();
+  // Load real attendance data which now includes sessions
+  loadAttendanceData();
 }
 
-async function loadRealSessionsData() {
-  console.log('Loading real sessions data...');
+
+function showEmptySessionsData() {
+  console.log('No sessions data available, showing empty state...');
   
-  const unitId = getUnitId();
-  if (!unitId) {
-    console.warn('No unit ID available for loading sessions');
-    return;
+  // Initialize empty data
+  if (window.__attData) {
+    window.__attData.today = [];
+    window.__attData.upcoming = [];
+    window.__attData.facilitators = [];
   }
 
-  try {
-    const response = await fetch(`/unitcoordinator/units/${unitId}/dashboard-sessions`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    if (!data.ok) {
-      throw new Error(data.error || 'Failed to load session data');
-    }
-
-    // Store for later re-render
-    window.__attData.today = data.today_sessions;
-    window.__attData.upcoming = data.upcoming_sessions;
-
-    updateTodaysSessions(data.today_sessions);
-    updateUpcomingSessions(data.upcoming_sessions);
-    updateMiniCalendar({ weekTotal: data.week_session_count, days: {} });
-    
-    console.log('=== INITIAL DATA LOAD ===');
-    console.log('Today sessions:', data.today_sessions);
-    console.log('Upcoming sessions:', data.upcoming_sessions);
-    console.log('Facilitator counts data:', data.facilitator_counts);
-    
-    // Log each upcoming session in detail
-    if (data.upcoming_sessions && data.upcoming_sessions.length > 0) {
-      console.log('=== DETAILED UPCOMING SESSIONS ===');
-      data.upcoming_sessions.forEach((session, index) => {
-        console.log(`Session ${index}:`, {
-          id: session.id,
-          name: session.name,
-          date: session.date,
-          time: session.time,
-          location: session.location,
-          status: session.status,
-          facilitators: session.facilitators
-        });
-      });
-      console.log('=== END DETAILED UPCOMING SESSIONS ===');
-    }
-    
-    console.log('=== END INITIAL DATA LOAD ===');
-    
-    renderActivityLog(data.facilitator_counts);
-    
-    // Update week session count in both cards
-    const weekCountElement = document.getElementById('weekSessionCount');
-    const todayCountElement = document.getElementById('todaySessionCount');
-    if (weekCountElement) {
-      weekCountElement.textContent = data.week_session_count;
-    }
-    if (todayCountElement) {
-      todayCountElement.textContent = data.today_sessions.length;
-    }
-    
-    console.log('Real sessions data loaded successfully');
-  } catch (error) {
-    console.error('Error loading real sessions data:', error);
-    // Fallback to sample data if real data fails
-    showSampleSessionsData();
-  }
-}
-
-function showSampleSessionsData() {
-  console.log('Loading sample sessions data...');
-  const sampleData = {
-    today: [
-      { name: "Workshop-01", time: "8:00 AM - 9:00 AM", location: "Private session - home", status: "confirmed", attendance: "Attended",
-        facilitators: [{ name: "Maya K", initials: "MK" }] },
-      { name: "Workshop-02", time: "11:30 AM - 12:30 PM", location: "Zen Studio", status: "confirmed", attendance: "Pending",
-        facilitators: [{ name: "Sarah J" }, { name: "Mike R" }, { name: "Lisa T" }, { name: "Tom B" }] }
-    ],
-    upcoming: [
-      { name: "Tutorial B", date: "Tomorrow",  time: "10:00 AM", location: "Room 3.21", attendance: "Pending" },
-      { name: "Workshop",   date: "Wednesday", time: "1:00 PM",  location: "EZONE 2.15", attendance: "Cancelled" }
-    ],
-    calendar: { weekTotal: 8, days: {} }
-  };
-
-  // Store for later re-render
-  window.__attData.today = sampleData.today;
-  window.__attData.upcoming = sampleData.upcoming;
-
-  updateTodaysSessions(sampleData.today);
-  updateUpcomingSessions(sampleData.upcoming);
-  updateMiniCalendar(sampleData.calendar);
+  updateTodaysSessions([]);
+  updateUpcomingSessions([]);
   
-  // Update week session count in both cards
+  // Update session counts to 0
   const weekCountElement = document.getElementById('weekSessionCount');
   const todayCountElement = document.getElementById('todaySessionCount');
   if (weekCountElement) {
-    weekCountElement.textContent = sampleData.calendar.weekTotal;
+    weekCountElement.textContent = 0;
   }
   if (todayCountElement) {
-    todayCountElement.textContent = sampleData.today.length;
+    todayCountElement.textContent = 0;
   }
   
   // Load real attendance data from the API
@@ -3312,12 +3231,10 @@ function ensureActivityLogCard() {
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <!-- Table Header -->
         <div class="bg-green-50 px-6 py-3 sticky top-0 z-10">
-          <div class="grid grid-cols-5 gap-4 text-xs font-semibold text-gray-700">
+          <div class="grid grid-cols-3 gap-6 text-sm font-semibold text-gray-700">
             <div>Name</div>
-            <div>Student Number</div>
-            <div>Date</div>
-            <div class="text-center">Session Hours</div>
-            <div class="text-center">Total Weekly Hours</div>
+            <div>Email</div>
+            <div class="text-center">Total Hours</div>
           </div>
         </div>
 
@@ -3533,7 +3450,7 @@ function renderActivityLog(facilitatorData = []) {
 
 function createFacilitatorRow(facilitator, index) {
   const row = document.createElement('div');
-  row.className = 'grid grid-cols-5 gap-4 px-6 py-3 hover:bg-gray-50';
+  row.className = 'grid grid-cols-3 gap-6 px-8 py-4 hover:bg-gray-50';
   
   // Use real data from the API
   const assignedHours = facilitator.assigned_hours || 0;
@@ -3543,12 +3460,10 @@ function createFacilitatorRow(facilitator, index) {
   
   row.innerHTML = `
     <div class="flex items-center">
-      <span class="text-xs font-medium text-gray-900">${facilitator.name}</span>
+      <span class="text-sm font-medium text-gray-900">${facilitator.name}</span>
     </div>
-    <div class="text-xs text-gray-600 font-mono">${studentNumber}</div>
-    <div class="text-xs text-gray-600">${sessionDate}</div>
-    <div class="text-xs text-gray-600 text-center">${assignedHours}h</div>
-    <div class="text-xs text-gray-600 text-center">${totalHours}h</div>
+    <div class="text-sm text-gray-600">${facilitator.email}</div>
+    <div class="text-sm text-gray-600 text-center">${totalHours}h</div>
   `;
   
   return row;
@@ -4717,11 +4632,27 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const response = await fetch(`/unitcoordinator/units/${unitId}/attendance-summary`, {
+      // Calculate current week start and end dates
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() + daysToMonday);
+      weekStart.setHours(0, 0, 0, 0);
+      
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      
+      // Format dates for API
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+      const response = await fetch(`/unitcoordinator/units/${unitId}/dashboard-sessions?week_start=${weekStartStr}&week_end=${weekEndStr}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+          'X-CSRFToken': window.CSRF_TOKEN || ''
         }
       });
 
@@ -4731,23 +4662,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await response.json();
       
-      if (data.ok && data.facilitators) {
-        console.log('Loaded attendance data:', data.facilitators.length, 'facilitators');
+      if (data.ok) {
+        console.log('Loaded dashboard sessions data:', data);
         
         // Store in global data object
         if (window.__attData) {
-          window.__attData.facilitators = data.facilitators;
+          window.__attData.today = data.today_sessions || [];
+          window.__attData.upcoming = data.upcoming_sessions || [];
+          window.__attData.facilitators = data.facilitator_counts || [];
+        }
+        
+        // Update today's sessions
+        updateTodaysSessions(data.today_sessions || []);
+        
+        // Update upcoming sessions
+        updateUpcomingSessions(data.upcoming_sessions || []);
+        
+        // Update session counts
+        const weekCountElement = document.getElementById('weekSessionCount');
+        const todayCountElement = document.getElementById('todaySessionCount');
+        if (weekCountElement) {
+          weekCountElement.textContent = data.week_session_count || 0;
+        }
+        if (todayCountElement) {
+          todayCountElement.textContent = (data.today_sessions || []).length;
         }
         
         // Render the attendance summary
-        renderActivityLog(data.facilitators);
-        
-        // Update the week display with real data
-        updateAttendanceWeekDisplay(data.facilitators);
+        if (data.facilitator_counts) {
+          renderActivityLog(data.facilitator_counts);
+          updateAttendanceWeekDisplay(data.facilitator_counts);
+        }
         
       } else {
-        console.error('Failed to load attendance data:', data.error);
-        showAttendanceError('Failed to load attendance data');
+        console.error('Failed to load dashboard sessions:', data.error);
+        showAttendanceError('Failed to load session data');
       }
       
     } catch (error) {
