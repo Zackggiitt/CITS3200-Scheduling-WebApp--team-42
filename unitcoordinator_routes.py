@@ -2649,6 +2649,142 @@ def list_venues(unit_id: int):
     })
 
 
+@unitcoordinator_bp.post("/units/<int:unit_id>/publish")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def publish_schedule(unit_id: int):
+    """Publish the schedule and notify facilitators."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        # Get all sessions for this unit that have facilitators assigned
+        sessions = (
+            db.session.query(Session)
+            .join(Module, Session.module_id == Module.id)
+            .filter(Module.unit_id == unit_id)
+            .filter(Session.status.in_(['pending', 'assigned']))
+            .all()
+        )
+        
+        if not sessions:
+            return jsonify({"ok": False, "error": "No assigned sessions found to publish"}), 400
+        
+        # Get all facilitators who will be notified
+        facilitator_ids = set()
+        for session in sessions:
+            # Get facilitators assigned to this session
+            assignments = SessionFacilitator.query.filter_by(session_id=session.id).all()
+            for assignment in assignments:
+                facilitator_ids.add(assignment.facilitator_id)
+        
+        # Create notifications for facilitators
+        notifications_created = 0
+        for facilitator_id in facilitator_ids:
+            notification = Notification(
+                user_id=facilitator_id,
+                title="Schedule Published",
+                message=f"Your schedule for {unit.unit_code} has been published. Please review your assigned sessions.",
+                notification_type="schedule_published",
+                is_read=False
+            )
+            db.session.add(notification)
+            notifications_created += 1
+        
+        # Update session statuses to 'published'
+        for session in sessions:
+            session.status = 'published'
+        
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "message": f"Schedule published successfully. {notifications_created} facilitators notified.",
+            "sessions_published": len(sessions),
+            "facilitators_notified": notifications_created
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to publish schedule: {str(e)}"}), 500
+
+
+@unitcoordinator_bp.post("/units/<int:unit_id>/sessions/manual")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def create_manual_session(unit_id: int):
+    """Create a new session manually for a unit."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'date', 'module_type', 'start_time', 'end_time', 'location']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({"ok": False, "error": f"Missing required field: {field}"}), 400
+        
+        # Parse datetime
+        from datetime import datetime
+        session_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        start_time = datetime.strptime(f"{data['date']} {data['start_time']}", '%Y-%m-%d %H:%M')
+        end_time = datetime.strptime(f"{data['date']} {data['end_time']}", '%Y-%m-%d %H:%M')
+        
+        # Validate time range
+        if start_time >= end_time:
+            return jsonify({"ok": False, "error": "End time must be after start time"}), 400
+        
+        # Create a module with the session name
+        module = Module.query.filter_by(unit_id=unit_id, module_name=data['name']).first()
+        if not module:
+            module = Module(
+                unit_id=unit_id,
+                module_name=data['name'],
+                module_type=data['module_type']
+            )
+            db.session.add(module)
+            db.session.flush()  # Get the ID
+        
+        # Create session
+        session = Session(
+            module_id=module.id,
+            session_type=data['module_type'],
+            start_time=start_time,
+            end_time=end_time,
+            location=data['location'],
+            max_facilitators=1,  # Default to 1, can be updated later
+            lead_staff_required=1,
+            support_staff_required=0
+        )
+        
+        db.session.add(session)
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "session": {
+                "id": session.id,
+                "name": module.module_name,
+                "start_time": session.start_time.isoformat(),
+                "end_time": session.end_time.isoformat(),
+                "location": session.location,
+                "module_type": module.module_type
+            }
+        })
+        
+    except ValueError as e:
+        return jsonify({"ok": False, "error": f"Invalid date/time format: {str(e)}"}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to create session: {str(e)}"}), 500
+
+
 @unitcoordinator_bp.get("/units/<int:unit_id>/facilitators")
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
@@ -2659,14 +2795,26 @@ def list_facilitators(unit_id: int):
         return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
 
     facs = (
-        db.session.query(User.email)
+        db.session.query(User)
         .join(UnitFacilitator, UnitFacilitator.user_id == User.id)
         .filter(UnitFacilitator.unit_id == unit.id)
-        .order_by(User.email.asc())
+        .order_by(User.first_name.asc(), User.last_name.asc())
         .all()
     )
-    emails = [e for (e,) in facs]
-    return jsonify({"ok": True, "facilitators": emails})
+    
+    facilitators = []
+    for fac in facs:
+        facilitators.append({
+            "id": fac.id,
+            "name": fac.full_name,
+            "email": fac.email,
+            "first_name": fac.first_name,
+            "last_name": fac.last_name,
+            "phone_number": fac.phone_number,
+            "staff_number": fac.staff_number
+        })
+    
+    return jsonify({"ok": True, "facilitators": facilitators})
 
 
 # ---------- CAS CSV Upload (auto-generate sessions) ----------

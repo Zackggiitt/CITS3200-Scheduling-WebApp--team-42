@@ -15,6 +15,67 @@ const {
 
 const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
 
+// Simple notification function
+function showSimpleNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `simple-notification ${type}`;
+  notification.textContent = message;
+  
+  // Style the notification
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  `;
+  
+  // Set background color based on type
+  switch (type) {
+    case 'success':
+      notification.style.backgroundColor = '#10b981';
+      break;
+    case 'error':
+      notification.style.backgroundColor = '#ef4444';
+      break;
+    case 'warning':
+      notification.style.backgroundColor = '#f59e0b';
+      break;
+    default:
+      notification.style.backgroundColor = '#3b82f6';
+  }
+  
+  // Add to DOM
+  document.body.appendChild(notification);
+  
+  // Animate in
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 100);
+  
+  // Auto remove after 4 seconds
+  setTimeout(() => {
+    notification.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 4000);
+}
+
+// ===== Facilitator Modal Variables =====
+let allFacilitators = [];
+let filteredFacilitators = [];
+let selectedFacilitators = [];
+let currentSessionData = null;
 
 // ===== Helpers to inject ids into route templates =====
 function withUnitId(tpl, id)     { return tpl.replace(/\/0(\/|$)/, `/${id}$1`); }
@@ -3969,7 +4030,11 @@ async function loadScheduleSessions() {
   if (!unitId) return;
 
   try {
-    const weekStart = currentWeekStart.toISOString().split('T')[0];
+    // Format week start date using local timezone
+    const year = currentWeekStart.getFullYear();
+    const month = String(currentWeekStart.getMonth() + 1).padStart(2, '0');
+    const day = String(currentWeekStart.getDate()).padStart(2, '0');
+    const weekStart = `${year}-${month}-${day}`;
     const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
     
     const response = await fetch(url);
@@ -4017,7 +4082,7 @@ function renderScheduleGrid() {
           </div>
         </div>
         <div class="day-sessions">
-          ${renderDaySessions(daySessions)}
+          ${renderDaySessions(daySessions, dayDate)}
         </div>
       </div>
     `;
@@ -4036,20 +4101,29 @@ function getSessionsForDay(date) {
 }
 
 // Render sessions for a specific day
-function renderDaySessions(sessions) {
+function renderDaySessions(sessions, dayDate) {
   if (sessions.length === 0) {
+    // Format the date for the input field (YYYY-MM-DD) using local timezone
+    const year = dayDate.getFullYear();
+    const month = String(dayDate.getMonth() + 1).padStart(2, '0');
+    const day = String(dayDate.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    
     return `
       <div class="empty-day">
         <span class="material-icons">add</span>
         <div class="empty-day-text">No sessions scheduled.<br>Sessions will appear when CSV is uploaded.</div>
+        <button class="create-session-btn" onclick="openCreateSessionModal('${formattedDate}')">
+          Create Session
+        </button>
       </div>
     `;
   }
 
-  return sessions.map(session => `
-    <div class="session-card">
+  return sessions.map((session, index) => `
+    <div class="session-card" data-session-id="${session.id || `temp-${index}`}" data-session-name="${session.session_name || session.title || 'New Session'}" data-session-time="${formatTime(session.start)} - ${formatTime(session.end)}" data-session-location="${session.location || 'TBA'}">
       <div class="session-header">
-        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}">
+        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="openFacilitatorModal(this)"' : ''}>
           ${session.facilitator ? getInitials(session.facilitator) : 'Unassigned'}
         </div>
         <div class="session-time">
@@ -4302,7 +4376,11 @@ async function loadListSessionData() {
   if (!unitId) return;
 
   try {
-    const weekStart = currentWeekStart.toISOString().split('T')[0];
+    // Format week start date using local timezone
+    const year = currentWeekStart.getFullYear();
+    const month = String(currentWeekStart.getMonth() + 1).padStart(2, '0');
+    const day = String(currentWeekStart.getDate()).padStart(2, '0');
+    const weekStart = `${year}-${month}-${day}`;
     const url = withUnitId(CAL_WEEK_TEMPLATE, unitId) + `?week_start=${weekStart}`;
     
     const response = await fetch(url, {
@@ -4725,3 +4803,645 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     loadAttendanceData();
   }, 1000);
+
+// Create Session Modal Functions
+function openCreateSessionModal(selectedDate = null) {
+  // Set the selected date or today's date as default
+  let dateToSet;
+  if (selectedDate) {
+    // If a specific date was passed, use it
+    dateToSet = selectedDate;
+  } else {
+    // Otherwise, use today's date with local timezone
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    dateToSet = `${year}-${month}-${day}`;
+  }
+  
+  document.getElementById('session-date').value = dateToSet;
+  
+  // Show modal
+  document.getElementById('create-session-modal').style.display = 'flex';
+}
+
+function closeCreateSessionModal() {
+  document.getElementById('create-session-modal').style.display = 'none';
+  
+  // Clear form
+  document.getElementById('session-name').value = '';
+  document.getElementById('session-date').value = '';
+  document.getElementById('session-module').value = '';
+  document.getElementById('session-start-time').value = '';
+  document.getElementById('session-end-time').value = '';
+  document.getElementById('session-location').value = '';
+  document.getElementById('session-description').value = '';
+}
+
+function validateSessionForm() {
+  const requiredFields = [
+    'session-name',
+    'session-date', 
+    'session-module',
+    'session-start-time',
+    'session-end-time',
+    'session-location'
+  ];
+  
+  let isValid = true;
+  
+  requiredFields.forEach(fieldId => {
+    const field = document.getElementById(fieldId);
+    if (!field.value.trim()) {
+      field.style.borderColor = '#ef4444';
+      isValid = false;
+    } else {
+      field.style.borderColor = '#d1d5db';
+    }
+  });
+  
+  // Validate time range
+  const startTime = document.getElementById('session-start-time').value;
+  const endTime = document.getElementById('session-end-time').value;
+  
+  if (startTime && endTime && startTime >= endTime) {
+    document.getElementById('session-end-time').style.borderColor = '#ef4444';
+    showSimpleNotification('End time must be after start time', 'error');
+    isValid = false;
+  }
+  
+  return isValid;
+}
+
+async function createSession() {
+  if (!validateSessionForm()) {
+    return;
+  }
+  
+  const sessionData = {
+    name: document.getElementById('session-name').value.trim(),
+    date: document.getElementById('session-date').value,
+    module_type: document.getElementById('session-module').value,
+    start_time: document.getElementById('session-start-time').value,
+    end_time: document.getElementById('session-end-time').value,
+    location: document.getElementById('session-location').value.trim(),
+    description: document.getElementById('session-description').value.trim()
+  };
+  
+  try {
+    // Get current unit ID
+    const tabsNav = document.querySelector('.uc-tabs[data-unit-id]');
+    const currentUnitId = tabsNav ? tabsNav.getAttribute('data-unit-id') : null;
+    
+    if (!currentUnitId) {
+      showSimpleNotification('No unit selected', 'error');
+      return;
+    }
+    
+    const response = await fetch(`/unitcoordinator/units/${currentUnitId}/sessions/manual`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify(sessionData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      showSimpleNotification('Session created successfully!', 'success');
+      closeCreateSessionModal();
+      
+      // Refresh the schedule
+      setTimeout(() => {
+        loadScheduleSessions();
+      }, 1000);
+    } else {
+      throw new Error(result.error || 'Failed to create session');
+    }
+    
+  } catch (error) {
+    console.error('Error creating session:', error);
+    showSimpleNotification(`Error creating session: ${error.message}`, 'error');
+  }
+}
+
+// Open facilitator selection modal
+function openFacilitatorModal(element) {
+  const sessionCard = element.closest('.session-card');
+  
+  if (!sessionCard) {
+    console.error('Session card not found');
+    return;
+  }
+  
+  currentSessionData = {
+    id: sessionCard.dataset.sessionId,
+    name: sessionCard.dataset.sessionName,
+    time: sessionCard.dataset.sessionTime,
+    location: sessionCard.dataset.sessionLocation
+  };
+  
+  // Reset selection
+  selectedFacilitators = [];
+  
+  // Update modal content
+  const nameEl = document.getElementById('modal-session-name');
+  const timeEl = document.getElementById('modal-session-time');
+  const locationEl = document.getElementById('modal-session-location');
+  
+  if (nameEl) nameEl.textContent = currentSessionData.name;
+  if (timeEl) timeEl.textContent = `Time: ${currentSessionData.time}`;
+  if (locationEl) locationEl.textContent = `Location: ${currentSessionData.location}`;
+  
+  // Show modal
+  const modal = document.getElementById('facilitator-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+  
+  // Set up search functionality
+  const searchInput = document.getElementById('facilitator-search');
+  if (searchInput) {
+    // Remove any existing listeners to avoid duplicates
+    searchInput.removeEventListener('input', searchFacilitators);
+    searchInput.addEventListener('input', searchFacilitators);
+  }
+  
+  // Load facilitators
+  loadFacilitators();
+}
+
+// Close facilitator modal
+function closeFacilitatorModal() {
+  document.getElementById('facilitator-modal').style.display = 'none';
+  
+  // Clear search input
+  const searchInput = document.getElementById('facilitator-search');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  
+  currentSessionData = null;
+  allFacilitators = [];
+  filteredFacilitators = [];
+  selectedFacilitators = [];
+}
+
+// Load facilitators from API
+async function loadFacilitators() {
+  const facilitatorList = document.getElementById('facilitator-list');
+  
+  // Get current unit ID from multiple possible sources
+  let currentUnitId = null;
+  
+  // Try to get from tabs navigation data attribute
+  const tabsNav = document.querySelector('.uc-tabs[data-unit-id]');
+  if (tabsNav) {
+    currentUnitId = tabsNav.getAttribute('data-unit-id');
+  }
+  
+  // Try to get from URL parameters
+  if (!currentUnitId) {
+    const urlParams = new URLSearchParams(window.location.search);
+    currentUnitId = urlParams.get('unit');
+  }
+  
+  // Try to get from unit_id input (for create unit modal)
+  if (!currentUnitId) {
+    const unitIdInput = document.getElementById('unit_id');
+    if (unitIdInput && unitIdInput.value) {
+      currentUnitId = unitIdInput.value;
+    }
+  }
+  
+  if (!currentUnitId) {
+    facilitatorList.innerHTML = `
+      <div class="facilitator-loading">
+        <span class="material-icons">error</span>
+        <p>No unit selected</p>
+      </div>
+    `;
+    return;
+  }
+  
+  try {
+    facilitatorList.innerHTML = `
+      <div class="facilitator-loading">
+        <span class="material-icons">hourglass_empty</span>
+        <p>Loading facilitators...</p>
+      </div>
+    `;
+    
+    const url = withUnitId(LIST_FACILITATORS_TEMPLATE, currentUnitId);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.ok) {
+      allFacilitators = data.facilitators;
+      filteredFacilitators = [...allFacilitators];
+      renderFacilitatorList();
+    } else {
+      throw new Error(data.error || 'Failed to load facilitators');
+    }
+    
+  } catch (error) {
+    console.error('Error loading facilitators:', error);
+    facilitatorList.innerHTML = `
+      <div class="facilitator-loading">
+        <span class="material-icons">error</span>
+        <p>Error loading facilitators: ${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+// Render facilitator list
+function renderFacilitatorList() {
+  const facilitatorList = document.getElementById('facilitator-list');
+  
+  if (filteredFacilitators.length === 0) {
+    facilitatorList.innerHTML = `
+      <div class="facilitator-loading">
+        <span class="material-icons">person_off</span>
+        <p>No facilitators found</p>
+      </div>
+    `;
+    return;
+  }
+  
+  facilitatorList.innerHTML = filteredFacilitators.map((facilitator, index) => `
+    <div class="facilitator-item" data-facilitator-id="${facilitator.id}" data-facilitator-name="${facilitator.name}" data-facilitator-email="${facilitator.email}">
+      <input type="checkbox" class="facilitator-checkbox" id="facilitator-${facilitator.id}" onchange="toggleFacilitatorSelection('${facilitator.id}', '${facilitator.name}', '${facilitator.email}')">
+      <div class="facilitator-avatar">
+        ${getFacilitatorInitials(facilitator.name)}
+      </div>
+      <div class="facilitator-info">
+        <div class="facilitator-name">${facilitator.name}</div>
+        <div class="facilitator-email">${facilitator.email}</div>
+      </div>
+    </div>
+  `).join('');
+  
+  // Update select button state
+  updateSelectButton();
+}
+
+// Get facilitator initials
+function getFacilitatorInitials(name) {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
+
+// Toggle facilitator selection
+function toggleFacilitatorSelection(facilitatorId, facilitatorName, facilitatorEmail) {
+  const checkbox = document.getElementById(`facilitator-${facilitatorId}`);
+  const facilitatorItem = checkbox.closest('.facilitator-item');
+  
+  if (checkbox.checked) {
+    // Add to selection if not already selected
+    if (!selectedFacilitators.find(f => f.id === facilitatorId)) {
+      selectedFacilitators.push({
+        id: facilitatorId,
+        name: facilitatorName,
+        email: facilitatorEmail
+      });
+      facilitatorItem.classList.add('selected');
+    }
+  } else {
+    // Remove from selection
+    selectedFacilitators = selectedFacilitators.filter(f => f.id !== facilitatorId);
+    facilitatorItem.classList.remove('selected');
+  }
+  
+  updateSelectButton();
+}
+
+// Update select button state
+function updateSelectButton() {
+  const selectButton = document.getElementById('facilitator-modal-select');
+  const count = selectedFacilitators.length;
+  
+  selectButton.textContent = `Select (${count})`;
+  selectButton.disabled = count === 0;
+}
+
+// Select multiple facilitators
+function selectMultipleFacilitators() {
+  if (selectedFacilitators.length === 0) return;
+  
+  console.log('Selected facilitators:', selectedFacilitators);
+  
+  // Update the session card to show "Pending" status with multiple facilitators
+  updateSessionStatusMultiple(currentSessionData.id, 'pending', selectedFacilitators);
+  
+  // Show assignment confirmation popup for multiple facilitators
+  showMultipleAssignmentConfirmation(selectedFacilitators, currentSessionData.name);
+  
+  // Close modal
+  closeFacilitatorModal();
+}
+
+// Update session status for multiple facilitators
+function updateSessionStatusMultiple(sessionId, status, facilitators) {
+  const sessionCard = document.querySelector(`[data-session-id="${sessionId}"]`);
+  if (!sessionCard) return;
+  
+  const facilitatorElement = sessionCard.querySelector('.session-facilitator');
+  if (!facilitatorElement) return;
+  
+  // Remove existing status classes
+  facilitatorElement.classList.remove('unassigned', 'pending', 'assigned');
+  
+  // Add new status class and update content
+  switch (status) {
+    case 'pending':
+      facilitatorElement.classList.add('pending');
+      facilitatorElement.textContent = 'Pending';
+      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f.name).join(', ')}`;
+      break;
+    case 'assigned':
+      facilitatorElement.classList.add('assigned');
+      facilitatorElement.textContent = facilitators.length > 1 ? `${facilitators.length} Facilitators` : getInitials(facilitators[0].name);
+      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f.name).join(', ')}`;
+      break;
+    case 'unassigned':
+    default:
+      facilitatorElement.classList.add('unassigned');
+      facilitatorElement.textContent = 'Unassigned';
+      facilitatorElement.title = 'Click to assign facilitators';
+      break;
+  }
+}
+
+// Show assignment confirmation for multiple facilitators
+function showMultipleAssignmentConfirmation(facilitators, sessionName) {
+  const popup = document.createElement('div');
+  popup.className = 'assignment-confirmation-popup';
+  popup.innerHTML = `
+    <div class="assignment-popup-content">
+      <div class="assignment-popup-header">
+        <span class="material-icons assignment-success-icon">check_circle</span>
+        <h3>Assignment Confirmed</h3>
+      </div>
+      <div class="assignment-popup-body">
+        <p>This session has been assigned to:</p>
+        <div class="assigned-facilitators">
+          ${facilitators.map(facilitator => `
+            <div class="assigned-facilitator">
+              <div class="facilitator-avatar-large">
+                ${getFacilitatorInitials(facilitator.name)}
+              </div>
+              <div class="facilitator-details">
+                <div class="facilitator-name-large">${facilitator.name}</div>
+                <div class="session-name">${sessionName}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="assignment-popup-footer">
+        <button class="btn btn-primary" onclick="closeAssignmentConfirmation()">OK</button>
+      </div>
+    </div>
+  `;
+  
+  // Style the popup
+  popup.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `;
+  
+  // Add to page
+  document.body.appendChild(popup);
+  
+  // Auto-close after 5 seconds
+  setTimeout(() => {
+    closeAssignmentConfirmation();
+  }, 5000);
+}
+
+// Assignment confirmation popup
+function showAssignmentConfirmation(facilitatorName, sessionName) {
+  // Create popup modal
+  const popup = document.createElement('div');
+  popup.className = 'assignment-confirmation-popup';
+  popup.innerHTML = `
+    <div class="assignment-popup-content">
+      <div class="assignment-popup-header">
+        <span class="material-icons assignment-success-icon">check_circle</span>
+        <h3>Assignment Confirmed</h3>
+      </div>
+      <div class="assignment-popup-body">
+        <p>This session has been assigned to:</p>
+        <div class="assigned-facilitator">
+          <div class="facilitator-avatar-large">
+            ${getFacilitatorInitials(facilitatorName)}
+          </div>
+          <div class="facilitator-details">
+            <div class="facilitator-name-large">${facilitatorName}</div>
+            <div class="session-name">${sessionName}</div>
+          </div>
+        </div>
+      </div>
+      <div class="assignment-popup-footer">
+        <button class="btn btn-primary" onclick="closeAssignmentConfirmation()">OK</button>
+      </div>
+    </div>
+  `;
+  
+  // Style the popup
+  popup.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `;
+  
+  // Add to page
+  document.body.appendChild(popup);
+  
+  // Auto-close after 5 seconds
+  setTimeout(() => {
+    closeAssignmentConfirmation();
+  }, 5000);
+}
+
+// Close assignment confirmation popup
+function closeAssignmentConfirmation() {
+  const popup = document.querySelector('.assignment-confirmation-popup');
+  if (popup && popup.parentNode) {
+    popup.parentNode.removeChild(popup);
+  }
+}
+
+// Search facilitators
+function searchFacilitators() {
+  const searchInput = document.getElementById('facilitator-search');
+  if (!searchInput) {
+    console.error('Search input not found');
+    return;
+  }
+  
+  const searchTerm = searchInput.value.toLowerCase();
+  console.log('Search term:', searchTerm);
+  
+  if (searchTerm === '') {
+    filteredFacilitators = [...allFacilitators];
+  } else {
+    filteredFacilitators = allFacilitators.filter(facilitator => 
+      facilitator.name.toLowerCase().includes(searchTerm) ||
+      facilitator.email.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  console.log('Filtered facilitators:', filteredFacilitators.length);
+  renderFacilitatorList();
+}
+
+// Publish Schedule Functions
+function openPublishConfirmation() {
+  // Count sessions and facilitators
+  const sessionCards = document.querySelectorAll('.session-card');
+  const assignedSessions = Array.from(sessionCards).filter(card => {
+    const facilitatorElement = card.querySelector('.session-facilitator');
+    return facilitatorElement && !facilitatorElement.classList.contains('unassigned');
+  });
+  
+  // Count unique facilitators
+  const facilitatorNames = new Set();
+  assignedSessions.forEach(card => {
+    const facilitatorElement = card.querySelector('.session-facilitator');
+    if (facilitatorElement && facilitatorElement.title) {
+      const title = facilitatorElement.title;
+      if (title.includes('Assigned to:')) {
+        const facilitators = title.replace('Assigned to: ', '').split(', ');
+        facilitators.forEach(fac => facilitatorNames.add(fac.trim()));
+      }
+    }
+  });
+  
+  // Update summary
+  document.getElementById('publish-session-count').textContent = `${assignedSessions.length} sessions`;
+  document.getElementById('publish-facilitator-count').textContent = `${facilitatorNames.size} facilitators`;
+  
+  // Show modal
+  document.getElementById('publish-confirmation-modal').style.display = 'flex';
+}
+
+function closePublishConfirmation() {
+  document.getElementById('publish-confirmation-modal').style.display = 'none';
+}
+
+async function confirmPublish() {
+  try {
+    // Get current unit ID
+    const tabsNav = document.querySelector('.uc-tabs[data-unit-id]');
+    const currentUnitId = tabsNav ? tabsNav.getAttribute('data-unit-id') : null;
+    
+    if (!currentUnitId) {
+      showSimpleNotification('No unit selected', 'error');
+      return;
+    }
+    
+    const response = await fetch(`/unitcoordinator/units/${currentUnitId}/publish`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      showSimpleNotification('Schedule published successfully! Facilitators have been notified.', 'success');
+      closePublishConfirmation();
+      
+      // Update publish button state
+      const publishBtn = document.getElementById('publish-schedule-btn');
+      publishBtn.disabled = true;
+      publishBtn.innerHTML = '<span class="material-icons">check</span>Published';
+    } else {
+      throw new Error(result.error || 'Failed to publish schedule');
+    }
+    
+  } catch (error) {
+    console.error('Error publishing schedule:', error);
+    showSimpleNotification(`Error publishing schedule: ${error.message}`, 'error');
+  }
+}
+
+// Initialize modal event listeners
+document.addEventListener('DOMContentLoaded', function() {
+  // Publish Confirmation Modal
+  document.getElementById('publish-confirmation-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closePublishConfirmation();
+    }
+  });
+  
+  document.getElementById('publish-confirmation-close').addEventListener('click', closePublishConfirmation);
+  document.getElementById('publish-cancel').addEventListener('click', closePublishConfirmation);
+  document.getElementById('publish-confirm').addEventListener('click', confirmPublish);
+  
+  // Publish Button
+  document.getElementById('publish-schedule-btn').addEventListener('click', openPublishConfirmation);
+  
+  // Create Session Modal
+  document.getElementById('create-session-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeCreateSessionModal();
+    }
+  });
+  
+  document.getElementById('create-session-modal-close').addEventListener('click', closeCreateSessionModal);
+  document.getElementById('create-session-cancel').addEventListener('click', closeCreateSessionModal);
+  document.getElementById('create-session-submit').addEventListener('click', createSession);
+  
+  // Facilitator Modal
+  document.getElementById('facilitator-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeFacilitatorModal();
+    }
+  });
+  
+  document.getElementById('facilitator-modal-close').addEventListener('click', closeFacilitatorModal);
+  document.getElementById('facilitator-modal-cancel').addEventListener('click', closeFacilitatorModal);
+  document.getElementById('facilitator-modal-select').addEventListener('click', selectMultipleFacilitators);
+});

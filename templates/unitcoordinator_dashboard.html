@@ -739,22 +739,28 @@
 
             <!-- Assignment Status Legend -->
             <div class="status-legend">
-              <div class="legend-item">
-                <div class="legend-dot approved"></div>
-                <span>Approved</span>
+              <div class="legend-items">
+                <div class="legend-item">
+                  <div class="legend-dot approved"></div>
+                  <span>Approved</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot pending"></div>
+                  <span>Pending</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot unassigned"></div>
+                  <span>Unassigned</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot proposed"></div>
+                  <span>Proposed</span>
+                </div>
               </div>
-              <div class="legend-item">
-                <div class="legend-dot pending"></div>
-                <span>Pending</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-dot unassigned"></div>
-                <span>Unassigned</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-dot proposed"></div>
-                <span>Proposed</span>
-              </div>
+              <button class="publish-btn" onclick="openPublishConfirmation()">
+                <span class="material-icons">publish</span>
+                Publish Schedule
+              </button>
             </div>
 
             <!-- Calendar View -->
@@ -2274,6 +2280,157 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
 
     <div class="modal-footer">
       <button type="button" class="btn-primary" onclick="closeExperienceModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Facilitator Selection Modal -->
+<div id="facilitator-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Assign Facilitator</h3>
+      <button class="modal-close" id="facilitator-modal-close" onclick="closeFacilitatorModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="session-info">
+        <h4 id="modal-session-name">Session Name</h4>
+        <p id="modal-session-time">Time: TBA</p>
+        <p id="modal-session-location">Location: TBA</p>
+      </div>
+      
+      <div class="facilitator-search">
+        <input type="text" id="facilitator-search" placeholder="Search facilitators..." class="search-input">
+      </div>
+      
+      <div class="facilitator-list-container">
+        <div id="facilitator-list" class="facilitator-list">
+          <!-- Facilitators will be loaded here -->
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-secondary" id="facilitator-modal-cancel" onclick="closeFacilitatorModal()">Cancel</button>
+      <button class="btn-primary" onclick="selectMultipleFacilitators()" id="facilitator-modal-select" disabled>Assign Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Session Modal -->
+<div id="create-session-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Create New Session</h3>
+      <button class="modal-close" id="create-session-modal-close" onclick="closeCreateSessionModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <form id="create-session-form" class="session-form">
+        <div class="form-group">
+          <label for="session-name">Session Name *</label>
+          <input type="text" id="session-name" name="name" required placeholder="Enter session name">
+        </div>
+        
+        <div class="form-group">
+          <label for="session-date">Date *</label>
+          <input type="date" id="session-date" name="date" required>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="session-start-time">Start Time *</label>
+            <input type="time" id="session-start-time" name="start_time" required>
+          </div>
+          <div class="form-group">
+            <label for="session-end-time">End Time *</label>
+            <input type="time" id="session-end-time" name="end_time" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="session-module">Module Type *</label>
+          <select id="session-module" name="module_type" required>
+            <option value="">Select module type</option>
+            <option value="tutorial">Tutorial</option>
+            <option value="workshop">Workshop</option>
+            <option value="lab">Lab</option>
+            <option value="lecture">Lecture</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="session-location">Location *</label>
+          <input type="text" id="session-location" name="location" required placeholder="Enter location">
+        </div>
+        
+        <div class="form-group">
+          <label for="session-description">Description</label>
+          <textarea id="session-description" name="description" rows="3" placeholder="Enter session description (optional)"></textarea>
+        </div>
+      </form>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-secondary" id="create-session-cancel" onclick="closeCreateSessionModal()">Cancel</button>
+      <button class="btn-primary" id="create-session-submit" onclick="createSession()">Create Session</button>
+    </div>
+  </div>
+</div>
+
+<!-- Publish Confirmation Modal -->
+<div id="publish-confirmation-modal" class="modal-overlay" style="display: none;">
+  <div class="publish-modal-content">
+    <div class="publish-modal-header">
+      <h2 class="publish-modal-title">Publish Schedule</h2>
+      <button class="publish-modal-close" id="publish-confirmation-close" onclick="closePublishConfirmation()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    
+    <div class="publish-modal-body">
+      <div class="publish-summary-cards">
+        <div class="publish-summary-card">
+          <div class="publish-card-icon">
+            <span class="material-icons">event_note</span>
+          </div>
+          <div class="publish-card-content">
+            <div class="publish-card-number" id="publish-session-count">0</div>
+            <div class="publish-card-label">sessions</div>
+            <div class="publish-card-description">will be published</div>
+          </div>
+        </div>
+        
+        <div class="publish-summary-card">
+          <div class="publish-card-icon">
+            <span class="material-icons">group</span>
+          </div>
+          <div class="publish-card-content">
+            <div class="publish-card-number" id="publish-facilitator-count">0</div>
+            <div class="publish-card-label">facilitators</div>
+            <div class="publish-card-description">will be notified</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="publish-warning-banner">
+        <div class="publish-warning-icon">
+          <span class="material-icons">warning_amber</span>
+        </div>
+        <div class="publish-warning-text">
+          <strong>Important:</strong> Once published, facilitators will be notified and the schedule will be finalized. This action cannot be undone.
+        </div>
+      </div>
+    </div>
+    
+    <div class="publish-modal-footer">
+      <button class="publish-btn-secondary" id="publish-cancel" onclick="closePublishConfirmation()">Cancel</button>
+      <button class="publish-btn-primary" id="publish-confirm" onclick="confirmPublish()">Publish Schedule</button>
     </div>
   </div>
 </div>
