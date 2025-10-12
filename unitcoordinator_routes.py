@@ -1508,6 +1508,18 @@ def create_unit():
 
     # Create default module for new unit
     _get_or_create_default_module(new_unit)
+    
+    # Send setup emails to newly created facilitators
+    from flask import session as flask_session
+    from email_service import send_welcome_email
+    pending_emails = flask_session.pop('pending_facilitator_emails', [])
+    if pending_emails:
+        for email in pending_emails:
+            try:
+                send_welcome_email(email, user_role=UserRole.FACILITATOR)
+                print(f"Setup email sent to {email}")
+            except Exception as e:
+                print(f"Failed to send setup email to {email}: {e}")
 
     flash("Unit created successfully!", "success")
     if user.role == UserRole.ADMIN:
@@ -1910,13 +1922,12 @@ def confirm_facilitators():
     try:
         db.session.commit()
         
-        # Send setup emails to newly created users
-        from email_service import send_welcome_email
-        for email in new_user_emails:
-            try:
-                send_welcome_email(email, user_role=UserRole.FACILITATOR)
-            except Exception as e:
-                print(f"Failed to send setup email to {email}: {e}")
+        # Store new user emails in session for later email sending when unit is created
+        from flask import session as flask_session
+        if 'pending_facilitator_emails' not in flask_session:
+            flask_session['pending_facilitator_emails'] = []
+        flask_session['pending_facilitator_emails'].extend(new_user_emails)
+        flask_session.modified = True
         
         return jsonify({
             "ok": True,

@@ -534,16 +534,9 @@ def create_employee():
     try:
         data = request.get_json()
         
-        # Validate required fields
-        required_fields = ['fullName', 'email', 'phone', 'position']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
-        
-        # If position is facilitator, validate role
-        if data.get('position') == 'facilitator':
-            if not data.get('role'):
-                return jsonify({'success': False, 'error': 'Role is required when position is facilitator'}), 400
+        # Validate required fields (only email and position now)
+        if not data.get('email') or not data.get('position'):
+            return jsonify({'success': False, 'error': 'Email and position are required'}), 400
         
         # Check if email already exists
         existing_user = User.query.filter_by(email=data['email']).first()
@@ -559,12 +552,6 @@ def create_employee():
         
         user_role = role_mapping.get(data['position'], UserRole.FACILITATOR)
         
-        # Parse full name into first and last name
-        full_name = data['fullName'].strip()
-        name_parts = full_name.split(' ', 1)
-        first_name = name_parts[0] if name_parts else ''
-        last_name = name_parts[1] if len(name_parts) > 1 else ''
-        
         # Create new user - only email and role, no password yet
         new_user = User(
             email=data['email'],
@@ -572,22 +559,19 @@ def create_employee():
             # User will set their own name, phone, and password via setup email
         )
         
-        # Store additional data in preferences field as JSON
+        # Store minimal data in preferences field as JSON
         additional_data = {
-            'phone': data.get('phone', ''),
             'position': data['position'],
-            'status': data.get('status', 'active')
+            'status': 'active'
         }
         
-        # Add role-specific data based on position
+        # Add role-specific defaults based on position
         if data['position'] == 'facilitator':
-            if data.get('role'):
-                additional_data['role'] = data['role']
-            additional_data['experience_level'] = data.get('experienceLevel', 'junior')
-            additional_data['hourly_rate'] = data.get('hourlyRate', 25)
-            additional_data['department'] = data.get('department', 'general')
+            additional_data['experience_level'] = 'junior'
+            additional_data['hourly_rate'] = 25
+            additional_data['department'] = 'general'
         elif data['position'] == 'unit_coordinator':
-            additional_data['department'] = data.get('department', 'academic')
+            additional_data['department'] = 'academic'
             additional_data['admin_level'] = 'coordinator'
         elif data['position'] == 'admin':
             additional_data['admin_level'] = 'system_admin'
@@ -604,7 +588,6 @@ def create_employee():
             send_welcome_email(data['email'], user_role=user_role)
             position_name = data['position'].replace('_', ' ').title()
             print(f"Created new {position_name}: {new_user.email} with role: {user_role}")
-            email_status = "They will receive a setup email to complete their account."
         except Exception as e:
             print(f"Failed to send setup email to {data['email']}: {e}")
             email_status = "Account created but setup email failed to send."
@@ -612,7 +595,7 @@ def create_employee():
         position_name = data['position'].replace('_', ' ').title()
         return jsonify({
             'success': True, 
-            'message': f'{position_name} created successfully! {email_status}',
+            'message': f'Setup email sent to {new_user.email}! They will receive instructions to complete their {position_name} account.',
             'employee_id': new_user.id,
             'email': new_user.email,
             'position': position_name
@@ -620,8 +603,10 @@ def create_employee():
         
     except Exception as e:
         db.session.rollback()
+        import traceback
         print(f"Error creating user: {e}")
-        return jsonify({'success': False, 'error': 'An error occurred while creating the user'}), 500
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'error': f'An error occurred while creating the user: {str(e)}'}), 500
 
 @admin_bp.route('/create-facilitator-modal', methods=['POST'])
 @admin_required
