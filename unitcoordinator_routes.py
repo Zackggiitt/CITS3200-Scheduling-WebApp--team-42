@@ -2392,8 +2392,8 @@ def auto_assign_facilitators(unit_id: int):
         # Validate that all facilitators have declared their skills and unavailability
         validation_errors = []
         
-        # Get all modules for this unit
-        unit_modules = Module.query.filter_by(unit_id=unit_id).all()
+        # Get all modules for this unit (excluding the default "General" module)
+        unit_modules = Module.query.filter_by(unit_id=unit_id).filter(Module.module_name != "General").all()
         if not unit_modules:
             return jsonify({
                 "ok": False,
@@ -2410,8 +2410,9 @@ def auto_assign_facilitators(unit_id: int):
             # Check if facilitator has declared skills for all modules in this unit
             missing_modules = unit_module_ids - declared_module_ids
             if missing_modules:
-                missing_module_names = [Module.query.get(module_id).module_name for module_id in missing_modules]
-                facilitators_missing_skills.append({
+                missing_module_names = [Module.query.get(module_id).module_name for module_id in missing_modules if Module.query.get(module_id).module_name != "General"]
+                if missing_module_names:  # Only add if there are actual missing modules (not just General)
+                    facilitators_missing_skills.append({
                     'name': facilitator.full_name,
                     'email': facilitator.email,
                     'missing_modules': missing_module_names

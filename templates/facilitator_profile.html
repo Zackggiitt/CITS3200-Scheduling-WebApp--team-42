@@ -32,10 +32,12 @@
         <div class="profile-card">
             <div class="profile-card-header">
                 <h1 class="profile-card-title">Account Information</h1>
+                {% if current_user.role.value == 'facilitator' and current_user.id == user.id %}
                 <a href="{{ url_for('facilitator.edit_profile') }}" class="edit-profile-btn">
                     <span class="material-icons">edit</span>
                     Edit Profile
                 </a>
+                {% endif %}
             </div>
 
             <div class="profile-content">
