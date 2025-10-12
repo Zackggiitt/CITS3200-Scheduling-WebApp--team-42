@@ -283,7 +283,7 @@ def run_integration_test(app):
         
         # Generate assignments
         print("\n🔄 Running optimization engine...")
-        assignments, conflicts = generate_optimal_assignments(facilitators_prepared)
+        assignments, conflicts = generate_optimal_assignments(facilitators_prepared, unit_id)
         
         print(f"\n📊 Results:")
         print(f"  - Assignments created: {len(assignments)}")

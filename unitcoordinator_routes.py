@@ -2238,8 +2238,8 @@ def auto_assign_facilitators(unit_id: int):
         # Prepare facilitator data for optimization
         facilitators = prepare_facilitator_data(facilitators_from_db)
         
-        # Generate assignments using the optimization algorithm
-        assignments, conflicts = generate_optimal_assignments(facilitators)
+        # Generate assignments using the optimization algorithm (filtered to this unit only)
+        assignments, conflicts = generate_optimal_assignments(facilitators, unit_id)
         
         if not assignments:
             return jsonify({

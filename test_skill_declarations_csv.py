@@ -58,7 +58,7 @@ def test_skill_declarations_in_csv():
         
         # Prepare facilitators and generate assignments
         facilitators_prepared = prepare_facilitator_data(facilitators_from_db)
-        assignments, conflicts = generate_optimal_assignments(facilitators_prepared)
+        assignments, conflicts = generate_optimal_assignments(facilitators_prepared, unit.id)
         
         print(f"\n✓ Generated {len(assignments)} assignments")
         
