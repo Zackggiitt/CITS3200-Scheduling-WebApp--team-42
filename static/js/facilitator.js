@@ -2573,6 +2573,21 @@ function saveUnavailability() {
 
 // Additional unavailability functionality
 function initUnavailabilityControls() {
+    // Available All Days button
+    const availableAllBtn = document.getElementById('available-all-days-btn');
+    if (availableAllBtn) {
+        availableAllBtn.addEventListener('click', function() {
+            if (!currentUnitId) {
+                alert('No unit selected');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to clear all unavailability and mark yourself as available for all days in this unit?')) {
+                clearAllUnavailability();
+            }
+        });
+    }
+    
     // Refresh button
     const refreshBtn = document.getElementById('refresh-unavailability');
     if (refreshBtn) {
@@ -2734,6 +2749,39 @@ function deleteUnavailability(unavailabilityId) {
     .catch(error => {
         console.error('Error deleting unavailability:', error);
         alert('Error deleting unavailability');
+    });
+}
+
+function clearAllUnavailability() {
+    fetch('/facilitator/unavailability/clear-all', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': window.csrfToken
+        },
+        body: JSON.stringify({
+            unit_id: currentUnitId
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.error) {
+            alert('Error clearing unavailability: ' + result.error);
+            return;
+        }
+        
+        // Reload unavailability data and refresh the calendar
+        loadUnavailabilityData();
+        generateCalendar();
+        updateRecentUnavailabilityList();
+        
+        // Show success message
+        alert(`Successfully cleared ${result.deleted_count} unavailability entries. You are now available for all days in this unit.`);
+        console.log('All unavailability cleared successfully');
+    })
+    .catch(error => {
+        console.error('Error clearing unavailability:', error);
+        alert('Error clearing unavailability');
     });
 }
 
