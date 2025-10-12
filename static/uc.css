@@ -4595,17 +4595,6 @@ main {
   margin-bottom: 0;
 }
 
-/* Role badges for facilitators */
-.role-badge {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  margin-left: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
 
 .role-badge.lead {
   background-color: #dbeafe;
