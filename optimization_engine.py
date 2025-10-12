@@ -32,16 +32,21 @@ SKILL_SCORES = {
     SkillLevel.NO_INTEREST: 0.0
 }
 
-def get_real_sessions():
+def get_real_sessions(unit_id=None):
     """
     Get real sessions from database instead of dummy data
+    If unit_id is provided, only get sessions from that specific unit
     """
     from models import Session, Module, Unit
     
     sessions_data = []
     
-    # Query all sessions from database
-    db_sessions = Session.query.join(Module).join(Unit).all()
+    # Query sessions from database, optionally filtered by unit
+    query = Session.query.join(Module).join(Unit)
+    if unit_id is not None:
+        query = query.filter(Unit.id == unit_id)
+    
+    db_sessions = query.all()
     
     for session in db_sessions:
         # Calculate duration directly from datetime objects
@@ -279,13 +284,17 @@ def calculate_facilitator_score(facilitator, session, current_assignments, total
     
     return score
 
-def generate_optimal_assignments(facilitators):
+def generate_optimal_assignments(facilitators, unit_id=None):
     """
     Main function to generate optimal facilitator-to-session assignments
     Uses enhanced fairness algorithm to ensure equal distribution of hours
     Now supports multiple facilitators per session (lead and support staff)
+    
+    Args:
+        facilitators: List of facilitator data dictionaries
+        unit_id: Optional unit ID to filter sessions (if None, gets sessions from all units)
     """
-    sessions = get_real_sessions()
+    sessions = get_real_sessions(unit_id)
     
     if not facilitators:
         return [], ["No facilitators found in database"]

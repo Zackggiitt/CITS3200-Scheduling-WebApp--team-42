@@ -416,16 +416,6 @@
           <span>Create Unit</span>
         </button>
 
-        <div class="notification-container">
-          <button class="icon-btn notification-btn" type="button" aria-label="Notifications" onclick="openNotificationsModal()">
-            <span class="material-icons" aria-hidden="true">notifications</span>
-          </button>
-          {% if notifications and notifications > 0 %}
-            <span class="notification-badge" aria-label="{{ notifications }} unread notifications">
-              {{ notifications }}
-            </span>
-          {% endif %}
-        </div>
 
         <div class="user" aria-label="Current user">
           <div class="user-profile-container">
@@ -461,10 +451,6 @@
                 <a href="#" class="profile-menu-item" onclick="openPreferences()">
                   <span class="material-icons">tune</span>
                   <span>Preferences</span>
-                </a>
-                <a href="#" class="profile-menu-item" onclick="openNotifications()">
-                  <span class="material-icons">notifications</span>
-                  <span>Notifications</span>
                 </a>
                 
                 <div class="profile-dropdown-divider"></div>
@@ -1907,145 +1893,6 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     // window.location.href = '/unitcoordinator/preferences';
   }
   
-  function openNotifications() {
-    alert('Notification settings coming soon!');
-    // window.location.href = '/unitcoordinator/notifications';
-  }
-  
-  function openNotificationsModal() {
-    const modal = document.getElementById('notification-modal');
-    if (modal) {
-      modal.style.display = 'flex';
-      loadNotifications();
-    }
-  }
-  
-  function closeNotificationsModal() {
-    const modal = document.getElementById('notification-modal');
-    if (modal) {
-      modal.style.display = 'none';
-    }
-  }
-  
-  function loadNotifications() {
-    // Load notifications from backend
-    fetch('{{ url_for("unitcoordinator.get_notifications") }}')
-      .then(response => response.json())
-      .then(data => {
-        displayNotifications(data.notifications || []);
-        updateNotificationCounts(data.counts || {});
-      })
-      .catch(error => {
-        console.error('Error loading notifications:', error);
-        displayNotifications([]);
-      });
-  }
-  
-  function displayNotifications(notifications) {
-    const list = document.getElementById('notification-list');
-    if (!list) return;
-    
-    if (notifications.length === 0) {
-      list.innerHTML = `
-        <div class="notification-empty-state">
-          <span class="material-icons">notifications_none</span>
-          <p>No notifications yet</p>
-        </div>
-      `;
-      return;
-    }
-    
-    list.innerHTML = notifications.map(notification => `
-      <div class="notification-item ${notification.is_read ? '' : 'unread'}" data-id="${notification.id}">
-        <div class="notification-icon ${notification.type || 'info'}">
-          <span class="material-icons">${getNotificationIcon(notification.type)}</span>
-        </div>
-        <div class="notification-content">
-          <div class="notification-header">
-            <h4>${notification.title || 'Notification'}</h4>
-            <span class="notification-time">${formatTimeAgo(notification.created_at)}</span>
-          </div>
-          <p class="notification-message">${notification.message}</p>
-          ${notification.actions ? `
-            <div class="notification-actions-inline">
-              ${notification.actions.map(action => `
-                <button class="action-btn ${action.type}" onclick="handleNotificationAction('${action.action}', ${notification.id})">
-                  <span class="material-icons">${action.icon}</span>
-                  ${action.label}
-                </button>
-              `).join('')}
-            </div>
-          ` : ''}
-        </div>
-        ${!notification.is_read ? '<div class="notification-status unread-indicator"></div>' : ''}
-      </div>
-    `).join('');
-  }
-  
-  function getNotificationIcon(type) {
-    const icons = {
-      'shift': 'schedule',
-      'update': 'info',
-      'alert': 'warning',
-      'success': 'check_circle',
-      'info': 'info'
-    };
-    return icons[type] || 'info';
-  }
-  
-  function formatTimeAgo(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
-    
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours} hours ago`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays} days ago`;
-  }
-  
-  function updateNotificationCounts(counts) {
-    // Update notification count in header
-    const countElements = document.querySelectorAll('.notification-count');
-    countElements.forEach(el => el.textContent = counts.total || 0);
-    
-    // Update filter counts
-    const allCount = document.querySelector('[data-filter="all"] .filter-count');
-    const unreadCount = document.querySelector('[data-filter="unread"] .filter-count');
-    const actionCount = document.querySelector('[data-filter="action"] .filter-count');
-    
-    if (allCount) allCount.textContent = counts.total || 0;
-    if (unreadCount) unreadCount.textContent = counts.unread || 0;
-    if (actionCount) actionCount.textContent = counts.action_required || 0;
-  }
-  
-  function handleNotificationAction(action, notificationId) {
-    // Handle notification actions (accept, decline, etc.)
-    fetch('{{ url_for("unitcoordinator.handle_notification_action") }}', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': '{{ csrf_token() }}'
-      },
-      body: JSON.stringify({
-        action: action,
-        notification_id: notificationId
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        loadNotifications(); // Reload notifications
-      }
-    })
-    .catch(error => {
-      console.error('Error handling notification action:', error);
-    });
-  }
   
   function openHelp() {
     alert('Help & Support coming soon!');
@@ -2069,88 +1916,6 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
     }
   }
   
-  // Initialize notification modal event listeners
-  document.addEventListener('DOMContentLoaded', function() {
-    // Close modal when clicking close button
-    const closeBtn = document.getElementById('notification-close');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', closeNotificationsModal);
-    }
-    
-    // Close modal when clicking outside
-    const modal = document.getElementById('notification-modal');
-    if (modal) {
-      modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-          closeNotificationsModal();
-        }
-      });
-    }
-    
-    // Mark all as read button
-    const markAllReadBtn = document.getElementById('notification-mark-all-read');
-    if (markAllReadBtn) {
-      markAllReadBtn.addEventListener('click', function() {
-        markAllNotificationsRead();
-      });
-    }
-    
-    // Filter buttons
-    const filterBtns = document.querySelectorAll('.notification-filter-btn');
-    filterBtns.forEach(btn => {
-      btn.addEventListener('click', function() {
-        // Remove active class from all buttons
-        filterBtns.forEach(b => b.classList.remove('active'));
-        // Add active class to clicked button
-        this.classList.add('active');
-        
-        const filter = this.dataset.filter;
-        filterNotifications(filter);
-      });
-    });
-  });
-  
-  function markAllNotificationsRead() {
-    fetch('{{ url_for("unitcoordinator.mark_all_notifications_read") }}', {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': '{{ csrf_token() }}'
-      }
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        loadNotifications(); // Reload notifications
-      }
-    })
-    .catch(error => {
-      console.error('Error marking all notifications as read:', error);
-    });
-  }
-  
-  function filterNotifications(filter) {
-    const notifications = document.querySelectorAll('.notification-item');
-    notifications.forEach(notification => {
-      const isUnread = notification.classList.contains('unread');
-      const hasAction = notification.querySelector('.notification-actions-inline');
-      
-      let show = true;
-      
-      switch(filter) {
-        case 'all':
-          show = true;
-          break;
-        case 'unread':
-          show = isUnread;
-          break;
-        case 'action':
-          show = hasAction;
-          break;
-      }
-      
-      notification.style.display = show ? 'flex' : 'none';
-    });
-  }
   
   // Experience Modal Functions
   function openExperienceModal(element) {
@@ -2206,41 +1971,6 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
 
 
 <!-- Notification Modal -->
-<div id="notification-modal" class="notification-modal" style="display: none;">
-  <div class="notification-modal-content">
-    <div class="notification-modal-header">
-      <button id="notification-close" class="notification-close-btn" aria-label="Close notifications">
-        <span class="material-icons">close</span>
-      </button>
-      <div class="notification-header-row">
-        <h3>Notifications <span class="notification-count">0</span></h3>
-      </div>
-      <div class="notification-subheader-row">
-        <p>View all your notifications and important updates.</p>
-        <div class="notification-modal-actions">
-          <button id="notification-mark-all-read" class="notification-action-btn">
-            <span class="material-icons">done_all</span>
-            Mark All Read
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <div class="notification-modal-filters">
-      <button class="notification-filter-btn active" data-filter="all">All <span class="filter-count">0</span></button>
-      <button class="notification-filter-btn" data-filter="unread">Unread <span class="filter-count">0</span></button>
-      <button class="notification-filter-btn" data-filter="action">Action Required <span class="filter-count">0</span></button>
-    </div>
-    
-    <div class="notification-modal-list" id="notification-list">
-      <!-- Notifications will be loaded here -->
-      <div class="notification-empty-state">
-        <span class="material-icons">notifications_none</span>
-        <p>No notifications yet</p>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- Experience Modal -->
 <div id="experienceModal" class="modal-overlay hidden">
