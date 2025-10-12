@@ -280,3 +280,226 @@ def mark_token_as_used(token):
         db.session.rollback()
         print(f"Error marking token as used: {e}")
         return False
+
+
+def send_schedule_published_email(recipient_email, recipient_name, unit_code, sessions_list, base_url=None):
+    """
+    Send an email to a facilitator notifying them that their schedule has been published.
+    
+    Args:
+        recipient_email: Facilitator's email address
+        recipient_name: Facilitator's full name
+        unit_code: Unit code (e.g., "CITS3200")
+        sessions_list: List of dicts with session info: [
+            {
+                'module': 'Module name',
+                'date': 'Monday, 15 Oct 2025',
+                'time': '10:00 AM - 12:00 PM',
+                'location': 'Room 101',
+                'type': 'Lab'
+            },
+            ...
+        ]
+        base_url: Base URL for the app (optional)
+    """
+    # Check if we're in mock mode
+    use_mock = os.environ.get('USE_MOCK_EMAIL', 'false').lower() == 'true'
+    
+    if not use_mock:
+        sender_email = os.environ.get('SES_SENDER_EMAIL')
+        if not sender_email or not valid_email(sender_email):
+            print(f"Invalid or missing sender email")
+            return False
+    else:
+        sender_email = "noreply@example.com"
+    
+    if not valid_email(recipient_email):
+        print(f"Invalid recipient email: {recipient_email}")
+        return False
+    
+    # Get base URL
+    if not base_url:
+        base_url = os.environ.get('BASE_URL', 'http://localhost:5000')
+    
+    dashboard_link = f"{base_url}/facilitator/dashboard"
+    
+    subject = f"Your Schedule for {unit_code} is Published"
+    
+    # Build sessions table for HTML
+    sessions_html = ""
+    for session in sessions_list:
+        sessions_html += f"""
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">{session.get('module', 'N/A')}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">{session.get('type', 'N/A')}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">{session.get('date', 'N/A')}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">{session.get('time', 'N/A')}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">{session.get('location', 'N/A')}</td>
+        </tr>
+        """
+    
+    # Build sessions list for plain text
+    sessions_text = ""
+    for session in sessions_list:
+        sessions_text += f"\n  • {session.get('module', 'N/A')} - {session.get('type', 'N/A')}\n"
+        sessions_text += f"    {session.get('date', 'N/A')} at {session.get('time', 'N/A')}\n"
+        sessions_text += f"    Location: {session.get('location', 'N/A')}\n"
+    
+    # Plain text version
+    body_text = f"""Hello {recipient_name},
+
+Your schedule for {unit_code} has been published!
+
+You have been assigned to {len(sessions_list)} session(s):
+{sessions_text}
+
+To view your full schedule and manage your availability, please visit:
+{dashboard_link}
+
+If you have any questions or concerns about your assigned sessions, please contact your Unit Coordinator.
+
+Best regards,
+Your Scheduling Team
+"""
+    
+    # HTML version
+    body_html = f"""
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f4f4f4;
+            }}
+            .container {{
+                width: 100%;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+            }}
+            .header {{
+                background-color: #7c3aed;
+                color: white;
+                padding: 20px;
+                text-align: center;
+                border-radius: 5px 5px 0 0;
+            }}
+            .content {{
+                background-color: white;
+                padding: 30px;
+                border-radius: 0 0 5px 5px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }}
+            .sessions-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }}
+            .sessions-table th {{
+                background-color: #f3f4f6;
+                padding: 12px;
+                text-align: left;
+                font-weight: 600;
+                border-bottom: 2px solid #e5e7eb;
+            }}
+            .button {{
+                display: inline-block;
+                padding: 12px 24px;
+                margin: 20px 0;
+                background-color: #7c3aed;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+                font-weight: bold;
+            }}
+            .footer {{
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 1px solid #e5e7eb;
+                font-size: 12px;
+                color: #6b7280;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>📅 Your Schedule is Published!</h1>
+            </div>
+            <div class="content">
+                <h2>Hello {recipient_name},</h2>
+                <p>Your schedule for <strong>{unit_code}</strong> has been published!</p>
+                <p>You have been assigned to <strong>{len(sessions_list)} session(s)</strong>:</p>
+                
+                <table class="sessions-table">
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Location</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {sessions_html}
+                    </tbody>
+                </table>
+                
+                <p style="text-align: center;">
+                    <a href="{dashboard_link}" class="button">View Full Schedule</a>
+                </p>
+                
+                <div class="footer">
+                    <p>If you have any questions or concerns about your assigned sessions, please contact your Unit Coordinator.</p>
+                    <p>Best regards,<br>Your Scheduling Team</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # Check if we should mock emails
+    if use_mock:
+        print(f"Mock email sent to {recipient_email}")
+        print(f"Subject: {subject}")
+        print(f"Sessions: {len(sessions_list)}")
+        return True
+    
+    # Send via AWS SES
+    try:
+        aws_key = os.environ.get('AWS_ACCESS_KEY_ID') or os.environ.get('AWS_ACCESS_KEY')
+        aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY')
+        
+        ses_client = boto3.client(
+            'ses',
+            region_name=os.environ.get('SES_REGION', 'ap-southeast-1'),
+            aws_access_key_id=aws_key,
+            aws_secret_access_key=aws_secret
+        )
+        
+        response = ses_client.send_email(
+            Source=sender_email,
+            Destination={'ToAddresses': [recipient_email]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Text': {'Data': body_text, 'Charset': 'UTF-8'},
+                    'Html': {'Data': body_html, 'Charset': 'UTF-8'}
+                }
+            }
+        )
+        
+        print(f"Schedule published email sent to {recipient_email}")
+        print(f"Message ID: {response['MessageId']}")
+        return True
+        
+    except ClientError as e:
+        print(f"Error sending schedule email: {e.response['Error']['Message']}")
+        return False
+    except Exception as e:
+        print(f"Unexpected error sending schedule email: {str(e)}")
+        return False

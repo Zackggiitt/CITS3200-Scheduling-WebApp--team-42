@@ -2998,6 +2998,44 @@ def list_venues(unit_id: int):
     })
 
 
+@unitcoordinator_bp.get("/units/<int:unit_id>/publish_preview")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def publish_preview(unit_id: int):
+    """Get a preview of what will be published (session and facilitator counts)"""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        # Get all sessions for this unit that have facilitators assigned
+        sessions = (
+            db.session.query(Session)
+            .join(Module, Session.module_id == Module.id)
+            .join(Assignment, Session.id == Assignment.session_id)
+            .filter(Module.unit_id == unit_id)
+            .distinct()
+            .all()
+        )
+        
+        # Count unique facilitators
+        facilitator_ids = set()
+        for session in sessions:
+            assignments = Assignment.query.filter_by(session_id=session.id).all()
+            for assignment in assignments:
+                facilitator_ids.add(assignment.facilitator_id)
+        
+        return jsonify({
+            "ok": True,
+            "session_count": len(sessions),
+            "facilitator_count": len(facilitator_ids)
+        })
+    except Exception as e:
+        print(f"Error getting publish preview: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @unitcoordinator_bp.post("/units/<int:unit_id>/publish")
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
@@ -3010,37 +3048,117 @@ def publish_schedule(unit_id: int):
     
     try:
         # Get all sessions for this unit that have facilitators assigned
+        # Check for sessions with any assignments, regardless of status
         sessions = (
             db.session.query(Session)
             .join(Module, Session.module_id == Module.id)
+            .join(Assignment, Session.id == Assignment.session_id)
             .filter(Module.unit_id == unit_id)
-            .filter(Session.status.in_(['assigned']))
+            .distinct()
             .all()
         )
         
+        print(f"DEBUG: Found {len(sessions)} sessions with assignments for unit {unit_id}")
+        
         if not sessions:
-            return jsonify({"ok": False, "error": "No assigned sessions found to publish"}), 400
+            return jsonify({"ok": False, "error": "No sessions with facilitator assignments found to publish"}), 400
         
-        # Get all facilitators who will be notified
-        facilitator_ids = set()
-        for session in sessions:
-            # Get facilitators assigned to this session
-            assignments = Assignment.query.filter_by(session_id=session.id).all()
-            for assignment in assignments:
-                facilitator_ids.add(assignment.facilitator_id)
+        # Collect facilitator assignments - group sessions by facilitator
+        from datetime import datetime
+        facilitator_sessions = {}  # {facilitator_id: [session_data, ...]}
         
-        # Create notifications for facilitators
+        try:
+            for session in sessions:
+                # Get facilitators assigned to this session
+                assignments = Assignment.query.filter_by(session_id=session.id).all()
+                for assignment in assignments:
+                    facilitator_id = assignment.facilitator_id
+                    
+                    if facilitator_id not in facilitator_sessions:
+                        facilitator_sessions[facilitator_id] = []
+                    
+                    # Get module info
+                    module = Module.query.get(session.module_id)
+                    
+                    # Format date and time with error handling
+                    try:
+                        if session.start_time:
+                            session_date = session.start_time.strftime('%A, %d %b %Y')
+                            session_time_start = session.start_time.strftime('%I:%M %p')
+                        else:
+                            session_date = 'TBA'
+                            session_time_start = 'TBA'
+                        
+                        if session.end_time:
+                            session_time_end = session.end_time.strftime('%I:%M %p')
+                            session_time = f"{session_time_start} - {session_time_end}" if session_time_start != 'TBA' else 'TBA'
+                        else:
+                            session_time = session_time_start if session_time_start != 'TBA' else 'TBA'
+                    except Exception as e:
+                        print(f"Error formatting date/time for session {session.id}: {e}")
+                        session_date = 'TBA'
+                        session_time = 'TBA'
+                    
+                    facilitator_sessions[facilitator_id].append({
+                        'module': module.module_name if module else 'N/A',
+                        'type': session.session_type or 'Session',
+                        'date': session_date,
+                        'time': session_time,
+                        'location': session.location or 'TBA'
+                    })
+        except Exception as e:
+            print(f"❌ ERROR collecting facilitator sessions: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": f"Error collecting session data: {str(e)}"}), 500
+        
+        # Create notifications and send emails to facilitators
         notifications_created = 0
-        for facilitator_id in facilitator_ids:
-            notification = Notification(
-                user_id=facilitator_id,
-                title="Schedule Published",
-                message=f"Your schedule for {unit.unit_code} has been published. Please review your assigned sessions.",
-                notification_type="schedule_published",
-                is_read=False
-            )
-            db.session.add(notification)
-            notifications_created += 1
+        emails_sent = 0
+        from email_service import send_schedule_published_email
+        
+        print(f"DEBUG: Collected sessions for {len(facilitator_sessions)} facilitators")
+        
+        for facilitator_id, sessions_list in facilitator_sessions.items():
+            try:
+                # Get facilitator user
+                facilitator = User.query.get(facilitator_id)
+                if not facilitator:
+                    print(f"⚠️ Facilitator {facilitator_id} not found, skipping")
+                    continue
+                
+                print(f"Processing facilitator: {facilitator.email} with {len(sessions_list)} sessions")
+                
+                # Create in-app notification
+                notification = Notification(
+                    user_id=facilitator_id,
+                    message=f"Your schedule for {unit.unit_code} has been published. Please review your assigned sessions.",
+                    is_read=False
+                )
+                db.session.add(notification)
+                notifications_created += 1
+                
+                # Send email with session details
+                try:
+                    email_sent = send_schedule_published_email(
+                        recipient_email=facilitator.email,
+                        recipient_name=facilitator.full_name or facilitator.email,
+                        unit_code=unit.unit_code,
+                        sessions_list=sessions_list
+                    )
+                    if email_sent:
+                        emails_sent += 1
+                        print(f"✅ Schedule email sent to {facilitator.email} ({len(sessions_list)} sessions)")
+                    else:
+                        print(f"⚠️ Email function returned False for {facilitator.email}")
+                except Exception as e:
+                    print(f"❌ Failed to send schedule email to {facilitator.email}: {e}")
+                    import traceback
+                    traceback.print_exc()
+            except Exception as e:
+                print(f"❌ Error processing facilitator {facilitator_id}: {e}")
+                import traceback
+                traceback.print_exc()
         
         # Update session statuses to 'published'
         for session in sessions:
@@ -3050,9 +3168,10 @@ def publish_schedule(unit_id: int):
         
         return jsonify({
             "ok": True,
-            "message": f"Schedule published successfully. {notifications_created} facilitators notified.",
+            "message": f"Schedule published successfully. {notifications_created} facilitators notified via email.",
             "sessions_published": len(sessions),
-            "facilitators_notified": notifications_created
+            "facilitators_notified": notifications_created,
+            "emails_sent": emails_sent
         })
         
     except Exception as e:
