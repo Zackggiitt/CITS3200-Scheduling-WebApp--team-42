@@ -2197,6 +2197,80 @@ def create_session(unit_id: int):
 
 
 
+@unitcoordinator_bp.get("/units/<int:unit_id>/auto_assign/validation")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def check_auto_assign_validation(unit_id: int):
+    """
+    Check if auto-assignment can be run (all facilitators have skills declared)
+    """
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        # Get facilitators assigned to this unit
+        facilitators_from_db = (
+            db.session.query(User)
+            .join(UnitFacilitator, User.id == UnitFacilitator.user_id)
+            .filter(UnitFacilitator.unit_id == unit_id)
+            .filter(User.role == UserRole.FACILITATOR)
+            .all()
+        )
+        
+        if not facilitators_from_db:
+            return jsonify({
+                "ok": False, 
+                "can_run": False,
+                "error": "No facilitators assigned to this unit"
+            }), 400
+        
+        # Get all modules for this unit
+        unit_modules = Module.query.filter_by(unit_id=unit_id).all()
+        if not unit_modules:
+            return jsonify({
+                "ok": False,
+                "can_run": False,
+                "error": "No modules found for this unit. Please create modules first."
+            }), 400
+        
+        # Check skills declarations
+        facilitators_missing_skills = []
+        for facilitator in facilitators_from_db:
+            facilitator_skills = FacilitatorSkill.query.filter_by(facilitator_id=facilitator.id).all()
+            declared_module_ids = {skill.module_id for skill in facilitator_skills}
+            unit_module_ids = {module.id for module in unit_modules}
+            
+            # Check if facilitator has declared skills for all modules in this unit
+            missing_modules = unit_module_ids - declared_module_ids
+            if missing_modules:
+                missing_module_names = [Module.query.get(module_id).module_name for module_id in missing_modules]
+                facilitators_missing_skills.append({
+                    'name': facilitator.full_name,
+                    'email': facilitator.email,
+                    'missing_modules': missing_module_names
+                })
+        
+        can_run = len(facilitators_missing_skills) == 0
+        
+        return jsonify({
+            "ok": True,
+            "can_run": can_run,
+            "total_facilitators": len(facilitators_from_db),
+            "total_modules": len(unit_modules),
+            "facilitators_missing_skills": facilitators_missing_skills,
+            "message": "Auto-assignment ready" if can_run else f"{len(facilitators_missing_skills)} facilitators need to declare their skills"
+        })
+        
+    except Exception as e:
+        print(f"Error checking validation: {e}")
+        return jsonify({
+            "ok": False,
+            "can_run": False,
+            "error": "Error checking validation status"
+        }), 500
+
 @unitcoordinator_bp.post("/units/<int:unit_id>/auto_assign")
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
@@ -2233,6 +2307,59 @@ def auto_assign_facilitators(unit_id: int):
             return jsonify({
                 "ok": False, 
                 "error": "No facilitators assigned to this unit"
+            }), 400
+        
+        # Validate that all facilitators have declared their skills and unavailability
+        validation_errors = []
+        
+        # Get all modules for this unit
+        unit_modules = Module.query.filter_by(unit_id=unit_id).all()
+        if not unit_modules:
+            return jsonify({
+                "ok": False,
+                "error": "No modules found for this unit. Please create modules first."
+            }), 400
+        
+        # Check skills declarations
+        facilitators_missing_skills = []
+        for facilitator in facilitators_from_db:
+            facilitator_skills = FacilitatorSkill.query.filter_by(facilitator_id=facilitator.id).all()
+            declared_module_ids = {skill.module_id for skill in facilitator_skills}
+            unit_module_ids = {module.id for module in unit_modules}
+            
+            # Check if facilitator has declared skills for all modules in this unit
+            missing_modules = unit_module_ids - declared_module_ids
+            if missing_modules:
+                missing_module_names = [Module.query.get(module_id).module_name for module_id in missing_modules]
+                facilitators_missing_skills.append({
+                    'name': facilitator.full_name,
+                    'email': facilitator.email,
+                    'missing_modules': missing_module_names
+                })
+        
+        if facilitators_missing_skills:
+            validation_errors.append({
+                'type': 'skills',
+                'message': 'Some facilitators have not declared their skills for all modules',
+                'facilitators': facilitators_missing_skills
+            })
+        
+        # Check unavailability declarations (optional - facilitators might not have any unavailability)
+        # We'll just log this for now but not block auto-assignment
+        facilitators_without_unavailability = []
+        for facilitator in facilitators_from_db:
+            unavailability_count = Unavailability.query.filter_by(user_id=facilitator.id, unit_id=unit_id).count()
+            if unavailability_count == 0:
+                facilitators_without_unavailability.append(facilitator.full_name)
+        
+        # Note: We don't block auto-assignment for missing unavailability since facilitators might be fully available
+        
+        if validation_errors:
+            return jsonify({
+                "ok": False,
+                "error": "Cannot run auto-assignment: Prerequisites not met",
+                "validation_errors": validation_errors,
+                "unavailability_note": f"Note: {len(facilitators_without_unavailability)} facilitators have not declared any unavailability (this is optional)"
             }), 400
         
         # Prepare facilitator data for optimization
