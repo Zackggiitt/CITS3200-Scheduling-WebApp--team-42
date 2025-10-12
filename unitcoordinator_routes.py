@@ -104,17 +104,33 @@ def _serialize_session(s: Session, venues_by_name=None):
 
     title = s.module.module_name or "Session"
     
-    # Get facilitator information
-    facilitator = None
+    # Get all facilitator information with roles
+    facilitators = []
+    facilitator = None  # Keep for backward compatibility
     if s.assignments:
-        assignment = s.assignments[0]  # Get first assignment
-        if assignment.facilitator:
-            facilitator = f"{assignment.facilitator.first_name} {assignment.facilitator.last_name}"
+        for assignment in s.assignments:
+            if assignment.facilitator:
+                facilitator_info = {
+                    "id": assignment.facilitator.id,
+                    "name": f"{assignment.facilitator.first_name} {assignment.facilitator.last_name}",
+                    "email": assignment.facilitator.email,
+                    "role": getattr(assignment, 'role', 'lead'),  # Default to 'lead' if role not set
+                    "is_confirmed": assignment.is_confirmed
+                }
+                facilitators.append(facilitator_info)
+        
+        # For backward compatibility, use first facilitator
+        if facilitators:
+            facilitator = facilitators[0]["name"]
     
     # Determine session status
     status = "unassigned"
-    if facilitator:
-        status = "approved"  # For now, assume assigned means approved
+    if facilitators:
+        # If any facilitator is confirmed, show as approved
+        if any(f["is_confirmed"] for f in facilitators):
+            status = "approved"
+        else:
+            status = "pending"  # Assigned but not confirmed
     
     return {
         "id": str(s.id),  # turn this into a string
@@ -122,7 +138,8 @@ def _serialize_session(s: Session, venues_by_name=None):
         "start": s.start_time.isoformat(timespec="minutes"),
         "end": s.end_time.isoformat(timespec="minutes"),
         "venue": venue_name,
-        "facilitator": facilitator,
+        "facilitator": facilitator,  # Backward compatibility
+        "facilitators": facilitators,  # New: all facilitators with roles
         "status": status,
         "session_name": title,
         "location": s.location,
@@ -133,10 +150,11 @@ def _serialize_session(s: Session, venues_by_name=None):
             "venue_id": vid,
             "session_name": title,
             "location": s.location,
-            "facilitator_name": facilitator,
+            "facilitator_name": facilitator,  # Backward compatibility
             "facilitator_id": s.assignments[0].facilitator_id if s.assignments else None,
             "lead_staff_required": s.lead_staff_required or 1,
             "support_staff_required": s.support_staff_required or 0,
+            "facilitators": facilitators,  # New: all facilitators with roles
         }
     }
 
@@ -3261,31 +3279,57 @@ def get_dashboard_sessions(unit_id: int):
     # Process today's sessions
     today_data = []
     for session, module, assignment, user in today_sessions:
+        # Get all facilitators for this session with roles
         facilitators = []
-        if assignment and user:
-            facilitators.append({
-                "name": f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email,
-                "initials": f"{user.first_name[0] if user.first_name else ''}{user.last_name[0] if user.last_name else ''}".upper() or user.email[0].upper()
-            })
+        if session.assignments:
+            for session_assignment in session.assignments:
+                if session_assignment.facilitator:
+                    facilitators.append({
+                        "name": f"{session_assignment.facilitator.first_name or ''} {session_assignment.facilitator.last_name or ''}".strip() or session_assignment.facilitator.email,
+                        "initials": f"{session_assignment.facilitator.first_name[0] if session_assignment.facilitator.first_name else ''}{session_assignment.facilitator.last_name[0] if session_assignment.facilitator.last_name else ''}".upper() or session_assignment.facilitator.email[0].upper(),
+                        "role": getattr(session_assignment, 'role', 'lead'),
+                        "is_confirmed": session_assignment.is_confirmed
+                    })
+        
+        # Determine session status
+        status = "unassigned"
+        if facilitators:
+            if any(f["is_confirmed"] for f in facilitators):
+                status = "approved"
+            else:
+                status = "pending"
         
         today_data.append({
             "id": session.id,
             "name": module.module_name or "Session",
             "time": f"{session.start_time.strftime('%I:%M %p')} - {session.end_time.strftime('%I:%M %p')}",
             "location": session.location or "TBA",
-            "status": "confirmed" if assignment else "unassigned",
+            "status": status,
             "facilitators": facilitators
         })
 
     # Process upcoming sessions
     upcoming_data = []
     for session, module, assignment, user in upcoming_sessions:
+        # Get all facilitators for this session with roles
         facilitators = []
-        if assignment and user:
-            facilitators.append({
-                "name": f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email,
-                "initials": f"{user.first_name[0] if user.first_name else ''}{user.last_name[0] if user.last_name else ''}".upper() or user.email[0].upper()
-            })
+        if session.assignments:
+            for session_assignment in session.assignments:
+                if session_assignment.facilitator:
+                    facilitators.append({
+                        "name": f"{session_assignment.facilitator.first_name or ''} {session_assignment.facilitator.last_name or ''}".strip() or session_assignment.facilitator.email,
+                        "initials": f"{session_assignment.facilitator.first_name[0] if session_assignment.facilitator.first_name else ''}{session_assignment.facilitator.last_name[0] if session_assignment.facilitator.last_name else ''}".upper() or session_assignment.facilitator.email[0].upper(),
+                        "role": getattr(session_assignment, 'role', 'lead'),
+                        "is_confirmed": session_assignment.is_confirmed
+                    })
+        
+        # Determine session status
+        status = "unassigned"
+        if facilitators:
+            if any(f["is_confirmed"] for f in facilitators):
+                status = "approved"
+            else:
+                status = "pending"
         
         # Determine relative date
         session_date = session.start_time.date()
@@ -3300,7 +3344,7 @@ def get_dashboard_sessions(unit_id: int):
             "date": relative_date,
             "time": session.start_time.strftime("%I:%M %p"),
             "location": session.location or "TBA",
-            "status": "confirmed" if assignment else "unassigned",
+            "status": status,
             "facilitators": facilitators
         })
 

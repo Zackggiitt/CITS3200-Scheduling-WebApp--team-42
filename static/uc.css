@@ -4423,6 +4423,30 @@ main {
   margin-bottom: 0;
 }
 
+/* Role badges for facilitators */
+.role-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.role-badge.lead {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.role-badge.support {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
 /* Create Session Modal */
 .create-session-modal {
   position: fixed;
