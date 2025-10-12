@@ -395,6 +395,19 @@ def dashboard():
         }
         units_data.append(unit_data)
     
+    # Count today's sessions for the facilitator
+    today = date.today()
+    today_sessions_count = (
+        db.session.query(Assignment, Session, Module)
+        .join(Session, Assignment.session_id == Session.id)
+        .join(Module, Session.module_id == Module.id)
+        .filter(
+            Assignment.facilitator_id == user.id,
+            db.func.date(Session.start_time) == today
+        )
+        .count()
+    )
+    
     return render_template("facilitator_dashboard.html", 
                          user=user, 
                          greeting=greeting,
@@ -402,7 +415,8 @@ def dashboard():
                          current_unit=current_unit,
                          current_unit_dict=current_unit_dict,
                          units_data=units_data,
-                         has_no_units=has_no_units)
+                         has_no_units=has_no_units,
+                         today_sessions_count=today_sessions_count)
 
 
 @facilitator_bp.route("/")

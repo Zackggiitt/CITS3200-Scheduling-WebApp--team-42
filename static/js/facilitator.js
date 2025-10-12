@@ -373,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (unit.upcoming_sessions) {
                         unit.upcoming_sessions.forEach(session => {
                             if (extractDateFromSessionDate(session.date) === formattedDate) {
-                                const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
+                                const statusClass = 'confirmed'; // All sessions are now confirmed
                                 const eventText = `📚 ${unit.code}<br>
 👤 ${session.topic}<br>
 ⏰ ${session.time}<br>
@@ -766,7 +766,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (unit.upcoming_sessions) {
                     unit.upcoming_sessions.forEach(session => {
                         if (extractDateFromSessionDate(session.date) === formattedDate) {
-                            const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
+                            const statusClass = 'confirmed'; // All sessions are now confirmed
                             // Truncate long session names
                             const truncatedTopic = session.topic.length > 15 ? session.topic.substring(0, 15) + '...' : session.topic;
                             const eventText = `📚 ${unit.code}<br>
@@ -858,36 +858,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // GLOBAL CLICK HANDLER - Only one for all click events
     document.addEventListener('click', function(e) {
-        // Handle session action buttons (more specific selector)
-        if (e.target.closest('.session-item .action-btn.accept')) {
-            const sessionItem = e.target.closest('.session-item');
-            const statusBadge = sessionItem.querySelector('.tag');
-            statusBadge.textContent = 'approved';
-            statusBadge.className = 'tag approved';
-            
-            // Remove action buttons
-            const actionsDiv = sessionItem.querySelector('.session-actions');
-            if (actionsDiv) {
-                actionsDiv.remove();
-            }
-            
-            alert('Session accepted successfully!');
-        } else if (e.target.closest('.session-item .action-btn.decline')) {
-            const sessionItem = e.target.closest('.session-item');
-            sessionItem.style.opacity = '0.5';
-            sessionItem.style.textDecoration = 'line-through';
-            
-            // Remove action buttons
-            const actionsDiv = sessionItem.querySelector('.session-actions');
-            if (actionsDiv) {
-                actionsDiv.remove();
-            }
-            
-            alert('Session declined.');
-        }
+        // Session action buttons removed - sessions are auto-confirmed
         
         // Handle notification accept/decline buttons (legacy support)
-        else if (e.target.closest('.notification-item .action-btn.accept')) {
+        if (e.target.closest('.notification-item .action-btn.accept')) {
             const notification = e.target.closest('.notification-item');
             notification.classList.remove('unread');
             updateNotificationBadge();
@@ -1445,9 +1419,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const remainingCount = sortedUpcomingSessions.length - 5;
                 
                 top5Sessions.forEach(session => {
-                    const hasActions = session.status === 'pending';
-                    const statusClass = session.status === 'confirmed' ? 'confirmed' : 'pending';
-                    const statusText = session.status === 'confirmed' ? 'Confirmed' : 'Pending';
+                    const hasActions = false; // No actions needed since sessions are auto-confirmed
+                    const statusClass = 'confirmed'; // All sessions are now confirmed
+                    const statusText = 'Confirmed';
                     
                     sessionsHTML += `
                         <div class="session-item">
@@ -1597,7 +1571,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 
                 top2Sessions.forEach(session => {
-                    const hasActions = session.status === 'pending';
+                    const hasActions = false; // No actions needed since sessions are auto-confirmed
                     sessionsHTML += `
                         <div class="session-item">
                             <div class="session-info">
@@ -1747,7 +1721,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set modal subtitle
         const totalSessions = (unit.upcomingSessions ? unit.upcomingSessions.length : 0) + 
                              (unit.pastSessions ? unit.pastSessions.length : 0);
-        modalSubtitle.textContent = `View all your sessions for ${unit.code}. You can accept or decline pending session assignments. Showing ${totalSessions} sessions for ${unit.code}`;
+        modalSubtitle.textContent = `View all your sessions for ${unit.code}. Showing ${totalSessions} sessions for ${unit.code}`;
         
         // Generate sessions list
         let modalSessionsHTML = '';
@@ -1761,7 +1735,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             sortedUpcomingSessions.forEach(session => {
-                const hasActions = session.status === 'pending';
+                        const hasActions = false; // No actions needed since sessions are auto-confirmed
                 modalSessionsHTML += `
                     <div class="session-item">
                         <div class="session-info">
@@ -1852,7 +1826,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Set modal title and subtitle
         modalTitle.textContent = 'All Your Sessions';
-        modalSubtitle.textContent = 'View all your sessions across all units organized by status and unit. You can accept or decline pending session assignments.';
+        modalSubtitle.textContent = 'View all your sessions across all units organized by status and unit.';
 
         // Get all units data
         const activeUnits = Object.values(units).filter(unit => unit.status === 'active');
@@ -1888,7 +1862,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     
                     sortedSessions.forEach(session => {
-                        const hasActions = session.status === 'pending';
+                        const hasActions = false; // No actions needed since sessions are auto-confirmed
                         modalHTML += `
                             <div class="modal-session-item">
                                 <div class="modal-session-info">

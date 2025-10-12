@@ -280,7 +280,7 @@ class Assignment(db.Model):
     session_id = db.Column(db.Integer, db.ForeignKey('session.id'), nullable=False)
     facilitator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_confirmed = db.Column(db.Boolean, default=False)
+    is_confirmed = db.Column(db.Boolean, default=True)
     
     def __repr__(self):
         return f'<Assignment {self.facilitator.email} -> {self.session.module.module_name}>'

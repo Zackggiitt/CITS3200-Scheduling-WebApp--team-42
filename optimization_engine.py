@@ -232,46 +232,46 @@ def generate_optimal_assignments(facilitators):
             total_hours_per_facilitator[facilitator['id']] = get_assigned_hours(facilitator, assignments)
         
         # Find the best facilitator for this session
-        for facilitator in facilitators:
-            score = calculate_facilitator_score(
-                facilitator, 
-                session, 
-                assignments, 
-                total_hours_per_facilitator
-            )
-            if score > best_score:
-                best_score = score
-                best_facilitator = facilitator
-        
-        # Assign if we found a suitable facilitator
-        if best_facilitator and best_score > 0:
-            assignments.append({
-                'facilitator': best_facilitator,
-                'session': session,
-                'score': best_score
-            })
-        else:
-            # Generate detailed conflict message
-            conflict_reasons = []
-            
-            # Check why no facilitator was suitable
             for facilitator in facilitators:
-                # Check skill constraints
-                if not check_skill_constraint(facilitator, session):
-                    module_id = session.get('module_id')
-                    if 'skills' in facilitator and module_id in facilitator['skills']:
-                        conflict_reasons.append(f"{facilitator['name']} has no interest in this module")
-                
-                # Check availability constraints
-                if check_availability(facilitator, session) == 0.0:
-                    conflict_reasons.append(f"{facilitator['name']} is unavailable at this time")
+                score = calculate_facilitator_score(
+                    facilitator, 
+                    session, 
+                assignments, 
+                    total_hours_per_facilitator
+                )
+                if score > best_score:
+                    best_score = score
+                    best_facilitator = facilitator
             
-            if conflict_reasons:
-                conflict_msg = f"No suitable facilitator found for {session['module_name']} ({format_session_time(session)}) - Reasons: {'; '.join(conflict_reasons[:3])}"
+            # Assign if we found a suitable facilitator
+            if best_facilitator and best_score > 0:
+                assignments.append({
+                    'facilitator': best_facilitator,
+                    'session': session,
+                    'score': best_score
+                })
             else:
-                conflict_msg = f"No suitable facilitator found for {session['module_name']} ({format_session_time(session)})"
-            
-            conflicts.append(conflict_msg)
+                # Generate detailed conflict message
+                conflict_reasons = []
+                
+                # Check why no facilitator was suitable
+                for facilitator in facilitators:
+                    # Check skill constraints
+                    if not check_skill_constraint(facilitator, session):
+                        module_id = session.get('module_id')
+                        if 'skills' in facilitator and module_id in facilitator['skills']:
+                            conflict_reasons.append(f"{facilitator['name']} has no interest in this module")
+                    
+                    # Check availability constraints
+                    if check_availability(facilitator, session) == 0.0:
+                        conflict_reasons.append(f"{facilitator['name']} is unavailable at this time")
+                
+                if conflict_reasons:
+                    conflict_msg = f"No suitable facilitator found for {session['module_name']} ({format_session_time(session)}) - Reasons: {'; '.join(conflict_reasons[:3])}"
+                else:
+                    conflict_msg = f"No suitable facilitator found for {session['module_name']} ({format_session_time(session)})"
+                
+                conflicts.append(conflict_msg)
     
     return assignments, conflicts
 
