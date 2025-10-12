@@ -449,6 +449,101 @@
       font-size: 18px;
     }
 
+    /* Unit Associations Styles */
+    .unit-associations {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .unit-associations-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .unit-associations-header .material-icons {
+      font-size: 18px;
+      color: #667eea;
+    }
+
+    .unit-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .unit-item {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .unit-code {
+      font-weight: 500;
+      color: #374151;
+      font-size: 14px;
+    }
+
+    .unit-name {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.4;
+    }
+
+    .unit-roles {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .role-badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .role-badge.role-coordinator {
+      background-color: #dbeafe;
+      color: #1e40af;
+    }
+
+    .role-badge.role-facilitator {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .unit-item {
+        padding: 6px 8px;
+      }
+      
+      .unit-code {
+        font-size: 13px;
+      }
+      
+      .unit-name {
+        font-size: 12px;
+      }
+      
+      .role-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+      }
+    }
+
     @media (max-width: 768px) {
       .profile-cards {
         grid-template-columns: 1fr;
@@ -742,9 +837,38 @@
                 </div>
                 <div class="metric-item">
                   <span class="material-icons">folder</span>
-                  <span>0 Units</span>
+                  <span>{{ unit_associations[facilitator.id].total_units if facilitator.id in unit_associations else 0 }} Units</span>
                 </div>
               </div>
+              
+              <!-- Unit Associations -->
+              {% if facilitator.id in unit_associations and unit_associations[facilitator.id].units %}
+              <div class="unit-associations">
+                <div class="unit-associations-header">
+                  <span class="material-icons">school</span>
+                  <span>Connected Units</span>
+                </div>
+                <div class="unit-list">
+                  {% for unit in unit_associations[facilitator.id].units %}
+                  <div class="unit-item">
+                    <span class="unit-code">{{ unit.unit_code }}</span>
+                    <span class="unit-name">{{ unit.unit_name }}</span>
+                    <div class="unit-roles">
+                      {% for role in unit.roles %}
+                      <span class="role-badge role-{{ role.lower() }}">
+                        {% if role == 'Coordinator' %}
+                          Unit Coordinator
+                        {% else %}
+                          {{ role }}
+                        {% endif %}
+                      </span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
             </div>
             <div class="facilitator-actions">
               <button class="action-btn edit" title="Edit Profile" onclick="openEditModal({{ facilitator.id }}, &quot;{{ facilitator.full_name|replace('"', '\\"') }}&quot;, &quot;{{ facilitator.email|replace('"', '\\"') }}&quot;)">

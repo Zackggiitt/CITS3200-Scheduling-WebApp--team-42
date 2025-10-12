@@ -45,6 +45,52 @@ def dashboard():
     )
     facilitators = facilitators_pagination.items
     
+    # Create unit associations data without modifying user objects
+    unit_associations = {}
+    for facilitator in facilitators:
+        # Get units they created (as coordinators)
+        created_units = Unit.query.filter_by(created_by=facilitator.id).all()
+        
+        # Get units they facilitate
+        facilitated_units = (
+            db.session.query(Unit)
+            .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+            .filter(UnitFacilitator.user_id == facilitator.id)
+            .all()
+        )
+        
+        # Combine and deduplicate unit associations
+        unit_dict = {}
+        
+        # Add created units with role
+        for unit in created_units:
+            if unit.id not in unit_dict:
+                unit_dict[unit.id] = {
+                    'unit_code': unit.unit_code,
+                    'unit_name': unit.unit_name,
+                    'roles': ['Coordinator']
+                }
+            else:
+                unit_dict[unit.id]['roles'].append('Coordinator')
+        
+        # Add facilitated units with role
+        for unit in facilitated_units:
+            if unit.id not in unit_dict:
+                unit_dict[unit.id] = {
+                    'unit_code': unit.unit_code,
+                    'unit_name': unit.unit_name,
+                    'roles': ['Facilitator']
+                }
+            else:
+                unit_dict[unit.id]['roles'].append('Facilitator')
+        
+        # Convert to list and sort by unit code
+        user_units = [unit_dict[unit_id] for unit_id in sorted(unit_dict.keys())]
+        unit_associations[facilitator.id] = {
+            'units': user_units,
+            'total_units': len(user_units)
+        }
+    
     # Count admins to check if we can delete the last one
     admin_count = User.query.filter_by(role=UserRole.ADMIN).count()
     
@@ -163,6 +209,7 @@ def dashboard():
                          facilitators=facilitators,  # This variable now contains paginated employees
                          all_employees=facilitators,  # Explicit alias for clarity
                          facilitators_pagination=facilitators_pagination,  # Pagination object
+                         unit_associations=unit_associations,  # Unit associations data
                          total_facilitators_count=total_facilitators,
                          active_facilitators_count=active_facilitators,
                          total_hours_worked=total_hours_worked,
