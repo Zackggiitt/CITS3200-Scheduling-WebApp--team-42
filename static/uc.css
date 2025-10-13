@@ -4416,10 +4416,13 @@ main {
   background-color: #1f2937;
 }
 
-/* Make unassigned facilitator sections clickable */
-.session-facilitator.unassigned {
+/* Make all facilitator sections clickable */
+.session-facilitator {
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.session-facilitator.unassigned {
   background-color: #f3f4f6;
   color: #374151;
   border: 1px solid #d1d5db;
