@@ -5473,12 +5473,21 @@ function updateSessionStatusMultiple(sessionId, status, facilitators) {
       facilitatorElement.classList.add('assigned');
       facilitatorElement.textContent = facilitators.length > 1 ? `${facilitators.length} Facilitators` : getInitials(facilitators[0]?.name || 'Unknown');
       facilitatorElement.title = `Assigned to: ${facilitators.map(f => f?.name || 'Unknown').join(', ')}`;
+      
+      // Update session card data attributes for session details modal
+      const facilitatorNames = facilitators.map(f => f?.name || 'Unknown').join(', ');
+      sessionCard.setAttribute('data-facilitator-names', facilitatorNames);
+      sessionCard.setAttribute('data-session-status', 'approved');
       break;
     case 'unassigned':
     default:
       facilitatorElement.classList.add('unassigned');
       facilitatorElement.textContent = 'Unassigned';
       facilitatorElement.title = 'Click to assign facilitators';
+      
+      // Clear session card data attributes
+      sessionCard.removeAttribute('data-facilitator-names');
+      sessionCard.setAttribute('data-session-status', 'unassigned');
       break;
   }
 }
@@ -5682,9 +5691,52 @@ function openSessionDetailsModal(sessionData) {
   if (nameEl) nameEl.textContent = sessionName;
   if (datetimeEl) datetimeEl.textContent = sessionData.day + ' ' + sessionData.time;
   if (locationEl) locationEl.textContent = location;
-  if (facilitatorEl) facilitatorEl.textContent = sessionData.facilitator || 'Unassigned';
+  
+  // Check if session card has updated facilitator data
+  const sessionCard = document.querySelector(`[data-session-id="${sessionData.id}"]`);
+  let facilitatorName = 'Unassigned';
+  let sessionStatus = 'Scheduled';
+  
+  if (sessionCard) {
+    const updatedFacilitatorNames = sessionCard.getAttribute('data-facilitator-names');
+    const updatedStatus = sessionCard.getAttribute('data-session-status');
+    
+    // Prioritize updated facilitator names over original session data
+    if (updatedFacilitatorNames) {
+      facilitatorName = updatedFacilitatorNames;
+    } else {
+      // Fall back to original session data, but extract name from email if needed
+      const originalFacilitator = sessionData.facilitator || 'Unassigned';
+      if (originalFacilitator !== 'Unassigned' && originalFacilitator.includes('@')) {
+        // If it's an email, try to get the name from the facilitator list
+        const facilitatorObj = allFacilitators.find(f => f.email === originalFacilitator);
+        facilitatorName = facilitatorObj ? facilitatorObj.name : originalFacilitator;
+      } else {
+        facilitatorName = originalFacilitator;
+      }
+    }
+    
+    if (updatedStatus) {
+      sessionStatus = updatedStatus.charAt(0).toUpperCase() + updatedStatus.slice(1);
+    } else {
+      sessionStatus = sessionData.status ? sessionData.status.charAt(0).toUpperCase() + sessionData.status.slice(1) : 'Scheduled';
+    }
+  } else {
+    // No session card found, use original data
+    const originalFacilitator = sessionData.facilitator || 'Unassigned';
+    if (originalFacilitator !== 'Unassigned' && originalFacilitator.includes('@')) {
+      // If it's an email, try to get the name from the facilitator list
+      const facilitatorObj = allFacilitators.find(f => f.email === originalFacilitator);
+      facilitatorName = facilitatorObj ? facilitatorObj.name : originalFacilitator;
+    } else {
+      facilitatorName = originalFacilitator;
+    }
+    sessionStatus = sessionData.status ? sessionData.status.charAt(0).toUpperCase() + sessionData.status.slice(1) : 'Scheduled';
+  }
+  
+  if (facilitatorEl) facilitatorEl.textContent = facilitatorName;
   if (typeEl) typeEl.textContent = sessionData.moduleType || 'Workshop';
-  if (statusEl) statusEl.textContent = sessionData.status ? sessionData.status.charAt(0).toUpperCase() + sessionData.status.slice(1) : 'Scheduled';
+  if (statusEl) statusEl.textContent = sessionStatus;
   
   console.log('=== MODAL DEBUG END ===');
   
