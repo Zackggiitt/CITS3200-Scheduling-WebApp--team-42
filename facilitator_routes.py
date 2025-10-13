@@ -1301,19 +1301,23 @@ def create_swap_request():
     if not has_discussed:
         return jsonify({'error': 'Must confirm discussion with target facilitator'}), 400
     
-    # Validate assignments
+    # Validate requester assignment
     requester_assignment = Assignment.query.filter_by(
         id=requester_assignment_id, 
         facilitator_id=user.id
     ).first()
     
-    target_assignment = Assignment.query.filter_by(
-        id=target_assignment_id,
-        facilitator_id=target_facilitator_id
-    ).first()
+    if not requester_assignment:
+        return jsonify({'error': 'Invalid requester assignment selection'}), 400
     
-    if not requester_assignment or not target_assignment:
-        return jsonify({'error': 'Invalid assignment selection'}), 400
+    # Get the session and module from requester assignment
+    session = requester_assignment.session
+    module = session.module
+    
+    # For the target assignment, we'll create a virtual assignment or use the same session
+    # Since we're doing a direct notification system, we don't need actual assignment swapping
+    # We'll use the same assignment ID for both (simplified approach)
+    target_assignment_id = requester_assignment_id
     
     # Check if swap request already exists
     existing_request = SwapRequest.query.filter_by(
@@ -1325,30 +1329,73 @@ def create_swap_request():
     if existing_request:
         return jsonify({'error': 'Swap request already exists for these assignments'}), 400
     
-    # Create swap request (simplified - no approval needed)
+    # Verify target facilitator exists and has access to the unit
+    target_facilitator = User.query.get(target_facilitator_id)
+    if not target_facilitator:
+        return jsonify({'error': 'Target facilitator not found'}), 404
+    
+    # Check if target facilitator is assigned to the same unit
+    unit_access = (
+        db.session.query(Unit)
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(Unit.id == module.unit_id, UnitFacilitator.user_id == target_facilitator_id)
+        .first()
+    )
+    
+    if not unit_access:
+        return jsonify({'error': 'Target facilitator is not assigned to this unit'}), 400
+    
+    # Check if target facilitator has required skills for this module
+    facilitator_skill = FacilitatorSkill.query.filter_by(
+        facilitator_id=target_facilitator_id,
+        module_id=module.id
+    ).first()
+    
+    if not facilitator_skill or facilitator_skill.skill_level.value == 'no_interest':
+        return jsonify({'error': 'Target facilitator does not have required skills for this module'}), 400
+    
+    # Check availability for the session time
+    is_available, reason = check_facilitator_availability(
+        target_facilitator_id,
+        session.start_time.date(),
+        session.start_time.time(),
+        session.end_time.time(),
+        module.unit_id
+    )
+    
+    if not is_available:
+        return jsonify({'error': f'Target facilitator is not available: {reason}'}), 400
+    
+    # Create swap request (immediately approved and executed)
     swap_request = SwapRequest(
         requester_id=user.id,
         target_id=target_facilitator_id,
         requester_assignment_id=requester_assignment_id,
         target_assignment_id=target_assignment_id,
-        reason="Session swap request",
-        status=SwapStatus.PENDING,  # Simple pending status for notification
-        facilitator_confirmed=True  # No approval needed
+        reason="Session swap request (auto-approved)",
+        status=SwapStatus.APPROVED,  # Immediately approved
+        facilitator_confirmed=True,  # No approval needed
+        facilitator_confirmed_at=datetime.utcnow()
     )
     
     try:
+        # Add the swap request
         db.session.add(swap_request)
+        
+        # Transfer the assignment to the target facilitator
+        requester_assignment.facilitator_id = target_facilitator_id
+        
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': 'Swap request created successfully',
+            'message': 'Swap request approved and session transferred successfully!',
             'swap_request_id': swap_request.id
         }), 201
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Failed to create swap request: {str(e)}'}), 500
+        return jsonify({'error': f'Failed to create and execute swap request: {str(e)}'}), 500
 
 
 @facilitator_bp.route('/swap-requests', methods=['GET'])
@@ -1400,7 +1447,6 @@ def get_swap_requests():
     
     # Group requests by status
     incoming_requests = []
-    pending_requests = []
     approved_requests = []
     declined_requests = []
     
@@ -1415,16 +1461,15 @@ def get_swap_requests():
         serialized = serialize_swap_request(req)
         serialized['is_incoming'] = False
         
-        if req.status in [SwapStatus.FACILITATOR_PENDING, SwapStatus.COORDINATOR_PENDING, SwapStatus.PENDING]:
-            pending_requests.append(serialized)
-        elif req.status == SwapStatus.APPROVED:
+        # Since we now have immediate approval, all requests go directly to approved
+        # Pending status requests are no longer used
+        if req.status == SwapStatus.APPROVED:
             approved_requests.append(serialized)
         elif req.status in [SwapStatus.FACILITATOR_DECLINED, SwapStatus.COORDINATOR_DECLINED, SwapStatus.REJECTED]:
             declined_requests.append(serialized)
     
     return jsonify({
         'incoming_requests': incoming_requests,
-        'pending_requests': pending_requests,
         'approved_requests': approved_requests,
         'declined_requests': declined_requests
     })
