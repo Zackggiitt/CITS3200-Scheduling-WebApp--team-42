@@ -78,7 +78,29 @@
                 • One special character (!@#$%^&*...)
             </div>
 
-            <button type="submit" class="btn">Sign Up</button>
+            <!-- Data Privacy Statement Checkbox (Required for all users) -->
+            <div class="checkbox-container">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="data_privacy_consent" id="data_privacy_consent" required>
+                    <span class="checkmark"></span>
+                    <span class="checkbox-text">
+                        I agree to the storage of my personal data (name, email, phone number) in the database for the purpose of this web application.
+                    </span>
+                </label>
+            </div>
+
+            <!-- Unavailability Consent Checkbox (Only for Facilitators) -->
+            <div class="checkbox-container" id="unavailability_consent_container" style="display: none;">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="unavailability_consent" id="unavailability_consent">
+                    <span class="checkmark"></span>
+                    <span class="checkbox-text">
+                        I consent to having my unavailability data accessed by Unit Coordinators and shared with other facilitators through swap requests.
+                    </span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn" id="signup-btn" disabled>Sign Up</button>
 
             <div class="register-link">
                 <p>Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
@@ -111,6 +133,57 @@
             // Toggle eye icon
             this.classList.toggle('bx-hide');
             this.classList.toggle('bx-show');
+        });
+
+        // Checkbox validation and form submission logic
+        const dataPrivacyCheckbox = document.getElementById('data_privacy_consent');
+        const unavailabilityCheckbox = document.getElementById('unavailability_consent');
+        const unavailabilityContainer = document.getElementById('unavailability_consent_container');
+        const signupBtn = document.getElementById('signup-btn');
+
+        // Check if this is a facilitator signup by checking the role name
+        function isFacilitatorSignup() {
+            const roleName = '{{ role_name or "" }}';
+            return roleName === 'Facilitator';
+        }
+
+        // Show/hide facilitator-specific checkbox
+        function updateFacilitatorCheckbox() {
+            if (isFacilitatorSignup()) {
+                unavailabilityContainer.style.display = 'block';
+                unavailabilityCheckbox.required = true;
+            } else {
+                unavailabilityContainer.style.display = 'none';
+                unavailabilityCheckbox.required = false;
+                unavailabilityCheckbox.checked = false;
+            }
+            updateSubmitButton();
+        }
+
+        // Update submit button state based on checkbox requirements
+        function updateSubmitButton() {
+            const isDataPrivacyChecked = dataPrivacyCheckbox.checked;
+            const isUnavailabilityChecked = isFacilitatorSignup() ? unavailabilityCheckbox.checked : true;
+            
+            if (isDataPrivacyChecked && isUnavailabilityChecked) {
+                signupBtn.disabled = false;
+                signupBtn.style.opacity = '1';
+                signupBtn.style.cursor = 'pointer';
+            } else {
+                signupBtn.disabled = true;
+                signupBtn.style.opacity = '0.6';
+                signupBtn.style.cursor = 'not-allowed';
+            }
+        }
+
+        // Add event listeners
+        dataPrivacyCheckbox.addEventListener('change', updateSubmitButton);
+        unavailabilityCheckbox.addEventListener('change', updateSubmitButton);
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateFacilitatorCheckbox();
+            updateSubmitButton();
         });
     </script>
 </body>

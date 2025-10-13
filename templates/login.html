@@ -49,7 +49,10 @@
       </div>
       <div class="input-box">
         <i class='bx bxs-lock-alt'></i>
-        <input type="password" name="password" placeholder="Password" required>
+        <input type="password" name="password" placeholder="Password" required id="password-input">
+        <button type="button" class="password-toggle" id="password-toggle">
+          <i class='bx bxs-show'></i>
+        </button>
       </div>
       <div class="remember-forgot">
         <label><input type="checkbox"> Remember me</label>
@@ -95,6 +98,21 @@
     const checked = document.querySelector('input[name="role"]:checked');
     const initialRole = checked ? checked.value : '{{ selected_role or "facilitator" }}';
     setActive(initialRole);
+
+    // Password visibility toggle functionality
+    const passwordInput = document.getElementById('password-input');
+    const passwordToggle = document.getElementById('password-toggle');
+    const toggleIcon = passwordToggle.querySelector('i');
+
+    passwordToggle.addEventListener('click', function() {
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.className = 'bx bxs-hide';
+      } else {
+        passwordInput.type = 'password';
+        toggleIcon.className = 'bx bxs-show';
+      }
+    });
   </script>
 </body>
 </html>
