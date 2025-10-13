@@ -215,7 +215,7 @@ def signup():
             
             # Dynamic success message based on role
             role_name = "Unit Coordinator" if existing_user.role == UserRole.UNIT_COORDINATOR else "Facilitator"
-            flash(f"{role_name} account created successfully! Please log in.")
+            flash(f"{role_name} account created successfully! Please log in.", "success")
             return redirect(url_for("login"))
             
         except Exception as e:
@@ -305,7 +305,7 @@ def admin_signup():
         from email_service import mark_token_as_used
         mark_token_as_used(token)
         
-        flash("Admin account created successfully! Please log in.")
+        flash("Admin account created successfully! Please log in.", "success")
         return redirect(url_for("login"))
         
     except Exception as e:
