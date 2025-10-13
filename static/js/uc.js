@@ -5425,10 +5425,7 @@ async function selectMultipleFacilitators() {
       // Debug logging
       console.log('About to show confirmation for selectedFacilitators:', selectedFacilitators);
       
-      // Show assignment confirmation popup
-      showMultipleAssignmentConfirmation(selectedFacilitators, currentSessionData?.name || 'Unknown Session');
-      
-      // Close modal (but don't clear selectedFacilitators yet - let the popup use them)
+      // Close modal
       const modal = document.getElementById('facilitator-modal');
       if (modal) {
         modal.style.display = 'none';
