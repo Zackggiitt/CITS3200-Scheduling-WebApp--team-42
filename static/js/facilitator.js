@@ -2512,6 +2512,10 @@ function saveUnavailability() {
     const date = modal.dataset.currentDate;
     
     if (!date || !currentUnitId) return;
+    if (window.isSchedulePublished) {
+        showNotification("This unit's schedule has been published. Editing unavailability is disabled.", 'warning');
+        return;
+    }
     
     const isFullDay = document.getElementById('full-day-toggle').checked;
     const isRecurring = document.getElementById('recurring-toggle').checked;
@@ -2610,6 +2614,10 @@ function initUnavailabilityControls() {
                 return;
             }
             
+            if (window.isSchedulePublished) {
+                showNotification("This unit's schedule has been published. Editing unavailability is disabled.", 'warning');
+                return;
+            }
             if (confirm('Are you sure you want to clear all unavailability and mark yourself as available for all days in this unit?')) {
                 clearAllUnavailability();
             }
@@ -3537,6 +3545,10 @@ async function saveSkills() {
     const currentUnitId = window.currentUnitId;
     if (!currentUnitId) {
         console.error('No unit selected');
+        return;
+    }
+    if (window.isSchedulePublished) {
+        showNotification("This unit's schedule has been published. Editing skills is disabled.", 'warning');
         return;
     }
 

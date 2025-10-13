@@ -281,6 +281,7 @@ def dashboard():
             'semester': current_unit.semester,
             'start_date': current_unit.start_date.isoformat() if current_unit.start_date else None,
             'end_date': current_unit.end_date.isoformat() if current_unit.end_date else None,
+            'schedule_status': getattr(current_unit, 'schedule_status', None).value if getattr(current_unit, 'schedule_status', None) else 'draft',
             'description': current_unit.description
         }
     
@@ -381,6 +382,7 @@ def dashboard():
             'semester': unit.semester,
             'start_date': unit.start_date.isoformat() if unit.start_date else None,
             'end_date': unit.end_date.isoformat() if unit.end_date else None,
+            'schedule_status': getattr(unit, 'schedule_status', None).value if getattr(unit, 'schedule_status', None) else 'draft',
             'status': 'active' if is_active else 'completed',
             'sessions': session_count,
             'date_range': f"{unit.start_date.strftime('%d/%m/%Y')} - {unit.end_date.strftime('%d/%m/%Y')}" if unit.start_date and unit.end_date else 'No date range',
@@ -857,6 +859,21 @@ def create_unavailability():
     
     try:
         db.session.add(unavailability)
+        
+        # Clear "Available All Days" status when unavailability is added
+        import json
+        preferences = {}
+        if user.preferences:
+            try:
+                preferences = json.loads(user.preferences)
+            except:
+                preferences = {}
+        
+        # Remove availability status for this unit since user is now setting specific unavailability
+        if 'availability_status' in preferences and str(unit_id) in preferences['availability_status']:
+            del preferences['availability_status'][str(unit_id)]
+            user.preferences = json.dumps(preferences)
+        
         db.session.commit()
         
         return jsonify({
@@ -967,6 +984,22 @@ def clear_all_unavailability():
             user_id=user.id,
             unit_id=unit_id
         ).delete()
+        
+        # Mark user as "Available All Days" for this unit in preferences
+        import json
+        preferences = {}
+        if user.preferences:
+            try:
+                preferences = json.loads(user.preferences)
+            except:
+                preferences = {}
+        
+        # Store availability status per unit
+        if 'availability_status' not in preferences:
+            preferences['availability_status'] = {}
+        
+        preferences['availability_status'][str(unit_id)] = 'available_all_days'
+        user.preferences = json.dumps(preferences)
         
         db.session.commit()
         

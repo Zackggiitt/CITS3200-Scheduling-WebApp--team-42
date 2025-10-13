@@ -879,15 +879,29 @@ def dashboard():
             )
 
             # Check if facilitator has availability configured
-            # A facilitator is considered to have "availability set" if they have unavailability entries
-            # This means they have actively configured their availability (either as unavailable on certain days or available all days)
-            has_avail = (
+            # A facilitator is considered to have "availability set" if they either:
+            # 1. Have unavailability entries (specific unavailable days), OR
+            # 2. Have marked themselves as "Available All Days" for this unit
+            has_unavailability = (
                 db.session.query(Unavailability.id)
                 .filter(Unavailability.user_id == f.id, Unavailability.unit_id == current_unit.id)
                 .limit(1)
                 .first()
                 is not None
             )
+            
+            # Check if user has marked themselves as "Available All Days" for this unit
+            has_available_all_days = False
+            if f.preferences:
+                try:
+                    import json
+                    preferences = json.loads(f.preferences)
+                    availability_status = preferences.get('availability_status', {})
+                    has_available_all_days = availability_status.get(str(current_unit.id)) == 'available_all_days'
+                except:
+                    pass
+            
+            has_avail = has_unavailability or has_available_all_days
 
             has_skills = (
                 db.session.query(FacilitatorSkill.id)
@@ -1209,15 +1223,29 @@ def admin_dashboard():
             )
 
             # Check if facilitator has availability configured
-            # A facilitator is considered to have "availability set" if they have unavailability entries
-            # This means they have actively configured their availability (either as unavailable on certain days or available all days)
-            has_avail = (
+            # A facilitator is considered to have "availability set" if they either:
+            # 1. Have unavailability entries (specific unavailable days), OR
+            # 2. Have marked themselves as "Available All Days" for this unit
+            has_unavailability = (
                 db.session.query(Unavailability.id)
                 .filter(Unavailability.user_id == f.id, Unavailability.unit_id == current_unit.id)
                 .limit(1)
                 .first()
                 is not None
             )
+            
+            # Check if user has marked themselves as "Available All Days" for this unit
+            has_available_all_days = False
+            if f.preferences:
+                try:
+                    import json
+                    preferences = json.loads(f.preferences)
+                    availability_status = preferences.get('availability_status', {})
+                    has_available_all_days = availability_status.get(str(current_unit.id)) == 'available_all_days'
+                except:
+                    pass
+            
+            has_avail = has_unavailability or has_available_all_days
 
             has_skills = (
                 db.session.query(FacilitatorSkill.id)
@@ -3124,6 +3152,8 @@ def publish_schedule(unit_id: int):
         notifications_created = 0
         emails_sent = 0
         from email_service import send_schedule_published_email
+        from datetime import datetime
+        from models import ScheduleStatus
         
         print(f"DEBUG: Collected sessions for {len(facilitator_sessions)} facilitators")
         
@@ -3171,6 +3201,14 @@ def publish_schedule(unit_id: int):
         # Update session statuses to 'published'
         for session in sessions:
             session.status = 'published'
+        
+        # Mark the unit as published (used by facilitator portal to lock edits)
+        try:
+            unit.schedule_status = ScheduleStatus.PUBLISHED
+            unit.published_at = datetime.utcnow()
+        except Exception:
+            # If enum not available for any reason, silently continue; sessions are still published
+            pass
         
         db.session.commit()
         

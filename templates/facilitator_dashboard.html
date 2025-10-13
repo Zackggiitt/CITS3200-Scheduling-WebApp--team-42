@@ -344,6 +344,14 @@
     
     <div class="unavailability-content">
       <div class="unavailability-calendar-section">
+        {% if current_unit and current_unit.schedule_status and current_unit.schedule_status.value == 'published' %}
+        <div class="alert-bar" role="alert" style="margin-bottom: 12px;">
+          <div class="alert-content">
+            <span class="material-icons" aria-hidden="true">lock</span>
+            <p><strong>Schedule Published</strong> — Editing unavailability is disabled. Contact your Unit Coordinator for changes.</p>
+          </div>
+        </div>
+        {% endif %}
         <div class="calendar-header">
           <button id="prev-month-unavailability" class="calendar-btn">
             <span class="material-icons">chevron_left</span>
@@ -373,6 +381,11 @@
       
       <div class="unavailability-summary-section">
         <div class="recent-unavailability-card">
+          {% if current_unit and current_unit.schedule_status and current_unit.schedule_status.value == 'published' %}
+          <p class="subtle-text" style="margin: 0 0 8px 0; color: #6b7280;">
+            This unit's schedule is published. Unavailability edits are locked.
+          </p>
+          {% endif %}
           <div class="recent-unavailability-header">
             <h3>Recent Unavailability</h3>
             <button id="delete-all-unavailabilities-btn" class="delete-all-btn" title="Delete All Unavailabilities">
@@ -474,6 +487,14 @@
         <p class="skills-subtitle">View all modules for this unit and your assigned skill levels.</p>
       </div>
     </div>
+    {% if current_unit and current_unit.schedule_status and current_unit.schedule_status.value == 'published' %}
+    <div class="alert-bar" role="alert" style="margin-bottom: 12px;">
+      <div class="alert-content">
+        <span class="material-icons" aria-hidden="true">lock</span>
+        <p><strong>Schedule Published</strong> — Editing skills is disabled. Contact your Unit Coordinator for changes.</p>
+      </div>
+    </div>
+    {% endif %}
     
     <div class="skills-content">
       <div class="skills-grid" id="skills-grid">
@@ -699,6 +720,7 @@
     window.unitsData = {{ units_data|tojson }};
     window.currentUnitId = {{ current_unit_dict.id if current_unit_dict else 'null' }};
     window.currentUnit = {{ current_unit_dict|tojson if current_unit_dict else 'null' }};
+    window.isSchedulePublished = (window.currentUnit && window.currentUnit.schedule_status === 'published');
     window.csrfToken = "{{ csrf_token() }}";
     
     // Function to refresh the page to check for new unit assignments
