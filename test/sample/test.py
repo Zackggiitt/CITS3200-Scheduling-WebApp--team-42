@@ -456,6 +456,24 @@ def create_facilitators_from_csv(csv_file_path, update_existing=False):
                 db.session.add(skill)
                 skill_summary[skill.skill_level] += 1
             
+            # Set availability_configured=True for all units to mark facilitators as having configured availability
+            for unit in units:
+                unit_facilitator = UnitFacilitator.query.filter_by(
+                    user_id=facilitator.id,
+                    unit_id=unit.id
+                ).first()
+                
+                if unit_facilitator:
+                    unit_facilitator.availability_configured = True
+                else:
+                    # Create UnitFacilitator record if it doesn't exist
+                    unit_facilitator = UnitFacilitator(
+                        user_id=facilitator.id,
+                        unit_id=unit.id,
+                        availability_configured=True
+                    )
+                    db.session.add(unit_facilitator)
+            
             if is_update:
                 updated_count += 1
                 if is_incomplete:
