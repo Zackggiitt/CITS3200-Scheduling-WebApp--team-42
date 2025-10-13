@@ -4594,7 +4594,7 @@ function showConflictPopup(title, message) {
         <h3>${title}</h3>
       </div>
       <div class="conflict-popup-body">
-        <p>${message}</p>
+        <p>${message.replace(/\n/g, '<br>')}</p>
       </div>
       <div class="conflict-popup-footer">
         <button class="btn btn-primary" onclick="closeConflictPopup()">OK</button>
@@ -4632,11 +4632,11 @@ async function loadAndDisplayConflicts() {
     
     if (result.ok && result.conflicts && result.conflicts.length > 0) {
       // Show conflicts in a notification or banner
-      let conflictMessage = `⚠️ ${result.conflicts.length} scheduling conflict(s) detected:\n\n`;
+      let conflictMessage = `${result.conflicts.length} scheduling conflict(s) detected:\n\n`;
       
       result.conflicts.forEach(conflict => {
         if (conflict.type === 'schedule_overlap') {
-          conflictMessage += `• ${conflict.facilitator_name} is assigned to overlapping sessions:\n`;
+          conflictMessage += `• <strong>${conflict.facilitator_name}</strong> is assigned to overlapping sessions:\n`;
           conflictMessage += `  - "${conflict.session1.module}" (${conflict.session1.start_time.substring(0, 16)} - ${conflict.session1.end_time.substring(0, 16)})\n`;
           conflictMessage += `  - "${conflict.session2.module}" (${conflict.session2.start_time.substring(0, 16)} - ${conflict.session2.end_time.substring(0, 16)})\n\n`;
         }
@@ -5491,9 +5491,9 @@ async function selectMultipleFacilitators() {
     if (!response.ok) {
       // Handle conflict errors specifically
       if (result.error === 'Scheduling conflicts detected' && result.conflicts) {
-        let conflictMessage = '⚠️ Scheduling conflicts detected:\n\n';
+        let conflictMessage = 'Scheduling conflicts detected:\n\n';
         result.conflicts.forEach(conflict => {
-          conflictMessage += `• ${conflict.facilitator_name} is already assigned to "${conflict.conflicting_session.name}" `;
+          conflictMessage += `• <strong>${conflict.facilitator_name}</strong> is already assigned to "<strong>${conflict.conflicting_session.name}</strong>" `;
           conflictMessage += `(${conflict.conflicting_session.start_time.substring(0, 16)} - ${conflict.conflicting_session.end_time.substring(0, 16)}) `;
           conflictMessage += `which overlaps with this session.\n\n`;
         });

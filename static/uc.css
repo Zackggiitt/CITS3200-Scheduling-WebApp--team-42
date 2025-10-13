@@ -4495,8 +4495,15 @@ main {
 .conflict-popup-body p {
   margin: 0;
   line-height: 1.6;
-  color: #374151;
+  color: #111827;
+  font-weight: 500;
   white-space: pre-line;
+  font-size: 14px;
+}
+
+.conflict-popup-body p strong {
+  color: #1f2937;
+  font-weight: 600;
 }
 
 .conflict-popup-footer {
