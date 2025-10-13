@@ -293,12 +293,16 @@ def dashboard():
     # Get units data for JavaScript
     units_data = []
     for unit in units:
-        # Get assignments for this unit
+        # Get assignments for this unit (only published sessions)
         assignments = (
             db.session.query(Assignment, Session, Module)
             .join(Session, Assignment.session_id == Session.id)
             .join(Module, Session.module_id == Module.id)
-            .filter(Assignment.facilitator_id == user.id, Module.unit_id == unit.id)
+            .filter(
+                Assignment.facilitator_id == user.id, 
+                Module.unit_id == unit.id,
+                Session.status == 'published'  # Only show published sessions
+            )
             .all()
         )
         
@@ -403,7 +407,7 @@ def dashboard():
         }
         units_data.append(unit_data)
     
-    # Count today's sessions for the facilitator
+    # Count today's sessions for the facilitator (only published sessions)
     today = date.today()
     today_sessions_count = (
         db.session.query(Assignment, Session, Module)
@@ -411,10 +415,22 @@ def dashboard():
         .join(Module, Session.module_id == Module.id)
         .filter(
             Assignment.facilitator_id == user.id,
-            db.func.date(Session.start_time) == today
+            db.func.date(Session.start_time) == today,
+            Session.status == 'published'  # Only show published sessions
         )
         .count()
     )
+    
+    # Check if facilitator has configured availability for current unit
+    availability_configured = False
+    if current_unit:
+        unit_facilitator = UnitFacilitator.query.filter_by(
+            user_id=user.id,
+            unit_id=current_unit.id
+        ).first()
+        
+        if unit_facilitator:
+            availability_configured = unit_facilitator.availability_configured
     
     return render_template("facilitator_dashboard.html", 
                          user=user, 
@@ -424,7 +440,8 @@ def dashboard():
                          current_unit_dict=current_unit_dict,
                          units_data=units_data,
                          has_no_units=has_no_units,
-                         today_sessions_count=today_sessions_count)
+                         today_sessions_count=today_sessions_count,
+                         availability_configured=availability_configured)
 
 
 @facilitator_bp.route("/")
@@ -484,7 +501,7 @@ def calculate_facilitator_info(user, today):
         elif not unit.start_date and unit.end_date:
             is_current = today <= unit.end_date
         else:
-            # Check if there are future assignments for this unit
+            # Check if there are future assignments for this unit (only published sessions)
             has_future_sessions = (
                 db.session.query(Assignment)
                 .join(Session, Assignment.session_id == Session.id)
@@ -492,23 +509,24 @@ def calculate_facilitator_info(user, today):
                 .filter(
                     Assignment.facilitator_id == user.id,
                     Module.unit_id == unit.id,
-                    Session.start_time > datetime.utcnow()
+                    Session.start_time > datetime.utcnow(),
+                    Session.status == 'published'  # Only show published sessions
                 )
-                .first() is not None
+                .count() > 0
             )
             is_current = has_future_sessions
         
-        # Get sessions for this unit
+        # Get sessions for this unit (only published sessions)
         sessions_query = (
             db.session.query(Assignment, Session, Module)
             .join(Session, Assignment.session_id == Session.id)
             .join(Module, Session.module_id == Module.id)
             .filter(
                 Assignment.facilitator_id == user.id,
-                Module.unit_id == unit.id
+                Module.unit_id == unit.id,
+                Session.status == 'published'  # Only show published sessions
             )
-            .all()
-        )
+        ).all()
         
         # Separate current and past sessions
         current_sessions = [(a, s, m) for a, s, m in sessions_query if s.start_time >= datetime.utcnow()]
@@ -560,7 +578,7 @@ def calculate_facilitator_info(user, today):
     # Total Units
     total_units = len(all_units)
     
-    # Sessions Facilitated (completed sessions across all units)
+    # Sessions Facilitated (completed sessions across all units, only published)
     all_completed_sessions = (
         db.session.query(Assignment, Session)
         .join(Session, Assignment.session_id == Session.id)
@@ -568,7 +586,9 @@ def calculate_facilitator_info(user, today):
         .join(UnitFacilitator, Module.unit_id == UnitFacilitator.unit_id)
         .filter(
             Assignment.facilitator_id == user.id,
-            Session.start_time < datetime.utcnow()
+            UnitFacilitator.user_id == user.id,
+            Session.end_time < datetime.utcnow(),
+            Session.status == 'published'  # Only show published sessions
         )
         .all()
     )
@@ -663,7 +683,15 @@ def edit_profile():
 @facilitator_required
 def view_schedule():
     user = get_current_user()
-    assignments = Assignment.query.filter_by(facilitator_id=user.id).join(Session).order_by(Session.start_time).all()
+    # Only show published sessions
+    assignments = (
+        Assignment.query
+        .filter_by(facilitator_id=user.id)
+        .join(Session)
+        .filter(Session.status == 'published')
+        .order_by(Session.start_time)
+        .all()
+    )
     return render_template('view_schedule.html', user=user, assignments=assignments)
 
 @facilitator_bp.route('/unit-info', methods=['GET'])
