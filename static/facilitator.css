@@ -5573,3 +5573,65 @@ textarea::placeholder {
 .notification.info .notification-icon {
   color: #3b82f6;
 }
+
+/* Unavailability Section Improvements */
+.unavailability-summary-section {
+  margin-top: 40px; /* Increased vertical gap between calendar and Recent Unavailability */
+}
+
+.recent-unavailability-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--gap-md);
+}
+
+.recent-unavailability-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.delete-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--surface-error-light);
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  color: var(--status-red);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-all-btn:hover {
+  background: #fecaca;
+  border-color: #f87171;
+  transform: translateY(-1px);
+}
+
+.delete-all-btn:active {
+  transform: translateY(0);
+}
+
+.delete-all-btn .material-icons {
+  font-size: 18px;
+}
+
+/* Responsive adjustments for delete button */
+@media (max-width: 768px) {
+  .recent-unavailability-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--gap-sm);
+  }
+  
+  .delete-all-btn {
+    align-self: flex-end;
+    width: fit-content;
+  }
+}

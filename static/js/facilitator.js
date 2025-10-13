@@ -2092,6 +2092,21 @@ function initUnavailabilityView() {
     // Initialize AJAX features
     initializeAJAXFeatures();
     
+    // Delete All Unavailabilities button handler
+    const deleteAllBtn = document.getElementById('delete-all-unavailabilities-btn');
+    if (deleteAllBtn) {
+        deleteAllBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Show confirmation dialog
+            const confirmed = confirm('Are you sure you want to delete all your unavailabilities? This action cannot be undone.');
+            
+            if (confirmed) {
+                deleteAllUnavailabilities();
+            }
+        });
+    }
+    
 }
 
 function updateUnavailabilityViewForUnit(unit) {
@@ -3672,4 +3687,67 @@ function hideNotification() {
     if (notification) {
         notification.classList.remove('show');
     }
+}
+
+// Delete all unavailabilities function
+function deleteAllUnavailabilities() {
+    const currentUnitId = window.currentUnitId;
+    
+    if (!currentUnitId) {
+        alert('No unit selected');
+        return;
+    }
+    
+    // Show loading state
+    const deleteBtn = document.getElementById('delete-all-unavailabilities-btn');
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Deleting...';
+    }
+    
+    fetch('/facilitator/unavailability/clear-all', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': window.csrfToken
+        },
+        body: JSON.stringify({
+            unit_id: currentUnitId
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.error) {
+            throw new Error(result.error);
+        }
+        
+        // Reload unavailability data
+        loadUnavailabilityData();
+        
+        // Show success message
+        const message = result.message || 'All unavailabilities deleted successfully';
+        if (typeof showNotification === 'function') {
+            showNotification(message, 'success');
+        } else {
+            alert(message);
+        }
+        
+        console.log('All unavailabilities deleted successfully');
+    })
+    .catch(error => {
+        console.error('Error deleting all unavailabilities:', error);
+        const errorMessage = error.message || 'Failed to delete all unavailabilities';
+        if (typeof showNotification === 'function') {
+            showNotification(errorMessage, 'error');
+        } else {
+            alert('Error: ' + errorMessage);
+        }
+    })
+    .finally(() => {
+        // Reset button state
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = '<span class="material-icons">delete_sweep</span> Delete All';
+        }
+    });
 }
