@@ -857,6 +857,16 @@ def create_unavailability():
     
     try:
         db.session.add(unavailability)
+        
+        # Mark availability as configured since facilitator is setting unavailability
+        unit_facilitator = UnitFacilitator.query.filter_by(
+            user_id=user.id,
+            unit_id=unit_id
+        ).first()
+        
+        if unit_facilitator:
+            unit_facilitator.availability_configured = True
+        
         db.session.commit()
         
         return jsonify({
@@ -968,6 +978,15 @@ def clear_all_unavailability():
             unit_id=unit_id
         ).delete()
         
+        # Mark availability as configured since facilitator explicitly chose "Available All Days"
+        unit_facilitator = UnitFacilitator.query.filter_by(
+            user_id=user.id,
+            unit_id=unit_id
+        ).first()
+        
+        if unit_facilitator:
+            unit_facilitator.availability_configured = True
+        
         db.session.commit()
         
         return jsonify({
@@ -1063,6 +1082,15 @@ def generate_recurring_unavailability():
             )
             db.session.add(unavailability)
             created_count += 1
+    
+    # Mark availability as configured since facilitator is setting unavailability
+    unit_facilitator = UnitFacilitator.query.filter_by(
+        user_id=user.id,
+        unit_id=unit_id
+    ).first()
+    
+    if unit_facilitator:
+        unit_facilitator.availability_configured = True
     
     db.session.commit()
     
