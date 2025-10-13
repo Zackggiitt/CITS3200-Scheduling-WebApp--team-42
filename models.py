@@ -156,6 +156,7 @@ class Session(db.Model):
     max_facilitators = db.Column(db.Integer, default=1)
     lead_staff_required = db.Column(db.Integer, default=1)  # Number of lead staff required
     support_staff_required = db.Column(db.Integer, default=0)  # Number of support staff required
+    status = db.Column(db.String(20), default='draft')  # draft, published, unpublished
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships

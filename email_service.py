@@ -99,7 +99,10 @@ def send_welcome_email(recipient_email, recipient_name=None, base_url=None, user
 
     # Customize message based on role
     from models import UserRole
-    if user_role == UserRole.UNIT_COORDINATOR:
+    if user_role == UserRole.ADMIN:
+        role_message = "Another administrator has created an admin account for you in the Scheduling System. As an Admin, you will have full access to manage all users, units, and system settings."
+        subject = "Set Up Your Admin Account"
+    elif user_role == UserRole.UNIT_COORDINATOR:
         role_message = "The administrator has added you as a Unit Coordinator for the Scheduling System. As a Unit Coordinator, you will be able to manage your units, add facilitators, and create schedules."
         subject = "Set Up Your Unit Coordinator Account"
     else:  # Facilitator
@@ -165,7 +168,7 @@ def send_welcome_email(recipient_email, recipient_name=None, base_url=None, user
     <body>
         <div class="container">
             <div class="header">
-                <h1>{"Set Up Your Unit Coordinator Account" if user_role == UserRole.UNIT_COORDINATOR else "Set Up Your Facilitator Account"}</h1>
+                <h1>{subject}</h1>
             </div>
             <div class="content">
                 <h2>Hello!</h2>

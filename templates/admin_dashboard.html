@@ -584,18 +584,6 @@
           <span class="material-icons">school</span>
           <span>Unit Coordinator Portal</span>
         </a>
-        <div class="notification-container">
-          <button class="icon-btn notification-btn" type="button" aria-label="Notifications" id="adminNotifBtn">
-            <span class="material-icons" aria-hidden="true">notifications</span>
-          </button>
-          {% if pending_swaps and pending_swaps > 0 %}
-            <span class="notification-badge" aria-label="{{ pending_swaps }} unread notifications">
-              {{ pending_swaps }}
-            </span>
-          {% else %}
-            <span class="notification-badge" aria-label="1 unread notification">1</span>
-          {% endif %}
-        </div>
         <div class="admin-topbar__user-dropdown" aria-label="Current user">
           <button class="admin-topbar__user" id="userDropdownBtn" type="button" aria-expanded="false">
             <span class="material-icons" aria-hidden="true">person</span>
@@ -625,10 +613,6 @@
               <a href="#" class="dropdown-item">
                 <span class="material-icons">tune</span>
                 <span>Preferences</span>
-              </a>
-              <a href="#" class="dropdown-item">
-                <span class="material-icons">notifications</span>
-                <span>Notifications</span>
               </a>
             </div>
             <div class="dropdown-divider"></div>
@@ -887,10 +871,6 @@
                   <span class="material-icons">more_vert</span>
                 </button>
                 <div class="dropdown-menu" id="dropdown-{{ facilitator.id }}" style="display: none;">
-                  <button class="dropdown-item" onclick="disableAccount({{ facilitator.id }}, &quot;{{ facilitator.full_name|replace('"', '\\"') }}&quot;)">
-                    <span class="material-icons">person_off</span>
-                    Disable Account
-                  </button>
                   {% if facilitator.role.value == 'admin' and admin_count <= 1 %}
                     <button class="dropdown-item delete disabled" disabled title="Cannot delete the last admin account">
                       <span class="material-icons">delete</span>
@@ -1153,10 +1133,6 @@
         <div class="password-reset-section">
           <h3 class="password-reset-title">Password Management</h3>
           <div class="password-reset-options">
-            <button type="button" class="btn-secondary" onclick="sendResetLink()">
-              <span class="material-icons">email</span>
-              Send Reset Link to User
-            </button>
             <button type="button" class="btn-secondary" onclick="adminResetPassword()">
               <span class="material-icons">lock_reset</span>
               Admin Reset Password
@@ -1175,32 +1151,6 @@
 
   <script src="{{ url_for('static', filename='js/admin.js') }}?v=2" defer></script>
   <script>
-    // Disable Account Function
-    function disableAccount(userId, userName) {
-      if (confirm(`Are you sure you want to disable ${userName}'s account?`)) {
-        fetch(`/admin/toggle-user-status/${userId}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            alert(data.message);
-            location.reload(); // Refresh to show updated status
-          } else {
-            alert('Error: ' + data.message);
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('An error occurred while updating the account status.');
-        });
-      }
-    }
-
     // User Dropdown Functionality
     document.addEventListener('DOMContentLoaded', function() {
       const dropdownBtn = document.getElementById('userDropdownBtn');

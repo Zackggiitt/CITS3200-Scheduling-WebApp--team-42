@@ -397,15 +397,6 @@ function toggleDropdown(facilitatorId) {
   }
 }
 
-// Disable account function
-function disableAccount(facilitatorId, facilitatorName) {
-  if (confirm(`Are you sure you want to disable ${facilitatorName}'s account?`)) {
-    console.log(`Disabling account for facilitator ID: ${facilitatorId}`);
-    alert(`${facilitatorName}'s account has been disabled.`);
-    document.getElementById(`dropdown-${facilitatorId}`).style.display = 'none';
-  }
-}
-
 // Delete account function
 async function deleteAccount(facilitatorId, facilitatorName, skipConfirmation = false) {
   console.log(`Attempting to delete facilitator ID: ${facilitatorId}, Name: ${facilitatorName}`);
@@ -443,10 +434,30 @@ async function deleteAccount(facilitatorId, facilitatorName, skipConfirmation = 
       );
       
       if (confirmDelete) {
-        // User confirmed, make the actual deletion request
-        // We need to call the backend again but this time it should proceed
-        // For now, just show a message that this needs backend support
-        alert('To delete your own account, please contact another administrator.');
+        // User confirmed, make the actual deletion request with confirmation flag
+        try {
+          const confirmResponse = await fetch(`/admin/delete-employee/${facilitatorId}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ confirm_self_delete: true })
+          });
+
+          const confirmResult = await confirmResponse.json();
+          
+          if (confirmResult.success) {
+            alert(confirmResult.message || 'Your account has been deleted. You will now be logged out.');
+            // Redirect to logout
+            window.location.href = '/logout';
+          } else {
+            alert(`Error: ${confirmResult.message || 'Failed to delete account'}`);
+          }
+        } catch (error) {
+          console.error('Error confirming account deletion:', error);
+          alert('An error occurred while deleting your account. Please try again.');
+        }
         return;
       } else {
         console.log('User cancelled own account deletion');

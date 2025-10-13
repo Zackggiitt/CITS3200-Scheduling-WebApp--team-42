@@ -260,15 +260,19 @@ def delete_employee(employee_id):
                     'message': 'Cannot delete the last admin account. At least one admin must remain in the system.'
                 }), 403
         
-        # SECURITY CHECK 2: Check if deleting own account
+        # SECURITY CHECK 2: Check if deleting own account (require confirmation)
         is_own_account = (current_user.id == employee_id)
         if is_own_account:
-            return jsonify({
-                'success': False,
-                'is_own_account': True,
-                'message': 'You are about to delete your own account. You will be logged out immediately.',
-                'requires_confirmation': True
-            }), 200
+            # Check if confirmation was provided
+            confirm_self_delete = request.json.get('confirm_self_delete', False) if request.is_json else False
+            if not confirm_self_delete:
+                return jsonify({
+                    'success': False,
+                    'is_own_account': True,
+                    'message': 'You are about to delete your own account. You will be logged out immediately.',
+                    'requires_confirmation': True
+                }), 200
+            # If confirmed, proceed with deletion (will logout at the end)
         
         # Check if user has relationships that need to be cleaned up
         from models import UnitFacilitator, Assignment, Unit, Session, Module
@@ -430,6 +434,16 @@ def update_employee():
         }
         
         new_role = role_mapping.get(data['position'], employee.role)
+        
+        # SECURITY CHECK: Prevent changing the last admin's role
+        if employee.role == UserRole.ADMIN and new_role != UserRole.ADMIN:
+            admin_count = User.query.filter_by(role=UserRole.ADMIN).count()
+            if admin_count <= 1:
+                return jsonify({
+                    'success': False, 
+                    'error': 'Cannot change the role of the last admin. At least one admin must remain in the system.'
+                }), 403
+        
         employee.role = new_role
         
         # Update preferences (JSON field)
@@ -577,13 +591,10 @@ def admin_reset_password():
         data = request.get_json()
         print(f"Admin reset password request received: {data}")
         
-        # Get the facilitator
-        facilitator = User.query.get(data.get('employeeId'))
-        if not facilitator:
-            return jsonify({'success': False, 'message': 'Facilitator not found'}), 404
-        
-        if facilitator.role != UserRole.FACILITATOR:
-            return jsonify({'success': False, 'message': 'Only facilitators can use this endpoint'}), 403
+        # Get the user (can be facilitator, UC, or admin)
+        user = User.query.get(data.get('employeeId'))
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
         
         # Hash the new password
         from werkzeug.security import generate_password_hash
@@ -591,13 +602,13 @@ def admin_reset_password():
         if not new_password or len(new_password) < 6:
             return jsonify({'success': False, 'message': 'Password must be at least 6 characters long'}), 400
         
-        facilitator.password_hash = generate_password_hash(new_password)
+        user.password_hash = generate_password_hash(new_password)
         
         # Commit changes
         db.session.commit()
-        print(f"Password reset successfully for {facilitator.full_name}")
+        print(f"Password reset successfully for {user.full_name}")
         
-        return jsonify({'success': True, 'message': f'Password reset successfully for {facilitator.full_name}'})
+        return jsonify({'success': True, 'message': f'Password reset successfully for {user.full_name}'})
         
     except Exception as e:
         db.session.rollback()

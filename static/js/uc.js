@@ -127,6 +127,19 @@ function openCreateUnitModal() {
   if (submitBtn) {
     submitBtn.textContent = 'Create Unit';
   }
+  
+  // Remove edit mode flag (CSV uploads are mandatory in create mode)
+  document.getElementById('createUnitModal').removeAttribute('data-edit-mode');
+  
+  // Restore Step 3 text to indicate CSV upload is required
+  const step3Title = document.querySelector('.setup-card__title');
+  const step3Hint = document.querySelector('.setup-card__hint');
+  if (step3Title) {
+    step3Title.textContent = 'Setup Required';
+  }
+  if (step3Hint) {
+    step3Hint.innerHTML = 'Before creating sessions, upload your facilitators list (CSV with a single header: <code>facilitator_email</code>).';
+  }
 
 
     if (calendar) {
@@ -250,6 +263,19 @@ function openEditUnitModal() {
     const submitBtn = document.querySelector('#submit-btn');
     if (submitBtn) {
       submitBtn.textContent = 'Update Unit';
+    }
+    
+    // Mark that we're in edit mode (CSV uploads are optional)
+    document.getElementById('createUnitModal').setAttribute('data-edit-mode', 'true');
+    
+    // Update Step 3 text to indicate CSV upload is optional
+    const step3Title = document.querySelector('.setup-card__title');
+    const step3Hint = document.querySelector('.setup-card__hint');
+    if (step3Title) {
+      step3Title.textContent = 'Setup (Optional)';
+    }
+    if (step3Hint) {
+      step3Hint.innerHTML = 'You can optionally upload additional facilitators or update your facilitators list (CSV with a single header: <code>facilitator_email</code>).';
     }
     
     // Skip to step 1 (Unit Information) since we're editing
@@ -473,6 +499,10 @@ function setStep(n) {
 }
 
 async function nextStep() {
+  // Check if we're in edit mode
+  const modal = document.getElementById('createUnitModal');
+  const isEditMode = modal?.getAttribute('data-edit-mode') === 'true';
+  
   if (currentStep === 1) {
     const f = document.getElementById('create-unit-form');
     const required = ['unit_name', 'unit_code', 'year', 'semester'];
@@ -487,17 +517,39 @@ async function nextStep() {
     const start = document.querySelector('[name="start_date"]')?.value?.trim();
     const end = document.querySelector('[name="end_date"]')?.value?.trim();
     if (!start || !end) return;
-    try {
-      const unitId = await ensureDraftAndSetUnitId();
-      console.debug('Draft unit id:', unitId);
-    } catch (e) {
-      alert('Could not create/get unit draft: ' + e.message);
-      return;
+    
+    // Ensure unit ID is set (either from draft or existing unit)
+    if (!isEditMode) {
+      // In create mode, ensure draft unit exists
+      try {
+        const unitId = await ensureDraftAndSetUnitId();
+        console.debug('Draft unit id:', unitId);
+      } catch (e) {
+        alert('Could not create/get unit draft: ' + e.message);
+        return;
+      }
+    } else {
+      // In edit mode, ensure unit_id is set from the current unit
+      const currentUnitId = getUnitId();
+      if (currentUnitId) {
+        document.getElementById('unit_id').value = currentUnitId;
+        console.debug('Edit mode - using existing unit id:', currentUnitId);
+      } else {
+        alert('Could not determine unit ID for editing');
+        return;
+      }
     }
+    
     return setStep(3);
   }
 
   if (currentStep === 3) {
+    // In edit mode, CSV upload is optional - allow proceeding without it
+    if (isEditMode) {
+      return setStep(4);
+    }
+    
+    // In create mode, CSV upload is mandatory
     const ok = document.getElementById('setup_complete')?.value === 'true';
     if (!ok) {
       const box = document.getElementById('upload_status');
@@ -513,7 +565,10 @@ async function nextStep() {
     return setStep(5);
   }
 }
-function prevStep() { setStep(Math.max(1, currentStep - 1)); }
+
+function prevStep() {
+  setStep(Math.max(1, currentStep - 1));
+}
 
 // ===== Draft helper =====
 function readUnitBasics() {
