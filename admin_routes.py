@@ -232,6 +232,9 @@ def delete_employee(employee_id):
     try:
         print(f"Delete request received for employee ID: {employee_id}")
         
+        # Get current user
+        current_user = get_current_user()
+        
         # Get the employee to delete
         employee = User.query.get(employee_id)
         print(f"Found employee: {employee}")
@@ -247,6 +250,25 @@ def delete_employee(employee_id):
             UserRole.ADMIN: 'Admin'
         }
         position_name = position_mapping.get(employee.role, 'User')
+        
+        # SECURITY CHECK 1: Prevent deleting the last admin
+        if employee.role == UserRole.ADMIN:
+            admin_count = User.query.filter_by(role=UserRole.ADMIN).count()
+            if admin_count <= 1:
+                return jsonify({
+                    'success': False, 
+                    'message': 'Cannot delete the last admin account. At least one admin must remain in the system.'
+                }), 403
+        
+        # SECURITY CHECK 2: Check if deleting own account
+        is_own_account = (current_user.id == employee_id)
+        if is_own_account:
+            return jsonify({
+                'success': False,
+                'is_own_account': True,
+                'message': 'You are about to delete your own account. You will be logged out immediately.',
+                'requires_confirmation': True
+            }), 200
         
         # Check if user has relationships that need to be cleaned up
         from models import UnitFacilitator, Assignment, Unit, Session, Module
@@ -305,7 +327,12 @@ def delete_employee(employee_id):
         if warning_message:
             success_msg += f'. {warning_message}'
         
-        return jsonify({'success': True, 'message': success_msg})
+        return jsonify({
+            'success': True, 
+            'message': success_msg,
+            'is_own_account': is_own_account,
+            'should_logout': is_own_account
+        })
         
     except Exception as e:
         db.session.rollback()
