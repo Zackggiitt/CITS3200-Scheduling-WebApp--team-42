@@ -4614,6 +4614,48 @@ function closeConflictPopup() {
   popups.forEach(popup => popup.remove());
 }
 
+// Show conflicts when clicking the conflicts card
+async function showConflictsOnClick() {
+  const unitId = getUnitId();
+  if (!unitId) return;
+  
+  try {
+    const response = await fetch(`/unitcoordinator/units/${unitId}/conflicts`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok && result.conflicts && result.conflicts.length > 0) {
+      // Show conflicts in popup
+      let conflictMessage = `${result.conflicts.length} scheduling conflict(s) detected:\n\n`;
+      
+      result.conflicts.forEach(conflict => {
+        if (conflict.type === 'schedule_overlap') {
+          conflictMessage += `• <strong>${conflict.facilitator_name}</strong> is assigned to overlapping sessions:\n`;
+          conflictMessage += `  - "${conflict.session1.module}" (${conflict.session1.start_time.substring(0, 16)} - ${conflict.session1.end_time.substring(0, 16)})\n`;
+          conflictMessage += `  - "${conflict.session2.module}" (${conflict.session2.start_time.substring(0, 16)} - ${conflict.session2.end_time.substring(0, 16)})\n\n`;
+        }
+      });
+      
+      conflictMessage += 'Please resolve these conflicts by reassigning facilitators.';
+      
+      // Show as custom popup
+      showConflictPopup('Scheduling Conflicts Detected', conflictMessage);
+    } else {
+      // No conflicts found
+      showConflictPopup('No Conflicts', 'No scheduling conflicts detected. All facilitators are properly assigned without overlapping sessions.');
+    }
+  } catch (error) {
+    console.error('Error loading conflicts:', error);
+    showConflictPopup('Error', 'Unable to load conflict information. Please try again.');
+  }
+}
+
 // Load and display existing conflicts
 async function loadAndDisplayConflicts() {
   const unitId = getUnitId();
