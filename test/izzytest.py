@@ -6,11 +6,11 @@ NEW FEATURES:
 - Demonstrate the "Available All Days" feature with --demo-available-all or --demo
 
 USAGE:
-  python test.py                                    # Create facilitators from default CSV
-  python test.py --update                          # Update existing facilitators
-  python test.py --test-available-all              # Test Available All Days functionality
-  python test.py --demo-available-all              # Demonstrate Available All Days feature
-  python test.py custom_facilitators.csv          # Use custom CSV file
+  python test/izzytest.py                                    # Create facilitators from default CSV
+  python test/izzytest.py --update                          # Update existing facilitators
+  python test/izzytest.py --test-available-all              # Test Available All Days functionality
+  python test/izzytest.py --demo-available-all              # Demonstrate Available All Days feature
+  python test/izzytest.py custom_facilitators.csv          # Use custom CSV file
 """
 
 import os
@@ -21,7 +21,8 @@ from datetime import datetime, date, time, timedelta
 from werkzeug.security import generate_password_hash
 
 # Add the project root directory to the Python path
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# izzytest.py is in /test/ directory, so project root is one level up
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from models import db, User, UserRole, Module, Unit, FacilitatorSkill, SkillLevel, Unavailability, RecurringPattern, UnitFacilitator

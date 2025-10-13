@@ -127,6 +127,19 @@ function openCreateUnitModal() {
   if (submitBtn) {
     submitBtn.textContent = 'Create Unit';
   }
+  
+  // Remove edit mode flag (CSV uploads are mandatory in create mode)
+  document.getElementById('createUnitModal').removeAttribute('data-edit-mode');
+  
+  // Restore Step 3 text to indicate CSV upload is required
+  const step3Title = document.querySelector('.setup-card__title');
+  const step3Hint = document.querySelector('.setup-card__hint');
+  if (step3Title) {
+    step3Title.textContent = 'Setup Required';
+  }
+  if (step3Hint) {
+    step3Hint.innerHTML = 'Before creating sessions, upload your facilitators list (CSV with a single header: <code>facilitator_email</code>).';
+  }
 
 
     if (calendar) {
@@ -250,6 +263,19 @@ function openEditUnitModal() {
     const submitBtn = document.querySelector('#submit-btn');
     if (submitBtn) {
       submitBtn.textContent = 'Update Unit';
+    }
+    
+    // Mark that we're in edit mode (CSV uploads are optional)
+    document.getElementById('createUnitModal').setAttribute('data-edit-mode', 'true');
+    
+    // Update Step 3 text to indicate CSV upload is optional
+    const step3Title = document.querySelector('.setup-card__title');
+    const step3Hint = document.querySelector('.setup-card__hint');
+    if (step3Title) {
+      step3Title.textContent = 'Setup (Optional)';
+    }
+    if (step3Hint) {
+      step3Hint.innerHTML = 'You can optionally upload additional facilitators or update your facilitators list (CSV with a single header: <code>facilitator_email</code>).';
     }
     
     // Skip to step 1 (Unit Information) since we're editing
@@ -473,6 +499,10 @@ function setStep(n) {
 }
 
 async function nextStep() {
+  // Check if we're in edit mode
+  const modal = document.getElementById('createUnitModal');
+  const isEditMode = modal?.getAttribute('data-edit-mode') === 'true';
+  
   if (currentStep === 1) {
     const f = document.getElementById('create-unit-form');
     const required = ['unit_name', 'unit_code', 'year', 'semester'];
@@ -487,17 +517,39 @@ async function nextStep() {
     const start = document.querySelector('[name="start_date"]')?.value?.trim();
     const end = document.querySelector('[name="end_date"]')?.value?.trim();
     if (!start || !end) return;
-    try {
-      const unitId = await ensureDraftAndSetUnitId();
-      console.debug('Draft unit id:', unitId);
-    } catch (e) {
-      alert('Could not create/get unit draft: ' + e.message);
-      return;
+    
+    // Ensure unit ID is set (either from draft or existing unit)
+    if (!isEditMode) {
+      // In create mode, ensure draft unit exists
+      try {
+        const unitId = await ensureDraftAndSetUnitId();
+        console.debug('Draft unit id:', unitId);
+      } catch (e) {
+        alert('Could not create/get unit draft: ' + e.message);
+        return;
+      }
+    } else {
+      // In edit mode, ensure unit_id is set from the current unit
+      const currentUnitId = getUnitId();
+      if (currentUnitId) {
+        document.getElementById('unit_id').value = currentUnitId;
+        console.debug('Edit mode - using existing unit id:', currentUnitId);
+      } else {
+        alert('Could not determine unit ID for editing');
+        return;
+      }
     }
+    
     return setStep(3);
   }
 
   if (currentStep === 3) {
+    // In edit mode, CSV upload is optional - allow proceeding without it
+    if (isEditMode) {
+      return setStep(4);
+    }
+    
+    // In create mode, CSV upload is mandatory
     const ok = document.getElementById('setup_complete')?.value === 'true';
     if (!ok) {
       const box = document.getElementById('upload_status');
@@ -513,7 +565,10 @@ async function nextStep() {
     return setStep(5);
   }
 }
-function prevStep() { setStep(Math.max(1, currentStep - 1)); }
+
+function prevStep() {
+  setStep(Math.max(1, currentStep - 1));
+}
 
 // ===== Draft helper =====
 function readUnitBasics() {
@@ -4112,7 +4167,7 @@ function renderDaySessions(sessions, dayDate) {
        status: session.status || session.extendedProps?.status || 'scheduled'
      }).replace(/"/g, '&quot;')})">
       <div class="session-header">
-        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="event.stopPropagation(); openFacilitatorModal(this)"' : ''}>
+        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" onclick="event.stopPropagation(); openFacilitatorModal(this)">
           ${session.facilitators?.length > 0 
             ? (session.facilitators.length > 1 
                 ? `${session.facilitators.length} Facilitators`
@@ -4161,6 +4216,7 @@ function renderDaySessions(sessions, dayDate) {
 
 // Helper functions
 function getInitials(name) {
+  if (!name || typeof name !== 'string') return '??';
   return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
@@ -4355,7 +4411,7 @@ async function autoAssignFacilitators() {
   // Show loading state
   const originalText = autoAssignBtn.innerHTML;
   autoAssignBtn.disabled = true;
-  autoAssignBtn.innerHTML = '<span class="material-icons">hourglass_empty</span>Assigning...';
+  autoAssignBtn.innerHTML = '<span class="material-icons">hourglass_empty</span>Running Algorithm...';
 
   try {
     const url = withUnitId(window.FLASK_ROUTES.AUTO_ASSIGN_TEMPLATE, unitId);
@@ -4414,17 +4470,27 @@ async function autoAssignFacilitators() {
       
       alert(message);
       
+      // Refresh all views to show new assignments
+      if (window.calendar) {
+        window.calendar.refetchEvents();
+      }
+      
+      // Refresh the list view if it exists
+      if (typeof loadListSessionData === 'function') {
+        loadListSessionData();
+      }
+      
+      // Refresh the schedule view, upcoming sessions, and mini calendar
+      if (typeof loadScheduleSessions === 'function') {
+        // LoadScheduleSessions updates the schedule view, mini calendar, and upcoming sessions
+        setTimeout(() => {
+          loadScheduleSessions();
+        }, 500); // Small delay to ensure backend has processed the changes
+      }
+      
       // Show CSV download button if available
       if (data.csv_available && data.csv_download_url) {
         showCsvDownloadButton(data.csv_download_url);
-      }
-      
-      // Refresh the schedule view to show new assignments
-      if (typeof loadScheduleSessions === 'function') {
-        loadScheduleSessions();
-      }
-      if (typeof loadListSessionData === 'function') {
-        loadListSessionData();
       }
       
     } else {
@@ -4575,6 +4641,122 @@ function getSessionStatus(session) {
 // Helper function to get facilitator name
 function getSessionFacilitator(session) {
   return session.extendedProps?.facilitator_name || null;
+}
+
+// Show custom conflict popup
+function showConflictPopup(title, message) {
+  // Remove any existing conflict popups
+  const existingPopups = document.querySelectorAll('.conflict-popup');
+  existingPopups.forEach(popup => popup.remove());
+  
+  const popup = document.createElement('div');
+  popup.className = 'conflict-popup';
+  popup.innerHTML = `
+    <div class="conflict-popup-backdrop"></div>
+    <div class="conflict-popup-content">
+      <div class="conflict-popup-header">
+        <span class="material-icons conflict-warning-icon">warning</span>
+        <h3>${title}</h3>
+      </div>
+      <div class="conflict-popup-body">
+        <p>${message.replace(/\n/g, '<br>')}</p>
+      </div>
+      <div class="conflict-popup-footer">
+        <button class="btn btn-primary" onclick="closeConflictPopup()">OK</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(popup);
+  
+  // Close popup when clicking backdrop
+  popup.querySelector('.conflict-popup-backdrop').addEventListener('click', closeConflictPopup);
+}
+
+// Close conflict popup
+function closeConflictPopup() {
+  const popups = document.querySelectorAll('.conflict-popup');
+  popups.forEach(popup => popup.remove());
+}
+
+// Show conflicts when clicking the conflicts card
+async function showConflictsOnClick() {
+  const unitId = getUnitId();
+  if (!unitId) return;
+  
+  try {
+    const response = await fetch(`/unitcoordinator/units/${unitId}/conflicts`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok && result.conflicts && result.conflicts.length > 0) {
+      // Show conflicts in popup
+      let conflictMessage = `${result.conflicts.length} scheduling conflict(s) detected:\n\n`;
+      
+      result.conflicts.forEach(conflict => {
+        if (conflict.type === 'schedule_overlap') {
+          conflictMessage += `• <strong>${conflict.facilitator_name}</strong> is assigned to overlapping sessions:\n`;
+          conflictMessage += `  - "${conflict.session1.module}" (${conflict.session1.start_time.substring(0, 16)} - ${conflict.session1.end_time.substring(0, 16)})\n`;
+          conflictMessage += `  - "${conflict.session2.module}" (${conflict.session2.start_time.substring(0, 16)} - ${conflict.session2.end_time.substring(0, 16)})\n\n`;
+        }
+      });
+      
+      conflictMessage += 'Please resolve these conflicts by reassigning facilitators.';
+      
+      // Show as custom popup
+      showConflictPopup('Scheduling Conflicts Detected', conflictMessage);
+    } else {
+      // No conflicts found
+      showConflictPopup('No Conflicts', 'No scheduling conflicts detected. All facilitators are properly assigned without overlapping sessions.');
+    }
+  } catch (error) {
+    console.error('Error loading conflicts:', error);
+    showConflictPopup('Error', 'Unable to load conflict information. Please try again.');
+  }
+}
+
+// Load and display existing conflicts
+async function loadAndDisplayConflicts() {
+  const unitId = getUnitId();
+  if (!unitId) return;
+  
+  try {
+    const response = await fetch(`/unitcoordinator/units/${unitId}/conflicts`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok && result.conflicts && result.conflicts.length > 0) {
+      // Show conflicts in a notification or banner
+      let conflictMessage = `${result.conflicts.length} scheduling conflict(s) detected:\n\n`;
+      
+      result.conflicts.forEach(conflict => {
+        if (conflict.type === 'schedule_overlap') {
+          conflictMessage += `• <strong>${conflict.facilitator_name}</strong> is assigned to overlapping sessions:\n`;
+          conflictMessage += `  - "${conflict.session1.module}" (${conflict.session1.start_time.substring(0, 16)} - ${conflict.session1.end_time.substring(0, 16)})\n`;
+          conflictMessage += `  - "${conflict.session2.module}" (${conflict.session2.start_time.substring(0, 16)} - ${conflict.session2.end_time.substring(0, 16)})\n\n`;
+        }
+      });
+      
+      conflictMessage += 'Please resolve these conflicts by reassigning facilitators.';
+      
+      // Show as custom popup
+      showConflictPopup('Scheduling Conflicts Detected', conflictMessage);
+    }
+  } catch (error) {
+    console.error('Error loading conflicts:', error);
+  }
 }
 
 // Helper function to format time range
@@ -4864,6 +5046,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('schedule-grid')) {
     initSchedulePanel();
     initListView();
+    
+    // Load and display existing conflicts
+    loadAndDisplayConflicts();
     
     // Check if CSV download is available and show button if needed
     checkAndShowCsvDownloadButton();
@@ -5155,10 +5340,10 @@ function openFacilitatorModalAfterDelay(element) {
   }
   
   currentSessionData = {
-    id: sessionCard.dataset.sessionId,
-    name: sessionCard.dataset.sessionName,
-    time: sessionCard.dataset.sessionTime,
-    location: sessionCard.dataset.sessionLocation
+    id: sessionCard.dataset.sessionId || null,
+    name: sessionCard.dataset.sessionName || 'Unknown Session',
+    time: sessionCard.dataset.sessionTime || 'Unknown Time',
+    location: sessionCard.dataset.sessionLocation || 'Unknown Location'
   };
   
   // Reset selection
@@ -5320,6 +5505,7 @@ function renderFacilitatorList() {
 
 // Get facilitator initials
 function getFacilitatorInitials(name) {
+  if (!name || typeof name !== 'string') return '??';
   return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
@@ -5331,16 +5517,20 @@ function toggleFacilitatorSelection(facilitatorId, facilitatorName, facilitatorE
   if (checkbox.checked) {
     // Add to selection if not already selected
     if (!selectedFacilitators.find(f => f.id === facilitatorId)) {
-      selectedFacilitators.push({
+      const newFacilitator = {
         id: facilitatorId,
         name: facilitatorName,
         email: facilitatorEmail
-      });
+      };
+      selectedFacilitators.push(newFacilitator);
+      console.log('Added facilitator to selection:', newFacilitator);
+      console.log('Current selectedFacilitators:', selectedFacilitators);
       facilitatorItem.classList.add('selected');
     }
   } else {
     // Remove from selection
     selectedFacilitators = selectedFacilitators.filter(f => f.id !== facilitatorId);
+    console.log('Removed facilitator from selection. Current selectedFacilitators:', selectedFacilitators);
     facilitatorItem.classList.remove('selected');
   }
   
@@ -5357,19 +5547,103 @@ function updateSelectButton() {
 }
 
 // Select multiple facilitators
-function selectMultipleFacilitators() {
+async function selectMultipleFacilitators() {
   if (selectedFacilitators.length === 0) return;
+  
+  // Filter out any null/undefined facilitators
+  selectedFacilitators = selectedFacilitators.filter(f => f && f.id);
+  
+  if (selectedFacilitators.length === 0) {
+    showSimpleNotification('No valid facilitators selected', 'error');
+    return;
+  }
   
   console.log('Selected facilitators:', selectedFacilitators);
   
-  // Update the session card to show "Pending" status with multiple facilitators
-  updateSessionStatusMultiple(currentSessionData.id, 'assigned', selectedFacilitators);
-  
-  // Show assignment confirmation popup for multiple facilitators
-  showMultipleAssignmentConfirmation(selectedFacilitators, currentSessionData.name);
-  
-  // Close modal
-  closeFacilitatorModal();
+  try {
+    // Get current unit ID
+    const unitId = getUnitId();
+    if (!unitId) {
+      showSimpleNotification('No unit selected', 'error');
+      return;
+    }
+    
+    // Validate session ID
+    if (!currentSessionData || !currentSessionData.id) {
+      showSimpleNotification('Session data is missing. Please try selecting the session again.', 'error');
+      return;
+    }
+    
+    const sessionId = currentSessionData.id;
+    if (sessionId.toString().startsWith('temp-')) {
+      showSimpleNotification('Cannot assign facilitators to temporary sessions. Please save the session first.', 'error');
+      return;
+    }
+    
+    // Send assignment to backend
+    const facilitatorIds = selectedFacilitators.map(f => f.id);
+    const response = await fetch(`/unitcoordinator/units/${unitId}/sessions/${sessionId}/assign`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify({
+        facilitator_ids: facilitatorIds
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      // Handle conflict errors specifically
+      if (result.error === 'Scheduling conflicts detected' && result.conflicts) {
+        let conflictMessage = 'Scheduling conflicts detected:\n\n';
+        result.conflicts.forEach(conflict => {
+          conflictMessage += `• <strong>${conflict.facilitator_name}</strong> is already assigned to "<strong>${conflict.conflicting_session.name}</strong>" `;
+          conflictMessage += `(${conflict.conflicting_session.start_time.substring(0, 16)} - ${conflict.conflicting_session.end_time.substring(0, 16)}) `;
+          conflictMessage += `which overlaps with this session.\n\n`;
+        });
+        conflictMessage += 'Please select different facilitators or resolve the scheduling conflicts.';
+        
+        // Show as custom popup
+        showConflictPopup('Scheduling Conflicts Detected', conflictMessage);
+        return; // Don't throw error, just show the notification and return
+      } else {
+        throw new Error(result.error || result.message || `HTTP error! status: ${response.status}`);
+      }
+    }
+    
+    if (result.ok) {
+      // Update the session card to show assigned status
+      if (currentSessionData && currentSessionData.id) {
+        updateSessionStatusMultiple(currentSessionData.id, 'assigned', selectedFacilitators);
+      }
+      
+      // Debug logging
+      console.log('About to show confirmation for selectedFacilitators:', selectedFacilitators);
+      
+      // Close modal
+      const modal = document.getElementById('facilitator-modal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+      
+      // Clear selectedFacilitators after a delay to allow popup to use them
+      setTimeout(() => {
+        selectedFacilitators = [];
+        allFacilitators = [];
+        filteredFacilitators = [];
+        currentSessionData = null;
+      }, 100);
+    } else {
+      throw new Error(result.error || 'Failed to assign facilitators');
+    }
+    
+  } catch (error) {
+    console.error('Error assigning facilitators:', error);
+    showSimpleNotification(`Error assigning facilitators: ${error.message}`, 'error');
+  }
 }
 
 // Update session status for multiple facilitators
@@ -5388,24 +5662,39 @@ function updateSessionStatusMultiple(sessionId, status, facilitators) {
     case 'pending':
       facilitatorElement.classList.add('pending');
       facilitatorElement.textContent = 'Pending';
-      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f.name).join(', ')}`;
+      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f?.name || 'Unknown').join(', ')}`;
       break;
     case 'assigned':
       facilitatorElement.classList.add('assigned');
-      facilitatorElement.textContent = facilitators.length > 1 ? `${facilitators.length} Facilitators` : getInitials(facilitators[0].name);
-      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f.name).join(', ')}`;
+      facilitatorElement.textContent = facilitators.length > 1 ? `${facilitators.length} Facilitators` : getInitials(facilitators[0]?.name || 'Unknown');
+      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f?.name || 'Unknown').join(', ')}`;
+      
+      // Update session card data attributes for session details modal
+      const facilitatorNames = facilitators.map(f => f?.name || 'Unknown').join(', ');
+      sessionCard.setAttribute('data-facilitator-names', facilitatorNames);
+      sessionCard.setAttribute('data-session-status', 'approved');
       break;
     case 'unassigned':
     default:
       facilitatorElement.classList.add('unassigned');
       facilitatorElement.textContent = 'Unassigned';
       facilitatorElement.title = 'Click to assign facilitators';
+      
+      // Clear session card data attributes
+      sessionCard.removeAttribute('data-facilitator-names');
+      sessionCard.setAttribute('data-session-status', 'unassigned');
       break;
   }
 }
 
 // Show assignment confirmation for multiple facilitators
 function showMultipleAssignmentConfirmation(facilitators, sessionName) {
+  // Close any existing assignment confirmation popups first
+  closeAssignmentConfirmation();
+  
+  // Debug logging
+  console.log('showMultipleAssignmentConfirmation called with:', { facilitators, sessionName });
+  
   const popup = document.createElement('div');
   popup.className = 'assignment-confirmation-popup';
   popup.innerHTML = `
@@ -5417,17 +5706,20 @@ function showMultipleAssignmentConfirmation(facilitators, sessionName) {
       <div class="assignment-popup-body">
         <p>This session has been assigned to:</p>
         <div class="assigned-facilitators">
-          ${facilitators.map(facilitator => `
-            <div class="assigned-facilitator">
-              <div class="facilitator-avatar-large">
-                ${getFacilitatorInitials(facilitator.name)}
-              </div>
-              <div class="facilitator-details">
-                <div class="facilitator-name-large">${facilitator.name}</div>
-                <div class="session-name">${sessionName}</div>
-              </div>
-            </div>
-          `).join('')}
+          ${facilitators && facilitators.length > 0 
+            ? facilitators.map(facilitator => `
+                <div class="assigned-facilitator">
+                  <div class="facilitator-avatar-large">
+                    ${getFacilitatorInitials(facilitator?.name || 'Unknown')}
+                  </div>
+                  <div class="facilitator-details">
+                    <div class="facilitator-name-large">${facilitator?.name || 'Unknown'}</div>
+                    <div class="session-name">${sessionName}</div>
+                  </div>
+                </div>
+              `).join('')
+            : '<div class="assigned-facilitator"><div class="facilitator-name-large">Unknown Facilitator</div></div>'
+          }
         </div>
       </div>
       <div class="assignment-popup-footer">
@@ -5461,6 +5753,9 @@ function showMultipleAssignmentConfirmation(facilitators, sessionName) {
 
 // Assignment confirmation popup
 function showAssignmentConfirmation(facilitatorName, sessionName) {
+  // Close any existing assignment confirmation popups first
+  closeAssignmentConfirmation();
+  
   // Create popup modal
   const popup = document.createElement('div');
   popup.className = 'assignment-confirmation-popup';
@@ -5513,10 +5808,13 @@ function showAssignmentConfirmation(facilitatorName, sessionName) {
 
 // Close assignment confirmation popup
 function closeAssignmentConfirmation() {
-  const popup = document.querySelector('.assignment-confirmation-popup');
-  if (popup && popup.parentNode) {
-    popup.parentNode.removeChild(popup);
-  }
+  // Remove all assignment confirmation popups
+  const popups = document.querySelectorAll('.assignment-confirmation-popup');
+  popups.forEach(popup => {
+    if (popup && popup.parentNode) {
+      popup.parentNode.removeChild(popup);
+    }
+  });
 }
 
 // Search facilitators
@@ -5588,9 +5886,52 @@ function openSessionDetailsModal(sessionData) {
   if (nameEl) nameEl.textContent = sessionName;
   if (datetimeEl) datetimeEl.textContent = sessionData.day + ' ' + sessionData.time;
   if (locationEl) locationEl.textContent = location;
-  if (facilitatorEl) facilitatorEl.textContent = sessionData.facilitator || 'Unassigned';
+  
+  // Check if session card has updated facilitator data
+  const sessionCard = document.querySelector(`[data-session-id="${sessionData.id}"]`);
+  let facilitatorName = 'Unassigned';
+  let sessionStatus = 'Scheduled';
+  
+  if (sessionCard) {
+    const updatedFacilitatorNames = sessionCard.getAttribute('data-facilitator-names');
+    const updatedStatus = sessionCard.getAttribute('data-session-status');
+    
+    // Prioritize updated facilitator names over original session data
+    if (updatedFacilitatorNames) {
+      facilitatorName = updatedFacilitatorNames;
+    } else {
+      // Fall back to original session data, but extract name from email if needed
+      const originalFacilitator = sessionData.facilitator || 'Unassigned';
+      if (originalFacilitator !== 'Unassigned' && originalFacilitator.includes('@')) {
+        // If it's an email, try to get the name from the facilitator list
+        const facilitatorObj = allFacilitators.find(f => f.email === originalFacilitator);
+        facilitatorName = facilitatorObj ? facilitatorObj.name : originalFacilitator;
+      } else {
+        facilitatorName = originalFacilitator;
+      }
+    }
+    
+    if (updatedStatus) {
+      sessionStatus = updatedStatus.charAt(0).toUpperCase() + updatedStatus.slice(1);
+    } else {
+      sessionStatus = sessionData.status ? sessionData.status.charAt(0).toUpperCase() + sessionData.status.slice(1) : 'Scheduled';
+    }
+  } else {
+    // No session card found, use original data
+    const originalFacilitator = sessionData.facilitator || 'Unassigned';
+    if (originalFacilitator !== 'Unassigned' && originalFacilitator.includes('@')) {
+      // If it's an email, try to get the name from the facilitator list
+      const facilitatorObj = allFacilitators.find(f => f.email === originalFacilitator);
+      facilitatorName = facilitatorObj ? facilitatorObj.name : originalFacilitator;
+    } else {
+      facilitatorName = originalFacilitator;
+    }
+    sessionStatus = sessionData.status ? sessionData.status.charAt(0).toUpperCase() + sessionData.status.slice(1) : 'Scheduled';
+  }
+  
+  if (facilitatorEl) facilitatorEl.textContent = facilitatorName;
   if (typeEl) typeEl.textContent = sessionData.moduleType || 'Workshop';
-  if (statusEl) statusEl.textContent = sessionData.status ? sessionData.status.charAt(0).toUpperCase() + sessionData.status.slice(1) : 'Scheduled';
+  if (statusEl) statusEl.textContent = sessionStatus;
   
   console.log('=== MODAL DEBUG END ===');
   

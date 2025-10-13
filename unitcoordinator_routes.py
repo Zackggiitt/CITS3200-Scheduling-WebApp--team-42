@@ -152,7 +152,7 @@ def _serialize_session(s: Session, venues_by_name=None):
             if assignment.facilitator:
                 facilitator_info = {
                     "id": assignment.facilitator.id,
-                    "name": f"{assignment.facilitator.first_name} {assignment.facilitator.last_name}",
+                    "name": assignment.facilitator.full_name,
                     "email": assignment.facilitator.email,
                     "role": getattr(assignment, 'role', 'lead'),  # Default to 'lead' if role not set
                     "is_confirmed": assignment.is_confirmed
@@ -870,7 +870,7 @@ def dashboard():
 
         fac_progress["total"] = len(links)
 
-        for _, f in links:
+        for uf, f in links:
             has_profile = bool(
                 (getattr(f, "first_name", None) or getattr(f, "last_name", None))
                 or getattr(f, "phone_number", None)
@@ -1214,7 +1214,7 @@ def admin_dashboard():
 
         fac_progress["total"] = len(links)
 
-        for _, f in links:
+        for uf, f in links:
             has_profile = bool(
                 (getattr(f, "first_name", None) or getattr(f, "last_name", None))
                 or getattr(f, "phone", None)
@@ -2492,30 +2492,48 @@ def auto_assign_facilitators(unit_id: int):
                 "conflicts": conflicts
             }), 400
         
+        # Clean up existing assignments for this unit before creating new ones
+        # Get all sessions for this unit
+        unit_sessions = (
+            db.session.query(Session)
+            .join(Module)
+            .filter(Module.unit_id == unit_id)
+            .all()
+        )
+        
+        deleted_count = 0
+        if unit_sessions:
+            # Get session IDs for this unit
+            unit_session_ids = [session.id for session in unit_sessions]
+            
+            # Delete all existing assignments for sessions in this unit
+            existing_assignments = Assignment.query.filter(
+                Assignment.session_id.in_(unit_session_ids)
+            ).all()
+            
+            deleted_count = len(existing_assignments)
+            if deleted_count > 0:
+                logger.info(f"Removing {deleted_count} existing assignments for unit {unit_id}")
+                for assignment in existing_assignments:
+                    db.session.delete(assignment)
+        
         # Create actual Assignment records in the database
         created_assignments = []
         for assignment in assignments:
-            # Check if assignment already exists
-            existing = Assignment.query.filter_by(
+            new_assignment = Assignment(
                 session_id=assignment['session']['id'],
-                facilitator_id=assignment['facilitator']['id']
-            ).first()
-            
-            if not existing:
-                new_assignment = Assignment(
-                    session_id=assignment['session']['id'],
-                    facilitator_id=assignment['facilitator']['id'],
-                    is_confirmed=True,  # Auto-confirm assignments
-                    role=assignment.get('role', 'lead')  # Track lead vs support role
-                )
-                db.session.add(new_assignment)
-                created_assignments.append({
-                    'facilitator_name': assignment['facilitator']['name'],
-                    'session_name': assignment['session']['module_name'],
-                    'time': format_session_time(assignment['session']),
-                    'score': round(assignment['score'], 2),
-                    'role': assignment.get('role', 'lead')
-                })
+                facilitator_id=assignment['facilitator']['id'],
+                is_confirmed=True,  # Auto-confirm assignments
+                role=assignment.get('role', 'lead')  # Track lead vs support role
+            )
+            db.session.add(new_assignment)
+            created_assignments.append({
+                'facilitator_name': assignment['facilitator']['name'],
+                'session_name': assignment['session']['module_name'],
+                'time': format_session_time(assignment['session']),
+                'score': round(assignment['score'], 2),
+                'role': assignment.get('role', 'lead')
+            })
         
         db.session.commit()
         
@@ -2552,9 +2570,14 @@ def auto_assign_facilitators(unit_id: int):
         flask_session[f'schedule_report_{unit_id}'] = csv_filename
         flask_session[f'schedule_report_timestamp_{unit_id}'] = datetime.now().isoformat()
         
+        # Prepare success message
+        message = f"Successfully created {len(created_assignments)} assignments"
+        if deleted_count > 0:
+            message += f" (removed {deleted_count} previous assignments)"
+        
         return jsonify({
             "ok": True,
-            "message": f"Successfully created {len(created_assignments)} assignments",
+            "message": message,
             "assignments": created_assignments,
             "conflicts": conflicts,
             "metrics": metrics,
@@ -3072,6 +3095,143 @@ def publish_preview(unit_id: int):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@unitcoordinator_bp.post("/units/<int:unit_id>/sessions/<int:session_id>/assign")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def assign_facilitators_to_session(unit_id: int, session_id: int):
+    """Assign facilitators to a session."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        data = request.get_json()
+        facilitator_ids = data.get('facilitator_ids', [])
+        
+        if not facilitator_ids:
+            return jsonify({"ok": False, "error": "No facilitators provided"}), 400
+        
+        # Verify session belongs to this unit
+        session = (
+            db.session.query(Session)
+            .join(Module, Session.module_id == Module.id)
+            .filter(Session.id == session_id)
+            .filter(Module.unit_id == unit_id)
+            .first()
+        )
+        
+        if not session:
+            return jsonify({"ok": False, "error": "Session not found"}), 404
+        
+        # Check for scheduling conflicts before creating assignments
+        conflicts = []
+        for facilitator_id in facilitator_ids:
+            # Get all existing assignments for this facilitator
+            existing_assignments = (
+                db.session.query(Assignment, Session)
+                .join(Session, Session.id == Assignment.session_id)
+                .join(Module, Module.id == Session.module_id)
+                .filter(
+                    Assignment.facilitator_id == facilitator_id,
+                    Module.unit_id == unit_id,
+                    Session.id != session_id  # Exclude current session
+                )
+                .all()
+            )
+            
+            # Check for time overlaps with current session
+            for assignment, existing_session in existing_assignments:
+                # Check if sessions overlap
+                if (session.start_time < existing_session.end_time and 
+                    session.end_time > existing_session.start_time):
+                    
+                    facilitator = User.query.get(facilitator_id)
+                    facilitator_name = facilitator.full_name if facilitator else f"Facilitator {facilitator_id}"
+                    
+                    conflicts.append({
+                        'facilitator_id': facilitator_id,
+                        'facilitator_name': facilitator_name,
+                        'conflicting_session': {
+                            'id': existing_session.id,
+                            'name': existing_session.module.module_name,
+                            'start_time': existing_session.start_time.isoformat(),
+                            'end_time': existing_session.end_time.isoformat()
+                        },
+                        'current_session': {
+                            'id': session.id,
+                            'name': session.module.module_name,
+                            'start_time': session.start_time.isoformat(),
+                            'end_time': session.end_time.isoformat()
+                        }
+                    })
+        
+        # If there are conflicts, return error with details
+        if conflicts:
+            conflict_messages = []
+            for conflict in conflicts:
+                msg = (f"{conflict['facilitator_name']} is already assigned to "
+                      f"'{conflict['conflicting_session']['name']}' "
+                      f"({conflict['conflicting_session']['start_time'][:16]} - "
+                      f"{conflict['conflicting_session']['end_time'][:16]}) "
+                      f"which overlaps with this session.")
+                conflict_messages.append(msg)
+            
+            return jsonify({
+                "ok": False, 
+                "error": "Scheduling conflicts detected",
+                "conflicts": conflicts,
+                "message": "The following scheduling conflicts were detected:\n\n" + "\n".join(conflict_messages)
+            }), 400
+        
+        # Remove existing assignments for this session
+        Assignment.query.filter_by(session_id=session_id).delete()
+        
+        # Create new assignments
+        for facilitator_id in facilitator_ids:
+            # Verify facilitator exists and belongs to this unit
+            facilitator = User.query.filter_by(
+                id=facilitator_id, 
+                role=UserRole.FACILITATOR
+            ).first()
+            
+            if not facilitator:
+                continue
+                
+            # Check if facilitator is assigned to this unit
+            unit_facilitator = UnitFacilitator.query.filter_by(
+                unit_id=unit_id, 
+                user_id=facilitator_id
+            ).first()
+            
+            if not unit_facilitator:
+                continue
+            
+            # Create assignment
+            assignment = Assignment(
+                session_id=session_id,
+                facilitator_id=facilitator_id,
+                is_confirmed=False,  # Default to unconfirmed
+                role='lead'  # Default role
+            )
+            db.session.add(assignment)
+        
+        # Update session status
+        session.status = 'assigned'
+        
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "message": f"Assigned {len(facilitator_ids)} facilitators to session",
+            "session_id": session_id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to assign facilitators: {str(e)}"}), 500
+
+
 @unitcoordinator_bp.post("/units/<int:unit_id>/publish")
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
@@ -3107,8 +3267,19 @@ def publish_schedule(unit_id: int):
             for session in sessions:
                 # Get facilitators assigned to this session
                 assignments = Assignment.query.filter_by(session_id=session.id).all()
+                
+                # Track which facilitators we've already added this session for (prevent duplicates)
+                processed_facilitators = set()
+                
                 for assignment in assignments:
                     facilitator_id = assignment.facilitator_id
+                    
+                    # Skip if we've already added this session for this facilitator
+                    if facilitator_id in processed_facilitators:
+                        print(f"⚠️ Skipping duplicate assignment: facilitator {facilitator_id} already has session {session.id}")
+                        continue
+                    
+                    processed_facilitators.add(facilitator_id)
                     
                     if facilitator_id not in facilitator_sessions:
                         facilitator_sessions[facilitator_id] = []
@@ -3777,7 +3948,7 @@ def get_dashboard_sessions(unit_id: int):
             for session_assignment in session.assignments:
                 if session_assignment.facilitator:
                     facilitators.append({
-                        "name": f"{session_assignment.facilitator.first_name or ''} {session_assignment.facilitator.last_name or ''}".strip() or session_assignment.facilitator.email,
+                        "name": session_assignment.facilitator.full_name,
                         "initials": f"{session_assignment.facilitator.first_name[0] if session_assignment.facilitator.first_name else ''}{session_assignment.facilitator.last_name[0] if session_assignment.facilitator.last_name else ''}".upper() or session_assignment.facilitator.email[0].upper(),
                         "role": getattr(session_assignment, 'role', 'lead'),
                         "is_confirmed": session_assignment.is_confirmed
@@ -3806,7 +3977,7 @@ def get_dashboard_sessions(unit_id: int):
             for session_assignment in session.assignments:
                 if session_assignment.facilitator:
                     facilitators.append({
-                        "name": f"{session_assignment.facilitator.first_name or ''} {session_assignment.facilitator.last_name or ''}".strip() or session_assignment.facilitator.email,
+                        "name": session_assignment.facilitator.full_name,
                         "initials": f"{session_assignment.facilitator.first_name[0] if session_assignment.facilitator.first_name else ''}{session_assignment.facilitator.last_name[0] if session_assignment.facilitator.last_name else ''}".upper() or session_assignment.facilitator.email[0].upper(),
                         "role": getattr(session_assignment, 'role', 'lead'),
                         "is_confirmed": session_assignment.is_confirmed
@@ -4480,10 +4651,22 @@ def apply_bulk_staffing(unit_id: int):
 
         for session in sessions:
 
-            # Only update if not respecting overrides or if values are currently default
-
-            if not respect_overrides or (session.lead_staff_required == 1 and session.support_staff_required == 0):
-
+            # Update logic:
+            # - If respect_overrides is FALSE: Always update (force update all sessions)
+            # - If respect_overrides is TRUE: Only skip if values are already what we want
+            #   (this prevents redundant updates but allows changing values)
+            
+            should_update = True
+            
+            if respect_overrides:
+                # Skip only if the session already has the exact values we're trying to set
+                # This prevents redundant updates but allows changing to new values
+                if (session.lead_staff_required == lead_staff_required and 
+                    session.support_staff_required == support_staff_required):
+                    should_update = False  # Already set to target values, skip
+                # Otherwise, update (even if different from defaults)
+            
+            if should_update:
                 session.lead_staff_required = lead_staff_required
 
                 session.support_staff_required = support_staff_required

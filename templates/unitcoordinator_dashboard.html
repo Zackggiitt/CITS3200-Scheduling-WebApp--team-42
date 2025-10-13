@@ -838,7 +838,7 @@
                   <div class="text-2xl font-bold text-green-600 mb-1" data-stat="schedule_assigned">{{ fac_stats.schedule_assigned }}</div>
                   <div class="text-xs text-gray-600">Schedule Assigned</div>
                 </div>
-                <div class="bg-white border rounded-xl p-4 text-center">
+                <div class="bg-white border rounded-xl p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors" id="schedule-conflicts-card" onclick="showConflictsOnClick()">
                   <div class="text-2xl font-bold text-red-600 mb-1" data-stat="schedule_conflicts">{{ fac_stats.schedule_conflicts }}</div>
                   <div class="text-xs text-gray-600">Schedule Conflicts</div>
                 </div>
@@ -1755,8 +1755,8 @@ Tutorial A,Tuesday,09:00,1-12,120,EZONE 1.24
               <!-- Options -->
               <div class="mb-6">
                 <label class="flex items-center">
-                  <input type="checkbox" id="respect_overrides" checked class="mr-2">
-                  <span class="text-sm text-gray-700">Respect overrides</span>
+                  <input type="checkbox" id="respect_overrides" class="mr-2">
+                  <span class="text-sm text-gray-700">Skip sessions already set to these values (prevents redundant updates)</span>
                 </label>
               </div>
 

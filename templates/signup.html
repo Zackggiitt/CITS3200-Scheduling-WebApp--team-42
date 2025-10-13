@@ -19,11 +19,11 @@
             <h1>{% if role_name %}Set Up {{ role_name }} Account{% else %}Register{% endif %}</h1>
 
             <!-- Flash messages -->
-            {% with messages = get_flashed_messages() %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
               {% if messages %}
                 <div class="flash-messages">
-                  {% for message in messages %}
-                    <p>{{ message }}</p>
+                  {% for category, message in messages %}
+                    <p class="flash-{{ category }}">{{ message }}</p>
                   {% endfor %}
                 </div>
               {% endif %}

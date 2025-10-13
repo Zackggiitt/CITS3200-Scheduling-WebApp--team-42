@@ -2281,7 +2281,7 @@ main {
 
 .facilitator-list-container {
   flex: 1;
-  overflow-y: auto;
+  overflow: visible;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
 }
@@ -4244,7 +4244,7 @@ main {
 .facilitator-modal-body {
   padding: 24px;
   flex: 1;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .session-info {
@@ -4416,10 +4416,136 @@ main {
   background-color: #1f2937;
 }
 
-/* Make unassigned facilitator sections clickable */
-.session-facilitator.unassigned {
+/* Make all facilitator sections clickable */
+.session-facilitator {
   cursor: pointer;
   transition: all 0.2s;
+}
+
+/* Conflict Popup Styles */
+.conflict-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.conflict-popup-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.conflict-popup-content {
+  position: relative;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: conflictPopupSlideIn 0.3s ease-out;
+}
+
+@keyframes conflictPopupSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.conflict-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.conflict-warning-icon {
+  color: #f59e0b;
+  font-size: 24px;
+}
+
+.conflict-popup-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.conflict-popup-body {
+  padding: 20px 24px;
+}
+
+.conflict-popup-body p {
+  margin: 0;
+  line-height: 1.6;
+  color: #111827;
+  font-weight: 500;
+  white-space: pre-line;
+  font-size: 14px;
+}
+
+.conflict-popup-body p strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.conflict-popup-footer {
+  padding: 16px 24px 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.conflict-popup-footer .btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.conflict-popup-footer .btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.conflict-popup-footer .btn-primary:hover {
+  background: #2563eb;
+}
+
+/* Schedule Conflicts Card Clickable Styles */
+#schedule-conflicts-card {
+  transition: all 0.2s ease;
+}
+
+#schedule-conflicts-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+#schedule-conflicts-card:active {
+  transform: translateY(0);
+}
+
+.session-facilitator.unassigned {
   background-color: #f3f4f6;
   color: #374151;
   border: 1px solid #d1d5db;

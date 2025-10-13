@@ -156,6 +156,7 @@ class Session(db.Model):
     max_facilitators = db.Column(db.Integer, default=1)
     lead_staff_required = db.Column(db.Integer, default=1)  # Number of lead staff required
     support_staff_required = db.Column(db.Integer, default=0)  # Number of support staff required
+    status = db.Column(db.String(20), default='draft')  # draft, published, unpublished
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -193,6 +194,7 @@ class UnitFacilitator(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    availability_configured = db.Column(db.Boolean, default=False)  # Track if facilitator has set up availability
 
     unit = db.relationship('Unit', backref=db.backref('unit_facilitators', cascade='all, delete-orphan', lazy=True))
     user = db.relationship('User', backref=db.backref('facilitated_units', lazy=True))

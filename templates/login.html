@@ -34,11 +34,11 @@
         <p class="role-subtitle"></p>
       </div>
       <input type="hidden" name="user_role" id="user-role" value="{{ selected_role or 'facilitator' }}">
-      {% with messages = get_flashed_messages() %}
+      {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div class="flash-messages">
-            {% for message in messages %}
-              <p>{{ message }}</p>
+            {% for category, message in messages %}
+              <p class="flash-{{ category }}">{{ message }}</p>
             {% endfor %}
           </div>
         {% endif %}

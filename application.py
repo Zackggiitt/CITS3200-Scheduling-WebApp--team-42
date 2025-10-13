@@ -234,7 +234,7 @@ def signup():
             
             # Dynamic success message based on role
             role_name = "Unit Coordinator" if existing_user.role == UserRole.UNIT_COORDINATOR else "Facilitator"
-            flash(f"{role_name} account created successfully! Please log in.")
+            flash(f"{role_name} account created successfully! Please log in.", "success")
             return redirect(url_for("login"))
             
         except Exception as e:
@@ -324,7 +324,7 @@ def admin_signup():
         from email_service import mark_token_as_used
         mark_token_as_used(token)
         
-        flash("Admin account created successfully! Please log in.")
+        flash("Admin account created successfully! Please log in.", "success")
         return redirect(url_for("login"))
         
     except Exception as e:
@@ -397,6 +397,24 @@ def inject_user():
 @app.before_request
 def before_request():
     g.user = get_current_user()
+
+# Add safe security headers 
+@app.after_request
+def add_security_headers(response):
+    """Add security headers that are safe for development"""
+    # Prevent clickjacking - stops your app from being embedded in iframes
+    response.headers['X-Frame-Options'] = 'DENY'
+    
+    # Prevent MIME type sniffing attacks
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    
+    # Enable browser XSS protection
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    
+    # Control referrer information for privacy
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    
+    return response
 
 # Create DB tables
 with app.app_context():

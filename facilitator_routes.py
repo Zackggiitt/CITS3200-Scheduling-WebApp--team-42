@@ -169,11 +169,16 @@ def dashboard():
         end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
 
         # Base query for user's assignments within this unit
+        # Only show published sessions to facilitators
         base_q = (
             db.session.query(Assignment, Session, Module)
             .join(Session, Assignment.session_id == Session.id)
             .join(Module, Session.module_id == Module.id)
-            .filter(Assignment.facilitator_id == user.id, Module.unit_id == unit_id_int)
+            .filter(
+                Assignment.facilitator_id == user.id, 
+                Module.unit_id == unit_id_int,
+                Session.status == 'published'  # Only show published sessions
+            )
         )
 
         # Total hours for the unit
@@ -1106,6 +1111,15 @@ def generate_recurring_unavailability():
             db.session.add(unavailability)
             created_count += 1
     
+    # Mark availability as configured since facilitator is setting unavailability
+    unit_facilitator = UnitFacilitator.query.filter_by(
+        user_id=user.id,
+        unit_id=unit_id
+    ).first()
+    
+    if unit_facilitator:
+        unit_facilitator.availability_configured = True
+    
     db.session.commit()
     
     response_data = {
@@ -1365,19 +1379,23 @@ def create_swap_request():
     if not has_discussed:
         return jsonify({'error': 'Must confirm discussion with target facilitator'}), 400
     
-    # Validate assignments
+    # Validate requester assignment
     requester_assignment = Assignment.query.filter_by(
         id=requester_assignment_id, 
         facilitator_id=user.id
     ).first()
     
-    target_assignment = Assignment.query.filter_by(
-        id=target_assignment_id,
-        facilitator_id=target_facilitator_id
-    ).first()
+    if not requester_assignment:
+        return jsonify({'error': 'Invalid requester assignment selection'}), 400
     
-    if not requester_assignment or not target_assignment:
-        return jsonify({'error': 'Invalid assignment selection'}), 400
+    # Get the session and module from requester assignment
+    session = requester_assignment.session
+    module = session.module
+    
+    # For the target assignment, we'll create a virtual assignment or use the same session
+    # Since we're doing a direct notification system, we don't need actual assignment swapping
+    # We'll use the same assignment ID for both (simplified approach)
+    target_assignment_id = requester_assignment_id
     
     # Check if swap request already exists
     existing_request = SwapRequest.query.filter_by(
@@ -1389,30 +1407,73 @@ def create_swap_request():
     if existing_request:
         return jsonify({'error': 'Swap request already exists for these assignments'}), 400
     
-    # Create swap request
+    # Verify target facilitator exists and has access to the unit
+    target_facilitator = User.query.get(target_facilitator_id)
+    if not target_facilitator:
+        return jsonify({'error': 'Target facilitator not found'}), 404
+    
+    # Check if target facilitator is assigned to the same unit
+    unit_access = (
+        db.session.query(Unit)
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(Unit.id == module.unit_id, UnitFacilitator.user_id == target_facilitator_id)
+        .first()
+    )
+    
+    if not unit_access:
+        return jsonify({'error': 'Target facilitator is not assigned to this unit'}), 400
+    
+    # Check if target facilitator has required skills for this module
+    facilitator_skill = FacilitatorSkill.query.filter_by(
+        facilitator_id=target_facilitator_id,
+        module_id=module.id
+    ).first()
+    
+    if not facilitator_skill or facilitator_skill.skill_level.value == 'no_interest':
+        return jsonify({'error': 'Target facilitator does not have required skills for this module'}), 400
+    
+    # Check availability for the session time
+    is_available, reason = check_facilitator_availability(
+        target_facilitator_id,
+        session.start_time.date(),
+        session.start_time.time(),
+        session.end_time.time(),
+        module.unit_id
+    )
+    
+    if not is_available:
+        return jsonify({'error': f'Target facilitator is not available: {reason}'}), 400
+    
+    # Create swap request (immediately approved and executed)
     swap_request = SwapRequest(
         requester_id=user.id,
         target_id=target_facilitator_id,
         requester_assignment_id=requester_assignment_id,
         target_assignment_id=target_assignment_id,
-        reason="Session swap request",
-        status=SwapStatus.FACILITATOR_PENDING,
-        facilitator_confirmed=False
+        reason="Session swap request (auto-approved)",
+        status=SwapStatus.APPROVED,  # Immediately approved
+        facilitator_confirmed=True,  # No approval needed
+        facilitator_confirmed_at=datetime.utcnow()
     )
     
     try:
+        # Add the swap request
         db.session.add(swap_request)
+        
+        # Transfer the assignment to the target facilitator
+        requester_assignment.facilitator_id = target_facilitator_id
+        
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': 'Swap request created successfully',
+            'message': 'Swap request approved and session transferred successfully!',
             'swap_request_id': swap_request.id
         }), 201
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Failed to create swap request: {str(e)}'}), 500
+        return jsonify({'error': f'Failed to create and execute swap request: {str(e)}'}), 500
 
 
 @facilitator_bp.route('/swap-requests', methods=['GET'])
@@ -1463,24 +1524,30 @@ def get_swap_requests():
         }
     
     # Group requests by status
-    pending_requests = []
+    incoming_requests = []
     approved_requests = []
     declined_requests = []
     
-    all_requests = my_requests + requests_for_me
-    
-    for req in all_requests:
+    # Process incoming requests (requests sent TO this user)
+    for req in requests_for_me:
         serialized = serialize_swap_request(req)
+        serialized['is_incoming'] = True
+        incoming_requests.append(serialized)
+    
+    # Process outgoing requests (requests made BY this user)
+    for req in my_requests:
+        serialized = serialize_swap_request(req)
+        serialized['is_incoming'] = False
         
-        if req.status in [SwapStatus.FACILITATOR_PENDING, SwapStatus.COORDINATOR_PENDING]:
-            pending_requests.append(serialized)
-        elif req.status == SwapStatus.APPROVED:
+        # Since we now have immediate approval, all requests go directly to approved
+        # Pending status requests are no longer used
+        if req.status == SwapStatus.APPROVED:
             approved_requests.append(serialized)
         elif req.status in [SwapStatus.FACILITATOR_DECLINED, SwapStatus.COORDINATOR_DECLINED, SwapStatus.REJECTED]:
             declined_requests.append(serialized)
     
     return jsonify({
-        'pending_requests': pending_requests,
+        'incoming_requests': incoming_requests,
         'approved_requests': approved_requests,
         'declined_requests': declined_requests
     })
@@ -1526,68 +1593,6 @@ def check_facilitator_availability(facilitator_id, session_date, session_start_t
         return False, "Facilitator has conflicting session assignment"
     
     return True, "Available"
-
-
-@facilitator_bp.route('/available-facilitators/<int:assignment_id>', methods=['GET'])
-@login_required
-@role_required(UserRole.FACILITATOR)
-def get_available_facilitators(assignment_id):
-    """Get facilitators available for a specific assignment swap."""
-    user = get_current_user()
-    unit_id = request.args.get('unit_id', type=int)
-    
-    # Get the assignment details
-    assignment = Assignment.query.get(assignment_id)
-    if not assignment or assignment.facilitator_id != user.id:
-        return jsonify({'error': 'Invalid assignment'}), 400
-    
-    session = assignment.session
-    session_date = session.start_time.date()
-    session_start_time = session.start_time.time()
-    session_end_time = session.end_time.time()
-    
-    # Use provided unit_id or fall back to session's unit
-    target_unit_id = unit_id if unit_id else session.module.unit_id
-    
-    # Get all facilitators assigned to the specified unit
-    unit_facilitators = (
-        User.query
-        .join(UnitFacilitator, User.id == UnitFacilitator.user_id)
-        .filter(
-            UnitFacilitator.unit_id == target_unit_id,
-            User.id != user.id,  # Exclude current user
-            User.role == UserRole.FACILITATOR
-        )
-        .all()
-    )
-    
-    available_facilitators = []
-    
-    for facilitator in unit_facilitators:
-        is_available, reason = check_facilitator_availability(
-            facilitator.id, 
-            session_date, 
-            session_start_time, 
-            session_end_time, 
-            session.module.unit_id
-        )
-        
-        if is_available:
-            available_facilitators.append({
-                'id': facilitator.id,
-                'name': facilitator.full_name,
-                'email': facilitator.email
-            })
-    
-    return jsonify({
-        'available_facilitators': available_facilitators,
-        'session_info': {
-            'date': session_date.isoformat(),
-            'start_time': session_start_time.isoformat(),
-            'end_time': session_end_time.isoformat(),
-            'unit_id': session.module.unit_id
-        }
-    })
 
 
 @facilitator_bp.route('/swap-requests/<int:request_id>/facilitator-response', methods=['POST'])
@@ -1657,6 +1662,115 @@ def facilitator_response_to_swap(request_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Failed to process response: {str(e)}'}), 500
+
+
+@facilitator_bp.route('/available-facilitators', methods=['GET'])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def get_available_facilitators():
+    """Get available facilitators for a specific session swap."""
+    user = get_current_user()
+    session_id = request.args.get('session_id', type=int)
+    unit_id = request.args.get('unit_id', type=int)
+    
+    if not session_id:
+        return jsonify({'error': 'Session ID is required'}), 400
+    
+    # Get the session details
+    session = Session.query.get(session_id)
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+    
+    # Get the module and unit
+    module = Module.query.get(session.module_id)
+    if not module:
+        return jsonify({'error': 'Module not found'}), 404
+    
+    unit = Unit.query.get(module.unit_id)
+    if not unit:
+        return jsonify({'error': 'Unit not found'}), 404
+    
+    # Verify user has access to this unit
+    user_unit_access = (
+        db.session.query(Unit)
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(Unit.id == unit.id, UnitFacilitator.user_id == user.id)
+        .first()
+    )
+    
+    if not user_unit_access:
+        return jsonify({'error': 'Access denied to this unit'}), 403
+    
+    # Get all facilitators assigned to this unit (excluding the current user)
+    unit_facilitators = (
+        db.session.query(User)
+        .join(UnitFacilitator, User.id == UnitFacilitator.user_id)
+        .filter(
+            UnitFacilitator.unit_id == unit.id,
+            User.id != user.id,  # Exclude current user
+            User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR])
+        )
+        .all()
+    )
+    
+    available_facilitators = []
+    
+    for facilitator in unit_facilitators:
+        # Check availability for the session time
+        is_available, reason = check_facilitator_availability(
+            facilitator.id,
+            session.start_time.date(),
+            session.start_time.time(),
+            session.end_time.time(),
+            unit.id
+        )
+        
+        # Check if facilitator has required skills for this module
+        has_skills = True
+        skill_level = "No skills recorded"
+        
+        facilitator_skill = FacilitatorSkill.query.filter_by(
+            facilitator_id=facilitator.id,
+            module_id=module.id
+        ).first()
+        
+        if facilitator_skill:
+            skill_level = facilitator_skill.skill_level.value.replace('_', ' ').title()
+            # Only include facilitators with some level of skill (not "no_interest")
+            if facilitator_skill.skill_level.value == 'no_interest':
+                has_skills = False
+        
+        if is_available and has_skills:
+            available_facilitators.append({
+                'id': facilitator.id,
+                'name': facilitator.full_name,
+                'email': facilitator.email,
+                'skill_level': skill_level,
+                'reason': 'Available'
+            })
+        elif not is_available:
+            available_facilitators.append({
+                'id': facilitator.id,
+                'name': facilitator.full_name,
+                'email': facilitator.email,
+                'skill_level': skill_level,
+                'reason': reason,
+                'available': False
+            })
+    
+    # Sort by availability status and name
+    available_facilitators.sort(key=lambda x: (x.get('available', True), x['name']))
+    
+    return jsonify({
+        'session': {
+            'id': session.id,
+            'module_name': module.module_name,
+            'start_time': session.start_time.isoformat(),
+            'end_time': session.end_time.isoformat(),
+            'location': session.location
+        },
+        'facilitators': available_facilitators
+    })
 
 
 # -------------------------- Unavailability (Facilitator) --------------------------
@@ -1770,3 +1884,5 @@ def coordinator_response_to_swap(request_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Failed to process response: {str(e)}'}), 500
+
+

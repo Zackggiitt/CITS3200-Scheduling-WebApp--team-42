@@ -5634,4 +5634,25 @@ textarea::placeholder {
     align-self: flex-end;
     width: fit-content;
   }
+/* Incoming Requests Styling */
+.requests-section.incoming-requests {
+  border-left: 4px solid #3b82f6; /* Blue border for incoming requests */
+}
+
+.requests-section.incoming-requests .section-header {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+}
+
+.requests-section.incoming-requests .section-icon.incoming {
+  color: #3b82f6;
+}
+
+.request-card.incoming {
+  border-left: 3px solid #3b82f6;
+  background: #f8fafc;
+}
+
+.request-card.incoming .status-badge {
+  background: #dbeafe;
+  color: #1e40af;
 }
