@@ -157,15 +157,15 @@ function openCreateUnitModal() {
         const newCloseBtn = closeBtn.cloneNode(true);
         closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
         
-        // Add the new event listener - directly close and reset to clean slate
-        newCloseBtn.onclick = closeCreateUnitModal;
-        console.log('Close button wired to closeCreateUnitModal for clean reset');
+        // Add the new event listener
+        newCloseBtn.onclick = showCloseConfirmationPopup;
+        console.log('Close button wired to showCloseConfirmationPopup');
     }
     
     // Define event handlers
     handleEscKey = (e) => {
       if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-        closeCreateUnitModal();
+        showCloseConfirmationPopup();
       }
     };
     
@@ -195,6 +195,7 @@ function openEditUnitModal() {
   const dateMatch = dateText ? dateText.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s*-\s*(\d{1,2}\/\d{1,2}\/\d{4})/) : null;
   let startDate = null;
   let endDate = null;
+  
   if (dateMatch && dateMatch.length >= 3) {
     startDate = dateMatch[1]; // MM/DD/YYYY format
     endDate = dateMatch[2];    // MM/DD/YYYY format
@@ -289,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.addEventListener('click', (e) => {
       // Check if the click was on the modal backdrop (not the modal content)
       if (e.target === modal) {
-        closeCreateUnitModal();
+        showCloseConfirmationPopup();
       }
     });
   }
@@ -1799,43 +1800,14 @@ function getPendingTimes() {
   };
 }
 
-async function closeCreateUnitModal() {
+function closeCreateUnitModal() {
   console.log('Closing modal and resetting all data');
-  
-  // Clear any server-side draft data first
-  const unitIdEl = document.getElementById('unit_id');
-  const unitId = unitIdEl ? unitIdEl.value : '';
-  
-  if (unitId) {
-    try {
-      console.log('Cleaning up database for unit:', unitId);
-      
-      const form = new FormData();
-      form.append('unit_id', unitId);
-      form.append('action', 'cancel_draft');
-      form.append('cancelled', 'true');
-      
-      const response = await fetch(CREATE_OR_GET_DRAFT, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': CSRF_TOKEN },
-        body: form
-      });
-      
-      if (response.ok) {
-        console.log('Database cleanup successful');
-      } else {
-        console.warn('Failed to cleanup database, but continuing with UI reset');
-      }
-    } catch (error) {
-      console.error('Error cleaning up database:', error);
-      // Continue with UI reset even if database cleanup fails
-    }
-  }
   
   // Reset all modal state
   resetCreateUnitWizard();
 
   // Clear any server-side draft data by clearing the unit ID
+  const unitIdEl = document.getElementById('unit_id');
   if (unitIdEl) {
     unitIdEl.value = '';
   }
