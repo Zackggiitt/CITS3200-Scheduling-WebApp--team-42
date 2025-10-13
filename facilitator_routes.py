@@ -447,10 +447,11 @@ def profile():
     # Facilitator Information Calculations
     facilitator_info = calculate_facilitator_info(user, today)
     
-    return render_template("facilitator_profile.html", 
-                         user=user, 
+    return render_template("facilitator_profile.html",
+                         user=user,
                          units=units,
-                         facilitator_info=facilitator_info)
+                         facilitator_info=facilitator_info,
+                         current_user=user)
 
 
 def calculate_facilitator_info(user, today):
