@@ -1006,10 +1006,18 @@ def generate_recurring_unavailability():
     recurring_interval = data.get('recurring_interval', 1)
     
     # Generate all dates for the recurring pattern
+    # IMPORTANT: Always respect unit end date - never generate unavailability beyond unit end date
+    effective_end_date = recurring_end_date
+    message = None
+    
+    if access.end_date and recurring_end_date > access.end_date:
+        effective_end_date = access.end_date
+        message = f"Recurring pattern will end on {access.end_date.strftime('%d/%m/%Y')} instead of {recurring_end_date.strftime('%d/%m/%Y')} (unit end date)"
+    
     dates = []
     current_date = base_date
     
-    while current_date <= recurring_end_date:
+    while current_date <= effective_end_date:
         dates.append(current_date)
         
         if recurring_pattern == RecurringPattern.DAILY:
@@ -1066,11 +1074,17 @@ def generate_recurring_unavailability():
     
     db.session.commit()
     
-    return jsonify({
+    response_data = {
         "message": f"Created {created_count} recurring unavailability entries",
         "total_dates": len(dates),
         "created_count": created_count
-    })
+    }
+    
+    # Add warning message if end date was adjusted
+    if message:
+        response_data["warning"] = message
+    
+    return jsonify(response_data)
 
 @facilitator_bp.route('/skills', methods=['GET', 'POST'])
 @facilitator_required

@@ -2563,6 +2563,19 @@ function saveUnavailability() {
         // Close modal
         modal.style.display = 'none';
         
+        // Show success message with optional warning
+        let message = result.message || 'Unavailability saved successfully';
+        if (result.warning) {
+            message += '\n\n' + result.warning;
+        }
+        
+        // Use the notification system if available, otherwise fallback to alert
+        if (typeof showNotification === 'function') {
+            showNotification(message, 'success');
+        } else {
+            alert(message);
+        }
+        
         console.log('Unavailability saved successfully');
     })
     .catch(error => {
