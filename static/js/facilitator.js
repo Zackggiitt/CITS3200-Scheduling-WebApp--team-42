@@ -3598,7 +3598,65 @@ function displaySkillsError() {
 
 // Show notification (reuse existing notification system)
 function showNotification(message, type = 'info') {
-    // This would integrate with your existing notification system
-    console.log(`${type.toUpperCase()}: ${message}`);
-    // You can implement a toast notification here
+    const container = document.getElementById('notification-container');
+    const notification = document.getElementById('notification');
+    const icon = document.getElementById('notification-icon');
+    const messageEl = document.getElementById('notification-message');
+    const closeBtn = document.getElementById('notification-close');
+    
+    if (!container || !notification || !icon || !messageEl) {
+        console.error('Notification elements not found');
+        return;
+    }
+    
+    // Set message
+    messageEl.textContent = message;
+    
+    // Set icon and type-specific styling
+    notification.className = `notification ${type}`;
+    
+    switch (type) {
+        case 'success':
+            icon.innerHTML = '<span class="material-icons">check_circle</span>';
+            break;
+        case 'error':
+            icon.innerHTML = '<span class="material-icons">error</span>';
+            break;
+        case 'warning':
+            icon.innerHTML = '<span class="material-icons">warning</span>';
+            break;
+        case 'info':
+        default:
+            icon.innerHTML = '<span class="material-icons">info</span>';
+            break;
+    }
+    
+    // Show notification
+    notification.classList.add('show');
+    
+    // Auto-hide after 4 seconds
+    const autoHide = setTimeout(() => {
+        hideNotification();
+    }, 4000);
+    
+    // Close button handler
+    closeBtn.onclick = () => {
+        clearTimeout(autoHide);
+        hideNotification();
+    };
+    
+    // Click outside to close
+    notification.onclick = (e) => {
+        if (e.target === notification || e.target === messageEl) {
+            clearTimeout(autoHide);
+            hideNotification();
+        }
+    };
+}
+
+function hideNotification() {
+    const notification = document.getElementById('notification');
+    if (notification) {
+        notification.classList.remove('show');
+    }
 }

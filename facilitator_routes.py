@@ -1135,7 +1135,36 @@ def manage_skills():
             if not unit_id:
                 return jsonify({"error": "Unit ID is required"}), 400
             
-            # Clear existing skills for this unit
+            # Use upsert logic: update existing skills or create new ones
+            for module_id, skill_level in skills.items():
+                try:
+                    experience_description = experience_descriptions.get(module_id, '')
+                    
+                    # Check if skill already exists for this facilitator and module
+                    existing_skill = FacilitatorSkill.query.filter_by(
+                        facilitator_id=user.id,
+                        module_id=int(module_id)
+                    ).first()
+                    
+                    if existing_skill:
+                        # Update existing skill
+                        existing_skill.skill_level = SkillLevel(skill_level)
+                        existing_skill.experience_description = experience_description
+                        existing_skill.updated_at = datetime.utcnow()
+                    else:
+                        # Create new skill
+                        facilitator_skill = FacilitatorSkill(
+                            facilitator_id=user.id,
+                            module_id=int(module_id),
+                            skill_level=SkillLevel(skill_level),
+                            experience_description=experience_description
+                        )
+                        db.session.add(facilitator_skill)
+                        
+                except ValueError:
+                    return jsonify({"error": f"Invalid skill level: {skill_level}"}), 400
+            
+            # Remove skills that are no longer selected (set to 'unassigned' or not in the skills dict)
             existing_skills = db.session.query(FacilitatorSkill).join(
                 Module, FacilitatorSkill.module_id == Module.id
             ).filter(
@@ -1144,21 +1173,8 @@ def manage_skills():
             ).all()
             
             for skill in existing_skills:
-                db.session.delete(skill)
-            
-            # Add new skills
-            for module_id, skill_level in skills.items():
-                try:
-                    experience_description = experience_descriptions.get(module_id, '')
-                    facilitator_skill = FacilitatorSkill(
-                        facilitator_id=user.id,
-                        module_id=int(module_id),
-                        skill_level=SkillLevel(skill_level),
-                        experience_description=experience_description
-                    )
-                    db.session.add(facilitator_skill)
-                except ValueError:
-                    return jsonify({"error": f"Invalid skill level: {skill_level}"}), 400
+                if str(skill.module_id) not in skills:
+                    db.session.delete(skill)
             
             db.session.commit()
             return jsonify({
