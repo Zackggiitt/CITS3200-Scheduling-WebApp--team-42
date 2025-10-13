@@ -87,7 +87,7 @@ def inject_random_skills(min_skills: int = 2, max_skills: int = 8):
     # Clear existing skills
     clear_all_skills()
     
-    skill_levels = [SkillLevel.INTERESTED, SkillLevel.PROFICIENT, SkillLevel.LEADER]
+    skill_levels = [SkillLevel.HAVE_SOME_SKILL, SkillLevel.PROFICIENT, SkillLevel.HAVE_RUN_BEFORE]
     added_count = 0
     
     for facilitator in facilitators:
@@ -120,7 +120,7 @@ def inject_random_skills(min_skills: int = 2, max_skills: int = 8):
     print(f"\n✓ Successfully added {added_count} skill assignments to {len(facilitators)} facilitators")
 
 
-def inject_all_skills_to_all(default_level: SkillLevel = SkillLevel.INTERESTED):
+def inject_all_skills_to_all(default_level: SkillLevel = SkillLevel.HAVE_SOME_SKILL):
     """
     Assign all modules as skills to all facilitators.
     
@@ -233,11 +233,11 @@ def inject_distributed_skills():
         for i, module in enumerate(selected_modules):
             # First skill is often their strongest (leader/proficient)
             if i == 0:
-                skill_level = random.choice([SkillLevel.LEADER, SkillLevel.PROFICIENT])
+                skill_level = random.choice([SkillLevel.HAVE_RUN_BEFORE, SkillLevel.PROFICIENT])
             # Most skills are proficient or interested
             else:
                 skill_level = random.choices(
-                    [SkillLevel.INTERESTED, SkillLevel.PROFICIENT, SkillLevel.LEADER],
+                    [SkillLevel.HAVE_SOME_SKILL, SkillLevel.PROFICIENT, SkillLevel.HAVE_RUN_BEFORE],
                     weights=[30, 60, 10],
                     k=1
                 )[0]

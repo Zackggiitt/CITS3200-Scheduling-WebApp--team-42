@@ -2952,18 +2952,18 @@ async function loadSwapRequests() {
 
 // Update request count badges
 function updateRequestCounts(data) {
-    const pendingCount = document.getElementById('pending-count');
+    const incomingCount = document.getElementById('incoming-count');
     const approvedCount = document.getElementById('approved-count');
     const declinedCount = document.getElementById('declined-count');
     
-    if (pendingCount) pendingCount.textContent = data.pending_requests.length;
+    if (incomingCount) incomingCount.textContent = data.incoming_requests ? data.incoming_requests.length : 0;
     if (approvedCount) approvedCount.textContent = data.approved_requests.length;
     if (declinedCount) declinedCount.textContent = data.declined_requests.length;
 }
 
 // Render swap requests in their respective sections
 function renderSwapRequests(data) {
-    renderRequestSection('pending-requests-list', data.pending_requests, 'pending');
+    renderRequestSection('incoming-requests-list', data.incoming_requests || [], 'incoming');
     renderRequestSection('approved-requests-list', data.approved_requests, 'approved');
     renderRequestSection('declined-requests-list', data.declined_requests, 'declined');
 }
@@ -3004,7 +3004,7 @@ function createRequestCard(request, status) {
                 </div>
                 <div class="detail-item">
                     <span class="material-icons">person</span>
-                    <span>Suggested facilitator: ${request.target_name}</span>
+                    <span>${request.is_incoming ? `Request from: ${request.requester_name}` : `Suggested facilitator: ${request.target_name}`}</span>
                 </div>
                 <div class="detail-item">
                     <span class="material-icons">schedule</span>
@@ -3088,10 +3088,11 @@ async function loadUserAssignments() {
                 
                 if (sessions && sessions.length > 0) {
                     sessions.forEach(session => {
-                        // The backend provides 'id' as the assignment ID
-                        if (session.id) {
+                        // The backend provides 'assignment_id' as the assignment ID
+                        const assignmentId = session.assignment_id || session.id;
+                        if (assignmentId) {
                             currentUserAssignments.push({
-                                id: session.id, // This is the assignment ID from backend
+                                id: assignmentId, // This is the assignment ID from backend
                                 session_id: session.session_id,
                                 module: session.module || 'Unknown Module', // Handle null module names
                                 session_type: session.session_type || 'Session', // Better default for session type
@@ -3189,9 +3190,24 @@ async function handleSessionSelectionChange(event) {
     }
     
     try {
+        // Find the selected assignment to get the session_id
+        const selectedAssignment = currentUserAssignments.find(a => a.id == assignmentId);
+        if (!selectedAssignment) {
+            console.error('Selected assignment not found');
+            clearFacilitatorDropdown();
+            return;
+        }
+        
         // Include unit context in the request
         const currentUnitId = window.currentUnitId;
-        const url = `/facilitator/available-facilitators/${assignmentId}?unit_id=${currentUnitId}`;
+        const url = `/facilitator/available-facilitators?session_id=${selectedAssignment.session_id}&unit_id=${currentUnitId}`;
+        
+        console.log('Loading available facilitators:', {
+            assignmentId: assignmentId,
+            sessionId: selectedAssignment.session_id,
+            unitId: currentUnitId,
+            url: url
+        });
         
         const response = await fetch(url, {
             method: 'GET',
@@ -3206,8 +3222,10 @@ async function handleSessionSelectionChange(event) {
         }
         
         const data = await response.json();
-        availableFacilitators = data.available_facilitators;
-        populateFacilitatorDropdown(data.available_facilitators);
+        console.log('Available facilitators response:', data);
+        
+        availableFacilitators = data.facilitators;
+        populateFacilitatorDropdown(data.facilitators);
         
     } catch (error) {
         console.error('Error loading available facilitators:', error);
@@ -3219,17 +3237,39 @@ async function handleSessionSelectionChange(event) {
 // Populate facilitator dropdown
 function populateFacilitatorDropdown(facilitators) {
     const facilitatorSelect = document.getElementById('suggested-facilitator');
-    if (!facilitatorSelect) return;
+    if (!facilitatorSelect) {
+        console.error('Facilitator select element not found');
+        return;
+    }
+    
+    console.log('Populating facilitator dropdown with:', facilitators);
     
     // Clear existing options
     facilitatorSelect.innerHTML = '<option value="">Select a facilitator you\'ve discussed with</option>';
     
+    if (!facilitators || facilitators.length === 0) {
+        console.warn('No facilitators provided to populate dropdown');
+        return;
+    }
+    
     facilitators.forEach(facilitator => {
         const option = document.createElement('option');
         option.value = facilitator.id;
-        option.textContent = facilitator.name;
+        
+        // Show availability status and skill level
+        let displayText = facilitator.name;
+        if (facilitator.available === false) {
+            displayText += ` (Unavailable - ${facilitator.reason})`;
+        } else {
+            displayText += ` (Available - ${facilitator.skill_level})`;
+        }
+        
+        option.textContent = displayText;
+        option.disabled = facilitator.available === false;
         facilitatorSelect.appendChild(option);
     });
+    
+    console.log(`Added ${facilitators.length} facilitators to dropdown`);
 }
 
 // Clear facilitator dropdown
@@ -3245,11 +3285,11 @@ async function handleSwapRequestSubmit(event) {
     event.preventDefault();
     
     const formData = new FormData(event.target);
-    const sessionId = formData.get('session_id');
+    const assignmentId = formData.get('session_id'); // This is actually the assignment ID
     const suggestedFacilitatorId = formData.get('suggested_facilitator_id');
     const hasDiscussed = document.getElementById('has-discussed').checked;
     
-    if (!sessionId || !suggestedFacilitatorId) {
+    if (!assignmentId || !suggestedFacilitatorId) {
         showNotification('Please fill in all required fields', 'error');
         return;
     }
@@ -3260,6 +3300,18 @@ async function handleSwapRequestSubmit(event) {
     }
     
     try {
+        // Find the selected assignment to get session details
+        const selectedAssignment = currentUserAssignments.find(a => a.id == assignmentId);
+        if (!selectedAssignment) {
+            showNotification('Selected assignment not found', 'error');
+            return;
+        }
+        
+        // Get the target facilitator's assignment for the same session
+        // For now, we'll use the same assignment ID as the target (simplified approach)
+        // In a real scenario, you'd need to find the target facilitator's assignment for the same session
+        const targetAssignmentId = selectedAssignment.id; // Simplified - using same assignment
+        
         // Include unit context in the request
         const currentUnitId = window.currentUnitId;
         
@@ -3270,8 +3322,8 @@ async function handleSwapRequestSubmit(event) {
                 'X-CSRFToken': window.csrfToken
             },
             body: JSON.stringify({
-                requester_assignment_id: sessionId,
-                target_assignment_id: sessionId, // This would need to be the target's assignment
+                requester_assignment_id: assignmentId,
+                target_assignment_id: targetAssignmentId,
                 target_facilitator_id: suggestedFacilitatorId,
                 has_discussed: hasDiscussed,
                 unit_id: currentUnitId
