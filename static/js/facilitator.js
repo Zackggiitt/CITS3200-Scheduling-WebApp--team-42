@@ -431,7 +431,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Format date for display (convert dd/mm/yyyy to readable format)
         const [day, month, year] = date.split('/');
-        const displayDate = new Date(year, month - 1, day);
+        // Construct date in local time without TZ bleed; append 'T12:00:00' to avoid DST issues
+        const displayDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), 12, 0, 0, 0);
         const formattedDisplayDate = displayDate.toLocaleDateString('en-AU', {
             weekday: 'long',
             year: 'numeric',
@@ -727,9 +728,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!isOtherMonth) {
             dayElement.style.cursor = 'pointer';
             dayElement.addEventListener('click', function() {
-                const formattedDate = String(dayNumber).padStart(2, '0') + '/' + 
-                                     String(currentDate.getMonth() + 1).padStart(2, '0') + '/' + 
-                                     String(currentDate.getFullYear());
+                // In weekly view, rely on the explicit dayDate (accurate across month boundaries)
+                // In monthly view, derive from currentDate/month and the day number
+                let clickDate;
+                if (calendarViewMode === 'weekly' && dayDate instanceof Date) {
+                    clickDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+                } else {
+                    clickDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNumber);
+                }
+                const formattedDate = String(clickDate.getDate()).padStart(2, '0') + '/' +
+                                      String(clickDate.getMonth() + 1).padStart(2, '0') + '/' +
+                                      String(clickDate.getFullYear());
                 showAllSessionsForDate(formattedDate);
             });
         }
@@ -754,10 +763,11 @@ document.addEventListener('DOMContentLoaded', function() {
             targetDate = new Date(year, month, dayNumber);
         }
         
-        // Format date to match session date format (dd/mm/yyyy)
-        const formattedDate = String(targetDate.getDate()).padStart(2, '0') + '/' + 
-                             String(targetDate.getMonth() + 1).padStart(2, '0') + '/' + 
-                             String(targetDate.getFullYear());
+        // Normalize to noon to avoid DST shifts and format to dd/mm/yyyy
+        const normalized = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 12, 0, 0, 0);
+        const formattedDate = String(normalized.getDate()).padStart(2, '0') + '/' + 
+                             String(normalized.getMonth() + 1).padStart(2, '0') + '/' + 
+                             String(normalized.getFullYear());
         
         // Get sessions for this date from all units
         if (window.unitsData) {
