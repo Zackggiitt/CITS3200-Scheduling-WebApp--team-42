@@ -879,11 +879,15 @@ def dashboard():
             )
 
             # Check if facilitator has availability configured
-            # A facilitator is considered to have "availability set" if they either:
-            # 1. Have unavailability entries (meaning they've configured their availability), OR
-            # 2. Have no unavailability entries (meaning they're available all the time via "Available All Days")
-            # This ensures facilitators who use "Available All Days" are properly recognized as having availability configured
-            has_avail = True  # All facilitators are considered to have availability configured
+            # A facilitator is considered to have "availability set" if they have unavailability entries
+            # This means they have actively configured their availability (either as unavailable on certain days or available all days)
+            has_avail = (
+                db.session.query(Unavailability.id)
+                .filter(Unavailability.user_id == f.id, Unavailability.unit_id == current_unit.id)
+                .limit(1)
+                .first()
+                is not None
+            )
 
             has_skills = (
                 db.session.query(FacilitatorSkill.id)
@@ -1205,11 +1209,15 @@ def admin_dashboard():
             )
 
             # Check if facilitator has availability configured
-            # A facilitator is considered to have "availability set" if they either:
-            # 1. Have unavailability entries (meaning they've configured their availability), OR
-            # 2. Have no unavailability entries (meaning they're available all the time via "Available All Days")
-            # This ensures facilitators who use "Available All Days" are properly recognized as having availability configured
-            has_avail = True  # All facilitators are considered to have availability configured
+            # A facilitator is considered to have "availability set" if they have unavailability entries
+            # This means they have actively configured their availability (either as unavailable on certain days or available all days)
+            has_avail = (
+                db.session.query(Unavailability.id)
+                .filter(Unavailability.user_id == f.id, Unavailability.unit_id == current_unit.id)
+                .limit(1)
+                .first()
+                is not None
+            )
 
             has_skills = (
                 db.session.query(FacilitatorSkill.id)
