@@ -379,7 +379,7 @@ def inject_user():
 def before_request():
     g.user = get_current_user()
 
-# Add safe security headers (won't break Flask development server)
+# Add safe security headers 
 @app.after_request
 def add_security_headers(response):
     """Add security headers that are safe for development"""
@@ -394,17 +394,6 @@ def add_security_headers(response):
     
     # Control referrer information for privacy
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    
-    csp = (
-        "default-src 'self' 'unsafe-inline' 'unsafe-eval' localhost:* 127.0.0.1:*; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' localhost:* 127.0.0.1:* https://accounts.google.com; "
-        "style-src 'self' 'unsafe-inline' localhost:* 127.0.0.1:*; "
-        "img-src 'self' data: https: localhost:* 127.0.0.1:*; "
-        "font-src 'self' localhost:* 127.0.0.1:*; "
-        "connect-src 'self' localhost:* 127.0.0.1:*; "
-        "frame-ancestors 'none';"
-    )
-    response.headers['Content-Security-Policy'] = csp
     
     return response
 
