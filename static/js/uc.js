@@ -4578,6 +4578,44 @@ function getSessionFacilitator(session) {
   return session.extendedProps?.facilitator_name || null;
 }
 
+// Load and display existing conflicts
+async function loadAndDisplayConflicts() {
+  const unitId = getUnitId();
+  if (!unitId) return;
+  
+  try {
+    const response = await fetch(`/unitcoordinator/units/${unitId}/conflicts`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok && result.conflicts && result.conflicts.length > 0) {
+      // Show conflicts in a notification or banner
+      let conflictMessage = `⚠️ ${result.conflicts.length} scheduling conflict(s) detected:\n\n`;
+      
+      result.conflicts.forEach(conflict => {
+        if (conflict.type === 'schedule_overlap') {
+          conflictMessage += `• ${conflict.facilitator_name} is assigned to overlapping sessions:\n`;
+          conflictMessage += `  - "${conflict.session1.module}" (${conflict.session1.start_time.substring(0, 16)} - ${conflict.session1.end_time.substring(0, 16)})\n`;
+          conflictMessage += `  - "${conflict.session2.module}" (${conflict.session2.start_time.substring(0, 16)} - ${conflict.session2.end_time.substring(0, 16)})\n\n`;
+        }
+      });
+      
+      conflictMessage += 'Please resolve these conflicts by reassigning facilitators.';
+      
+      // Show as a persistent notification
+      showSimpleNotification(conflictMessage, 'warning', 10000); // Show for 10 seconds
+    }
+  } catch (error) {
+    console.error('Error loading conflicts:', error);
+  }
+}
+
 // Helper function to format time range
 function formatTimeRange(start, end) {
   const startTime = new Date(start).toLocaleTimeString('en-US', { 
@@ -4865,6 +4903,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('schedule-grid')) {
     initSchedulePanel();
     initListView();
+    
+    // Load and display existing conflicts
+    loadAndDisplayConflicts();
     
     // Check if CSV download is available and show button if needed
     checkAndShowCsvDownloadButton();
@@ -5409,12 +5450,26 @@ async function selectMultipleFacilitators() {
       })
     });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-    }
-    
     const result = await response.json();
+    
+    if (!response.ok) {
+      // Handle conflict errors specifically
+      if (result.error === 'Scheduling conflicts detected' && result.conflicts) {
+        let conflictMessage = '⚠️ Scheduling conflicts detected:\n\n';
+        result.conflicts.forEach(conflict => {
+          conflictMessage += `• ${conflict.facilitator_name} is already assigned to "${conflict.conflicting_session.name}" `;
+          conflictMessage += `(${conflict.conflicting_session.start_time.substring(0, 16)} - ${conflict.conflicting_session.end_time.substring(0, 16)}) `;
+          conflictMessage += `which overlaps with this session.\n\n`;
+        });
+        conflictMessage += 'Please select different facilitators or resolve the scheduling conflicts.';
+        
+        // Show as a persistent notification instead of alert
+        showSimpleNotification(conflictMessage, 'error', 8000);
+        return; // Don't throw error, just show the notification and return
+      } else {
+        throw new Error(result.error || result.message || `HTTP error! status: ${response.status}`);
+      }
+    }
     
     if (result.ok) {
       // Update the session card to show assigned status

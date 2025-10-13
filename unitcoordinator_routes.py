@@ -3065,6 +3065,66 @@ def assign_facilitators_to_session(unit_id: int, session_id: int):
         if not session:
             return jsonify({"ok": False, "error": "Session not found"}), 404
         
+        # Check for scheduling conflicts before creating assignments
+        conflicts = []
+        for facilitator_id in facilitator_ids:
+            # Get all existing assignments for this facilitator
+            existing_assignments = (
+                db.session.query(Assignment, Session)
+                .join(Session, Session.id == Assignment.session_id)
+                .join(Module, Module.id == Session.module_id)
+                .filter(
+                    Assignment.facilitator_id == facilitator_id,
+                    Module.unit_id == unit_id,
+                    Session.id != session_id  # Exclude current session
+                )
+                .all()
+            )
+            
+            # Check for time overlaps with current session
+            for assignment, existing_session in existing_assignments:
+                # Check if sessions overlap
+                if (session.start_time < existing_session.end_time and 
+                    session.end_time > existing_session.start_time):
+                    
+                    facilitator = User.query.get(facilitator_id)
+                    facilitator_name = facilitator.full_name if facilitator else f"Facilitator {facilitator_id}"
+                    
+                    conflicts.append({
+                        'facilitator_id': facilitator_id,
+                        'facilitator_name': facilitator_name,
+                        'conflicting_session': {
+                            'id': existing_session.id,
+                            'name': existing_session.module.module_name,
+                            'start_time': existing_session.start_time.isoformat(),
+                            'end_time': existing_session.end_time.isoformat()
+                        },
+                        'current_session': {
+                            'id': session.id,
+                            'name': session.module.module_name,
+                            'start_time': session.start_time.isoformat(),
+                            'end_time': session.end_time.isoformat()
+                        }
+                    })
+        
+        # If there are conflicts, return error with details
+        if conflicts:
+            conflict_messages = []
+            for conflict in conflicts:
+                msg = (f"{conflict['facilitator_name']} is already assigned to "
+                      f"'{conflict['conflicting_session']['name']}' "
+                      f"({conflict['conflicting_session']['start_time'][:16]} - "
+                      f"{conflict['conflicting_session']['end_time'][:16]}) "
+                      f"which overlaps with this session.")
+                conflict_messages.append(msg)
+            
+            return jsonify({
+                "ok": False, 
+                "error": "Scheduling conflicts detected",
+                "conflicts": conflicts,
+                "message": "The following scheduling conflicts were detected:\n\n" + "\n".join(conflict_messages)
+            }), 400
+        
         # Remove existing assignments for this session
         Assignment.query.filter_by(session_id=session_id).delete()
         
