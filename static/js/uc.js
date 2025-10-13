@@ -4578,6 +4578,42 @@ function getSessionFacilitator(session) {
   return session.extendedProps?.facilitator_name || null;
 }
 
+// Show custom conflict popup
+function showConflictPopup(title, message) {
+  // Remove any existing conflict popups
+  const existingPopups = document.querySelectorAll('.conflict-popup');
+  existingPopups.forEach(popup => popup.remove());
+  
+  const popup = document.createElement('div');
+  popup.className = 'conflict-popup';
+  popup.innerHTML = `
+    <div class="conflict-popup-backdrop"></div>
+    <div class="conflict-popup-content">
+      <div class="conflict-popup-header">
+        <span class="material-icons conflict-warning-icon">warning</span>
+        <h3>${title}</h3>
+      </div>
+      <div class="conflict-popup-body">
+        <p>${message}</p>
+      </div>
+      <div class="conflict-popup-footer">
+        <button class="btn btn-primary" onclick="closeConflictPopup()">OK</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(popup);
+  
+  // Close popup when clicking backdrop
+  popup.querySelector('.conflict-popup-backdrop').addEventListener('click', closeConflictPopup);
+}
+
+// Close conflict popup
+function closeConflictPopup() {
+  const popups = document.querySelectorAll('.conflict-popup');
+  popups.forEach(popup => popup.remove());
+}
+
 // Load and display existing conflicts
 async function loadAndDisplayConflicts() {
   const unitId = getUnitId();
@@ -4608,8 +4644,8 @@ async function loadAndDisplayConflicts() {
       
       conflictMessage += 'Please resolve these conflicts by reassigning facilitators.';
       
-      // Show as a persistent notification
-      showSimpleNotification(conflictMessage, 'warning', 10000); // Show for 10 seconds
+      // Show as custom popup
+      showConflictPopup('Scheduling Conflicts Detected', conflictMessage);
     }
   } catch (error) {
     console.error('Error loading conflicts:', error);
@@ -5463,8 +5499,8 @@ async function selectMultipleFacilitators() {
         });
         conflictMessage += 'Please select different facilitators or resolve the scheduling conflicts.';
         
-        // Show as a persistent notification instead of alert
-        showSimpleNotification(conflictMessage, 'error', 8000);
+        // Show as custom popup
+        showConflictPopup('Scheduling Conflicts Detected', conflictMessage);
         return; // Don't throw error, just show the notification and return
       } else {
         throw new Error(result.error || result.message || `HTTP error! status: ${response.status}`);
