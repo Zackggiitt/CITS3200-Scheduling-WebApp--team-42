@@ -3091,10 +3091,11 @@ async function loadUserAssignments() {
                 
                 if (sessions && sessions.length > 0) {
                     sessions.forEach(session => {
-                        // The backend provides 'id' as the assignment ID
-                        if (session.id) {
+                        // The backend provides 'assignment_id' as the assignment ID
+                        const assignmentId = session.assignment_id || session.id;
+                        if (assignmentId) {
                             currentUserAssignments.push({
-                                id: session.id, // This is the assignment ID from backend
+                                id: assignmentId, // This is the assignment ID from backend
                                 session_id: session.session_id,
                                 module: session.module || 'Unknown Module', // Handle null module names
                                 session_type: session.session_type || 'Session', // Better default for session type
@@ -3192,9 +3193,17 @@ async function handleSessionSelectionChange(event) {
     }
     
     try {
+        // Find the selected assignment to get the session_id
+        const selectedAssignment = currentUserAssignments.find(a => a.id == assignmentId);
+        if (!selectedAssignment) {
+            console.error('Selected assignment not found');
+            clearFacilitatorDropdown();
+            return;
+        }
+        
         // Include unit context in the request
         const currentUnitId = window.currentUnitId;
-        const url = `/facilitator/available-facilitators?session_id=${assignmentId}&unit_id=${currentUnitId}`;
+        const url = `/facilitator/available-facilitators?session_id=${selectedAssignment.session_id}&unit_id=${currentUnitId}`;
         
         const response = await fetch(url, {
             method: 'GET',
