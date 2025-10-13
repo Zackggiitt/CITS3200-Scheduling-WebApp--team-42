@@ -2573,10 +2573,14 @@ function saveUnavailability() {
 
 // Additional unavailability functionality
 function initUnavailabilityControls() {
-    // Available All Days button
+    // Available All Days button - remove existing event listeners to prevent duplicates
     const availableAllBtn = document.getElementById('available-all-days-btn');
     if (availableAllBtn) {
-        availableAllBtn.addEventListener('click', function() {
+        // Clone and replace to remove all existing event listeners
+        const newAvailableAllBtn = availableAllBtn.cloneNode(true);
+        availableAllBtn.parentNode.replaceChild(newAvailableAllBtn, availableAllBtn);
+        
+        newAvailableAllBtn.addEventListener('click', function() {
             if (!currentUnitId) {
                 alert('No unit selected');
                 return;
@@ -2588,10 +2592,14 @@ function initUnavailabilityControls() {
         });
     }
     
-    // Refresh button
+    // Refresh button - remove existing event listeners to prevent duplicates
     const refreshBtn = document.getElementById('refresh-unavailability');
     if (refreshBtn) {
-        refreshBtn.addEventListener('click', function() {
+        // Clone and replace to remove all existing event listeners
+        const newRefreshBtn = refreshBtn.cloneNode(true);
+        refreshBtn.parentNode.replaceChild(newRefreshBtn, refreshBtn);
+        
+        newRefreshBtn.addEventListener('click', function() {
             loadUnavailabilityData();
             generateCalendar();
             updateRecentUnavailabilityList();

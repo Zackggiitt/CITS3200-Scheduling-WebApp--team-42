@@ -200,11 +200,12 @@
     </div>
 </section>
 
+{% if current_unit and not availability_configured %}
 <section id="unavailability-alert" class="main-content-wrapper">
     <div class="alert-bar">
         <div class="alert-content">
             <span class="material-icons" aria-hidden="true">warning</span>
-            <p><strong>Unavailability Update!</strong> Ensure your unavailabilities is up to date across all units.</p>
+            <p><strong>Unavailability Update!</strong> Ensure your unavailability is up to date for {{ current_unit.unit_code }}.</p>
         </div>
         <a href="#" class="alert-button" id="update-now-btn">
             <span>Update Now</span>
@@ -212,6 +213,7 @@
         </a>
     </div>
 </section>
+{% endif %}
 <section id="stats" class="main-content-wrapper">
     <div class="stats-grid">
         {% if current_unit %}
