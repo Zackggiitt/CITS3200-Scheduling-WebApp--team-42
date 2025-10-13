@@ -3071,8 +3071,19 @@ def publish_schedule(unit_id: int):
             for session in sessions:
                 # Get facilitators assigned to this session
                 assignments = Assignment.query.filter_by(session_id=session.id).all()
+                
+                # Track which facilitators we've already added this session for (prevent duplicates)
+                processed_facilitators = set()
+                
                 for assignment in assignments:
                     facilitator_id = assignment.facilitator_id
+                    
+                    # Skip if we've already added this session for this facilitator
+                    if facilitator_id in processed_facilitators:
+                        print(f"⚠️ Skipping duplicate assignment: facilitator {facilitator_id} already has session {session.id}")
+                        continue
+                    
+                    processed_facilitators.add(facilitator_id)
                     
                     if facilitator_id not in facilitator_sessions:
                         facilitator_sessions[facilitator_id] = []

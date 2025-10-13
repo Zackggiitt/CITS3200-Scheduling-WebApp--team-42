@@ -169,11 +169,16 @@ def dashboard():
         end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
 
         # Base query for user's assignments within this unit
+        # Only show published sessions to facilitators
         base_q = (
             db.session.query(Assignment, Session, Module)
             .join(Session, Assignment.session_id == Session.id)
             .join(Module, Session.module_id == Module.id)
-            .filter(Assignment.facilitator_id == user.id, Module.unit_id == unit_id_int)
+            .filter(
+                Assignment.facilitator_id == user.id, 
+                Module.unit_id == unit_id_int,
+                Session.status == 'published'  # Only show published sessions
+            )
         )
 
         # Total hours for the unit
