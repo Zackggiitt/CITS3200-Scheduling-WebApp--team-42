@@ -152,7 +152,7 @@ def _serialize_session(s: Session, venues_by_name=None):
             if assignment.facilitator:
                 facilitator_info = {
                     "id": assignment.facilitator.id,
-                    "name": f"{assignment.facilitator.first_name} {assignment.facilitator.last_name}",
+                    "name": assignment.facilitator.full_name,
                     "email": assignment.facilitator.email,
                     "role": getattr(assignment, 'role', 'lead'),  # Default to 'lead' if role not set
                     "is_confirmed": assignment.is_confirmed
@@ -3808,7 +3808,7 @@ def get_dashboard_sessions(unit_id: int):
             for session_assignment in session.assignments:
                 if session_assignment.facilitator:
                     facilitators.append({
-                        "name": f"{session_assignment.facilitator.first_name or ''} {session_assignment.facilitator.last_name or ''}".strip() or session_assignment.facilitator.email,
+                        "name": session_assignment.facilitator.full_name,
                         "initials": f"{session_assignment.facilitator.first_name[0] if session_assignment.facilitator.first_name else ''}{session_assignment.facilitator.last_name[0] if session_assignment.facilitator.last_name else ''}".upper() or session_assignment.facilitator.email[0].upper(),
                         "role": getattr(session_assignment, 'role', 'lead'),
                         "is_confirmed": session_assignment.is_confirmed
@@ -3837,7 +3837,7 @@ def get_dashboard_sessions(unit_id: int):
             for session_assignment in session.assignments:
                 if session_assignment.facilitator:
                     facilitators.append({
-                        "name": f"{session_assignment.facilitator.first_name or ''} {session_assignment.facilitator.last_name or ''}".strip() or session_assignment.facilitator.email,
+                        "name": session_assignment.facilitator.full_name,
                         "initials": f"{session_assignment.facilitator.first_name[0] if session_assignment.facilitator.first_name else ''}{session_assignment.facilitator.last_name[0] if session_assignment.facilitator.last_name else ''}".upper() or session_assignment.facilitator.email[0].upper(),
                         "role": getattr(session_assignment, 'role', 'lead'),
                         "is_confirmed": session_assignment.is_confirmed
