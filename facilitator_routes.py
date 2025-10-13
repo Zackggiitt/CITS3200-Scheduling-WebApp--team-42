@@ -1325,15 +1325,15 @@ def create_swap_request():
     if existing_request:
         return jsonify({'error': 'Swap request already exists for these assignments'}), 400
     
-    # Create swap request
+    # Create swap request (simplified - no approval needed)
     swap_request = SwapRequest(
         requester_id=user.id,
         target_id=target_facilitator_id,
         requester_assignment_id=requester_assignment_id,
         target_assignment_id=target_assignment_id,
         reason="Session swap request",
-        status=SwapStatus.FACILITATOR_PENDING,
-        facilitator_confirmed=False
+        status=SwapStatus.PENDING,  # Simple pending status for notification
+        facilitator_confirmed=True  # No approval needed
     )
     
     try:
@@ -1399,16 +1399,23 @@ def get_swap_requests():
         }
     
     # Group requests by status
+    incoming_requests = []
     pending_requests = []
     approved_requests = []
     declined_requests = []
     
-    all_requests = my_requests + requests_for_me
-    
-    for req in all_requests:
+    # Process incoming requests (requests sent TO this user)
+    for req in requests_for_me:
         serialized = serialize_swap_request(req)
+        serialized['is_incoming'] = True
+        incoming_requests.append(serialized)
+    
+    # Process outgoing requests (requests made BY this user)
+    for req in my_requests:
+        serialized = serialize_swap_request(req)
+        serialized['is_incoming'] = False
         
-        if req.status in [SwapStatus.FACILITATOR_PENDING, SwapStatus.COORDINATOR_PENDING]:
+        if req.status in [SwapStatus.FACILITATOR_PENDING, SwapStatus.COORDINATOR_PENDING, SwapStatus.PENDING]:
             pending_requests.append(serialized)
         elif req.status == SwapStatus.APPROVED:
             approved_requests.append(serialized)
@@ -1416,6 +1423,7 @@ def get_swap_requests():
             declined_requests.append(serialized)
     
     return jsonify({
+        'incoming_requests': incoming_requests,
         'pending_requests': pending_requests,
         'approved_requests': approved_requests,
         'declined_requests': declined_requests
@@ -1595,6 +1603,115 @@ def facilitator_response_to_swap(request_id):
         return jsonify({'error': f'Failed to process response: {str(e)}'}), 500
 
 
+@facilitator_bp.route('/available-facilitators', methods=['GET'])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def get_available_facilitators():
+    """Get available facilitators for a specific session swap."""
+    user = get_current_user()
+    session_id = request.args.get('session_id', type=int)
+    unit_id = request.args.get('unit_id', type=int)
+    
+    if not session_id:
+        return jsonify({'error': 'Session ID is required'}), 400
+    
+    # Get the session details
+    session = Session.query.get(session_id)
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+    
+    # Get the module and unit
+    module = Module.query.get(session.module_id)
+    if not module:
+        return jsonify({'error': 'Module not found'}), 404
+    
+    unit = Unit.query.get(module.unit_id)
+    if not unit:
+        return jsonify({'error': 'Unit not found'}), 404
+    
+    # Verify user has access to this unit
+    user_unit_access = (
+        db.session.query(Unit)
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(Unit.id == unit.id, UnitFacilitator.user_id == user.id)
+        .first()
+    )
+    
+    if not user_unit_access:
+        return jsonify({'error': 'Access denied to this unit'}), 403
+    
+    # Get all facilitators assigned to this unit (excluding the current user)
+    unit_facilitators = (
+        db.session.query(User)
+        .join(UnitFacilitator, User.id == UnitFacilitator.user_id)
+        .filter(
+            UnitFacilitator.unit_id == unit.id,
+            User.id != user.id,  # Exclude current user
+            User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR])
+        )
+        .all()
+    )
+    
+    available_facilitators = []
+    
+    for facilitator in unit_facilitators:
+        # Check availability for the session time
+        is_available, reason = check_facilitator_availability(
+            facilitator.id,
+            session.start_time.date(),
+            session.start_time.time(),
+            session.end_time.time(),
+            unit.id
+        )
+        
+        # Check if facilitator has required skills for this module
+        has_skills = True
+        skill_level = "No skills recorded"
+        
+        facilitator_skill = FacilitatorSkill.query.filter_by(
+            facilitator_id=facilitator.id,
+            module_id=module.id
+        ).first()
+        
+        if facilitator_skill:
+            skill_level = facilitator_skill.skill_level.value.replace('_', ' ').title()
+            # Only include facilitators with some level of skill (not "no_interest")
+            if facilitator_skill.skill_level.value == 'no_interest':
+                has_skills = False
+        
+        if is_available and has_skills:
+            available_facilitators.append({
+                'id': facilitator.id,
+                'name': facilitator.full_name,
+                'email': facilitator.email,
+                'skill_level': skill_level,
+                'reason': 'Available'
+            })
+        elif not is_available:
+            available_facilitators.append({
+                'id': facilitator.id,
+                'name': facilitator.full_name,
+                'email': facilitator.email,
+                'skill_level': skill_level,
+                'reason': reason,
+                'available': False
+            })
+    
+    # Sort by availability status and name
+    available_facilitators.sort(key=lambda x: (x.get('available', True), x['name']))
+    
+    return jsonify({
+        'session': {
+            'id': session.id,
+            'module_name': module.module_name,
+            'start_time': session.start_time.isoformat(),
+            'end_time': session.end_time.isoformat(),
+            'location': session.location
+        },
+        'facilitators': available_facilitators
+    })
+
+
 # -------------------------- Unavailability (Facilitator) --------------------------
 @facilitator_bp.get("/unavailability")
 @login_required
@@ -1706,3 +1823,112 @@ def coordinator_response_to_swap(request_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Failed to process response: {str(e)}'}), 500
+
+
+@facilitator_bp.route('/available-facilitators', methods=['GET'])
+@login_required
+@role_required(UserRole.FACILITATOR)
+def get_available_facilitators():
+    """Get available facilitators for a specific session swap."""
+    user = get_current_user()
+    session_id = request.args.get('session_id', type=int)
+    unit_id = request.args.get('unit_id', type=int)
+    
+    if not session_id:
+        return jsonify({'error': 'Session ID is required'}), 400
+    
+    # Get the session details
+    session = Session.query.get(session_id)
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+    
+    # Get the module and unit
+    module = Module.query.get(session.module_id)
+    if not module:
+        return jsonify({'error': 'Module not found'}), 404
+    
+    unit = Unit.query.get(module.unit_id)
+    if not unit:
+        return jsonify({'error': 'Unit not found'}), 404
+    
+    # Verify user has access to this unit
+    user_unit_access = (
+        db.session.query(Unit)
+        .join(UnitFacilitator, Unit.id == UnitFacilitator.unit_id)
+        .filter(Unit.id == unit.id, UnitFacilitator.user_id == user.id)
+        .first()
+    )
+    
+    if not user_unit_access:
+        return jsonify({'error': 'Access denied to this unit'}), 403
+    
+    # Get all facilitators assigned to this unit (excluding the current user)
+    unit_facilitators = (
+        db.session.query(User)
+        .join(UnitFacilitator, User.id == UnitFacilitator.user_id)
+        .filter(
+            UnitFacilitator.unit_id == unit.id,
+            User.id != user.id,  # Exclude current user
+            User.role.in_([UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR])
+        )
+        .all()
+    )
+    
+    available_facilitators = []
+    
+    for facilitator in unit_facilitators:
+        # Check availability for the session time
+        is_available, reason = check_facilitator_availability(
+            facilitator.id,
+            session.start_time.date(),
+            session.start_time.time(),
+            session.end_time.time(),
+            unit.id
+        )
+        
+        # Check if facilitator has required skills for this module
+        has_skills = True
+        skill_level = "No skills recorded"
+        
+        facilitator_skill = FacilitatorSkill.query.filter_by(
+            facilitator_id=facilitator.id,
+            module_id=module.id
+        ).first()
+        
+        if facilitator_skill:
+            skill_level = facilitator_skill.skill_level.value.replace('_', ' ').title()
+            # Only include facilitators with some level of skill (not "no_interest")
+            if facilitator_skill.skill_level.value == 'no_interest':
+                has_skills = False
+        
+        if is_available and has_skills:
+            available_facilitators.append({
+                'id': facilitator.id,
+                'name': facilitator.full_name,
+                'email': facilitator.email,
+                'skill_level': skill_level,
+                'reason': 'Available'
+            })
+        elif not is_available:
+            available_facilitators.append({
+                'id': facilitator.id,
+                'name': facilitator.full_name,
+                'email': facilitator.email,
+                'skill_level': skill_level,
+                'reason': reason,
+                'available': False
+            })
+    
+    # Sort by availability status and name
+    available_facilitators.sort(key=lambda x: (x.get('available', True), x['name']))
+    
+    return jsonify({
+        'session': {
+            'id': session.id,
+            'module_name': module.module_name,
+            'start_time': session.start_time.isoformat(),
+            'end_time': session.end_time.isoformat(),
+            'location': session.location
+        },
+        'facilitators': available_facilitators
+    })

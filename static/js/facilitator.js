@@ -2952,10 +2952,12 @@ async function loadSwapRequests() {
 
 // Update request count badges
 function updateRequestCounts(data) {
+    const incomingCount = document.getElementById('incoming-count');
     const pendingCount = document.getElementById('pending-count');
     const approvedCount = document.getElementById('approved-count');
     const declinedCount = document.getElementById('declined-count');
     
+    if (incomingCount) incomingCount.textContent = data.incoming_requests ? data.incoming_requests.length : 0;
     if (pendingCount) pendingCount.textContent = data.pending_requests.length;
     if (approvedCount) approvedCount.textContent = data.approved_requests.length;
     if (declinedCount) declinedCount.textContent = data.declined_requests.length;
@@ -2963,6 +2965,7 @@ function updateRequestCounts(data) {
 
 // Render swap requests in their respective sections
 function renderSwapRequests(data) {
+    renderRequestSection('incoming-requests-list', data.incoming_requests || [], 'incoming');
     renderRequestSection('pending-requests-list', data.pending_requests, 'pending');
     renderRequestSection('approved-requests-list', data.approved_requests, 'approved');
     renderRequestSection('declined-requests-list', data.declined_requests, 'declined');
@@ -3004,7 +3007,7 @@ function createRequestCard(request, status) {
                 </div>
                 <div class="detail-item">
                     <span class="material-icons">person</span>
-                    <span>Suggested facilitator: ${request.target_name}</span>
+                    <span>${request.is_incoming ? `Request from: ${request.requester_name}` : `Suggested facilitator: ${request.target_name}`}</span>
                 </div>
                 <div class="detail-item">
                     <span class="material-icons">schedule</span>
@@ -3191,7 +3194,7 @@ async function handleSessionSelectionChange(event) {
     try {
         // Include unit context in the request
         const currentUnitId = window.currentUnitId;
-        const url = `/facilitator/available-facilitators/${assignmentId}?unit_id=${currentUnitId}`;
+        const url = `/facilitator/available-facilitators?session_id=${assignmentId}&unit_id=${currentUnitId}`;
         
         const response = await fetch(url, {
             method: 'GET',
@@ -3206,8 +3209,8 @@ async function handleSessionSelectionChange(event) {
         }
         
         const data = await response.json();
-        availableFacilitators = data.available_facilitators;
-        populateFacilitatorDropdown(data.available_facilitators);
+        availableFacilitators = data.facilitators;
+        populateFacilitatorDropdown(data.facilitators);
         
     } catch (error) {
         console.error('Error loading available facilitators:', error);
@@ -3227,7 +3230,17 @@ function populateFacilitatorDropdown(facilitators) {
     facilitators.forEach(facilitator => {
         const option = document.createElement('option');
         option.value = facilitator.id;
-        option.textContent = facilitator.name;
+        
+        // Show availability status and skill level
+        let displayText = facilitator.name;
+        if (facilitator.available === false) {
+            displayText += ` (Unavailable - ${facilitator.reason})`;
+        } else {
+            displayText += ` (Available - ${facilitator.skill_level})`;
+        }
+        
+        option.textContent = displayText;
+        option.disabled = facilitator.available === false;
         facilitatorSelect.appendChild(option);
     });
 }
