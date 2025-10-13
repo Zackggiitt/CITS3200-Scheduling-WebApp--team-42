@@ -883,7 +883,20 @@ def dashboard():
             # 1. Have unavailability entries (meaning they've configured their availability), OR
             # 2. Have no unavailability entries (meaning they're available all the time via "Available All Days")
             # This ensures facilitators who use "Available All Days" are properly recognized as having availability configured
-            has_avail = True  # All facilitators are considered to have availability configured
+            
+            # Check if facilitator has any unavailability entries for this unit
+            unavailability_count = (
+                db.session.query(Unavailability.id)
+                .filter(
+                    Unavailability.user_id == f.id,
+                    Unavailability.unit_id == current_unit.id
+                )
+                .count()
+            )
+            
+            # For now, we consider facilitators to have availability configured if they have at least one unavailability entry
+            # In the future, we might want to track explicit "availability configured" status
+            has_avail = unavailability_count > 0
 
             has_skills = (
                 db.session.query(FacilitatorSkill.id)
@@ -1209,7 +1222,20 @@ def admin_dashboard():
             # 1. Have unavailability entries (meaning they've configured their availability), OR
             # 2. Have no unavailability entries (meaning they're available all the time via "Available All Days")
             # This ensures facilitators who use "Available All Days" are properly recognized as having availability configured
-            has_avail = True  # All facilitators are considered to have availability configured
+            
+            # Check if facilitator has any unavailability entries for this unit
+            unavailability_count = (
+                db.session.query(Unavailability.id)
+                .filter(
+                    Unavailability.user_id == f.id,
+                    Unavailability.unit_id == current_unit.id
+                )
+                .count()
+            )
+            
+            # For now, we consider facilitators to have availability configured if they have at least one unavailability entry
+            # In the future, we might want to track explicit "availability configured" status
+            has_avail = unavailability_count > 0
 
             has_skills = (
                 db.session.query(FacilitatorSkill.id)
