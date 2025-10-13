@@ -2092,6 +2092,21 @@ function initUnavailabilityView() {
     // Initialize AJAX features
     initializeAJAXFeatures();
     
+    // Delete All Unavailabilities button handler
+    const deleteAllBtn = document.getElementById('delete-all-unavailabilities-btn');
+    if (deleteAllBtn) {
+        deleteAllBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Show confirmation dialog
+            const confirmed = confirm('Are you sure you want to delete all your unavailabilities? This action cannot be undone.');
+            
+            if (confirmed) {
+                deleteAllUnavailabilities();
+            }
+        });
+    }
+    
 }
 
 function updateUnavailabilityViewForUnit(unit) {
@@ -2497,6 +2512,10 @@ function saveUnavailability() {
     const date = modal.dataset.currentDate;
     
     if (!date || !currentUnitId) return;
+    if (window.isSchedulePublished) {
+        showNotification("This unit's schedule has been published. Editing unavailability is disabled.", 'warning');
+        return;
+    }
     
     const isFullDay = document.getElementById('full-day-toggle').checked;
     const isRecurring = document.getElementById('recurring-toggle').checked;
@@ -2563,6 +2582,19 @@ function saveUnavailability() {
         // Close modal
         modal.style.display = 'none';
         
+        // Show success message with optional warning
+        let message = result.message || 'Unavailability saved successfully';
+        if (result.warning) {
+            message += '\n\n' + result.warning;
+        }
+        
+        // Use the notification system if available, otherwise fallback to alert
+        if (typeof showNotification === 'function') {
+            showNotification(message, 'success');
+        } else {
+            alert(message);
+        }
+        
         console.log('Unavailability saved successfully');
     })
     .catch(error => {
@@ -2582,6 +2614,10 @@ function initUnavailabilityControls() {
                 return;
             }
             
+            if (window.isSchedulePublished) {
+                showNotification("This unit's schedule has been published. Editing unavailability is disabled.", 'warning');
+                return;
+            }
             if (confirm('Are you sure you want to clear all unavailability and mark yourself as available for all days in this unit?')) {
                 clearAllUnavailability();
             }
@@ -3563,6 +3599,10 @@ async function saveSkills() {
         console.error('No unit selected');
         return;
     }
+    if (window.isSchedulePublished) {
+        showNotification("This unit's schedule has been published. Editing skills is disabled.", 'warning');
+        return;
+    }
 
     // Collect all skill selections and experience descriptions
     const skillSelections = {};
@@ -3650,7 +3690,128 @@ function displaySkillsError() {
 
 // Show notification (reuse existing notification system)
 function showNotification(message, type = 'info') {
-    // This would integrate with your existing notification system
-    console.log(`${type.toUpperCase()}: ${message}`);
-    // You can implement a toast notification here
+    const container = document.getElementById('notification-container');
+    const notification = document.getElementById('notification');
+    const icon = document.getElementById('notification-icon');
+    const messageEl = document.getElementById('notification-message');
+    const closeBtn = document.getElementById('notification-close');
+    
+    if (!container || !notification || !icon || !messageEl) {
+        console.error('Notification elements not found');
+        return;
+    }
+    
+    // Set message
+    messageEl.textContent = message;
+    
+    // Set icon and type-specific styling
+    notification.className = `notification ${type}`;
+    
+    switch (type) {
+        case 'success':
+            icon.innerHTML = '<span class="material-icons">check_circle</span>';
+            break;
+        case 'error':
+            icon.innerHTML = '<span class="material-icons">error</span>';
+            break;
+        case 'warning':
+            icon.innerHTML = '<span class="material-icons">warning</span>';
+            break;
+        case 'info':
+        default:
+            icon.innerHTML = '<span class="material-icons">info</span>';
+            break;
+    }
+    
+    // Show notification
+    notification.classList.add('show');
+    
+    // Auto-hide after 4 seconds
+    const autoHide = setTimeout(() => {
+        hideNotification();
+    }, 4000);
+    
+    // Close button handler
+    closeBtn.onclick = () => {
+        clearTimeout(autoHide);
+        hideNotification();
+    };
+    
+    // Click outside to close
+    notification.onclick = (e) => {
+        if (e.target === notification || e.target === messageEl) {
+            clearTimeout(autoHide);
+            hideNotification();
+        }
+    };
+}
+
+function hideNotification() {
+    const notification = document.getElementById('notification');
+    if (notification) {
+        notification.classList.remove('show');
+    }
+}
+
+// Delete all unavailabilities function
+function deleteAllUnavailabilities() {
+    const currentUnitId = window.currentUnitId;
+    
+    if (!currentUnitId) {
+        alert('No unit selected');
+        return;
+    }
+    
+    // Show loading state
+    const deleteBtn = document.getElementById('delete-all-unavailabilities-btn');
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Deleting...';
+    }
+    
+    fetch('/facilitator/unavailability/clear-all', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': window.csrfToken
+        },
+        body: JSON.stringify({
+            unit_id: currentUnitId
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.error) {
+            throw new Error(result.error);
+        }
+        
+        // Reload unavailability data
+        loadUnavailabilityData();
+        
+        // Show success message
+        const message = result.message || 'All unavailabilities deleted successfully';
+        if (typeof showNotification === 'function') {
+            showNotification(message, 'success');
+        } else {
+            alert(message);
+        }
+        
+        console.log('All unavailabilities deleted successfully');
+    })
+    .catch(error => {
+        console.error('Error deleting all unavailabilities:', error);
+        const errorMessage = error.message || 'Failed to delete all unavailabilities';
+        if (typeof showNotification === 'function') {
+            showNotification(errorMessage, 'error');
+        } else {
+            alert('Error: ' + errorMessage);
+        }
+    })
+    .finally(() => {
+        // Reset button state
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = '<span class="material-icons">delete_sweep</span> Delete All';
+        }
+    });
 }

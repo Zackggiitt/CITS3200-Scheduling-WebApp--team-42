@@ -131,29 +131,48 @@ def signup():
                 flash("Invalid setup link. Please use the link from your email.")
                 return redirect(url_for("login"))
 
+        # Get checkbox values
+        data_privacy_consent = request.form.get("data_privacy_consent")
+        unavailability_consent = request.form.get("unavailability_consent")
+
+        # Get user role for template context
+        existing_user = User.query.filter_by(email=email).first()
+        role_name = "Unit Coordinator" if existing_user and existing_user.role == UserRole.UNIT_COORDINATOR else "Facilitator" if existing_user and existing_user.role == UserRole.FACILITATOR else None
+
         # Validation
         if not all([first, last, phone, email, password, confirm_password]):
             flash("All fields except staff number are required!")
-            return render_template("signup.html", email=email, token=token, 
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
+        
+        # Check data privacy consent (required for all users)
+        if not data_privacy_consent:
+            flash("You must agree to the data privacy statement to continue!")
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
                                  first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         # Check if passwords match
         if password != confirm_password:
             flash("Passwords do not match!")
-            return render_template("signup.html", email=email, token=token,
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
                                  first_name=first, last_name=last, phone=phone, staff_number=staff_number)
 
         # Check if email was pre-registered by admin
-        existing_user = User.query.filter_by(email=email).first()
         if not existing_user or existing_user.role not in [UserRole.FACILITATOR, UserRole.UNIT_COORDINATOR]:
             flash("This email is not authorized to sign up. Please contact your administrator.")
-            return render_template("signup.html", email=email, token=token,
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
+                                 first_name=first, last_name=last, phone=phone, staff_number=staff_number)
+        
+        # Check facilitator-specific unavailability consent
+        if existing_user.role == UserRole.FACILITATOR and not unavailability_consent:
+            flash("Facilitators must consent to unavailability data sharing to continue!")
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
                                  first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         # Check if user has already completed signup (has name set)
         if existing_user.first_name and existing_user.last_name:
             flash("This account has already been set up. Please log in instead.")
-            return render_template("signup.html", email=email, token=token,
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
                                  first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         # Check if staff number already exists (only if provided)
@@ -161,7 +180,7 @@ def signup():
             existing_staff = User.query.filter_by(staff_number=staff_number).first()
             if existing_staff and existing_staff.id != existing_user.id:
                 flash("Staff number already exists!")
-                return render_template("signup.html", email=email, token=token,
+                return render_template("signup.html", email=email, token=token, role_name=role_name,
                                      first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         # Phone validation - Australian mobile format (04XX XXX XXX)
@@ -169,33 +188,33 @@ def signup():
         phone_clean = phone.replace(" ", "").replace("-", "")
         if not re.match(r'^04\d{8}$', phone_clean):
             flash("Phone number must be in format 04XXXXXXXX (10 digits starting with 04)!")
-            return render_template("signup.html", email=email, token=token,
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
                                  first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         # Password validation
         if len(password) < 8:
             flash("Password must be at least 8 characters!")
-            return render_template("signup.html", email=email, token=token,
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
                                  first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         if not re.search(r'[A-Z]', password):
             flash("Password must contain at least one uppercase letter!")
-            return render_template("signup.html", email=email, token=token,
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
                                  first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         if not re.search(r'[a-z]', password):
             flash("Password must contain at least one lowercase letter!")
-            return render_template("signup.html", email=email, token=token,
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
                                  first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         if not re.search(r'[0-9]', password):
             flash("Password must contain at least one number!")
-            return render_template("signup.html", email=email, token=token,
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
                                  first_name=first, last_name=last, phone=phone, staff_number=staff_number)
         
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
             flash("Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)!")
-            return render_template("signup.html", email=email, token=token,
+            return render_template("signup.html", email=email, token=token, role_name=role_name,
                                  first_name=first, last_name=last, phone=phone, staff_number=staff_number)
 
         try:
@@ -221,7 +240,7 @@ def signup():
         except Exception as e:
             db.session.rollback()
             flash("Registration failed. Please try again.")
-            return render_template("signup.html", email=email, token=token)
+            return render_template("signup.html", email=email, token=token, role_name=role_name)
     
     return render_template("signup.html")
 

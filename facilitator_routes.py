@@ -286,6 +286,7 @@ def dashboard():
             'semester': current_unit.semester,
             'start_date': current_unit.start_date.isoformat() if current_unit.start_date else None,
             'end_date': current_unit.end_date.isoformat() if current_unit.end_date else None,
+            'schedule_status': getattr(current_unit, 'schedule_status', None).value if getattr(current_unit, 'schedule_status', None) else 'draft',
             'description': current_unit.description
         }
     
@@ -386,6 +387,7 @@ def dashboard():
             'semester': unit.semester,
             'start_date': unit.start_date.isoformat() if unit.start_date else None,
             'end_date': unit.end_date.isoformat() if unit.end_date else None,
+            'schedule_status': getattr(unit, 'schedule_status', None).value if getattr(unit, 'schedule_status', None) else 'draft',
             'status': 'active' if is_active else 'completed',
             'sessions': session_count,
             'date_range': f"{unit.start_date.strftime('%d/%m/%Y')} - {unit.end_date.strftime('%d/%m/%Y')}" if unit.start_date and unit.end_date else 'No date range',
@@ -450,10 +452,11 @@ def profile():
     # Facilitator Information Calculations
     facilitator_info = calculate_facilitator_info(user, today)
     
-    return render_template("facilitator_profile.html", 
-                         user=user, 
+    return render_template("facilitator_profile.html",
+                         user=user,
                          units=units,
-                         facilitator_info=facilitator_info)
+                         facilitator_info=facilitator_info,
+                         current_user=user)
 
 
 def calculate_facilitator_info(user, today):
@@ -863,14 +866,19 @@ def create_unavailability():
     try:
         db.session.add(unavailability)
         
-        # Mark availability as configured since facilitator is setting unavailability
-        unit_facilitator = UnitFacilitator.query.filter_by(
-            user_id=user.id,
-            unit_id=unit_id
-        ).first()
+        # Clear "Available All Days" status when unavailability is added
+        import json
+        preferences = {}
+        if user.preferences:
+            try:
+                preferences = json.loads(user.preferences)
+            except:
+                preferences = {}
         
-        if unit_facilitator:
-            unit_facilitator.availability_configured = True
+        # Remove availability status for this unit since user is now setting specific unavailability
+        if 'availability_status' in preferences and str(unit_id) in preferences['availability_status']:
+            del preferences['availability_status'][str(unit_id)]
+            user.preferences = json.dumps(preferences)
         
         db.session.commit()
         
@@ -983,14 +991,21 @@ def clear_all_unavailability():
             unit_id=unit_id
         ).delete()
         
-        # Mark availability as configured since facilitator explicitly chose "Available All Days"
-        unit_facilitator = UnitFacilitator.query.filter_by(
-            user_id=user.id,
-            unit_id=unit_id
-        ).first()
+        # Mark user as "Available All Days" for this unit in preferences
+        import json
+        preferences = {}
+        if user.preferences:
+            try:
+                preferences = json.loads(user.preferences)
+            except:
+                preferences = {}
         
-        if unit_facilitator:
-            unit_facilitator.availability_configured = True
+        # Store availability status per unit
+        if 'availability_status' not in preferences:
+            preferences['availability_status'] = {}
+        
+        preferences['availability_status'][str(unit_id)] = 'available_all_days'
+        user.preferences = json.dumps(preferences)
         
         db.session.commit()
         
@@ -1030,10 +1045,18 @@ def generate_recurring_unavailability():
     recurring_interval = data.get('recurring_interval', 1)
     
     # Generate all dates for the recurring pattern
+    # IMPORTANT: Always respect unit end date - never generate unavailability beyond unit end date
+    effective_end_date = recurring_end_date
+    message = None
+    
+    if access.end_date and recurring_end_date > access.end_date:
+        effective_end_date = access.end_date
+        message = f"Recurring pattern will end on {access.end_date.strftime('%d/%m/%Y')} instead of {recurring_end_date.strftime('%d/%m/%Y')} (unit end date)"
+    
     dates = []
     current_date = base_date
     
-    while current_date <= recurring_end_date:
+    while current_date <= effective_end_date:
         dates.append(current_date)
         
         if recurring_pattern == RecurringPattern.DAILY:
@@ -1099,11 +1122,17 @@ def generate_recurring_unavailability():
     
     db.session.commit()
     
-    return jsonify({
+    response_data = {
         "message": f"Created {created_count} recurring unavailability entries",
         "total_dates": len(dates),
         "created_count": created_count
-    })
+    }
+    
+    # Add warning message if end date was adjusted
+    if message:
+        response_data["warning"] = message
+    
+    return jsonify(response_data)
 
 @facilitator_bp.route('/skills', methods=['GET', 'POST'])
 @facilitator_required
@@ -1168,7 +1197,36 @@ def manage_skills():
             if not unit_id:
                 return jsonify({"error": "Unit ID is required"}), 400
             
-            # Clear existing skills for this unit
+            # Use upsert logic: update existing skills or create new ones
+            for module_id, skill_level in skills.items():
+                try:
+                    experience_description = experience_descriptions.get(module_id, '')
+                    
+                    # Check if skill already exists for this facilitator and module
+                    existing_skill = FacilitatorSkill.query.filter_by(
+                        facilitator_id=user.id,
+                        module_id=int(module_id)
+                    ).first()
+                    
+                    if existing_skill:
+                        # Update existing skill
+                        existing_skill.skill_level = SkillLevel(skill_level)
+                        existing_skill.experience_description = experience_description
+                        existing_skill.updated_at = datetime.utcnow()
+                    else:
+                        # Create new skill
+                        facilitator_skill = FacilitatorSkill(
+                            facilitator_id=user.id,
+                            module_id=int(module_id),
+                            skill_level=SkillLevel(skill_level),
+                            experience_description=experience_description
+                        )
+                        db.session.add(facilitator_skill)
+                        
+                except ValueError:
+                    return jsonify({"error": f"Invalid skill level: {skill_level}"}), 400
+            
+            # Remove skills that are no longer selected (set to 'unassigned' or not in the skills dict)
             existing_skills = db.session.query(FacilitatorSkill).join(
                 Module, FacilitatorSkill.module_id == Module.id
             ).filter(
@@ -1177,21 +1235,8 @@ def manage_skills():
             ).all()
             
             for skill in existing_skills:
-                db.session.delete(skill)
-            
-            # Add new skills
-            for module_id, skill_level in skills.items():
-                try:
-                    experience_description = experience_descriptions.get(module_id, '')
-                    facilitator_skill = FacilitatorSkill(
-                        facilitator_id=user.id,
-                        module_id=int(module_id),
-                        skill_level=SkillLevel(skill_level),
-                        experience_description=experience_description
-                    )
-                    db.session.add(facilitator_skill)
-                except ValueError:
-                    return jsonify({"error": f"Invalid skill level: {skill_level}"}), 400
+                if str(skill.module_id) not in skills:
+                    db.session.delete(skill)
             
             db.session.commit()
             return jsonify({
