@@ -2450,30 +2450,48 @@ def auto_assign_facilitators(unit_id: int):
                 "conflicts": conflicts
             }), 400
         
+        # Clean up existing assignments for this unit before creating new ones
+        # Get all sessions for this unit
+        unit_sessions = (
+            db.session.query(Session)
+            .join(Module)
+            .filter(Module.unit_id == unit_id)
+            .all()
+        )
+        
+        deleted_count = 0
+        if unit_sessions:
+            # Get session IDs for this unit
+            unit_session_ids = [session.id for session in unit_sessions]
+            
+            # Delete all existing assignments for sessions in this unit
+            existing_assignments = Assignment.query.filter(
+                Assignment.session_id.in_(unit_session_ids)
+            ).all()
+            
+            deleted_count = len(existing_assignments)
+            if deleted_count > 0:
+                logger.info(f"Removing {deleted_count} existing assignments for unit {unit_id}")
+                for assignment in existing_assignments:
+                    db.session.delete(assignment)
+        
         # Create actual Assignment records in the database
         created_assignments = []
         for assignment in assignments:
-            # Check if assignment already exists
-            existing = Assignment.query.filter_by(
+            new_assignment = Assignment(
                 session_id=assignment['session']['id'],
-                facilitator_id=assignment['facilitator']['id']
-            ).first()
-            
-            if not existing:
-                new_assignment = Assignment(
-                    session_id=assignment['session']['id'],
-                    facilitator_id=assignment['facilitator']['id'],
-                    is_confirmed=True,  # Auto-confirm assignments
-                    role=assignment.get('role', 'lead')  # Track lead vs support role
-                )
-                db.session.add(new_assignment)
-                created_assignments.append({
-                    'facilitator_name': assignment['facilitator']['name'],
-                    'session_name': assignment['session']['module_name'],
-                    'time': format_session_time(assignment['session']),
-                    'score': round(assignment['score'], 2),
-                    'role': assignment.get('role', 'lead')
-                })
+                facilitator_id=assignment['facilitator']['id'],
+                is_confirmed=True,  # Auto-confirm assignments
+                role=assignment.get('role', 'lead')  # Track lead vs support role
+            )
+            db.session.add(new_assignment)
+            created_assignments.append({
+                'facilitator_name': assignment['facilitator']['name'],
+                'session_name': assignment['session']['module_name'],
+                'time': format_session_time(assignment['session']),
+                'score': round(assignment['score'], 2),
+                'role': assignment.get('role', 'lead')
+            })
         
         db.session.commit()
         
@@ -2510,9 +2528,14 @@ def auto_assign_facilitators(unit_id: int):
         flask_session[f'schedule_report_{unit_id}'] = csv_filename
         flask_session[f'schedule_report_timestamp_{unit_id}'] = datetime.now().isoformat()
         
+        # Prepare success message
+        message = f"Successfully created {len(created_assignments)} assignments"
+        if deleted_count > 0:
+            message += f" (removed {deleted_count} previous assignments)"
+        
         return jsonify({
             "ok": True,
-            "message": f"Successfully created {len(created_assignments)} assignments",
+            "message": message,
             "assignments": created_assignments,
             "conflicts": conflicts,
             "metrics": metrics,

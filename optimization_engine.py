@@ -16,6 +16,7 @@ SOFT CONSTRAINTS (optimized for):
 
 import csv
 import io
+import random
 from datetime import datetime, time
 from models import User, UserRole, FacilitatorSkill, SkillLevel, db
 
@@ -338,8 +339,14 @@ def generate_optimal_assignments(facilitators, unit_id=None):
     assignments = []
     conflicts = []
     
+    # Add randomization: shuffle sessions to vary the assignment order
+    # This creates different but still optimal solutions on each run
+    sessions_copy = sessions.copy()
+    random.shuffle(sessions_copy)
+    
     # Sort sessions by priority (longer sessions first, then by required skill level)
-    sorted_sessions = sorted(sessions, key=lambda s: (-s['duration_hours'], -SKILL_SCORES.get(s['required_skill_level'], 0)))
+    # But add small random variation to break ties
+    sorted_sessions = sorted(sessions_copy, key=lambda s: (-s['duration_hours'], -SKILL_SCORES.get(s['required_skill_level'], 0), random.random()))
     
     for session in sorted_sessions:
         # Get staffing requirements from session
@@ -360,8 +367,12 @@ def generate_optimal_assignments(facilitators, unit_id=None):
             best_facilitator = None
             best_score = 0.0
             
+            # Shuffle facilitators to add variation in selection order
+            shuffled_facilitators = facilitators.copy()
+            random.shuffle(shuffled_facilitators)
+            
             # Find the best available facilitator for this lead role
-            for facilitator in facilitators:
+            for facilitator in shuffled_facilitators:
                 # Skip if already assigned to this session
                 if any(a['facilitator']['id'] == facilitator['id'] for a in session_assignments):
                     continue
@@ -384,6 +395,9 @@ def generate_optimal_assignments(facilitators, unit_id=None):
                 # Bonus for lead roles: prefer higher skill levels
                 skill_score = get_skill_score(facilitator, session)
                 score = score + (skill_score * 0.1)  # Add 10% bonus based on skill
+                
+                # Add small random variation (±5%) to introduce diversity while maintaining quality
+                score = score * (1 + random.uniform(-0.05, 0.05))
                 
                 if score > best_score:
                     best_score = score
@@ -409,8 +423,12 @@ def generate_optimal_assignments(facilitators, unit_id=None):
             best_facilitator = None
             best_score = 0.0
             
+            # Shuffle facilitators to add variation in selection order
+            shuffled_facilitators = facilitators.copy()
+            random.shuffle(shuffled_facilitators)
+            
             # Find the best available facilitator for this support role
-            for facilitator in facilitators:
+            for facilitator in shuffled_facilitators:
                 # Skip if already assigned to this session
                 if any(a['facilitator']['id'] == facilitator['id'] for a in session_assignments):
                     continue
@@ -429,6 +447,9 @@ def generate_optimal_assignments(facilitators, unit_id=None):
                     assignments, 
                     total_hours_per_facilitator
                 )
+                
+                # Add small random variation (±5%) to introduce diversity while maintaining quality
+                score = score * (1 + random.uniform(-0.05, 0.05))
                 
                 if score > best_score:
                     best_score = score

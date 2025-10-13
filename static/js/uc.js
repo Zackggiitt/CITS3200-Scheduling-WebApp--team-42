@@ -4356,7 +4356,7 @@ async function autoAssignFacilitators() {
   // Show loading state
   const originalText = autoAssignBtn.innerHTML;
   autoAssignBtn.disabled = true;
-  autoAssignBtn.innerHTML = '<span class="material-icons">hourglass_empty</span>Assigning...';
+  autoAssignBtn.innerHTML = '<span class="material-icons">hourglass_empty</span>Running Algorithm...';
 
   try {
     const url = withUnitId(window.FLASK_ROUTES.AUTO_ASSIGN_TEMPLATE, unitId);
@@ -4415,17 +4415,27 @@ async function autoAssignFacilitators() {
       
       alert(message);
       
+      // Refresh all views to show new assignments
+      if (window.calendar) {
+        window.calendar.refetchEvents();
+      }
+      
+      // Refresh the list view if it exists
+      if (typeof loadListSessionData === 'function') {
+        loadListSessionData();
+      }
+      
+      // Refresh the schedule view, upcoming sessions, and mini calendar
+      if (typeof loadScheduleSessions === 'function') {
+        // LoadScheduleSessions updates the schedule view, mini calendar, and upcoming sessions
+        setTimeout(() => {
+          loadScheduleSessions();
+        }, 500); // Small delay to ensure backend has processed the changes
+      }
+      
       // Show CSV download button if available
       if (data.csv_available && data.csv_download_url) {
         showCsvDownloadButton(data.csv_download_url);
-      }
-      
-      // Refresh the schedule view to show new assignments
-      if (typeof loadScheduleSessions === 'function') {
-        loadScheduleSessions();
-      }
-      if (typeof loadListSessionData === 'function') {
-        loadListSessionData();
       }
       
     } else {

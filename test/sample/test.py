@@ -52,9 +52,9 @@ def generate_random_unavailability(facilitator_id, unit):
     """Generate random unavailability periods for a facilitator between June 30 and July 18."""
     unavailabilities = []
     
-    # Fixed date range: June 30 to July 18
-    start_date = date(2024, 6, 30)
-    end_date = date(2024, 7, 18)
+    # Fixed date range: June 30 to July 18 (2025)
+    start_date = date(2025, 6, 30)
+    end_date = date(2025, 7, 18)
     
     # Randomly decide how many unavailability periods (0-5)
     num_unavailabilities = random.randint(0, 5)
@@ -168,26 +168,14 @@ def test_available_all_days_functionality():
         if initial_count == 0:
             print("⚠️  No unavailability found. Creating test unavailability entries...")
             
-            # Create some test unavailability entries
-            test_dates = [
-                date(2024, 7, 1),
-                date(2024, 7, 5),
-                date(2024, 7, 10),
-                date(2024, 7, 15)
-            ]
-            
-            for test_date in test_dates:
-                unavailability = Unavailability(
-                    user_id=facilitator.id,
-                    unit_id=unit.id,
-                    date=test_date,
-                    is_full_day=True,
-                    reason="Test unavailability for Available All Days test"
-                )
+            # Generate random test unavailability entries
+            test_unavailabilities = generate_random_unavailability(facilitator.id, unit)
+            for unavailability in test_unavailabilities:
+                unavailability.reason = "Test unavailability for Available All Days test"
                 db.session.add(unavailability)
             
             db.session.commit()
-            initial_count = len(test_dates)
+            initial_count = len(test_unavailabilities)
             print(f"✅ Created {initial_count} test unavailability entries")
         
         # Test the clear-all functionality
@@ -260,24 +248,25 @@ def demo_available_all_days_feature():
         
         print(f"\n📅 STEP 1: Creating sample unavailability entries...")
         
-        # Create sample unavailability entries
-        sample_dates = [
-            (date(2024, 7, 1), "Doctor's appointment"),
-            (date(2024, 7, 5), "Personal day"),
-            (date(2024, 7, 8), "Conference attendance"),
-            (date(2024, 7, 12), "Family event"),
-            (date(2024, 7, 15), "Holiday")
+        # Generate random sample unavailability entries
+        sample_unavailabilities = generate_random_unavailability(facilitator.id, unit)
+        
+        # Add some realistic reasons
+        reasons = [
+            "Doctor's appointment",
+            "Personal day",
+            "Conference attendance", 
+            "Family event",
+            "Holiday",
+            "Training session",
+            "Medical appointment",
+            "Personal commitment"
         ]
         
         created_count = 0
-        for unavail_date, reason in sample_dates:
-            unavailability = Unavailability(
-                user_id=facilitator.id,
-                unit_id=unit.id,
-                date=unavail_date,
-                is_full_day=True,
-                reason=reason
-            )
+        for unavailability in sample_unavailabilities:
+            # Assign a random realistic reason
+            unavailability.reason = random.choice(reasons)
             db.session.add(unavailability)
             created_count += 1
         
@@ -455,6 +444,24 @@ def create_facilitators_from_csv(csv_file_path, update_existing=False):
             for skill in skills:
                 db.session.add(skill)
                 skill_summary[skill.skill_level] += 1
+            
+            # Set availability_configured=True for all units to mark facilitators as having configured availability
+            for unit in units:
+                unit_facilitator = UnitFacilitator.query.filter_by(
+                    user_id=facilitator.id,
+                    unit_id=unit.id
+                ).first()
+                
+                if unit_facilitator:
+                    unit_facilitator.availability_configured = True
+                else:
+                    # Create UnitFacilitator record if it doesn't exist
+                    unit_facilitator = UnitFacilitator(
+                        user_id=facilitator.id,
+                        unit_id=unit.id,
+                        availability_configured=True
+                    )
+                    db.session.add(unit_facilitator)
             
             if is_update:
                 updated_count += 1
