@@ -870,7 +870,7 @@ def dashboard():
 
         fac_progress["total"] = len(links)
 
-        for _, f in links:
+        for uf, f in links:
             has_profile = bool(
                 (getattr(f, "first_name", None) or getattr(f, "last_name", None))
                 or getattr(f, "phone_number", None)
@@ -879,24 +879,8 @@ def dashboard():
             )
 
             # Check if facilitator has availability configured
-            # A facilitator is considered to have "availability set" if they either:
-            # 1. Have unavailability entries (meaning they've configured their availability), OR
-            # 2. Have no unavailability entries (meaning they're available all the time via "Available All Days")
-            # This ensures facilitators who use "Available All Days" are properly recognized as having availability configured
-            
-            # Check if facilitator has any unavailability entries for this unit
-            unavailability_count = (
-                db.session.query(Unavailability.id)
-                .filter(
-                    Unavailability.user_id == f.id,
-                    Unavailability.unit_id == current_unit.id
-                )
-                .count()
-            )
-            
-            # For now, we consider facilitators to have availability configured if they have at least one unavailability entry
-            # In the future, we might want to track explicit "availability configured" status
-            has_avail = unavailability_count > 0
+            # Use the explicit availability_configured flag from UnitFacilitator
+            has_avail = uf.availability_configured
 
             has_skills = (
                 db.session.query(FacilitatorSkill.id)
@@ -1209,7 +1193,7 @@ def admin_dashboard():
 
         fac_progress["total"] = len(links)
 
-        for _, f in links:
+        for uf, f in links:
             has_profile = bool(
                 (getattr(f, "first_name", None) or getattr(f, "last_name", None))
                 or getattr(f, "phone", None)
@@ -1218,24 +1202,8 @@ def admin_dashboard():
             )
 
             # Check if facilitator has availability configured
-            # A facilitator is considered to have "availability set" if they either:
-            # 1. Have unavailability entries (meaning they've configured their availability), OR
-            # 2. Have no unavailability entries (meaning they're available all the time via "Available All Days")
-            # This ensures facilitators who use "Available All Days" are properly recognized as having availability configured
-            
-            # Check if facilitator has any unavailability entries for this unit
-            unavailability_count = (
-                db.session.query(Unavailability.id)
-                .filter(
-                    Unavailability.user_id == f.id,
-                    Unavailability.unit_id == current_unit.id
-                )
-                .count()
-            )
-            
-            # For now, we consider facilitators to have availability configured if they have at least one unavailability entry
-            # In the future, we might want to track explicit "availability configured" status
-            has_avail = unavailability_count > 0
+            # Use the explicit availability_configured flag from UnitFacilitator
+            has_avail = uf.availability_configured
 
             has_skills = (
                 db.session.query(FacilitatorSkill.id)

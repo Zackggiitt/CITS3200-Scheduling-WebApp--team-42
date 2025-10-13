@@ -193,6 +193,7 @@ class UnitFacilitator(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    availability_configured = db.Column(db.Boolean, default=False)  # Track if facilitator has set up availability
 
     unit = db.relationship('Unit', backref=db.backref('unit_facilitators', cascade='all, delete-orphan', lazy=True))
     user = db.relationship('User', backref=db.backref('facilitated_units', lazy=True))
