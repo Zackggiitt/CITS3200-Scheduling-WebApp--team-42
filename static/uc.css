@@ -2281,7 +2281,7 @@ main {
 
 .facilitator-list-container {
   flex: 1;
-  overflow-y: auto;
+  overflow: visible;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
 }
@@ -4244,7 +4244,7 @@ main {
 .facilitator-modal-body {
   padding: 24px;
   flex: 1;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .session-info {

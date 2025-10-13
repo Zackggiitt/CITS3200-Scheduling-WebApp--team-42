@@ -4161,6 +4161,7 @@ function renderDaySessions(sessions, dayDate) {
 
 // Helper functions
 function getInitials(name) {
+  if (!name || typeof name !== 'string') return '??';
   return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
@@ -5155,10 +5156,10 @@ function openFacilitatorModalAfterDelay(element) {
   }
   
   currentSessionData = {
-    id: sessionCard.dataset.sessionId,
-    name: sessionCard.dataset.sessionName,
-    time: sessionCard.dataset.sessionTime,
-    location: sessionCard.dataset.sessionLocation
+    id: sessionCard.dataset.sessionId || null,
+    name: sessionCard.dataset.sessionName || 'Unknown Session',
+    time: sessionCard.dataset.sessionTime || 'Unknown Time',
+    location: sessionCard.dataset.sessionLocation || 'Unknown Location'
   };
   
   // Reset selection
@@ -5320,6 +5321,7 @@ function renderFacilitatorList() {
 
 // Get facilitator initials
 function getFacilitatorInitials(name) {
+  if (!name || typeof name !== 'string') return '??';
   return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
@@ -5331,16 +5333,20 @@ function toggleFacilitatorSelection(facilitatorId, facilitatorName, facilitatorE
   if (checkbox.checked) {
     // Add to selection if not already selected
     if (!selectedFacilitators.find(f => f.id === facilitatorId)) {
-      selectedFacilitators.push({
+      const newFacilitator = {
         id: facilitatorId,
         name: facilitatorName,
         email: facilitatorEmail
-      });
+      };
+      selectedFacilitators.push(newFacilitator);
+      console.log('Added facilitator to selection:', newFacilitator);
+      console.log('Current selectedFacilitators:', selectedFacilitators);
       facilitatorItem.classList.add('selected');
     }
   } else {
     // Remove from selection
     selectedFacilitators = selectedFacilitators.filter(f => f.id !== facilitatorId);
+    console.log('Removed facilitator from selection. Current selectedFacilitators:', selectedFacilitators);
     facilitatorItem.classList.remove('selected');
   }
   
@@ -5357,19 +5363,89 @@ function updateSelectButton() {
 }
 
 // Select multiple facilitators
-function selectMultipleFacilitators() {
+async function selectMultipleFacilitators() {
   if (selectedFacilitators.length === 0) return;
+  
+  // Filter out any null/undefined facilitators
+  selectedFacilitators = selectedFacilitators.filter(f => f && f.id);
+  
+  if (selectedFacilitators.length === 0) {
+    showSimpleNotification('No valid facilitators selected', 'error');
+    return;
+  }
   
   console.log('Selected facilitators:', selectedFacilitators);
   
-  // Update the session card to show "Pending" status with multiple facilitators
-  updateSessionStatusMultiple(currentSessionData.id, 'assigned', selectedFacilitators);
-  
-  // Show assignment confirmation popup for multiple facilitators
-  showMultipleAssignmentConfirmation(selectedFacilitators, currentSessionData.name);
-  
-  // Close modal
-  closeFacilitatorModal();
+  try {
+    // Get current unit ID
+    const unitId = getUnitId();
+    if (!unitId) {
+      showSimpleNotification('No unit selected', 'error');
+      return;
+    }
+    
+    // Validate session ID
+    if (!currentSessionData || !currentSessionData.id) {
+      showSimpleNotification('Session data is missing. Please try selecting the session again.', 'error');
+      return;
+    }
+    
+    const sessionId = currentSessionData.id;
+    if (sessionId.toString().startsWith('temp-')) {
+      showSimpleNotification('Cannot assign facilitators to temporary sessions. Please save the session first.', 'error');
+      return;
+    }
+    
+    // Send assignment to backend
+    const facilitatorIds = selectedFacilitators.map(f => f.id);
+    const response = await fetch(`/unitcoordinator/units/${unitId}/sessions/${sessionId}/assign`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify({
+        facilitator_ids: facilitatorIds
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      // Update the session card to show assigned status
+      if (currentSessionData && currentSessionData.id) {
+        updateSessionStatusMultiple(currentSessionData.id, 'assigned', selectedFacilitators);
+      }
+      
+      // Debug logging
+      console.log('About to show confirmation for selectedFacilitators:', selectedFacilitators);
+      
+      // Close modal
+      const modal = document.getElementById('facilitator-modal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+      
+      // Clear selectedFacilitators after a delay to allow popup to use them
+      setTimeout(() => {
+        selectedFacilitators = [];
+        allFacilitators = [];
+        filteredFacilitators = [];
+        currentSessionData = null;
+      }, 100);
+    } else {
+      throw new Error(result.error || 'Failed to assign facilitators');
+    }
+    
+  } catch (error) {
+    console.error('Error assigning facilitators:', error);
+    showSimpleNotification(`Error assigning facilitators: ${error.message}`, 'error');
+  }
 }
 
 // Update session status for multiple facilitators
@@ -5388,24 +5464,39 @@ function updateSessionStatusMultiple(sessionId, status, facilitators) {
     case 'pending':
       facilitatorElement.classList.add('pending');
       facilitatorElement.textContent = 'Pending';
-      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f.name).join(', ')}`;
+      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f?.name || 'Unknown').join(', ')}`;
       break;
     case 'assigned':
       facilitatorElement.classList.add('assigned');
-      facilitatorElement.textContent = facilitators.length > 1 ? `${facilitators.length} Facilitators` : getInitials(facilitators[0].name);
-      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f.name).join(', ')}`;
+      facilitatorElement.textContent = facilitators.length > 1 ? `${facilitators.length} Facilitators` : getInitials(facilitators[0]?.name || 'Unknown');
+      facilitatorElement.title = `Assigned to: ${facilitators.map(f => f?.name || 'Unknown').join(', ')}`;
+      
+      // Update session card data attributes for session details modal
+      const facilitatorNames = facilitators.map(f => f?.name || 'Unknown').join(', ');
+      sessionCard.setAttribute('data-facilitator-names', facilitatorNames);
+      sessionCard.setAttribute('data-session-status', 'approved');
       break;
     case 'unassigned':
     default:
       facilitatorElement.classList.add('unassigned');
       facilitatorElement.textContent = 'Unassigned';
       facilitatorElement.title = 'Click to assign facilitators';
+      
+      // Clear session card data attributes
+      sessionCard.removeAttribute('data-facilitator-names');
+      sessionCard.setAttribute('data-session-status', 'unassigned');
       break;
   }
 }
 
 // Show assignment confirmation for multiple facilitators
 function showMultipleAssignmentConfirmation(facilitators, sessionName) {
+  // Close any existing assignment confirmation popups first
+  closeAssignmentConfirmation();
+  
+  // Debug logging
+  console.log('showMultipleAssignmentConfirmation called with:', { facilitators, sessionName });
+  
   const popup = document.createElement('div');
   popup.className = 'assignment-confirmation-popup';
   popup.innerHTML = `
@@ -5417,17 +5508,20 @@ function showMultipleAssignmentConfirmation(facilitators, sessionName) {
       <div class="assignment-popup-body">
         <p>This session has been assigned to:</p>
         <div class="assigned-facilitators">
-          ${facilitators.map(facilitator => `
-            <div class="assigned-facilitator">
-              <div class="facilitator-avatar-large">
-                ${getFacilitatorInitials(facilitator.name)}
-              </div>
-              <div class="facilitator-details">
-                <div class="facilitator-name-large">${facilitator.name}</div>
-                <div class="session-name">${sessionName}</div>
-              </div>
-            </div>
-          `).join('')}
+          ${facilitators && facilitators.length > 0 
+            ? facilitators.map(facilitator => `
+                <div class="assigned-facilitator">
+                  <div class="facilitator-avatar-large">
+                    ${getFacilitatorInitials(facilitator?.name || 'Unknown')}
+                  </div>
+                  <div class="facilitator-details">
+                    <div class="facilitator-name-large">${facilitator?.name || 'Unknown'}</div>
+                    <div class="session-name">${sessionName}</div>
+                  </div>
+                </div>
+              `).join('')
+            : '<div class="assigned-facilitator"><div class="facilitator-name-large">Unknown Facilitator</div></div>'
+          }
         </div>
       </div>
       <div class="assignment-popup-footer">
@@ -5461,6 +5555,9 @@ function showMultipleAssignmentConfirmation(facilitators, sessionName) {
 
 // Assignment confirmation popup
 function showAssignmentConfirmation(facilitatorName, sessionName) {
+  // Close any existing assignment confirmation popups first
+  closeAssignmentConfirmation();
+  
   // Create popup modal
   const popup = document.createElement('div');
   popup.className = 'assignment-confirmation-popup';
@@ -5513,10 +5610,13 @@ function showAssignmentConfirmation(facilitatorName, sessionName) {
 
 // Close assignment confirmation popup
 function closeAssignmentConfirmation() {
-  const popup = document.querySelector('.assignment-confirmation-popup');
-  if (popup && popup.parentNode) {
-    popup.parentNode.removeChild(popup);
-  }
+  // Remove all assignment confirmation popups
+  const popups = document.querySelectorAll('.assignment-confirmation-popup');
+  popups.forEach(popup => {
+    if (popup && popup.parentNode) {
+      popup.parentNode.removeChild(popup);
+    }
+  });
 }
 
 // Search facilitators
@@ -5588,9 +5688,52 @@ function openSessionDetailsModal(sessionData) {
   if (nameEl) nameEl.textContent = sessionName;
   if (datetimeEl) datetimeEl.textContent = sessionData.day + ' ' + sessionData.time;
   if (locationEl) locationEl.textContent = location;
-  if (facilitatorEl) facilitatorEl.textContent = sessionData.facilitator || 'Unassigned';
+  
+  // Check if session card has updated facilitator data
+  const sessionCard = document.querySelector(`[data-session-id="${sessionData.id}"]`);
+  let facilitatorName = 'Unassigned';
+  let sessionStatus = 'Scheduled';
+  
+  if (sessionCard) {
+    const updatedFacilitatorNames = sessionCard.getAttribute('data-facilitator-names');
+    const updatedStatus = sessionCard.getAttribute('data-session-status');
+    
+    // Prioritize updated facilitator names over original session data
+    if (updatedFacilitatorNames) {
+      facilitatorName = updatedFacilitatorNames;
+    } else {
+      // Fall back to original session data, but extract name from email if needed
+      const originalFacilitator = sessionData.facilitator || 'Unassigned';
+      if (originalFacilitator !== 'Unassigned' && originalFacilitator.includes('@')) {
+        // If it's an email, try to get the name from the facilitator list
+        const facilitatorObj = allFacilitators.find(f => f.email === originalFacilitator);
+        facilitatorName = facilitatorObj ? facilitatorObj.name : originalFacilitator;
+      } else {
+        facilitatorName = originalFacilitator;
+      }
+    }
+    
+    if (updatedStatus) {
+      sessionStatus = updatedStatus.charAt(0).toUpperCase() + updatedStatus.slice(1);
+    } else {
+      sessionStatus = sessionData.status ? sessionData.status.charAt(0).toUpperCase() + sessionData.status.slice(1) : 'Scheduled';
+    }
+  } else {
+    // No session card found, use original data
+    const originalFacilitator = sessionData.facilitator || 'Unassigned';
+    if (originalFacilitator !== 'Unassigned' && originalFacilitator.includes('@')) {
+      // If it's an email, try to get the name from the facilitator list
+      const facilitatorObj = allFacilitators.find(f => f.email === originalFacilitator);
+      facilitatorName = facilitatorObj ? facilitatorObj.name : originalFacilitator;
+    } else {
+      facilitatorName = originalFacilitator;
+    }
+    sessionStatus = sessionData.status ? sessionData.status.charAt(0).toUpperCase() + sessionData.status.slice(1) : 'Scheduled';
+  }
+  
+  if (facilitatorEl) facilitatorEl.textContent = facilitatorName;
   if (typeEl) typeEl.textContent = sessionData.moduleType || 'Workshop';
-  if (statusEl) statusEl.textContent = sessionData.status ? sessionData.status.charAt(0).toUpperCase() + sessionData.status.slice(1) : 'Scheduled';
+  if (statusEl) statusEl.textContent = sessionStatus;
   
   console.log('=== MODAL DEBUG END ===');
   

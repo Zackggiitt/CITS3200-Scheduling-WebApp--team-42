@@ -152,7 +152,7 @@ def _serialize_session(s: Session, venues_by_name=None):
             if assignment.facilitator:
                 facilitator_info = {
                     "id": assignment.facilitator.id,
-                    "name": f"{assignment.facilitator.first_name} {assignment.facilitator.last_name}",
+                    "name": assignment.facilitator.full_name,
                     "email": assignment.facilitator.email,
                     "role": getattr(assignment, 'role', 'lead'),  # Default to 'lead' if role not set
                     "is_confirmed": assignment.is_confirmed
@@ -3030,6 +3030,83 @@ def publish_preview(unit_id: int):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@unitcoordinator_bp.post("/units/<int:unit_id>/sessions/<int:session_id>/assign")
+@login_required
+@role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
+def assign_facilitators_to_session(unit_id: int, session_id: int):
+    """Assign facilitators to a session."""
+    user = get_current_user()
+    unit = _get_user_unit_or_404(user, unit_id)
+    if not unit:
+        return jsonify({"ok": False, "error": "Unit not found or unauthorized"}), 404
+    
+    try:
+        data = request.get_json()
+        facilitator_ids = data.get('facilitator_ids', [])
+        
+        if not facilitator_ids:
+            return jsonify({"ok": False, "error": "No facilitators provided"}), 400
+        
+        # Verify session belongs to this unit
+        session = (
+            db.session.query(Session)
+            .join(Module, Session.module_id == Module.id)
+            .filter(Session.id == session_id)
+            .filter(Module.unit_id == unit_id)
+            .first()
+        )
+        
+        if not session:
+            return jsonify({"ok": False, "error": "Session not found"}), 404
+        
+        # Remove existing assignments for this session
+        Assignment.query.filter_by(session_id=session_id).delete()
+        
+        # Create new assignments
+        for facilitator_id in facilitator_ids:
+            # Verify facilitator exists and belongs to this unit
+            facilitator = User.query.filter_by(
+                id=facilitator_id, 
+                role=UserRole.FACILITATOR
+            ).first()
+            
+            if not facilitator:
+                continue
+                
+            # Check if facilitator is assigned to this unit
+            unit_facilitator = UnitFacilitator.query.filter_by(
+                unit_id=unit_id, 
+                user_id=facilitator_id
+            ).first()
+            
+            if not unit_facilitator:
+                continue
+            
+            # Create assignment
+            assignment = Assignment(
+                session_id=session_id,
+                facilitator_id=facilitator_id,
+                is_confirmed=False,  # Default to unconfirmed
+                role='lead'  # Default role
+            )
+            db.session.add(assignment)
+        
+        # Update session status
+        session.status = 'assigned'
+        
+        db.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "message": f"Assigned {len(facilitator_ids)} facilitators to session",
+            "session_id": session_id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Failed to assign facilitators: {str(e)}"}), 500
+
+
 @unitcoordinator_bp.post("/units/<int:unit_id>/publish")
 @login_required
 @role_required([UserRole.UNIT_COORDINATOR, UserRole.ADMIN])
@@ -3725,7 +3802,7 @@ def get_dashboard_sessions(unit_id: int):
             for session_assignment in session.assignments:
                 if session_assignment.facilitator:
                     facilitators.append({
-                        "name": f"{session_assignment.facilitator.first_name or ''} {session_assignment.facilitator.last_name or ''}".strip() or session_assignment.facilitator.email,
+                        "name": session_assignment.facilitator.full_name,
                         "initials": f"{session_assignment.facilitator.first_name[0] if session_assignment.facilitator.first_name else ''}{session_assignment.facilitator.last_name[0] if session_assignment.facilitator.last_name else ''}".upper() or session_assignment.facilitator.email[0].upper(),
                         "role": getattr(session_assignment, 'role', 'lead'),
                         "is_confirmed": session_assignment.is_confirmed
@@ -3754,7 +3831,7 @@ def get_dashboard_sessions(unit_id: int):
             for session_assignment in session.assignments:
                 if session_assignment.facilitator:
                     facilitators.append({
-                        "name": f"{session_assignment.facilitator.first_name or ''} {session_assignment.facilitator.last_name or ''}".strip() or session_assignment.facilitator.email,
+                        "name": session_assignment.facilitator.full_name,
                         "initials": f"{session_assignment.facilitator.first_name[0] if session_assignment.facilitator.first_name else ''}{session_assignment.facilitator.last_name[0] if session_assignment.facilitator.last_name else ''}".upper() or session_assignment.facilitator.email[0].upper(),
                         "role": getattr(session_assignment, 'role', 'lead'),
                         "is_confirmed": session_assignment.is_confirmed
