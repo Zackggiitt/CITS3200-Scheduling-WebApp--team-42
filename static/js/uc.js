@@ -4112,7 +4112,7 @@ function renderDaySessions(sessions, dayDate) {
        status: session.status || session.extendedProps?.status || 'scheduled'
      }).replace(/"/g, '&quot;')})">
       <div class="session-header">
-        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" ${!session.facilitator ? 'onclick="event.stopPropagation(); openFacilitatorModal(this)"' : ''}>
+        <div class="session-facilitator ${session.facilitator ? '' : 'unassigned'}" onclick="event.stopPropagation(); openFacilitatorModal(this)">
           ${session.facilitators?.length > 0 
             ? (session.facilitators.length > 1 
                 ? `${session.facilitators.length} Facilitators`
@@ -4588,6 +4588,122 @@ function getSessionFacilitator(session) {
   return session.extendedProps?.facilitator_name || null;
 }
 
+// Show custom conflict popup
+function showConflictPopup(title, message) {
+  // Remove any existing conflict popups
+  const existingPopups = document.querySelectorAll('.conflict-popup');
+  existingPopups.forEach(popup => popup.remove());
+  
+  const popup = document.createElement('div');
+  popup.className = 'conflict-popup';
+  popup.innerHTML = `
+    <div class="conflict-popup-backdrop"></div>
+    <div class="conflict-popup-content">
+      <div class="conflict-popup-header">
+        <span class="material-icons conflict-warning-icon">warning</span>
+        <h3>${title}</h3>
+      </div>
+      <div class="conflict-popup-body">
+        <p>${message.replace(/\n/g, '<br>')}</p>
+      </div>
+      <div class="conflict-popup-footer">
+        <button class="btn btn-primary" onclick="closeConflictPopup()">OK</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(popup);
+  
+  // Close popup when clicking backdrop
+  popup.querySelector('.conflict-popup-backdrop').addEventListener('click', closeConflictPopup);
+}
+
+// Close conflict popup
+function closeConflictPopup() {
+  const popups = document.querySelectorAll('.conflict-popup');
+  popups.forEach(popup => popup.remove());
+}
+
+// Show conflicts when clicking the conflicts card
+async function showConflictsOnClick() {
+  const unitId = getUnitId();
+  if (!unitId) return;
+  
+  try {
+    const response = await fetch(`/unitcoordinator/units/${unitId}/conflicts`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok && result.conflicts && result.conflicts.length > 0) {
+      // Show conflicts in popup
+      let conflictMessage = `${result.conflicts.length} scheduling conflict(s) detected:\n\n`;
+      
+      result.conflicts.forEach(conflict => {
+        if (conflict.type === 'schedule_overlap') {
+          conflictMessage += `• <strong>${conflict.facilitator_name}</strong> is assigned to overlapping sessions:\n`;
+          conflictMessage += `  - "${conflict.session1.module}" (${conflict.session1.start_time.substring(0, 16)} - ${conflict.session1.end_time.substring(0, 16)})\n`;
+          conflictMessage += `  - "${conflict.session2.module}" (${conflict.session2.start_time.substring(0, 16)} - ${conflict.session2.end_time.substring(0, 16)})\n\n`;
+        }
+      });
+      
+      conflictMessage += 'Please resolve these conflicts by reassigning facilitators.';
+      
+      // Show as custom popup
+      showConflictPopup('Scheduling Conflicts Detected', conflictMessage);
+    } else {
+      // No conflicts found
+      showConflictPopup('No Conflicts', 'No scheduling conflicts detected. All facilitators are properly assigned without overlapping sessions.');
+    }
+  } catch (error) {
+    console.error('Error loading conflicts:', error);
+    showConflictPopup('Error', 'Unable to load conflict information. Please try again.');
+  }
+}
+
+// Load and display existing conflicts
+async function loadAndDisplayConflicts() {
+  const unitId = getUnitId();
+  if (!unitId) return;
+  
+  try {
+    const response = await fetch(`/unitcoordinator/units/${unitId}/conflicts`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok && result.conflicts && result.conflicts.length > 0) {
+      // Show conflicts in a notification or banner
+      let conflictMessage = `${result.conflicts.length} scheduling conflict(s) detected:\n\n`;
+      
+      result.conflicts.forEach(conflict => {
+        if (conflict.type === 'schedule_overlap') {
+          conflictMessage += `• <strong>${conflict.facilitator_name}</strong> is assigned to overlapping sessions:\n`;
+          conflictMessage += `  - "${conflict.session1.module}" (${conflict.session1.start_time.substring(0, 16)} - ${conflict.session1.end_time.substring(0, 16)})\n`;
+          conflictMessage += `  - "${conflict.session2.module}" (${conflict.session2.start_time.substring(0, 16)} - ${conflict.session2.end_time.substring(0, 16)})\n\n`;
+        }
+      });
+      
+      conflictMessage += 'Please resolve these conflicts by reassigning facilitators.';
+      
+      // Show as custom popup
+      showConflictPopup('Scheduling Conflicts Detected', conflictMessage);
+    }
+  } catch (error) {
+    console.error('Error loading conflicts:', error);
+  }
+}
+
 // Helper function to format time range
 function formatTimeRange(start, end) {
   const startTime = new Date(start).toLocaleTimeString('en-US', { 
@@ -4875,6 +4991,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('schedule-grid')) {
     initSchedulePanel();
     initListView();
+    
+    // Load and display existing conflicts
+    loadAndDisplayConflicts();
     
     // Check if CSV download is available and show button if needed
     checkAndShowCsvDownloadButton();
@@ -5419,12 +5538,26 @@ async function selectMultipleFacilitators() {
       })
     });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-    }
-    
     const result = await response.json();
+    
+    if (!response.ok) {
+      // Handle conflict errors specifically
+      if (result.error === 'Scheduling conflicts detected' && result.conflicts) {
+        let conflictMessage = 'Scheduling conflicts detected:\n\n';
+        result.conflicts.forEach(conflict => {
+          conflictMessage += `• <strong>${conflict.facilitator_name}</strong> is already assigned to "<strong>${conflict.conflicting_session.name}</strong>" `;
+          conflictMessage += `(${conflict.conflicting_session.start_time.substring(0, 16)} - ${conflict.conflicting_session.end_time.substring(0, 16)}) `;
+          conflictMessage += `which overlaps with this session.\n\n`;
+        });
+        conflictMessage += 'Please select different facilitators or resolve the scheduling conflicts.';
+        
+        // Show as custom popup
+        showConflictPopup('Scheduling Conflicts Detected', conflictMessage);
+        return; // Don't throw error, just show the notification and return
+      } else {
+        throw new Error(result.error || result.message || `HTTP error! status: ${response.status}`);
+      }
+    }
     
     if (result.ok) {
       // Update the session card to show assigned status
