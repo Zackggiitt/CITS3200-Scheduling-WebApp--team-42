@@ -4528,10 +4528,22 @@ def apply_bulk_staffing(unit_id: int):
 
         for session in sessions:
 
-            # Only update if not respecting overrides or if values are currently default
-
-            if not respect_overrides or (session.lead_staff_required == 1 and session.support_staff_required == 0):
-
+            # Update logic:
+            # - If respect_overrides is FALSE: Always update (force update all sessions)
+            # - If respect_overrides is TRUE: Only skip if values are already what we want
+            #   (this prevents redundant updates but allows changing values)
+            
+            should_update = True
+            
+            if respect_overrides:
+                # Skip only if the session already has the exact values we're trying to set
+                # This prevents redundant updates but allows changing to new values
+                if (session.lead_staff_required == lead_staff_required and 
+                    session.support_staff_required == support_staff_required):
+                    should_update = False  # Already set to target values, skip
+                # Otherwise, update (even if different from defaults)
+            
+            if should_update:
                 session.lead_staff_required = lead_staff_required
 
                 session.support_staff_required = support_staff_required
