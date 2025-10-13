@@ -407,43 +407,77 @@ function disableAccount(facilitatorId, facilitatorName) {
 }
 
 // Delete account function
-async function deleteAccount(facilitatorId, facilitatorName) {
+async function deleteAccount(facilitatorId, facilitatorName, skipConfirmation = false) {
   console.log(`Attempting to delete facilitator ID: ${facilitatorId}, Name: ${facilitatorName}`);
 
-  if (confirm(`Are you sure you want to permanently delete ${facilitatorName}'s account? This action cannot be undone.`)) {
-    try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-      console.log('CSRF Token:', csrfToken);
+  // First confirmation
+  if (!skipConfirmation && !confirm(`Are you sure you want to permanently delete ${facilitatorName}'s account? This action cannot be undone.`)) {
+    return;
+  }
 
-      const response = await fetch(`/admin/delete-employee/${facilitatorId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
-        }
-      });
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    console.log('CSRF Token:', csrfToken);
 
-      console.log('Response status:', response.status);
-      const result = await response.json();
-      console.log('Response result:', result);
-
-      if (result.success) {
-        const facilitatorCard = document.querySelector(`.facilitator-card[data-facilitator-id="${facilitatorId}"]`);
-        if (facilitatorCard) {
-          facilitatorCard.remove();
-        }
-
-        updateResultsCount();
-        alert(`${facilitatorName}'s user account has been deleted successfully.`);
-      } else {
-        alert(`Error: ${result.message || 'Failed to delete account'}`);
+    const response = await fetch(`/admin/delete-employee/${facilitatorId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
       }
-    } catch (error) {
-      console.error('Error deleting facilitator:', error);
-      alert('An error occurred while deleting the account. Please try again.');
+    });
+
+    console.log('Response status:', response.status);
+    const result = await response.json();
+    console.log('Response result:', result);
+
+    // Handle "own account" warning
+    if (result.requires_confirmation && result.is_own_account) {
+      const confirmDelete = confirm(
+        `⚠️ WARNING: ${result.message}\n\n` +
+        `This is YOUR account! If you delete it:\n` +
+        `• You will be logged out immediately\n` +
+        `• You will lose access to the admin panel\n` +
+        `• This action CANNOT be undone\n\n` +
+        `Are you ABSOLUTELY SURE you want to delete your own account?`
+      );
+      
+      if (confirmDelete) {
+        // User confirmed, make the actual deletion request
+        // We need to call the backend again but this time it should proceed
+        // For now, just show a message that this needs backend support
+        alert('To delete your own account, please contact another administrator.');
+        return;
+      } else {
+        console.log('User cancelled own account deletion');
+        return;
+      }
     }
 
-    document.getElementById(`dropdown-${facilitatorId}`).style.display = 'none';
+    if (result.success) {
+      const facilitatorCard = document.querySelector(`.facilitator-card[data-facilitator-id="${facilitatorId}"]`);
+      if (facilitatorCard) {
+        facilitatorCard.remove();
+      }
+
+      updateResultsCount();
+      alert(result.message || `${facilitatorName}'s user account has been deleted successfully.`);
+      
+      // If user deleted their own account, redirect to logout
+      if (result.should_logout) {
+        window.location.href = '/logout';
+      }
+    } else {
+      alert(`Error: ${result.message || 'Failed to delete account'}`);
+    }
+  } catch (error) {
+    console.error('Error deleting facilitator:', error);
+    alert('An error occurred while deleting the account. Please try again.');
+  }
+
+  const dropdown = document.getElementById(`dropdown-${facilitatorId}`);
+  if (dropdown) {
+    dropdown.style.display = 'none';
   }
 }
 
